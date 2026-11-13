@@ -18,14 +18,24 @@ export function useWeather(location: LocationInfo, instant: Date, loader = fetch
     const force = revision !== appliedRevision.current;
     appliedRevision.current = revision;
     const lease = repository.acquire(location, queryDate, force);
-    lease.promise.then((data) => { if (active) setResult(data); });
-    return () => { active = false; lease.release(); };
+    lease.promise.then((data) => {
+      if (active) setResult(data);
+    });
+    return () => {
+      active = false;
+      lease.release();
+    };
   }, [location, queryDate, repository, revision]);
   useEffect(() => {
     const update = () => refresh((n) => n + 1);
-    const timer = window.setInterval(() => { if (!document.hidden) update(); }, 15 * 60000);
+    const timer = window.setInterval(() => {
+      if (!document.hidden) update();
+    }, 15 * 60000);
     window.addEventListener('online', update);
-    return () => { clearInterval(timer); window.removeEventListener('online', update); };
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('online', update);
+    };
   }, []);
   const selection = useMemo(() => selectWeather(result, location, instant), [result, location, instant]);
   return { selection, refresh: () => refresh((n) => n + 1) };

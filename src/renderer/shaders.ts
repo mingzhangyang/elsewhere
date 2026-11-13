@@ -47,7 +47,6 @@ export const SKY_FRAGMENT = `
   }
 `;
 
-
 // One foreground cloud layer attenuates the sky, bodies, stars, and labels per pixel.
 // Sampling p - drift advects the pattern toward the meteorological downwind vector.
 export const CLOUD_FRAGMENT = `

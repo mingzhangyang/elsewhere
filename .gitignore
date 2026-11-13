@@ -5,4 +5,5 @@ dist/
 *.tsbuildinfo
 coverage/
 test-results/
+playwright-report/
 .env.local

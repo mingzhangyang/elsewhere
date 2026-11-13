@@ -1,12 +1,105 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Elsewhere — Sources & limitations</title><style>body{font:16px/1.7 system-ui,sans-serif;background:#0a111c;color:#e8eef6;max-width:780px;margin:auto;padding:32px 24px}a{color:#b6dafa}h1,h2{line-height:1.2}h2{margin-top:36px}code{overflow-wrap:anywhere}small{color:#adbacb}</style></head><body>
-<a href="./">← Return to Elsewhere</a><h1>Sources & limitations</h1>
-<p>Elsewhere is an educational sky explorer. Positions are calculated; weather is a model estimate. Clouds, sky brightness, and the generic landscape are illustrations, not measurements of what is outside.</p>
-<h2>Astronomy</h2><p>Sun and Moon positions, lunar orientation, and rise/set events use <a href="https://github.com/cosinekitty/astronomy">Astronomy Engine</a> (MIT). Altitudes use its standard atmospheric refraction model. Azimuth is clockwise from north. Body sizes use observer distance. The Moon map is oriented with the IAU pole and prime meridian, including lunar rotation. Terrain, actual atmospheric refraction, lunar eclipses, and occultation timing are not modeled. Dates supported: 1900–2100.</p>
-<h2>Stars</h2><p>5,070 stars to visual magnitude 6 from <a href="https://github.com/astronexus/HYG-Database">HYG v4.1</a>, David Nash / Astronexus, compiled from Hipparcos, Yale Bright Star, and Gliese catalogs. This filtered derivative is distributed under <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>; <a href="licenses/HYG.txt">source license</a>. Changes: selected fields and magnitude limit, ordered by magnitude. Epoch and equinox are J2000; proper motion and precession are applied. Stellar refraction, annual parallax, nutation, radial motion, and variable brightness are omitted. Colors and magnitude visibility are display approximations; the selected light-pollution setting is not inferred from the location.</p>
-<p>The four line patterns are original simplified teaching diagrams. Big Dipper and Summer Triangle are asterisms; Orion and Crux are partial constellation figures. These are not IAU boundaries or a complete sky culture.</p>
-<h2>Moon surface</h2><p><a href="https://svs.gsfc.nasa.gov/4720/">NASA Scientific Visualization Studio, CGI Moon Kit</a> — Ernie Wright (USRA), Noah Petro (NASA/GSFC), using LRO/LROC imagery and LOLA polar albedo. The 2048 × 1024 map is optimized for appearance, not surface science. NASA SVS makes its imagery <a href="https://svs.gsfc.nasa.gov/help/">public domain unless otherwise noted</a>. No NASA endorsement is implied.</p>
-<h2>Weather & location</h2><p>Weather and place search: <a href="https://open-meteo.com/">Open-Meteo</a>, with <a href="https://www.geonames.org/">GeoNames</a> place data. Weather data is licensed <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. API usage terms are separate from the data license. Historical data may lack visibility. Missing values stay unavailable; a neutral atmosphere is used for rendering when needed. Custom weather is explicitly simulated.</p>
-<h2>Privacy & controls</h2><p>No analytics or account is required. Place search and weather requests send the chosen place or coordinates to Open-Meteo. Device geolocation is requested only when you choose it. Saved places and preferences stay in this browser. Share links include coordinates and the selected time; exact device coordinates are shown before copying. Clouds and precipitation animate in real elapsed time regardless of playback speed. Reduced motion freezes that animation.</p>
-<p>Use arrow keys on the sky to look around, + / − to zoom, and Home to reset. All objects can also be found in the Objects panel. Now follows the current clock; editing time pauses it.</p>
-</body></html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Elsewhere — Sources & limitations</title>
+    <style>
+      body {
+        font:
+          16px/1.7 system-ui,
+          sans-serif;
+        background: #0a111c;
+        color: #e8eef6;
+        max-width: 780px;
+        margin: auto;
+        padding: 32px 24px;
+      }
+      a {
+        color: #b6dafa;
+      }
+      h1,
+      h2 {
+        line-height: 1.2;
+      }
+      h2 {
+        margin-top: 36px;
+      }
+      code {
+        overflow-wrap: anywhere;
+      }
+      small {
+        color: #adbacb;
+      }
+    </style>
+  </head>
+  <body>
+    <a href="./">← Return to Elsewhere</a>
+    <h1>Sources & limitations</h1>
+    <p>
+      Elsewhere is an educational sky explorer. Positions are calculated; weather is a model estimate. Clouds,
+      sky brightness, and the generic landscape are illustrations, not measurements of what is outside.
+    </p>
+    <h2>Astronomy</h2>
+    <p>
+      Sun and Moon positions, lunar orientation, and rise/set events use
+      <a href="https://github.com/cosinekitty/astronomy">Astronomy Engine</a> (MIT). Altitudes use its
+      standard atmospheric refraction model. Azimuth is clockwise from north. Body sizes use observer
+      distance. The Moon map is oriented with the IAU pole and prime meridian, including lunar rotation.
+      Terrain, actual atmospheric refraction, lunar eclipses, and occultation timing are not modeled. Dates
+      supported: 1900–2100.
+    </p>
+    <h2>Stars</h2>
+    <p>
+      5,070 stars to visual magnitude 6 from
+      <a href="https://github.com/astronexus/HYG-Database">HYG v4.1</a>, David Nash / Astronexus, compiled
+      from Hipparcos, Yale Bright Star, and Gliese catalogs. This filtered derivative is distributed under
+      <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>;
+      <a href="licenses/HYG.txt">source license</a>. Changes: selected fields and magnitude limit, ordered by
+      magnitude. Epoch and equinox are J2000; proper motion and precession are applied. Stellar refraction,
+      annual parallax, nutation, radial motion, and variable brightness are omitted. Colors and magnitude
+      visibility are display approximations; the selected light-pollution setting is not inferred from the
+      location.
+    </p>
+    <p>
+      The four line patterns are original simplified teaching diagrams. Big Dipper and Summer Triangle are
+      asterisms; Orion and Crux are partial constellation figures. These are not IAU boundaries or a complete
+      sky culture.
+    </p>
+    <h2>Moon surface</h2>
+    <p>
+      <a href="https://svs.gsfc.nasa.gov/4720/">NASA Scientific Visualization Studio, CGI Moon Kit</a> — Ernie
+      Wright (USRA), Noah Petro (NASA/GSFC), using LRO/LROC imagery and LOLA polar albedo. The 2048 × 1024 map
+      is optimized for appearance, not surface science. NASA SVS makes its imagery
+      <a href="https://svs.gsfc.nasa.gov/help/">public domain unless otherwise noted</a>. No NASA endorsement
+      is implied.
+    </p>
+    <h2>Weather & location</h2>
+    <p>
+      Weather and place search: <a href="https://open-meteo.com/">Open-Meteo</a>, with
+      <a href="https://www.geonames.org/">GeoNames</a> place data. Weather data is licensed
+      <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. API usage terms are separate from
+      the data license. Historical data may lack visibility. Missing values stay unavailable; a neutral
+      atmosphere is used for rendering when needed. Custom weather is explicitly simulated.
+    </p>
+    <h2>Privacy & controls</h2>
+    <p>
+      No analytics or account is required. Place search and weather requests send the chosen place or
+      coordinates to Open-Meteo. Device geolocation is requested only when you choose it; elevation is assumed
+      to be sea level because browser altitude uses a different height reference. Exact device coordinates are
+      saved only when you explicitly save that place. Saved places and preferences stay in this browser. Share
+      links include coordinates and the selected time; exact device coordinates are shown before copying.
+      Clouds and precipitation animate in real elapsed time regardless of playback speed. Reduced motion
+      freezes that animation.
+    </p>
+    <p>
+      Production builds cache the local app and assets for offline use after installation. Search and weather
+      need a connection. Weather cache is memory-only. There is no background tracking.
+      <a href="licenses/THIRD-PARTY.txt">Runtime dependency licenses</a>.
+    </p>
+    <p>
+      Use arrow keys on the sky to look around, + / − to zoom, and Home to reset. All objects can also be
+      found in the Objects panel. Now follows the current clock; editing time pauses it.
+    </p>
+  </body>
+</html>

@@ -3,11 +3,7 @@ import * as THREE from 'three';
 export function directionVector(altitude: number, azimuth: number): THREE.Vector3 {
   const alt = THREE.MathUtils.degToRad(altitude);
   const az = THREE.MathUtils.degToRad(azimuth);
-  return new THREE.Vector3(
-    Math.sin(az) * Math.cos(alt),
-    Math.sin(alt),
-    -Math.cos(az) * Math.cos(alt),
-  );
+  return new THREE.Vector3(Math.sin(az) * Math.cos(alt), Math.sin(alt), -Math.cos(az) * Math.cos(alt));
 }
 
 export function makeGlowTexture(): THREE.CanvasTexture {
@@ -45,12 +41,14 @@ export function makeTextSprite(text: string, color = '#e8edf7'): THREE.Sprite {
   return sprite;
 }
 
-
 export function disposeGroupContents(group: THREE.Group): void {
   for (const child of [...group.children]) {
     group.remove(child);
     child.traverse((node) => {
-      const renderable = node as THREE.Object3D & { geometry?: THREE.BufferGeometry; material?: THREE.Material | THREE.Material[] };
+      const renderable = node as THREE.Object3D & {
+        geometry?: THREE.BufferGeometry;
+        material?: THREE.Material | THREE.Material[];
+      };
       renderable.geometry?.dispose();
       if (renderable.material) {
         const materials = Array.isArray(renderable.material) ? renderable.material : [renderable.material];
@@ -65,7 +63,11 @@ export function disposeGroupContents(group: THREE.Group): void {
   }
 }
 
-export function setAtDirection(object: THREE.Object3D, altitude: number, azimuth: number, radius: number): void {
+export function setAtDirection(
+  object: THREE.Object3D,
+  altitude: number,
+  azimuth: number,
+  radius: number,
+): void {
   object.position.copy(directionVector(altitude, azimuth).multiplyScalar(radius));
 }
-

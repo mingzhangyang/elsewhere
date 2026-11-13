@@ -10,7 +10,12 @@ const scenario = import.meta.env.DEV
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <RecoveryBoundary><App {...scenario} diagnostics={import.meta.env.DEV && new URLSearchParams(location.search).has('diagnostics')} /></RecoveryBoundary>
+    <RecoveryBoundary>
+      <App
+        {...scenario}
+        diagnostics={import.meta.env.DEV && new URLSearchParams(location.search).has('diagnostics')}
+      />
+    </RecoveryBoundary>
   </React.StrictMode>,
 );
 

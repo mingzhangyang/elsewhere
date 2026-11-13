@@ -2,7 +2,9 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import App from '../src/App';
 
-vi.mock('../src/components/SkyScene', () => ({ default: () => <div aria-label="Sky preview" /> }));
+vi.mock('../src/components/SkyScene', async () => ({
+  default: (await import('react')).forwardRef(() => <div role="img" aria-label="Sky preview" />),
+}));
 
 it('changes place without changing the selected instant and controls playback', async () => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}')));
@@ -15,18 +17,26 @@ it('changes place without changing the selected instant and controls playback', 
   fireEvent.click(screen.getByRole('button', { name: 'Play time' }));
   expect(screen.getByRole('button', { name: 'Pause time' })).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Now' }));
-  expect(screen.getByRole('button', { name: 'Play time' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Pause time' })).toBeInTheDocument();
   expect(screen.getByText(/Following real time/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Pause time' }));
+  expect(screen.getByText(/Paused ·/)).toBeInTheDocument();
 });
 
 it('requires a choice between repeated-hour offsets', async () => {
-  vi.stubGlobal('fetch', vi.fn().mockImplementation(() => Promise.resolve(new Response('{}'))));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockImplementation(() => Promise.resolve(new Response('{}'))),
+  );
   render(<App initialTime={new Date('2026-11-01T17:00Z')} />);
   fireEvent.change(screen.getByLabelText('LOCAL TIME'), { target: { value: '01:30' } });
   expect(screen.getByRole('alert')).toHaveTextContent('occurs twice');
   fireEvent.click(screen.getByRole('button', { name: /UTC-05:00/ }));
   expect(screen.getByLabelText('LOCAL TIME')).toHaveValue('01:30');
-  expect(screen.getByRole('slider', { name: 'Time of day' })).toHaveAttribute('aria-valuetext', '01:30 UTC-05:00');
+  expect(screen.getByRole('slider', { name: 'Time of day' })).toHaveAttribute(
+    'aria-valuetext',
+    '01:30 UTC-05:00',
+  );
 });
 
 it('does not display source weather defaults when weather is unavailable', async () => {
@@ -39,4 +49,3 @@ it('does not display source weather defaults when weather is unavailable', async
   fireEvent.click(screen.getByRole('button', { name: 'Custom simulation' }));
   expect(screen.getByRole('slider', { name: /Cloud cover/ })).toBeInTheDocument();
 });
-

@@ -1,0 +1,179 @@
+{
+  "retrieved": "2026-11-13T15:22:21.390Z",
+  "entries": [
+    {
+      "place": {
+        "name": "new-york",
+        "longitude": -74.006,
+        "latitude": 40.7128,
+        "elevation": 0.01,
+        "timezone": "America/New_York"
+      },
+      "name": "sun",
+      "dates": [
+        "2026-03-20T12:00:00Z",
+        "2026-06-21T12:00:00Z",
+        "2026-11-24T02:00:00Z",
+        "2026-12-21T12:00:00Z"
+      ],
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%2710%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27coord%40399%27&COORD_TYPE=%27GEODETIC%27&SITE_COORD=%27-74.006%2C40.7128%2C0.01%27&TLIST=%272461120%2C2461213%2C2461368.5833333335%2C2461396%27&TLIST_TYPE=%27JD%27&QUANTITIES=%274%2C10%2C20%27&APPARENT=%27AIRLESS%27&CSV_FORMAT=%27YES%27&ANG_FORMAT=%27DEG%27&EXTRA_PREC=%27YES%27",
+      "file": "new-york-sun.txt"
+    },
+    {
+      "place": {
+        "name": "new-york",
+        "longitude": -74.006,
+        "latitude": 40.7128,
+        "elevation": 0.01,
+        "timezone": "America/New_York"
+      },
+      "name": "moon",
+      "dates": [
+        "2026-03-20T12:00:00Z",
+        "2026-06-21T12:00:00Z",
+        "2026-11-24T02:00:00Z",
+        "2026-12-21T12:00:00Z"
+      ],
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27301%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27coord%40399%27&COORD_TYPE=%27GEODETIC%27&SITE_COORD=%27-74.006%2C40.7128%2C0.01%27&TLIST=%272461120%2C2461213%2C2461368.5833333335%2C2461396%27&TLIST_TYPE=%27JD%27&QUANTITIES=%274%2C10%2C20%27&APPARENT=%27AIRLESS%27&CSV_FORMAT=%27YES%27&ANG_FORMAT=%27DEG%27&EXTRA_PREC=%27YES%27",
+      "file": "new-york-moon.txt"
+    },
+    {
+      "place": {
+        "name": "new-york",
+        "longitude": -74.006,
+        "latitude": 40.7128,
+        "elevation": 0.01,
+        "timezone": "America/New_York"
+      },
+      "name": "moon-range",
+      "dates": [
+        "2026-03-20T12:00:00Z",
+        "2026-06-21T12:00:00Z",
+        "2026-11-24T02:00:00Z",
+        "2026-12-21T12:00:00Z"
+      ],
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27301%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27VECTORS%27&CENTER=%27coord%40399%27&COORD_TYPE=%27GEODETIC%27&SITE_COORD=%27-74.006%2C40.7128%2C0.01%27&TLIST=%272461120%2C2461213%2C2461368.5833333335%2C2461396%27&TLIST_TYPE=%27JD%27&CSV_FORMAT=%27YES%27&VEC_TABLE=%271%27&VEC_CORR=%27NONE%27&OUT_UNITS=%27KM-S%27&REF_PLANE=%27FRAME%27&TIME_TYPE=%27UT%27",
+      "file": "new-york-moon-range.txt",
+      "api": {
+        "version": "1.2",
+        "source": "NASA/JPL Horizons API"
+      }
+    },
+    {
+      "place": {
+        "name": "sydney",
+        "longitude": 151.2093,
+        "latitude": -33.8688,
+        "elevation": 0.058,
+        "timezone": "Australia/Sydney"
+      },
+      "name": "sun",
+      "dates": [
+        "2026-03-20T12:00:00Z",
+        "2026-06-21T12:00:00Z",
+        "2026-11-24T02:00:00Z",
+        "2026-12-21T12:00:00Z"
+      ],
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%2710%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27coord%40399%27&COORD_TYPE=%27GEODETIC%27&SITE_COORD=%27151.2093%2C-33.8688%2C0.058%27&TLIST=%272461120%2C2461213%2C2461368.5833333335%2C2461396%27&TLIST_TYPE=%27JD%27&QUANTITIES=%274%2C10%2C20%27&APPARENT=%27AIRLESS%27&CSV_FORMAT=%27YES%27&ANG_FORMAT=%27DEG%27&EXTRA_PREC=%27YES%27",
+      "file": "sydney-sun.txt"
+    },
+    {
+      "place": {
+        "name": "sydney",
+        "longitude": 151.2093,
+        "latitude": -33.8688,
+        "elevation": 0.058,
+        "timezone": "Australia/Sydney"
+      },
+      "name": "moon",
+      "dates": [
+        "2026-03-20T12:00:00Z",
+        "2026-06-21T12:00:00Z",
+        "2026-11-24T02:00:00Z",
+        "2026-12-21T12:00:00Z"
+      ],
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27301%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27coord%40399%27&COORD_TYPE=%27GEODETIC%27&SITE_COORD=%27151.2093%2C-33.8688%2C0.058%27&TLIST=%272461120%2C2461213%2C2461368.5833333335%2C2461396%27&TLIST_TYPE=%27JD%27&QUANTITIES=%274%2C10%2C20%27&APPARENT=%27AIRLESS%27&CSV_FORMAT=%27YES%27&ANG_FORMAT=%27DEG%27&EXTRA_PREC=%27YES%27",
+      "file": "sydney-moon.txt"
+    },
+    {
+      "place": {
+        "name": "sydney",
+        "longitude": 151.2093,
+        "latitude": -33.8688,
+        "elevation": 0.058,
+        "timezone": "Australia/Sydney"
+      },
+      "name": "moon-range",
+      "dates": [
+        "2026-03-20T12:00:00Z",
+        "2026-06-21T12:00:00Z",
+        "2026-11-24T02:00:00Z",
+        "2026-12-21T12:00:00Z"
+      ],
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27301%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27VECTORS%27&CENTER=%27coord%40399%27&COORD_TYPE=%27GEODETIC%27&SITE_COORD=%27151.2093%2C-33.8688%2C0.058%27&TLIST=%272461120%2C2461213%2C2461368.5833333335%2C2461396%27&TLIST_TYPE=%27JD%27&CSV_FORMAT=%27YES%27&VEC_TABLE=%271%27&VEC_CORR=%27NONE%27&OUT_UNITS=%27KM-S%27&REF_PLANE=%27FRAME%27&TIME_TYPE=%27UT%27",
+      "file": "sydney-moon-range.txt",
+      "api": {
+        "source": "NASA/JPL Horizons API",
+        "version": "1.2"
+      }
+    },
+    {
+      "place": {
+        "name": "tromso",
+        "longitude": 18.9553,
+        "latitude": 69.6492,
+        "elevation": 0.01,
+        "timezone": "Europe/Oslo"
+      },
+      "name": "sun",
+      "dates": [
+        "2026-03-20T12:00:00Z",
+        "2026-06-21T12:00:00Z",
+        "2026-11-24T02:00:00Z",
+        "2026-12-21T12:00:00Z"
+      ],
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%2710%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27coord%40399%27&COORD_TYPE=%27GEODETIC%27&SITE_COORD=%2718.9553%2C69.6492%2C0.01%27&TLIST=%272461120%2C2461213%2C2461368.5833333335%2C2461396%27&TLIST_TYPE=%27JD%27&QUANTITIES=%274%2C10%2C20%27&APPARENT=%27AIRLESS%27&CSV_FORMAT=%27YES%27&ANG_FORMAT=%27DEG%27&EXTRA_PREC=%27YES%27",
+      "file": "tromso-sun.txt"
+    },
+    {
+      "place": {
+        "name": "tromso",
+        "longitude": 18.9553,
+        "latitude": 69.6492,
+        "elevation": 0.01,
+        "timezone": "Europe/Oslo"
+      },
+      "name": "moon",
+      "dates": [
+        "2026-03-20T12:00:00Z",
+        "2026-06-21T12:00:00Z",
+        "2026-11-24T02:00:00Z",
+        "2026-12-21T12:00:00Z"
+      ],
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27301%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27coord%40399%27&COORD_TYPE=%27GEODETIC%27&SITE_COORD=%2718.9553%2C69.6492%2C0.01%27&TLIST=%272461120%2C2461213%2C2461368.5833333335%2C2461396%27&TLIST_TYPE=%27JD%27&QUANTITIES=%274%2C10%2C20%27&APPARENT=%27AIRLESS%27&CSV_FORMAT=%27YES%27&ANG_FORMAT=%27DEG%27&EXTRA_PREC=%27YES%27",
+      "file": "tromso-moon.txt"
+    },
+    {
+      "place": {
+        "name": "tromso",
+        "longitude": 18.9553,
+        "latitude": 69.6492,
+        "elevation": 0.01,
+        "timezone": "Europe/Oslo"
+      },
+      "name": "moon-range",
+      "dates": [
+        "2026-03-20T12:00:00Z",
+        "2026-06-21T12:00:00Z",
+        "2026-11-24T02:00:00Z",
+        "2026-12-21T12:00:00Z"
+      ],
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27301%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27VECTORS%27&CENTER=%27coord%40399%27&COORD_TYPE=%27GEODETIC%27&SITE_COORD=%2718.9553%2C69.6492%2C0.01%27&TLIST=%272461120%2C2461213%2C2461368.5833333335%2C2461396%27&TLIST_TYPE=%27JD%27&CSV_FORMAT=%27YES%27&VEC_TABLE=%271%27&VEC_CORR=%27NONE%27&OUT_UNITS=%27KM-S%27&REF_PLANE=%27FRAME%27&TIME_TYPE=%27UT%27",
+      "file": "tromso-moon-range.txt",
+      "api": {
+        "version": "1.2",
+        "source": "NASA/JPL Horizons API"
+      }
+    }
+  ]
+}

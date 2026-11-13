@@ -5,23 +5,32 @@ import type { Plugin } from 'vite';
 
 /** Build-owned cache manifest: never cache weather requests or shared coordinates. */
 export function offlinePlugin(): Plugin {
-  let directory = '', base = '/';
+  let directory = '',
+    base = '/';
   return {
-    name: 'elsewhere-offline-shell', apply: 'build',
-    configResolved(config) { directory = resolve(config.root,config.build.outDir); base = config.base; },
+    name: 'elsewhere-offline-shell',
+    apply: 'build',
+    configResolved(config) {
+      directory = resolve(config.root, config.build.outDir);
+      base = config.base;
+    },
     async closeBundle() {
       const files: string[] = [];
       async function walk(dir: string) {
-        for (const entry of await readdir(dir,{withFileTypes:true})) {
-          const path = join(dir,entry.name);
+        for (const entry of await readdir(dir, { withFileTypes: true })) {
+          const path = join(dir, entry.name);
           if (entry.isDirectory()) await walk(path);
-          else if (entry.name !== 'sw.js') files.push(relative(directory,path).replaceAll('\\','/'));
+          else if (entry.name !== 'sw.js') files.push(relative(directory, path).replaceAll('\\', '/'));
         }
       }
-      await walk(directory); files.sort();
+      await walk(directory);
+      files.sort();
       const hash = createHash('sha256');
-      for (const file of files) { hash.update(file); hash.update(await readFile(join(directory,file))); }
-      const cache = `elsewhere-${hash.digest('hex').slice(0,12)}`;
+      for (const file of files) {
+        hash.update(file);
+        hash.update(await readFile(join(directory, file)));
+      }
+      const cache = `elsewhere-${hash.digest('hex').slice(0, 12)}`;
       const source = `const CACHE=${JSON.stringify(cache)},BASE=new URL(${JSON.stringify(base)},self.location).pathname;
 const FILES=${JSON.stringify(files)}.map(p=>new URL(p,self.registration.scope).href);
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(FILES))));
@@ -35,7 +44,7 @@ self.addEventListener('fetch',event=>{
  if(FILES.includes(url.href))event.respondWith(caches.open(CACHE).then(async c=>(await c.match(event.request))||fetch(event.request)));
 });
 `;
-      await writeFile(join(directory,'sw.js'),source);
+      await writeFile(join(directory, 'sw.js'), source);
     },
   };
 }

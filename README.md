@@ -1,64 +1,68 @@
 # Elsewhere — Interactive Sky Simulator
 
-An immersive React + TypeScript + Three.js application for exploring the sky from different places and times on Earth.
+Explore a calculated sky from any place and time. Elsewhere combines a quiet, responsive interface with Sun/Moon ephemerides, a 5,070-star catalog, and a weather-driven illustrative atmosphere.
 
-See the [app polish roadmap](ROADMAP.md) for the prioritized refactor, design, fidelity, and release plan.
+The substantial refactor in [ROADMAP.md](ROADMAP.md) is implemented through phase 5. Phase 6 has local validation, independent numerical regression fixtures, release tooling, and documentation; the external qualification gates in [docs/RELEASE.md](docs/RELEASE.md) remain open.
 
 ## Run locally
 
-Requirements: Node.js 22.13+ in the 22.x line or Node.js 24+, and npm.
+Use Node.js 22.13+ in the 22.x line, or Node.js 24+, with npm. The lockfile is the installation contract.
 
-```bash
-npm install
+```sh
+npm ci
 npm run dev
 ```
 
-Open the local URL printed by Vite. For a production build:
+Open the localhost address printed by Vite. Development and preview bind to loopback by default. To build and inspect the production candidate:
 
-```bash
-npm run build
+```sh
+npm run validate
 npm run preview
 ```
 
-Run `npm run validate` for type checking, lint, tests, and the production build. See [validation and development scenarios](docs/VALIDATION.md).
+Validation runs TypeScript, ESLint, domain and component tests, the production build, bundle budgets, and service-worker contract checks. Additional commands:
 
-No API key is required for the Open-Meteo endpoints used by this starter.
+```sh
+npm run format:check
+npm run test:watch
+npx playwright install chromium firefox webkit
+npm run test:browser
+```
 
-## Implemented
+Build before running the browser suite; it starts both development and production preview servers. See [validation](docs/VALIDATION.md) for deterministic scenarios, measured results, and separate live-provider checks.
 
-- Three.js sky dome with procedural day, twilight, night, cloud, and haze shading.
-- 360-degree mouse/touch drag look controls, scroll-to-zoom, compass heading, and reset-view control.
-- Sun and Moon positions calculated for the selected observer and instant with Astronomy Engine.
-- Sunrise, sunset, solar noon, moonrise, moonset, daylight duration, lunar phase, illumination, and approximate geocentric lunar distance.
-- A curated subset of bright stars with J2000 coordinates and visual magnitudes. Star positions are precessed to the date and transformed from equatorial coordinates to local horizontal coordinates using sidereal time and the observer's latitude/longitude.
-- Constellation line overlays and major-star labels for a small set of recognizable constellations.
-- Location search through Open-Meteo Geocoding, eight quick locations, and browser geolocation after permission is granted.
-- Local date/time entry, a 24-hour timeline, play/pause, and 1× / 10× / 60× / 600× time progression. Calculations use JavaScript UTC instants and display the selected location's IANA time zone.
-- Open-Meteo hourly weather data for current/forecast dates and historical reanalysis for past dates. Forecast requests explicitly request the 16-day horizon. Hourly timestamps are consumed as UTC Unix times to avoid local-time and DST ambiguity. The UI labels the source and indicates unavailable periods rather than inventing values.
-- Historical archive visibility is not provided by the archive endpoint; the app marks that field unavailable instead of presenting a made-up observation. Visibility can still be adjusted in Custom Simulation.
-- Weather-driven cloud density/motion, haze, star attenuation, Sun/Moon dimming, and rain/snow particle effects.
-- Custom weather controls that affect rendering only; astronomy calculations remain independent.
-- Responsive desktop and mobile layouts.
+## Explore
 
-## Current scope and known limitations
+- Choose among eight presets, search for a place, use device location explicitly, or return to saved/recent places. Changing place preserves the instant and updates its local clock.
+- Enter a local date/time, move through an actual civil-day timeline, jump to sunrise/sunset/tonight, or play at 1×, 10×, 60×, or 600×. **Now** follows the real clock. Editing pauses it. Repeated DST hours offer both UTC offsets; nonexistent times explain the problem.
+- Drag the sky, pinch or scroll to zoom, or use arrows, +/−, and Home. Visible zoom/reset controls and a textual sky summary provide alternatives. Select objects in the scene or searchable Objects panel and center them in view.
+- Inspect Sun/Moon events, observer-relative lunar illumination, approximate lunar distance, and star coordinates. Toggle independent star, label, and line layers. Choose dark/suburban/city brightness, an unobstructed or illustrative horizon, reduced motion, and rendering quality.
+- Use model-backed weather with explicit current/forecast/recent/historical source, timestamps, missing values, and stale-cache labels. Custom weather is a separate simulation. Neither mode changes calculated astronomical positions.
+- Save preferences/places locally and copy a versioned link containing the chosen place, instant, camera, layers, and custom conditions. Exact coordinates are disclosed before sharing. No accounts or analytics are included.
 
-This is a working foundation, not yet a full planetarium-grade catalog or a final production release.
+The responsive shell keeps a separate time dock and one inspector. The renderer retains geometry/textures, schedules static scenes on demand, suspends hidden-tab animation, adapts resolution, and recovers from graphics loss without resetting the exploration. After a successful production load and asset-cache installation, the local shell and catalog can reopen offline; remote search/weather still require a network connection. Weather caching is memory-only.
 
-- The star catalog is a curated bright-star subset, not the complete Hipparcos or Bright Star Catalog. It is enough to establish recognizable star patterns, but faint-star density and full-sky completeness are limited.
-- Constellation lines cover a small selection of patterns. Constellation boundaries, a complete official stick-figure dataset, and Milky Way imagery are not included.
-- The Moon's surface map is procedurally generated for this prototype; replace it with a properly licensed lunar texture for scientific/visual fidelity. The phase is produced by directional lighting from the calculated Sun direction.
-- The horizon is a generic generated silhouette, not terrain-specific. Observer elevation is passed into astronomical calculations, but no digital elevation model or local obstruction profile is currently loaded.
-- Additional planets (Venus, Mars, Jupiter, Saturn), eclipse overlays, a world map picker, and saved locations are not included in this first pass.
-- The cloud field is a procedural visual approximation driven by the weather parameters, not a physically simulated 3D cloud volume. Aggregate cloud cover also reduces celestial visibility; it does not reconstruct the exact cloud mask at every azimuth/elevation.
-- Open-Meteo forecast availability is limited to the API's forecast horizon (the UI currently uses 16 days). Past dates use the Open-Meteo archive/reanalysis endpoint. Coverage and variable availability can differ by date and location.
-- The star positions use precession of J2000 coordinates but do not yet apply individual stellar proper motion or parallax. The curated catalog should be expanded and cross-checked before scientific use.
-- The Moon's bright-limb orientation and apparent angular size are simplified for presentation, even though its position and illuminated fraction come from astronomical calculations.
+## Architecture
 
-## Data sources and attribution
+| Area                                                         | Responsibility                                                                                    |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| `src/lib/astronomy.ts`, `stars.ts`, `time.ts`                | Domain calculations, numerical and time-zone contracts                                            |
+| `src/lib/weather.ts`, `src/lib/locations.ts`, `src/services` | Provider adapters, validation, cancellation, cache and provenance                                 |
+| `src/hooks`                                                  | Simulation clock and data subscriptions                                                           |
+| `src/renderer`                                               | Camera input, retained celestial layers, atmosphere, particles, scheduling and resource ownership |
+| `src/components`, `src/App.tsx`                              | Accessible exploration controls and presentation                                                  |
+| `src/lib/persistence.ts`                                     | Versioned preferences and shareable state                                                         |
+| `src/dev`, `tests`, `scripts`                                | Development fixtures, qualification checks and asset tooling                                      |
 
-- [Astronomy Engine](https://github.com/cosinekitty/astronomy) — solar-system positions, rise/set, phase and distance calculations. MIT License.
-- [Open-Meteo Geocoding API](https://open-meteo.com/en/docs/geocoding-api) — place search.
-- [Open-Meteo Weather Forecast API](https://open-meteo.com/en/docs) — current and forecast weather.
-- [Open-Meteo Historical Weather API](https://open-meteo.com/en/docs/historical-weather-api) — past weather reanalysis.
+## Scope and sources
 
-Follow Open-Meteo's current attribution and usage terms for the intended deployment and usage volume.
+Supported instants span 1900–2100 UTC. This is educational visualization: the generic landscape, clouds, brightness, and precipitation are illustrative. It does not include planets, measured terrain, a Milky Way layer, eclipse timing, or a complete constellation atlas. Device location uses a disclosed sea-level elevation assumption. Stellar refraction, parallax, nutation, and variable brightness are omitted.
+
+[Scientific conventions and independent reference results](docs/SCIENCE.md) explain the accuracy budget and its limits. [Asset provenance](docs/ASSETS.md) records catalog/map licenses, source URLs, hashes, and transformations. The app also exposes [sources, privacy, and limitations](public/credits.html).
+
+- [Astronomy Engine](https://github.com/cosinekitty/astronomy): Sun, Moon, orientation, and events; MIT.
+- [HYG v4.1](https://github.com/astronexus/HYG-Database): magnitude-limited star derivative; CC BY-SA 4.0.
+- [NASA CGI Moon Kit](https://svs.gsfc.nasa.gov/4720/): lunar surface imagery; provenance and mirror caveat are recorded in the asset notes.
+- [Open-Meteo](https://open-meteo.com/): weather models and geocoding, with GeoNames place data. Weather data attribution and API usage terms are distinct. No API key is required for the configured public endpoints; confirm intended deployment usage against the provider's terms.
+
+No deployment has been performed. Follow the qualification, deployment, cache-update, and rollback procedure in [docs/RELEASE.md](docs/RELEASE.md).

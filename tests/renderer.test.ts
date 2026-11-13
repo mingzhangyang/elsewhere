@@ -12,7 +12,9 @@ it('updates moving sky layers without reallocating their geometry or labels', ()
   const flags = { stars: true, labels: true, constellations: true };
   layers.update(initial.stars, flags, 1);
   const ids = scene.children.map((o) => o.uuid);
-  const geometries = scene.children.filter((o) => o instanceof THREE.LineSegments).map((o) => (o as THREE.LineSegments).geometry);
+  const geometries = scene.children
+    .filter((o) => o instanceof THREE.LineSegments)
+    .map((o) => (o as THREE.LineSegments).geometry);
   const firstPoint = geometries[0].getAttribute('position').getX(0);
   const calls = text.mock.calls.length;
   for (let i = 1; i <= 100; i++) {

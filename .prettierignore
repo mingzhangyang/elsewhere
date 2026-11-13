@@ -1,0 +1,7 @@
+node_modules
+dist
+src/data/stars.json
+tests/fixtures
+package-lock.json
+public/licenses
+docs/evidence

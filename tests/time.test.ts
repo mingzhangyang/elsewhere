@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { civilDayStart, getZonedParts, localDayBounds, localDayStart, shiftLocalDate, wallTimeCandidates, zonedDateTimeToUtc } from '../src/lib/time';
+import {
+  civilDayStart,
+  getZonedParts,
+  localDayBounds,
+  localDayStart,
+  shiftLocalDate,
+  wallTimeCandidates,
+  zonedDateTimeToUtc,
+} from '../src/lib/time';
 
 describe('civil time', () => {
   it.each([
@@ -17,9 +25,9 @@ describe('civil time', () => {
     expect(() => zonedDateTimeToUtc(2026, 3, 8, 2, 30, 'America/New_York')).toThrow();
   });
   it('offers both offsets for a repeated fall hour', () => {
-    expect(wallTimeCandidates('2026-11-01', '01:30', 'America/New_York').map((d) => d.toISOString())).toEqual([
-      '2026-11-01T05:30:00.000Z', '2026-11-01T06:30:00.000Z',
-    ]);
+    expect(wallTimeCandidates('2026-11-01', '01:30', 'America/New_York').map((d) => d.toISOString())).toEqual(
+      ['2026-11-01T05:30:00.000Z', '2026-11-01T06:30:00.000Z'],
+    );
   });
   it('offers no candidates for a spring gap', () => {
     expect(wallTimeCandidates('2026-03-08', '02:30', 'America/New_York')).toEqual([]);

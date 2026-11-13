@@ -4,10 +4,25 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   test: {
-    environment: 'jsdom',
-    include: ['tests/**/*.test.{ts,tsx}'],
-    setupFiles: ['tests/setup.ts'],
     restoreMocks: true,
     clearMocks: true,
+    projects: [
+      {
+        test: {
+          name: 'domain',
+          environment: 'node',
+          include: ['tests/**/*.test.ts'],
+          exclude: ['tests/persistence.test.ts'],
+        },
+      },
+      {
+        test: {
+          name: 'interface',
+          environment: 'jsdom',
+          include: ['tests/**/*.test.tsx', 'tests/persistence.test.ts'],
+          setupFiles: ['tests/setup.ts'],
+        },
+      },
+    ],
   },
 });

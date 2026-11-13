@@ -1,0 +1,157 @@
+{
+  "retrieved": "2026-11-13T15:24:13.244Z",
+  "cases": [
+    {
+      "place": {
+        "id": "new-york",
+        "coords": "40.7128,-74.006",
+        "tz": -5,
+        "timezone": "America/New_York"
+      },
+      "url": "https://aa.usno.navy.mil/api/rstt/oneday?date=2026-01-15&coords=40.7128%2C-74.006&tz=-5&dst=false",
+      "data": {
+        "apiversion": "4.0.1",
+        "geometry": {
+          "coordinates": [
+            -74.006,
+            40.7128
+          ],
+          "type": "Point"
+        },
+        "properties": {
+          "data": {
+            "closestphase": {
+              "day": 18,
+              "month": 1,
+              "phase": "New Moon",
+              "time": "14:52",
+              "year": 2026
+            },
+            "curphase": "Waning Crescent",
+            "day": 15,
+            "day_of_week": "Thursday",
+            "fracillum": "9%",
+            "isdst": false,
+            "label": null,
+            "month": 1,
+            "moondata": [
+              {
+                "phen": "Rise",
+                "time": "05:07"
+              },
+              {
+                "phen": "Upper Transit",
+                "time": "09:27"
+              },
+              {
+                "phen": "Set",
+                "time": "13:46"
+              }
+            ],
+            "sundata": [
+              {
+                "phen": "Begin Civil Twilight",
+                "time": "06:48"
+              },
+              {
+                "phen": "Rise",
+                "time": "07:18"
+              },
+              {
+                "phen": "Upper Transit",
+                "time": "12:05"
+              },
+              {
+                "phen": "Set",
+                "time": "16:53"
+              },
+              {
+                "phen": "End Civil Twilight",
+                "time": "17:24"
+              }
+            ],
+            "tz": -5,
+            "year": 2026
+          }
+        },
+        "type": "Feature"
+      }
+    },
+    {
+      "place": {
+        "id": "sydney",
+        "coords": "-33.8688,151.2093",
+        "tz": 11,
+        "timezone": "Australia/Sydney"
+      },
+      "url": "https://aa.usno.navy.mil/api/rstt/oneday?date=2026-01-15&coords=-33.8688%2C151.2093&tz=11&dst=false",
+      "data": {
+        "apiversion": "4.0.1",
+        "geometry": {
+          "coordinates": [
+            151.2093,
+            -33.8688
+          ],
+          "type": "Point"
+        },
+        "properties": {
+          "data": {
+            "closestphase": {
+              "day": 19,
+              "month": 1,
+              "phase": "New Moon",
+              "time": "06:52",
+              "year": 2026
+            },
+            "curphase": "Waning Crescent",
+            "day": 15,
+            "day_of_week": "Thursday",
+            "fracillum": "13%",
+            "isdst": false,
+            "label": null,
+            "month": 1,
+            "moondata": [
+              {
+                "phen": "Rise",
+                "time": "02:21"
+              },
+              {
+                "phen": "Upper Transit",
+                "time": "09:54"
+              },
+              {
+                "phen": "Set",
+                "time": "17:32"
+              }
+            ],
+            "sundata": [
+              {
+                "phen": "Begin Civil Twilight",
+                "time": "05:31"
+              },
+              {
+                "phen": "Rise",
+                "time": "05:59"
+              },
+              {
+                "phen": "Upper Transit",
+                "time": "13:04"
+              },
+              {
+                "phen": "Set",
+                "time": "20:09"
+              },
+              {
+                "phen": "End Civil Twilight",
+                "time": "20:37"
+              }
+            ],
+            "tz": 11,
+            "year": 2026
+          }
+        },
+        "type": "Feature"
+      }
+    }
+  ]
+}

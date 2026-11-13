@@ -6,9 +6,9 @@ The recommended approach is a substantial refactor within React, TypeScript, Vit
 
 ## Current baseline
 
-Implementation status on November 13, 2026: phases 0–2 have their implementation and automated checks in place. Phase 1 corrects weather request ranges, missing-data/provenance handling, cancellation, DST ambiguity, civil-day events, time-zone lookup, lunar phase presentation, and layer semantics. Phase 2 separates the simulation controller, weather service, renderer lifecycle, camera controls, shaders, and retained celestial layers. Phase 3 now provides the responsive exploration shell, location picker, object/weather/settings inspector, camera/time controls, saved preferences and share links. Phase 4 adds the licensed catalog, lunar map and orientation, shared cloud occlusion, screen-space labels, and bounded precipitation. Phase 5 adds measured scheduling, adaptive resolution, graphics recovery, cached weather and offline shell support. Phase 6 qualification is in progress; external device and usability gates are still open. Physical-device benchmarks and independent scientific review remain qualification tasks. See [validation](docs/VALIDATION.md) for commands and the supported numerical contract.
+Implementation status on November 13, 2026: phases 0–5 are implemented and locally checked. Phase 6 has independent JPL/USNO regression fixtures, automated accessibility checks, formatting, dependency notices, build budgets, CI/browser-suite definitions, and deployment/rollback documentation. Local validation passes 93 tests, type checking, lint, and the production build. Full release qualification is still open: the first remote CI/browser-matrix run, physical devices, screen readers, a long GPU soak, broader scientific review, and unfamiliar-user sessions are not replaced by local checks. See [validation](docs/VALIDATION.md), [scientific evidence](docs/SCIENCE.md), and the explicit [release gates](docs/RELEASE.md).
 
-Assessment date: November 12, 2026. Source review covered all application files; browser inspection covered desktop at 1280 × 720 and mobile at 390 × 844, including daytime, nighttime, and unavailable weather.
+The following findings describe the preserved original baseline, before the refactor. Assessment date: November 12, 2026. Source review covered all application files; browser inspection covered desktop at 1280 × 720 and mobile at 390 × 844, including daytime, nighttime, and unavailable weather.
 
 - TypeScript checking and the production build pass. The build produces one 741.07 kB JavaScript bundle, 209.86 kB gzip, and a chunk-size warning.
 - The application has a procedural sky, Sun and Moon calculations, location search, time controls, weather controls, 37 catalog stars, and five hand-built line patterns.
@@ -17,19 +17,19 @@ Assessment date: November 12, 2026. Source review covered all application files;
 
 ### Findings that determine priority
 
-| Priority | Finding and evidence | Root correction |
-| --- | --- | --- |
-| P0 | The forecast request fails. A request matching the app returned HTTP 400 with the reason `Parameter 'forecast_days' is mutually exclusive with 'start_date' and 'end_date'`. Both are assembled in `src/lib/weather.ts:121–138`. | Define one valid request shape for each time-range strategy. Preserve provider error reasons and verify the request contract. |
-| P0 | Unavailable weather still displays default temperature, wind, cloud cover, humidity, and pressure. This was visible in the browser. Missing hourly values also become plausible defaults in `src/lib/weather.ts:43–66`. | Represent missing data explicitly; keep rendering assumptions separate from sourced measurements. |
-| P1 | `getWeatherForInstant` always prefers hourly data, bypassing the current sample, while the source label remains attached to the original fetch. Previous location/day data also remains available during a replacement fetch. See `src/App.tsx:40–107`. | Resolve sample, provenance, freshness, and coverage together for the active location and instant. |
-| P1 | New York local time `2026-03-08 02:30` converts to `01:30` when round-tripped. The iterative conversion has no gap/fold policy. The fall repeated hour also has no way to select its second occurrence. See `src/lib/time.ts:33–47`. | Use explicit time-zone disambiguation and actual local-day boundaries. |
-| P1 | Rise/set searches use a fixed one-day interval, and daylight duration assumes a same-day sunrise before sunset. Errors and absent events both become `null`. See `src/lib/astronomy.ts:12–23,48–76`. | Compute events within the selected civil day, including partial and polar days, and retain distinct event statuses. |
-| P1 | The Moon phase icon appears mostly lit while the panel reports a small crescent. Its CSS uses only illumination. The scene also derives lighting by subtracting Sun and Moon positions placed at the same artificial radius. See `src/styles.css:110–113` and `src/components/SkyScene.tsx:457–464`. | Drive the icon and rendered terminator from consistent phase geometry and observer orientation. |
-| P1 | Mobile keeps a 190 px wide details panel over much of a 390 px viewport. The weather control is partly covered by the time console. Numerous labels shrink to 6–8 px. See `src/styles.css:212–288`. | Introduce a mobile sheet and compact controls with deliberate layout ownership. |
-| P1 | Playback updates React every 200 ms, recalculates daily events, and disposes/recreates text textures and line geometry on every scene update. See `src/App.tsx:80,109–119` and `src/components/SkyScene.tsx:484–519`. | Separate calculation cadences and retain GPU resources across updates. |
-| P1 | Constellation labels ignore the Labels toggle; lines and labels are not attenuated with the stars. Lines remain visible in daytime. The pattern named Cygnus connects Deneb to Vega and Altair. | Define independent layer behavior and audit the data. Those stars belong to the Summer Triangle across three constellations. [NASA reference](https://science.nasa.gov/solar-system/skywatching/night-sky-network/summer-triangle-corner-altair/). |
-| P2 | Only four of eight presets are rendered; the chevron only opens a search state whose empty results are hidden. Geolocation uses the browser's time zone rather than resolving the coordinates. | Give location selection one complete interaction and an explicit location/time-zone contract. |
-| P2 | Camera controls support drag and wheel, but no keyboard navigation or pinch zoom. Reset view disappears below 900 px. Layer state is communicated visually without `aria-pressed`. | Provide equivalent keyboard and touch controls and accessible state. |
+| Priority | Finding and evidence                                                                                                                                                                                                                                                                                 | Root correction                                                                                                                                                                                                                                    |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P0       | The forecast request fails. A request matching the app returned HTTP 400 with the reason `Parameter 'forecast_days' is mutually exclusive with 'start_date' and 'end_date'`. Both are assembled in `src/lib/weather.ts:121–138`.                                                                     | Define one valid request shape for each time-range strategy. Preserve provider error reasons and verify the request contract.                                                                                                                      |
+| P0       | Unavailable weather still displays default temperature, wind, cloud cover, humidity, and pressure. This was visible in the browser. Missing hourly values also become plausible defaults in `src/lib/weather.ts:43–66`.                                                                              | Represent missing data explicitly; keep rendering assumptions separate from sourced measurements.                                                                                                                                                  |
+| P1       | `getWeatherForInstant` always prefers hourly data, bypassing the current sample, while the source label remains attached to the original fetch. Previous location/day data also remains available during a replacement fetch. See `src/App.tsx:40–107`.                                              | Resolve sample, provenance, freshness, and coverage together for the active location and instant.                                                                                                                                                  |
+| P1       | New York local time `2026-03-08 02:30` converts to `01:30` when round-tripped. The iterative conversion has no gap/fold policy. The fall repeated hour also has no way to select its second occurrence. See `src/lib/time.ts:33–47`.                                                                 | Use explicit time-zone disambiguation and actual local-day boundaries.                                                                                                                                                                             |
+| P1       | Rise/set searches use a fixed one-day interval, and daylight duration assumes a same-day sunrise before sunset. Errors and absent events both become `null`. See `src/lib/astronomy.ts:12–23,48–76`.                                                                                                 | Compute events within the selected civil day, including partial and polar days, and retain distinct event statuses.                                                                                                                                |
+| P1       | The Moon phase icon appears mostly lit while the panel reports a small crescent. Its CSS uses only illumination. The scene also derives lighting by subtracting Sun and Moon positions placed at the same artificial radius. See `src/styles.css:110–113` and `src/components/SkyScene.tsx:457–464`. | Drive the icon and rendered terminator from consistent phase geometry and observer orientation.                                                                                                                                                    |
+| P1       | Mobile keeps a 190 px wide details panel over much of a 390 px viewport. The weather control is partly covered by the time console. Numerous labels shrink to 6–8 px. See `src/styles.css:212–288`.                                                                                                  | Introduce a mobile sheet and compact controls with deliberate layout ownership.                                                                                                                                                                    |
+| P1       | Playback updates React every 200 ms, recalculates daily events, and disposes/recreates text textures and line geometry on every scene update. See `src/App.tsx:80,109–119` and `src/components/SkyScene.tsx:484–519`.                                                                                | Separate calculation cadences and retain GPU resources across updates.                                                                                                                                                                             |
+| P1       | Constellation labels ignore the Labels toggle; lines and labels are not attenuated with the stars. Lines remain visible in daytime. The pattern named Cygnus connects Deneb to Vega and Altair.                                                                                                      | Define independent layer behavior and audit the data. Those stars belong to the Summer Triangle across three constellations. [NASA reference](https://science.nasa.gov/solar-system/skywatching/night-sky-network/summer-triangle-corner-altair/). |
+| P2       | Only four of eight presets are rendered; the chevron only opens a search state whose empty results are hidden. Geolocation uses the browser's time zone rather than resolving the coordinates.                                                                                                       | Give location selection one complete interaction and an explicit location/time-zone contract.                                                                                                                                                      |
+| P2       | Camera controls support drag and wheel, but no keyboard navigation or pinch zoom. Reset view disappears below 900 px. Layer state is communicated visually without `aria-pressed`.                                                                                                                   | Provide equivalent keyboard and touch controls and accessible state.                                                                                                                                                                               |
 
 P0 means the primary experience is broken or misrepresents data. P1 is required for a polished release. P2 is usability and completeness work that follows the foundations.
 
@@ -48,15 +48,15 @@ Use these defaults to keep implementation moving. Revisit them only if the inten
 
 Estimates are planning ranges for one experienced developer, including routine design and verification, with occasional astronomy and accessibility review. They are not measured delivery commitments. Allow approximately 6–10 focused weeks for phases 0–6, then adjust after the first milestone. Optional features have a separate budget.
 
-| Phase | Effort | Depends on | Deliverable |
-| --- | --- | --- | --- |
-| 0 Establish the baseline | 2–3 days | None | Reproducible scenarios and checks |
-| 1 Make the simulation trustworthy | 5–8 days | 0 | Correct time, weather, and event semantics |
-| 2 Refactor the application boundaries | 3–5 days | 1 contracts | Modular simulation, data, and renderer layers |
-| 3 Redesign the exploration interface | 6–9 days | 1–2 | Complete desktop, mobile, keyboard, and touch flows |
-| 4 Improve sky fidelity | 8–12 days | 1–2 | Convincing and internally consistent sky rendering |
-| 5 Meet performance and resilience targets | 3–5 days | 2–4 | Measured performance and recovery |
-| 6 Qualify and release | 3–5 days | 0–5 | Tested release candidate and deployment process |
+| Phase                                     | Effort    | Depends on  | Deliverable                                         |
+| ----------------------------------------- | --------- | ----------- | --------------------------------------------------- |
+| 0 Establish the baseline                  | 2–3 days  | None        | Reproducible scenarios and checks                   |
+| 1 Make the simulation trustworthy         | 5–8 days  | 0           | Correct time, weather, and event semantics          |
+| 2 Refactor the application boundaries     | 3–5 days  | 1 contracts | Modular simulation, data, and renderer layers       |
+| 3 Redesign the exploration interface      | 6–9 days  | 1–2         | Complete desktop, mobile, keyboard, and touch flows |
+| 4 Improve sky fidelity                    | 8–12 days | 1–2         | Convincing and internally consistent sky rendering  |
+| 5 Meet performance and resilience targets | 3–5 days  | 2–4         | Measured performance and recovery                   |
+| 6 Qualify and release                     | 3–5 days  | 0–5         | Tested release candidate and deployment process     |
 
 Phases 3 and 4 can proceed concurrently after the shared contracts settle. Performance profiling and accessibility checks begin in phase 0 and continue throughout; phase 5 closes the measured gaps. The first useful milestone is phases 0–1: restore working weather and trustworthy controls before investing in richer imagery.
 
@@ -98,14 +98,14 @@ Phases 3 and 4 can proceed concurrently after the shared contracts settle. Perfo
 
 Replace the responsibilities concentrated in `App.tsx` and `SkyScene.tsx` with the following boundaries. File count is not the objective; each boundary should have one clear owner and independent verification.
 
-| Boundary | Owns | Must not own |
-| --- | --- | --- |
-| Domain | Observer, instant, daily events, astronomical positions, units and coordinate transforms | React, fetch calls, Three.js objects |
-| Data services | Weather and geocoding adapters, validation, caching, cancellation and provenance | Camera state or presentation defaults |
-| Simulation controller | Playback clock, selection, custom weather and derived snapshots | GPU resources |
-| Renderer | Camera, layers, uniforms, picking, textures and disposal | Network calls, date parsing or application truth |
-| Interface | Location picker, timeline, inspector, settings and accessible summaries | Independent copies of calculation logic |
-| Persistence | Versioned preferences, saved places and shareable exploration state | Implicit persistence of exact device location |
+| Boundary              | Owns                                                                                     | Must not own                                     |
+| --------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| Domain                | Observer, instant, daily events, astronomical positions, units and coordinate transforms | React, fetch calls, Three.js objects             |
+| Data services         | Weather and geocoding adapters, validation, caching, cancellation and provenance         | Camera state or presentation defaults            |
+| Simulation controller | Playback clock, selection, custom weather and derived snapshots                          | GPU resources                                    |
+| Renderer              | Camera, layers, uniforms, picking, textures and disposal                                 | Network calls, date parsing or application truth |
+| Interface             | Location picker, timeline, inspector, settings and accessible summaries                  | Independent copies of calculation logic          |
+| Persistence           | Versioned preferences, saved places and shareable exploration state                      | Implicit persistence of exact device location    |
 
 - Keep React as the interface layer and a dedicated Three.js renderer behind a small typed API. Replace the global `sky-reset-view` event with explicit camera commands.
 - Separate persistent user preferences, shareable simulation state, transient UI state, and remote data. A reducer and focused subscriptions may suffice; add a state library only for a demonstrated need.
@@ -152,14 +152,14 @@ Prioritize the images users spend most time looking at: a clear day, golden hour
 
 The following are initial acceptance targets to confirm on the phase 0 device matrix, not claims about present performance.
 
-| Area | Target |
-| --- | --- |
-| Camera interaction | Smooth 60 fps desktop / 30 fps midrange mobile, with p95 frame time at or below roughly 20 / 40 ms in the agreed demanding scenes |
-| Controls | p95 response below 100 ms for local controls and time scrubbing |
-| Startup | Usable shell within 1.5 s and interactive sky within 3 s on the named test network/device profile |
-| Resource stability | No monotonic growth in retained label textures, geometries, listeners, or loops during a 30-minute playback and location-switch scenario |
-| Data fetching | No weather requests caused solely by frame ticks; obsolete requests cancel and identical coverage requests deduplicate |
-| Hidden/background view | Rendering suspends when hidden; playback resume follows an explicit catch-up or pause policy |
+| Area                   | Target                                                                                                                                   |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Camera interaction     | Smooth 60 fps desktop / 30 fps midrange mobile, with p95 frame time at or below roughly 20 / 40 ms in the agreed demanding scenes        |
+| Controls               | p95 response below 100 ms for local controls and time scrubbing                                                                          |
+| Startup                | Usable shell within 1.5 s and interactive sky within 3 s on the named test network/device profile                                        |
+| Resource stability     | No monotonic growth in retained label textures, geometries, listeners, or loops during a 30-minute playback and location-switch scenario |
+| Data fetching          | No weather requests caused solely by frame ticks; obsolete requests cancel and identical coverage requests deduplicate                   |
+| Hidden/background view | Rendering suspends when hidden; playback resume follows an explicit catch-up or pause policy                                             |
 
 - Profile before adding workers. Move bulk catalog transforms or heavier calculations off the UI thread only if measurements justify it.
 - Split the interface from the renderer and load large catalogs/textures progressively. Set bundle budgets from the measured baseline; splitting a file alone is not a performance improvement.
@@ -186,14 +186,14 @@ The following are initial acceptance targets to confirm on the phase 0 device ma
 
 These are separate product investments. They should not delay correcting the existing experience.
 
-| Order | Feature | Why it belongs later |
-| --- | --- | --- |
-| 1 | Venus, Mars, Jupiter, and Saturn with search and object details | Valuable for exploration once body rendering and inspection are reusable |
-| 2 | Tonight highlights and guided tours | Depends on reliable events, selection, and visibility semantics |
-| 3 | Map picker and curated destinations | Improves discovery after the location contract and mobile navigation are stable |
-| 4 | Milky Way, meteor showers, eclipse visualization | Requires additional data, licensing, and scientific validation |
-| 5 | Terrain-aware horizons, device orientation, AR, or VR | Separate complexity and platform qualification; pursue only for a clear user need |
-| 6 | Accounts, cloud sync, and collaboration | Add only when local saved explorations and sharing show a need |
+| Order | Feature                                                         | Why it belongs later                                                              |
+| ----- | --------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| 1     | Venus, Mars, Jupiter, and Saturn with search and object details | Valuable for exploration once body rendering and inspection are reusable          |
+| 2     | Tonight highlights and guided tours                             | Depends on reliable events, selection, and visibility semantics                   |
+| 3     | Map picker and curated destinations                             | Improves discovery after the location contract and mobile navigation are stable   |
+| 4     | Milky Way, meteor showers, eclipse visualization                | Requires additional data, licensing, and scientific validation                    |
+| 5     | Terrain-aware horizons, device orientation, AR, or VR           | Separate complexity and platform qualification; pursue only for a clear user need |
+| 6     | Accounts, cloud sync, and collaboration                         | Add only when local saved explorations and sharing show a need                    |
 
 ## First implementation batches
 
@@ -206,6 +206,3 @@ These are separate product investments. They should not delay correcting the exi
 7. Close measured performance, resilience, accessibility, and independent astronomy validation gaps; prepare the release.
 
 Each batch should leave a runnable app and have its own observable acceptance criteria. Avoid mixing unrelated visual redesign, numerical changes, and provider migrations in one review.
-
-
-

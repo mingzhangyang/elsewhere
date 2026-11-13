@@ -3,8 +3,22 @@ import { calculateDailyEvents, calculateSky } from '../src/lib/astronomy';
 import { civilDayStart, localDayBounds } from '../src/lib/time';
 import { horizontalFromEquatorial } from '../src/lib/stars';
 import { NEW_YORK, SYDNEY, TROMSO } from './fixtures/locations';
+import { MIN_INSTANT, MAX_INSTANT } from '../src/lib/time';
 
 describe('sky invariants', () => {
+  it.each([MIN_INSTANT, MAX_INSTANT])(
+    'supports UTC boundaries even when local midnight is outside that range',
+    (time) => {
+      for (const location of [NEW_YORK, SYDNEY]) {
+        const day = civilDayStart(
+          new Intl.DateTimeFormat('en-CA', { timeZone: location.timezone }).format(new Date(time)),
+          location.timezone,
+        );
+        const events = calculateDailyEvents(location, day);
+        expect(Number.isFinite(calculateSky(location, new Date(time), events).sun.altitude)).toBe(true);
+      }
+    },
+  );
   it('places an equatorial object at the zenith at transit on the equator', () => {
     expect(horizontalFromEquatorial(6, 0, 0, 0, 6).altitude).toBeCloseTo(90, 6);
   });
@@ -29,13 +43,26 @@ describe('sky invariants', () => {
     const instant = civilDayStart(day, NEW_YORK.timezone);
     const { start, end } = localDayBounds(instant, NEW_YORK.timezone);
     const events = calculateDailyEvents(NEW_YORK, instant);
-    for (const event of [events.sunrise, events.sunset, events.solarNoon, events.moonrise, events.moonset, events.twilightDawn, events.twilightDusk]) {
-      if (event) { expect(event.getTime()).toBeGreaterThanOrEqual(start.getTime()); expect(event.getTime()).toBeLessThan(end.getTime()); }
+    for (const event of [
+      events.sunrise,
+      events.sunset,
+      events.solarNoon,
+      events.moonrise,
+      events.moonset,
+      events.twilightDawn,
+      events.twilightDusk,
+    ]) {
+      if (event) {
+        expect(event.getTime()).toBeGreaterThanOrEqual(start.getTime());
+        expect(event.getTime()).toBeLessThan(end.getTime());
+      }
     }
     expect(events.daylightHours).toBeGreaterThan(0);
     expect(events.daylightHours).toBeLessThan(25);
   });
   it('does not convert invalid observer errors into absent events', () => {
-    expect(() => calculateDailyEvents({ ...NEW_YORK, latitude: NaN }, new Date('2026-11-12T12:00Z'))).toThrow();
+    expect(() =>
+      calculateDailyEvents({ ...NEW_YORK, latitude: NaN }, new Date('2026-11-12T12:00Z')),
+    ).toThrow();
   });
 });
