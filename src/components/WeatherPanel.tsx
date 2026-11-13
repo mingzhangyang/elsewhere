@@ -25,7 +25,6 @@ export default function WeatherPanel({
   const source = custom ? values : selection.values;
   return (
     <>
-      <p className="panel-intro">See the atmosphere as modeled, or create a sky of your own.</p>
       <div className="segmented">
         <button aria-pressed={!custom} onClick={() => onMode(false)}>
           Weather data

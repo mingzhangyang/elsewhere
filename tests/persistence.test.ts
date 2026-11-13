@@ -30,6 +30,7 @@ describe('portable exploration state', () => {
     { ...exploration, location: { ...exploration.location, latitude: 91 } },
     { ...exploration, camera: { ...exploration.camera, fov: 0 } },
     { ...exploration, custom: { ...exploration.custom, cloudCover: -1 } },
+    { ...exploration, clearSky: 'yes' },
   ])('rejects unsupported or invalid state', (state) => {
     const result = parseExploration('#sky=' + encodeURIComponent(JSON.stringify(state)));
     expect(result.value).toBeNull();
@@ -42,5 +43,9 @@ describe('portable exploration state', () => {
     expect(localStorage.getItem('elsewhere.preferences.v1')).toBe('{broken');
     expect(savePreferences({ ...result.value, saved: [PRESETS[1]], hintDismissed: true })).toBe(true);
     expect(loadPreferences().value.saved).toEqual([PRESETS[1]]);
+  });
+  it('shares a temporary clear-sky preview without replacing original custom conditions', () => {
+    const preview = { ...exploration, clearSky: true };
+    expect(parseExploration(new URL(explorationUrl(preview)).hash).value).toEqual(preview);
   });
 });

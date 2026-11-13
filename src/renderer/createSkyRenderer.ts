@@ -4,11 +4,19 @@ import type { SkyState, Star, WeatherValues } from '../types';
 import type { CameraView, Preferences } from '../lib/persistence';
 import { createCelestialLayers } from './celestialLayers';
 import { seededRandom } from '../lib/random';
-import { SKY_VERTEX, SKY_FRAGMENT, CLOUD_FRAGMENT } from './shaders';
+import {
+  SKY_VERTEX,
+  SKY_FRAGMENT,
+  CLOUD_FRAGMENT,
+  MOON_VERTEX,
+  MOON_FRAGMENT,
+  GROUND_FRAGMENT,
+} from './shaders';
 import { directionVector, makeGlowTexture, setAtDirection } from './resources';
 import { advancePrecipitation, windVector } from './precipitation';
 import { createFrameLoop } from './frameLoop';
 import { adaptiveRatio, percentile, type RenderStats } from './performance';
+import { aboveHorizon, findSkyObject } from '../lib/exploration';
 
 export interface RenderSettings {
   reducedMotion?: boolean;
@@ -23,6 +31,7 @@ export interface RenderInput extends RenderSettings {
   showConstellations: boolean;
   showLabels: boolean;
   initialView?: CameraView;
+  targetId?: string | null;
 }
 export interface RenderCallbacks {
   onHeadingChange?: (heading: number) => void;
@@ -84,6 +93,15 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.22;
     host.appendChild(renderer.domElement);
+    const targetMarker = document.createElement('div');
+    targetMarker.className = 'sky-target';
+    targetMarker.hidden = true;
+    targetMarker.setAttribute('aria-hidden', 'true');
+    const targetLabel = document.createElement('span');
+    targetMarker.appendChild(targetLabel);
+    host.appendChild(targetMarker);
+    releases.push(() => targetMarker.remove());
+    let targetId = input.targetId ?? null;
 
     const skyUniforms = {
       uSunAltitude: { value: THREE.MathUtils.degToRad(sky.sunAltitude) },
@@ -117,9 +135,15 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
     cloudDome.renderOrder = 20;
     scene.add(cloudDome);
 
+    const groundMaterial = new THREE.ShaderMaterial({
+      vertexShader: SKY_VERTEX,
+      fragmentShader: GROUND_FRAGMENT,
+      uniforms: skyUniforms,
+      side: THREE.DoubleSide,
+    });
     const ground = new THREE.Mesh(
       new THREE.SphereGeometry(1450, 80, 40, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2),
-      new THREE.MeshBasicMaterial({ color: 0x080e14, side: THREE.BackSide }),
+      groundMaterial,
     );
     scene.add(ground);
 
@@ -132,7 +156,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
       const angle = (i / ridgeSegments) * Math.PI * 2;
       const wave = Math.sin(angle * 5.0) * 10 + Math.sin(angle * 11.0) * 4 + Math.cos(angle * 17.0) * 2;
       const radius = 1435;
-      const topY = Math.max(-45, Math.min(18, wave - 14));
+      const topY = Math.max(4, Math.min(38, wave + 18));
       ridgeVertices.push(Math.sin(angle) * radius, topY, -Math.cos(angle) * radius);
       ridgeVertices.push(Math.sin(angle) * radius, -220, -Math.cos(angle) * radius);
       if (i < ridgeSegments) {
@@ -143,10 +167,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
     ridgeGeometry.setAttribute('position', new THREE.Float32BufferAttribute(ridgeVertices, 3));
     ridgeGeometry.setIndex(ridgeIndices);
     ridgeGeometry.computeVertexNormals();
-    const ridge = new THREE.Mesh(
-      ridgeGeometry,
-      new THREE.MeshBasicMaterial({ color: 0x0b1319, side: THREE.DoubleSide }),
-    );
+    const ridge = new THREE.Mesh(ridgeGeometry, groundMaterial);
     scene.add(ridge);
 
     const sunGroup = new THREE.Group();
@@ -183,16 +204,22 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
       },
     );
     moonTexture.colorSpace = THREE.SRGBColorSpace;
+    releases.push(() => moonTexture.dispose());
+    const moonUniforms = {
+      ...skyUniforms,
+      uMap: { value: moonTexture },
+      uMoonSunDirection: { value: new THREE.Vector3() },
+    };
     const moonMesh = new THREE.Mesh(
       new THREE.SphereGeometry(20, 64, 48),
-      new THREE.MeshStandardMaterial({ map: moonTexture, roughness: 1, metalness: 0, color: 0xf6f2e8 }),
+      new THREE.ShaderMaterial({
+        vertexShader: MOON_VERTEX,
+        fragmentShader: MOON_FRAGMENT,
+        uniforms: moonUniforms,
+      }),
     );
     moonGroup.add(moonMesh);
     scene.add(moonGroup);
-    const moonLight = new THREE.DirectionalLight(0xffffff, 2.2);
-    moonLight.target = moonMesh;
-    scene.add(moonLight);
-    scene.add(new THREE.AmbientLight(0x35415a, 0.045));
 
     const starGeometry = new THREE.BufferGeometry();
     const starPositions = new Float32Array(sky.stars.length * 3);
@@ -338,6 +365,10 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
     releases.push(() => resizeObserver.disconnect());
 
     const api = {
+      target: (id: string | null) => {
+        targetId = id;
+        invalidate();
+      },
       settings: (settings: RenderSettings) => {
         reducedMotion = settings.reducedMotion;
         skyBrightness = settings.skyBrightness ?? 'dark';
@@ -389,10 +420,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
           .multiplyScalar(nextSky.sun.distanceKm)
           .sub(moonDir.clone().multiplyScalar(nextSky.moon.distanceKm))
           .normalize();
-        moonLight.position.copy(moonGroup.position.clone().add(towardSun.clone().multiplyScalar(120)));
-        (moonMesh.material as THREE.MeshStandardMaterial).opacity =
-          1 - THREE.MathUtils.clamp(nextWeather.haze / 140, 0, 0.7);
-        (moonMesh.material as THREE.MeshStandardMaterial).transparent = true;
+        moonUniforms.uMoonSunDirection.value.copy(towardSun);
 
         const positions = starGeometry.attributes.position as THREE.BufferAttribute;
         const sizes = starGeometry.attributes.aSize as THREE.BufferAttribute;
@@ -456,6 +484,24 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
         );
       }
       camera.updateMatrixWorld();
+      const target = findSkyObject(activeSky, targetId);
+      targetMarker.hidden = true;
+      if (target && aboveHorizon(target)) {
+        const projected = directionVector(target.altitude, target.azimuth)
+          .multiplyScalar(1650)
+          .project(camera);
+        if (
+          projected.z > -1 &&
+          projected.z < 1 &&
+          Math.abs(projected.x) < 0.94 &&
+          Math.abs(projected.y) < 0.88
+        ) {
+          targetMarker.hidden = false;
+          targetMarker.style.left = `${(projected.x + 1) * 50}%`;
+          targetMarker.style.top = `${(1 - projected.y) * 50}%`;
+          targetLabel.textContent = `${target.name} · position`;
+        }
+      }
       celestialLayers.layout(camera, host.clientWidth, host.clientHeight);
       renderer.render(scene, camera);
       drawTimes.push(performance.now() - start);

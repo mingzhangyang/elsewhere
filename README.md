@@ -33,6 +33,10 @@ Build before running the browser suite; it starts both development and productio
 
 ## Explore
 
+Start with **Find the Moon**, or open **Objects** to search and browse positions above the horizon. Centering leaves a position marker and a visibility explanation; a hidden Sun or Moon can jump to its next rise. **Preview a clear sky** temporarily removes clouds, haze, and precipitation, with a Restore action that preserves the original weather. Shared links preserve this preview mode separately from custom conditions.
+
+Click the compact date/time readout for exact editing, previous/next day, and sunrise/sunset jumps. Playback, the timeline, Now, and Tonight stay in the main dock.
+
 - Choose among eight presets, search for a place, use device location explicitly, or return to saved/recent places. Changing place preserves the instant and updates its local clock.
 - Enter a local date/time, move through an actual civil-day timeline, jump to sunrise/sunset/tonight, or play at 1×, 10×, 60×, or 600×. **Now** follows the real clock. Editing pauses it. Repeated DST hours offer both UTC offsets; nonexistent times explain the problem.
 - Drag the sky, pinch or scroll to zoom, or use arrows, +/−, and Home. Visible zoom/reset controls and a textual sky summary provide alternatives. Select objects in the scene or searchable Objects panel and center them in view.

@@ -30,6 +30,9 @@ const SkyScene = forwardRef<SkySceneHandle, Props>(function SkyScene(props, ref)
     [],
   );
   useEffect(() => {
+    runtime.current?.target(props.targetId ?? null);
+  }, [props.targetId]);
+  useEffect(() => {
     let disposed = false;
     let instance: SkyRenderer | null = null;
     import('../renderer/createSkyRenderer')

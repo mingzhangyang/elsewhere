@@ -15,6 +15,9 @@ it('has no detected structural accessibility violations in the primary flows', a
   render(<App {...scenarioProps('night')} />);
   await waitFor(() => expect(screen.getByRole('button', { name: 'Forecast' })).toBeInTheDocument());
   await audit();
+  fireEvent.click(screen.getByRole('button', { name: 'Change date and time' }));
+  await audit();
+  fireEvent.click(screen.getByRole('button', { name: 'Close time editor' }));
   fireEvent.click(screen.getByRole('button', { name: /Change location/ }));
   await audit();
   fireEvent.click(screen.getByRole('button', { name: 'Close locations' }));
@@ -25,6 +28,11 @@ it('has no detected structural accessibility violations in the primary flows', a
   fireEvent.click(screen.getByRole('button', { name: 'Layers' }));
   await audit();
   fireEvent.click(screen.getByRole('button', { name: 'Objects' }));
+  await audit();
+  fireEvent.change(screen.getByRole('searchbox', { name: 'Find an object' }), { target: { value: 'Moon' } });
+  fireEvent.click(screen.getByRole('button', { name: /Moon.*Below/ }));
+  await audit();
+  fireEvent.click(screen.getByRole('button', { name: 'Jump to next rise' }));
   await audit();
   fireEvent.click(screen.getByRole('button', { name: 'Share this sky' }));
   await audit();

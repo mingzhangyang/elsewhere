@@ -6,7 +6,7 @@ The recommended approach is a substantial refactor within React, TypeScript, Vit
 
 ## Current baseline
 
-Implementation status on November 13, 2026: phases 0–5 are implemented and locally checked. Phase 6 has independent JPL/USNO regression fixtures, automated accessibility checks, formatting, dependency notices, build budgets, CI/browser-suite definitions, and deployment/rollback documentation. Local validation passes 93 tests, type checking, lint, and the production build. Full release qualification is still open: the first remote CI/browser-matrix run, physical devices, screen readers, a long GPU soak, broader scientific review, and unfamiliar-user sessions are not replaced by local checks. See [validation](docs/VALIDATION.md), [scientific evidence](docs/SCIENCE.md), and the explicit [release gates](docs/RELEASE.md).
+Implementation status on November 13, 2026: phases 0–5 are implemented and locally checked. Phase 6 has independent JPL/USNO regression fixtures, automated accessibility checks, formatting, dependency notices, build budgets, CI/browser-suite definitions, and deployment/rollback documentation. Local validation passes 101 tests, type checking, lint, and the production build. Full release qualification is still open: the first remote CI/browser-matrix run, physical devices, screen readers, a long GPU soak, broader scientific review, and unfamiliar-user sessions are not replaced by local checks. See [validation](docs/VALIDATION.md), [scientific evidence](docs/SCIENCE.md), and the explicit [release gates](docs/RELEASE.md).
 
 The following findings describe the preserved original baseline, before the refactor. Assessment date: November 12, 2026. Source review covered all application files; browser inspection covered desktop at 1280 × 720 and mobile at 390 × 844, including daytime, nighttime, and unavailable weather.
 
@@ -32,6 +32,12 @@ The following findings describe the preserved original baseline, before the refa
 | P2       | Camera controls support drag and wheel, but no keyboard navigation or pinch zoom. Reset view disappears below 900 px. Layer state is communicated visually without `aria-pressed`.                                                                                                                   | Provide equivalent keyboard and touch controls and accessible state.                                                                                                                                                                               |
 
 P0 means the primary experience is broken or misrepresents data. P1 is required for a polished release. P2 is usability and completeness work that follows the foundations.
+
+### Preview review follow-up — November 13
+
+Revisited phases 3 and 4 after evaluating the preview as a first-time user. Object discovery now opens with search and an above-horizon list; details follow selection. Centering keeps a labeled position marker and explains cloud, daylight, horizon, layer, and faintness limits. Sun/Moon below the horizon have a next-rise action. Clear-sky preview is reversible and preserves source/custom weather, including in shared links.
+
+The time dock is 130 px at 390 × 844 (previously 275 px), with exact date/time editing in a native dialog. Wide, short screens use a 78 px single-row dock and a taller inspector. The first-use prompt provides a Find the Moon action. Daytime lunar rendering now includes the foreground atmosphere; the ground responds to daylight, and clouds use a curved deck to avoid horizon streaks. See the latest [validation evidence](docs/VALIDATION.md) and [preview captures](docs/evidence/README.md). External phase 6 gates remain open.
 
 ## Product decisions to establish first
 

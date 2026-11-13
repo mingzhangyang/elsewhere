@@ -1,6 +1,8 @@
-import { useState } from 'react';
-import { Crosshair, Moon, Star, Sun } from 'lucide-react';
-import type { SkyState } from '../types';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowLeft, Crosshair, Moon, Star, Sun } from 'lucide-react';
+import type { SkyState, WeatherValues } from '../types';
+import type { Preferences } from '../lib/persistence';
+import { aboveHorizon, objectVisibility, skyObjects, type SkyObject } from '../lib/exploration';
 import { formatTime } from '../lib/time';
 import MoonPhase from './MoonPhase';
 
@@ -8,31 +10,49 @@ export default function ObjectPanel({
   sky,
   timeZone,
   selectedId,
+  preferences,
+  weather,
+  clearSky,
   onSelect,
   onFocus,
+  onRise,
+  onClearSky,
 }: {
   sky: SkyState;
   timeZone: string;
-  selectedId: string;
-  onSelect: (id: string) => void;
-  onFocus: (altitude: number, azimuth: number) => void;
+  selectedId: string | null;
+  preferences: Preferences;
+  weather: WeatherValues;
+  clearSky: boolean;
+  onSelect: (id: string | null) => void;
+  onFocus: (object: SkyObject) => void;
+  onRise: (id: 'sun' | 'moon') => void;
+  onClearSky: () => void;
 }) {
   const [query, setQuery] = useState('');
-  const objects = [
-    { id: 'sun', name: 'Sun', ...sky.sun },
-    { id: 'moon', name: 'Moon', ...sky.moon },
-    ...sky.stars.map((s) => ({ ...s, name: s.name || s.id.toUpperCase() })),
-  ];
-  const selected = objects.find((o) => o.id === selectedId) ?? objects[0];
-  const matches = objects.filter(
-    (o) =>
-      o.name.toLowerCase().includes(query.toLowerCase()) || o.id.toLowerCase().includes(query.toLowerCase()),
-  );
-  const isSun = selected.id === 'sun',
-    isMoon = selected.id === 'moon';
-  return (
-    <>
+  const [upOnly, setUpOnly] = useState(true);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const search = useRef<HTMLInputElement>(null);
+  const previousSelection = useRef(selectedId);
+  const objects = useMemo(() => skyObjects(sky), [sky]);
+  const selected = objects.find((object) => object.id === selectedId);
+  useEffect(() => {
+    if (selectedId) heading.current?.focus({ preventScroll: true });
+    else if (previousSelection.current) search.current?.focus({ preventScroll: true });
+    const content = (heading.current ?? search.current)?.closest('.inspector-content');
+    if (content) content.scrollTop = 0;
+    previousSelection.current = selectedId;
+  }, [selectedId]);
+
+  if (selected) {
+    const visibility = objectVisibility(selected, sky, weather, preferences);
+    const isMoon = selected.kind === 'moon',
+      isSun = selected.kind === 'sun';
+    return (
       <div className="object-detail">
+        <button className="back-button" onClick={() => onSelect(null)}>
+          <ArrowLeft size={16} /> All objects
+        </button>
         <div className="object-detail-heading">
           {isMoon ? (
             <MoonPhase
@@ -41,18 +61,35 @@ export default function ObjectPanel({
               label={sky.moon.phaseName}
             />
           ) : isSun ? (
-            <Sun size={34} className="gold" />
+            <Sun size={32} className="gold" />
           ) : (
             <Star size={30} />
           )}
           <div>
-            <p className="eyebrow">{isSun || isMoon ? 'Solar system' : 'Star'}</p>
-            <h3>{selected.name}</h3>
+            <p className="eyebrow">{selected.kind === 'star' ? 'Star' : 'Solar system'}</p>
+            <h3 ref={heading} tabIndex={-1}>
+              {selected.name}
+            </h3>
           </div>
         </div>
-        <div className="object-status">
-          {selected.altitude >= 0 ? 'Above the horizon' : 'Below the horizon'}
-        </div>
+        <p className="visibility-label">{visibility.label}</p>
+        <p className="visibility-explanation">{visibility.detail}</p>
+        {aboveHorizon(selected) ? (
+          <button className="primary-button full" onClick={() => onFocus(selected)}>
+            <Crosshair size={16} /> Center in view
+          </button>
+        ) : selected.kind !== 'star' ? (
+          <button className="primary-button full" onClick={() => onRise(selected.kind as 'sun' | 'moon')}>
+            Jump to next rise
+          </button>
+        ) : (
+          <p className="muted">Use the timeline to explore when this star is above the horizon.</p>
+        )}
+        {(clearSky || ['cloud', 'haze', 'partial-cloud'].includes(visibility.reason)) && (
+          <button className="text-button" onClick={onClearSky}>
+            {clearSky ? 'Restore atmosphere' : 'Preview a clear sky'}
+          </button>
+        )}
         <div className="coordinate-grid">
           <div>
             <strong>{selected.altitude.toFixed(1)}°</strong>
@@ -64,20 +101,8 @@ export default function ObjectPanel({
           </div>
         </div>
         {isMoon && (
-          <>
-            <p>
-              {sky.moon.phaseName} · {Math.round(sky.moon.illumination * 100)}% illuminated
-            </p>
-            <p className="muted">
-              Approximately {(Math.round(sky.moon.distanceKm / 100) * 100).toLocaleString()} km from the
-              observer
-            </p>
-          </>
-        )}
-        {'magnitude' in selected && (
-          <p className="muted">
-            Magnitude {selected.magnitude.toFixed(2)} · J2000 RA {selected.ra.toFixed(3)}h · Dec{' '}
-            {selected.dec.toFixed(2)}°
+          <p>
+            {sky.moon.phaseName} · {Math.round(sky.moon.illumination * 100)}% illuminated
           </p>
         )}
         {(isSun || isMoon) && (
@@ -115,52 +140,109 @@ export default function ObjectPanel({
                 : 'Today begins or ends during daylight.'}
           </p>
         )}
-        <button
-          className="primary-button full"
-          disabled={selected.altitude < 0}
-          onClick={() => onFocus(selected.altitude, selected.azimuth)}
-        >
-          <Crosshair size={16} />
-          Center in view
-        </button>
-        {selected.altitude < 0 && (
-          <p className="muted">Move through time to see this object above the horizon.</p>
-        )}
+        <details className="object-facts">
+          <summary>About this object & coordinates</summary>
+          <p>
+            Altitude is height above the mathematical horizon. Azimuth is the direction clockwise from north:
+            east is 90°, south 180°, west 270°.
+          </p>
+          {isMoon && (
+            <p>
+              The Moon reflects sunlight. Its phase depends on which part of the sunlit half we see. It is
+              approximately {(Math.round(sky.moon.distanceKm / 100) * 100).toLocaleString()} km from this
+              observer.
+            </p>
+          )}
+          {selected.kind === 'star' && (
+            <p>
+              Magnitude {selected.magnitude.toFixed(2)} (smaller numbers are brighter). Catalog coordinates:
+              J2000 RA {selected.ra.toFixed(3)}h, Dec {selected.dec.toFixed(2)}°.
+            </p>
+          )}
+        </details>
       </div>
+    );
+  }
+  const term = query.trim().toLowerCase();
+  const matches = objects.filter((object) =>
+    term
+      ? object.name.toLowerCase().includes(term) || object.id.toLowerCase().includes(term)
+      : !upOnly || aboveHorizon(object),
+  );
+  return (
+    <>
       <label className="object-search">
         <span>Find an object</span>
         <input
+          ref={search}
           type="search"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(event) => setQuery(event.target.value)}
           placeholder="Sun, Moon, or star name"
         />
       </label>
-      <p className="muted" role="status">
-        {matches.length > 60
-          ? `Showing 60 of ${matches.length} objects. Search by name or HYG ID to find more.`
-          : `${matches.length} matching objects.`}
+      <div className="segmented object-filters">
+        <button
+          aria-pressed={upOnly && !term}
+          onClick={() => {
+            setUpOnly(true);
+            setQuery('');
+          }}
+        >
+          Above horizon
+        </button>
+        <button
+          aria-pressed={!upOnly && !term}
+          onClick={() => {
+            setUpOnly(false);
+            setQuery('');
+          }}
+        >
+          All objects
+        </button>
+      </div>
+      <p className="catalog-note">
+        {term
+          ? 'Search includes objects below the horizon.'
+          : upOnly
+            ? 'Calculated positions above the horizon, brightest stars first.'
+            : 'Explore the Sun, Moon, and stars, including those below the horizon.'}
       </p>
+      {(clearSky || weather.cloudCover >= 85) && (
+        <div className="catalog-weather">
+          <span>{clearSky ? 'Clear-sky preview is active.' : 'Heavy clouds may obscure this view.'}</span>
+          <button onClick={onClearSky}>{clearSky ? 'Restore atmosphere' : 'Preview a clear sky'}</button>
+        </div>
+      )}
       <div className="object-list" role="group" aria-label="Celestial objects">
-        {matches.slice(0, 60).map((object) => (
-          <button
-            key={object.id}
-            className={object.id === selected.id ? 'active' : ''}
-            onClick={() => onSelect(object.id)}
-            aria-pressed={object.id === selected.id}
-          >
-            {object.id === 'sun' ? (
-              <Sun size={16} />
-            ) : object.id === 'moon' ? (
-              <Moon size={16} />
+        {matches.slice(0, 40).map((object) => (
+          <button key={object.id} onClick={() => onSelect(object.id)}>
+            {object.kind === 'sun' ? (
+              <Sun size={18} />
+            ) : object.kind === 'moon' ? (
+              <Moon size={18} />
             ) : (
-              <Star size={15} />
+              <Star size={16} />
             )}
-            <span>{object.name}</span>
-            <small>{object.altitude >= 0 ? `${Math.round(object.altitude)}° up` : 'below'}</small>
+            <span>
+              {object.name}
+              <small>
+                {object.kind === 'moon'
+                  ? sky.moon.phaseName
+                  : object.kind === 'sun'
+                    ? 'Our nearest star'
+                    : objectVisibility(object, sky, weather, preferences).label}
+              </small>
+            </span>
+            <b>{aboveHorizon(object) ? `${Math.round(object.altitude)}°` : 'Below'}</b>
           </button>
         ))}
       </div>
+      <p className="catalog-note" role="status">
+        {matches.length > 40
+          ? `Showing 40 of ${matches.length}. Search by name or HYG ID for more.`
+          : `${matches.length} matching ${matches.length === 1 ? 'object' : 'objects'}.`}
+      </p>
     </>
   );
 }

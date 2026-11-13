@@ -16,6 +16,10 @@ Sun and Moon angular sizes use observer distance. Moon illumination is computed 
 
 The 5,070-star HYG derivative applies J2000 proper motion and precession. Stars use geometric altitude. Stellar refraction, annual parallax, nutation, radial motion, and variable brightness are omitted. Magnitude, color, atmospheric extinction, moonlight, and light pollution affect approximate display brightness. These are not calibrated radiometric quantities. Four original simplified line patterns are educational overlays, not a complete constellation atlas.
 
+## Atmospheric presentation
+
+The Moon's shader adds the same foreground atmospheric color as the surrounding sky to its attenuated, sunlit surface. This prevents the unlit hemisphere from becoming a black silhouette in daylight. Surface lighting, earthshine, haze, cloud coverage, and ground colors are illustrative rather than calibrated radiometry. The curved procedural cloud deck attenuates celestial objects through one shared foreground pass; it is not a measured cloud map. The position marker remains visible through clouds and is explicitly labeled as a calculated position. Visibility explanations use broad conditions, not a claim that the selected sightline is cloud-free. Clear-sky preview changes only the rendered atmosphere and keeps original weather values available.
+
 ## Independent regression fixtures
 
 Checked on November 13, 2026 against cached responses from [JPL Horizons](https://ssd-api.jpl.nasa.gov/doc/horizons.html) and the [US Naval Observatory](https://aa.usno.navy.mil/data/api.html). The [Horizons manual](https://ssd.jpl.nasa.gov/horizons/manual.html) defines the reference quantities. Raw responses and query URLs are retained in `tests/fixtures`; tests do not access the network.

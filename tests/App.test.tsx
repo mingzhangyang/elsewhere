@@ -9,11 +9,15 @@ vi.mock('../src/components/SkyScene', async () => ({
 it('changes place without changing the selected instant and controls playback', async () => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}')));
   render(<App initialTime={new Date('2026-11-12T12:00Z')} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Change date and time' }));
   expect(screen.getByLabelText('LOCAL TIME')).toHaveValue('07:00');
+  fireEvent.click(screen.getByRole('button', { name: 'Close time editor' }));
   fireEvent.click(screen.getByRole('button', { name: /Change location/ }));
   fireEvent.click(screen.getByRole('option', { name: /Tokyo/ }));
   await waitFor(() => expect(screen.getByText('Japan')).toBeInTheDocument());
+  fireEvent.click(screen.getByRole('button', { name: 'Change date and time' }));
   expect(screen.getByLabelText('LOCAL TIME')).toHaveValue('21:00');
+  fireEvent.click(screen.getByRole('button', { name: 'Close time editor' }));
   fireEvent.click(screen.getByRole('button', { name: 'Play time' }));
   expect(screen.getByRole('button', { name: 'Pause time' })).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Now' }));
@@ -29,6 +33,7 @@ it('requires a choice between repeated-hour offsets', async () => {
     vi.fn().mockImplementation(() => Promise.resolve(new Response('{}'))),
   );
   render(<App initialTime={new Date('2026-11-01T17:00Z')} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Change date and time' }));
   fireEvent.change(screen.getByLabelText('LOCAL TIME'), { target: { value: '01:30' } });
   expect(screen.getByRole('alert')).toHaveTextContent('occurs twice');
   fireEvent.click(screen.getByRole('button', { name: /UTC-05:00/ }));

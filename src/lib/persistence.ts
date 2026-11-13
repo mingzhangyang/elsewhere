@@ -31,6 +31,7 @@ export interface Exploration {
   camera: CameraView;
   layers: LayerSettings;
   custom: WeatherValues | null;
+  clearSky?: boolean;
 }
 const KEY = 'elsewhere.preferences.v1';
 const defaults = (): Preferences => ({
@@ -151,6 +152,8 @@ export function parseExploration(hash: string): { value: Exploration | null; not
       }
       custom.visibilityAvailable = true;
     }
+    if (data.clearSky !== undefined && typeof data.clearSky !== 'boolean')
+      throw new Error('Invalid preview mode');
     return {
       value: {
         version: 1,
@@ -159,6 +162,7 @@ export function parseExploration(hash: string): { value: Exploration | null; not
         camera: { ...camera },
         layers: layerValue(data.layers),
         custom,
+        ...(data.clearSky === undefined ? {} : { clearSky: data.clearSky }),
       },
       notice: '',
     };

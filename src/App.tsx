@@ -23,7 +23,9 @@ import ObjectPanel from './components/ObjectPanel';
 import type { LocationInfo, WeatherValues } from './types';
 import { useSimulation } from './hooks/useSimulation';
 import { useWeather } from './hooks/useWeather';
-import { formatTime } from './lib/time';
+import { formatTime, MAX_INSTANT } from './lib/time';
+import { calculateSky, nextBodyRise } from './lib/astronomy';
+import { findSkyObject, objectVisibility, type SkyObject } from './lib/exploration';
 import {
   customConditions,
   defaultWeatherValues,
@@ -91,9 +93,28 @@ export default function App({
   const [customWeather, setCustomWeather] = useState<WeatherValues>(
     () => launch.shared.value?.custom ?? defaultWeatherValues(),
   );
-  const weather = custom ? customWeather : atmosphere;
+  const baseWeather = custom ? customWeather : atmosphere;
+  const [clearSky, setClearSky] = useState(launch.shared.value?.clearSky ?? false);
+  const weather = useMemo(
+    () =>
+      clearSky
+        ? {
+            ...baseWeather,
+            cloudCover: 0,
+            cloudLow: 0,
+            cloudMid: 0,
+            cloudHigh: 0,
+            haze: 0,
+            precipitation: 0,
+            visibilityKm: 60,
+            weatherCode: 0,
+          }
+        : baseWeather,
+    [baseWeather, clearSky],
+  );
   const [panel, setPanel] = useState<Panel | null>(null);
-  const [selectedId, setSelectedId] = useState('moon');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [focusedId, setFocusedId] = useState<string | null>(null);
   const [view, setView] = useState<CameraView>(
     () => launch.shared.value?.camera ?? { heading: 0, altitude: 18, fov: 66 },
   );
@@ -109,10 +130,17 @@ export default function App({
   const skyRef = useRef<SkySceneHandle>(null);
   const panelTitle = useRef<HTMLHeadingElement>(null);
   const panelTrigger = useRef<HTMLElement | null>(null);
+  const objectsTrigger = useRef<HTMLButtonElement>(null);
   const shareDialog = useRef<HTMLDialogElement>(null);
   const shareInput = useRef<HTMLInputElement>(null);
   const layers = preferences.layers;
-  const sourceText = custom ? 'Custom simulation' : weatherSourceLabel(selection);
+  const sourceText = clearSky
+    ? 'Clear-sky preview'
+    : custom
+      ? 'Custom simulation'
+      : weatherSourceLabel(selection);
+  const focused = findSkyObject(sky, focusedId);
+  const focusedVisibility = focused && objectVisibility(focused, sky, weather, preferences);
   const skyMood =
     sky.sunAltitude > 6
       ? 'A moment under the Sun'
@@ -144,22 +172,24 @@ export default function App({
     if (!savePreferences(next))
       setNotice('Changes are active, but this browser could not save your preferences.');
   };
-  const openPanel = (next: Panel) => {
+  const openPanel = (next: Panel, trigger: HTMLElement) => {
     if (panel === next) {
       closePanel();
       return;
     }
-    panelTrigger.current = document.activeElement as HTMLElement;
+    panelTrigger.current = trigger;
+    if (next === 'objects') setSelectedId(null);
     setPanel(next);
   };
   const closePanel = () => {
     setPanel(null);
-    panelTrigger.current?.focus();
+    (panelTrigger.current?.isConnected ? panelTrigger.current : objectsTrigger.current)?.focus();
   };
   const chooseLocation = (next: LocationInfo) => {
     setLocation(next);
     setPlaying(false);
-    setSelectedId('moon');
+    setSelectedId(null);
+    setFocusedId(null);
     if (next.id !== 'device-location')
       changePreferences((prefs) => ({
         ...prefs,
@@ -174,11 +204,32 @@ export default function App({
         : [...prefs.saved, place].slice(-30),
     }));
   const mode = (next: boolean) => {
+    setClearSky(false);
     if (next && !custom) setCustomWeather(customConditions(atmosphere));
     setCustom(next);
   };
   const field = (name: keyof WeatherValues, value: number) =>
     setCustomWeather((current) => customConditions(current, name, value));
+  const focusObject = (object: SkyObject) => {
+    setFocusedId(object.id);
+    skyRef.current?.focus(object.altitude, object.azimuth);
+    if (panel) closePanel();
+  };
+  const jumpToRise = (id: 'sun' | 'moon') => {
+    try {
+      const rise = nextBodyRise(location, id, simTime);
+      if (!rise) {
+        setNotice('No rise was found within the supported dates. Try another place or date.');
+        return;
+      }
+      const time = new Date(Math.min(MAX_INSTANT, rise.getTime() + 15 * 60000));
+      setPlaying(false);
+      setSimTime(time);
+      focusObject(findSkyObject(calculateSky(location, time), id)!);
+    } catch {
+      setNotice('This rise could not be calculated. Choose another date or place.');
+    }
+  };
   const share = () => {
     setPlaying(false);
     setCopied(false);
@@ -190,6 +241,7 @@ export default function App({
         camera: view,
         layers,
         custom: custom ? customWeather : null,
+        clearSky,
       }),
     );
     shareDialog.current?.showModal();
@@ -238,13 +290,13 @@ export default function App({
           <button
             className="icon-button"
             aria-label="Open sky settings"
-            onClick={() => openPanel('settings')}
+            onClick={(event) => openPanel('settings', event.currentTarget)}
           >
             <Layers size={19} />
           </button>
         </div>
       </header>
-      <section className="stage" aria-label="Sky exploration">
+      <section className={`stage ${focused ? 'has-target' : ''}`} aria-label="Sky exploration">
         <SkyScene
           ref={skyRef}
           sky={sky}
@@ -257,6 +309,7 @@ export default function App({
           quality={preferences.quality}
           horizon={preferences.horizon}
           skyBrightness={preferences.skyBrightness}
+          targetId={immersive ? null : focusedId}
           onAssetError={setNotice}
           onCameraChange={setView}
           onDiagnostics={import.meta.env.DEV && diagnostics ? setStats : undefined}
@@ -303,12 +356,17 @@ export default function App({
             {localParts.time}
             <span>{location.timezone.replaceAll('_', ' ')}</span>
           </div>
-          <button className="source-pill" onClick={() => openPanel('weather')}>
-            <span className={`status-dot ${custom || !selection.values ? 'amber' : ''}`} />
+          <button className="source-pill" onClick={(event) => openPanel('weather', event.currentTarget)}>
+            <span className={`status-dot ${clearSky || custom || !selection.values ? 'amber' : ''}`} />
             {sourceText}
-            {!custom && !selection.values ? ' · neutral sky' : ''}
+            {!clearSky && !custom && !selection.values ? ' · neutral sky' : ''}
             <ArrowUpRight size={13} />
           </button>
+          {clearSky && (
+            <button className="restore-atmosphere" onClick={() => setClearSky(false)}>
+              Restore {custom ? 'custom atmosphere' : 'weather atmosphere'}
+            </button>
+          )}
         </div>
         <div
           className="sky-compass"
@@ -342,13 +400,22 @@ export default function App({
             <Eye size={19} />
           </button>
         </div>
-        {!preferences.hintDismissed && (
+        {!preferences.hintDismissed && !focused && !panel && (
           <div className="scene-hint">
-            <span>
-              Drag to explore · pinch or scroll to zoom
-              <br />
-              <small>Keyboard: arrows to look, + / − to zoom, Home to reset</small>
-            </span>
+            <div>
+              <strong>Where will you look?</strong>
+              <small>Drag to explore · arrows to look · pinch or + / − to zoom</small>
+            </div>
+            <button
+              className="hint-action"
+              onClick={(event) => {
+                panelTrigger.current = event.currentTarget;
+                setSelectedId('moon');
+                setPanel('objects');
+              }}
+            >
+              Find the Moon
+            </button>
             <button
               className="icon-button"
               aria-label="Dismiss viewing hint"
@@ -358,16 +425,63 @@ export default function App({
             </button>
           </div>
         )}
+        {focused && focusedVisibility && !panel && !immersive && (
+          <section className="focus-summary" aria-label="Selected object">
+            <div>
+              <strong>{focused.name}</strong>
+              <span>{focusedVisibility.label}</span>
+              <button
+                className="icon-button"
+                aria-label="Clear object selection"
+                onClick={() => {
+                  setFocusedId(null);
+                  objectsTrigger.current?.focus();
+                }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <p>{focusedVisibility.detail}</p>
+            <div className="focus-actions">
+              <button onClick={() => focusObject(focused)}>Recenter</button>
+              {(clearSky || ['cloud', 'haze', 'partial-cloud'].includes(focusedVisibility.reason)) && (
+                <button onClick={() => setClearSky((value) => !value)}>
+                  {clearSky ? 'Restore atmosphere' : 'Preview a clear sky'}
+                </button>
+              )}
+              {focusedVisibility.reason === 'layer' && (
+                <button
+                  onClick={() => changePreferences((p) => ({ ...p, layers: { ...p.layers, stars: true } }))}
+                >
+                  Enable stars
+                </button>
+              )}
+              {focusedVisibility.reason === 'horizon' && focused.kind !== 'star' && (
+                <button onClick={() => jumpToRise(focused.kind as 'sun' | 'moon')}>Jump to next rise</button>
+              )}
+            </div>
+          </section>
+        )}
         <nav className="explore-toolbar" aria-label="Explore controls">
-          <button aria-expanded={panel === 'objects'} onClick={() => openPanel('objects')}>
+          <button
+            ref={objectsTrigger}
+            aria-expanded={panel === 'objects'}
+            onClick={(event) => openPanel('objects', event.currentTarget)}
+          >
             <Sparkles size={17} />
             Objects
           </button>
-          <button aria-expanded={panel === 'weather'} onClick={() => openPanel('weather')}>
+          <button
+            aria-expanded={panel === 'weather'}
+            onClick={(event) => openPanel('weather', event.currentTarget)}
+          >
             <Cloud size={17} />
             Weather
           </button>
-          <button aria-expanded={panel === 'settings'} onClick={() => openPanel('settings')}>
+          <button
+            aria-expanded={panel === 'settings'}
+            onClick={(event) => openPanel('settings', event.currentTarget)}
+          >
             <Layers size={17} />
             Layers
           </button>
@@ -385,10 +499,9 @@ export default function App({
           >
             <div className="inspector-heading">
               <div>
-                <p className="eyebrow">Explore your sky</p>
                 <h2 ref={panelTitle} tabIndex={-1}>
                   {panel === 'objects'
-                    ? 'What’s above you'
+                    ? 'Explore the sky'
                     : panel === 'weather'
                       ? 'Weather & atmosphere'
                       : 'Make it your view'}
@@ -404,23 +517,37 @@ export default function App({
                   sky={sky}
                   timeZone={location.timezone}
                   selectedId={selectedId}
+                  preferences={preferences}
+                  weather={weather}
+                  clearSky={clearSky}
                   onSelect={setSelectedId}
-                  onFocus={(altitude, azimuth) => {
-                    skyRef.current?.focus(altitude, azimuth);
-                    closePanel();
-                  }}
+                  onFocus={focusObject}
+                  onRise={jumpToRise}
+                  onClearSky={() => setClearSky((value) => !value)}
                 />
               )}
               {panel === 'weather' && (
-                <WeatherPanel
-                  selection={selection}
-                  custom={custom}
-                  values={weather}
-                  timeZone={location.timezone}
-                  onMode={mode}
-                  onField={field}
-                  onRefresh={refresh}
-                />
+                <>
+                  {clearSky && (
+                    <div className="preview-notice">
+                      <p>
+                        The sky is temporarily clear for exploration. Original weather values are shown below.
+                      </p>
+                      <button className="secondary-button" onClick={() => setClearSky(false)}>
+                        Restore atmosphere
+                      </button>
+                    </div>
+                  )}
+                  <WeatherPanel
+                    selection={selection}
+                    custom={custom}
+                    values={baseWeather}
+                    timeZone={location.timezone}
+                    onMode={mode}
+                    onField={field}
+                    onRefresh={refresh}
+                  />
+                </>
               )}
               {panel === 'settings' && (
                 <>

@@ -22,6 +22,22 @@ export function getPhaseName(angle: number): string {
 }
 
 /** Every event is constrained to [local midnight, next local midnight). */
+export function nextBodyRise(location: LocationInfo, body: 'sun' | 'moon', date: Date): Date | null {
+  validateObserver(location);
+  validateInstant(date);
+  const days = Math.min(370, (MAX_INSTANT - date.getTime()) / 86400000);
+  if (days <= 0) return null;
+  return (
+    Astronomy.SearchRiseSet(
+      body === 'sun' ? Astronomy.Body.Sun : Astronomy.Body.Moon,
+      new Astronomy.Observer(location.latitude, location.longitude, location.elevation),
+      1,
+      date,
+      days,
+    )?.date ?? null
+  );
+}
+
 export function calculateDailyEvents(location: LocationInfo, date: Date): SkyEvents {
   validateObserver(location);
   if (!Number.isFinite(date.getTime())) validateInstant(date);
