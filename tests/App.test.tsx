@@ -6,11 +6,35 @@ vi.mock('../src/components/SkyScene', () => ({ default: () => <div aria-label="S
 
 it('changes place without changing the selected instant and controls playback', async () => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}')));
-  render(<App />);
-  fireEvent.click(screen.getByRole('button', { name: 'Tokyo', exact: true }));
+  render(<App initialTime={new Date('2026-11-12T12:00Z')} />);
+  expect(screen.getByLabelText('LOCAL TIME')).toHaveValue('07:00');
+  fireEvent.click(screen.getByRole('button', { name: 'Tokyo' }));
   await waitFor(() => expect(screen.getByText('Japan')).toBeInTheDocument());
+  expect(screen.getByLabelText('LOCAL TIME')).toHaveValue('21:00');
   fireEvent.click(screen.getByRole('button', { name: 'Play time' }));
   expect(screen.getByRole('button', { name: 'Pause time' })).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'NOW', exact: true }));
+  fireEvent.click(screen.getByRole('button', { name: 'NOW' }));
   expect(screen.getByRole('button', { name: 'Play time' })).toBeInTheDocument();
 });
+
+it('requires a choice between repeated-hour offsets', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockImplementation(() => Promise.resolve(new Response('{}'))));
+  render(<App initialTime={new Date('2026-11-01T17:00Z')} />);
+  fireEvent.change(screen.getByLabelText('LOCAL TIME'), { target: { value: '01:30' } });
+  expect(screen.getByRole('alert')).toHaveTextContent('occurs twice');
+  fireEvent.click(screen.getByRole('button', { name: /UTC-05:00/ }));
+  expect(screen.getByLabelText('LOCAL TIME')).toHaveValue('01:30');
+  expect(screen.getByRole('slider', { name: 'Time of day' })).toHaveAttribute('aria-valuetext', '01:30 UTC-05:00');
+});
+
+it('does not display source weather defaults when weather is unavailable', async () => {
+  const { scenarioProps } = await import('../src/dev/scenarios');
+  render(<App {...scenarioProps('unavailable')} />);
+  fireEvent.click(screen.getByRole('button', { name: 'WEATHER & ATMOSPHERE' }));
+  await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('unavailable-weather'));
+  expect(screen.queryByText('1013')).not.toBeInTheDocument();
+  expect(screen.queryByRole('slider', { name: /Cloud cover/ })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Custom simulation' }));
+  expect(screen.getByRole('slider', { name: /Cloud cover/ })).toBeInTheDocument();
+});
+

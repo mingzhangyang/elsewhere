@@ -1,3 +1,15 @@
+import { Temporal } from '@js-temporal/polyfill';
+
+export const MIN_INSTANT = Date.UTC(1900, 0, 1);
+export const MAX_INSTANT = Date.UTC(2101, 0, 1) - 1;
+
+export function validateInstant(date: Date): Date {
+  if (!Number.isFinite(date.getTime()) || date.getTime() < MIN_INSTANT || date.getTime() > MAX_INSTANT) {
+    throw new RangeError('Choose a date between 1900 and 2100.');
+  }
+  return date;
+}
+
 export interface ZonedParts {
   year: number;
   month: number;
@@ -32,25 +44,35 @@ export function getZonedParts(date: Date, timeZone: string): ZonedParts {
 
 export function zonedDateTimeToUtc(
   year: number, month: number, day: number,
-  hour: number, minute: number, timeZone: string,
+  hour: number, minute: number, timeZone: string, disambiguation: 'reject' | 'earlier' | 'later' = 'reject',
 ): Date {
-  // Iteratively solve UTC = requested wall time - zone offset. This handles DST
-  // offsets without relying on the browser's own time zone.
-  const targetAsUtc = Date.UTC(year, month - 1, day, hour, minute, 0, 0);
-  let guess = targetAsUtc;
-  for (let i = 0; i < 4; i += 1) {
-    const offset = getZoneOffset(new Date(guess), timeZone);
-    const next = targetAsUtc - offset;
-    if (next === guess) break;
-    guess = next;
-  }
-  return new Date(guess);
+  return validateInstant(new Date(Temporal.ZonedDateTime.from(
+    { year, month, day, hour, minute, timeZone }, { disambiguation, overflow: 'reject' },
+  ).epochMilliseconds));
 }
 
-function getZoneOffset(date: Date, timeZone: string): number {
-  const p = getZonedParts(date, timeZone);
-  const representedAsUtc = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
-  return representedAsUtc - date.getTime();
+export function wallTimeCandidates(date: string, time: string, timeZone: string): Date[] {
+  const plain = Temporal.PlainDateTime.from(`${date}T${time}`, { overflow: 'reject' });
+  const candidates = ['earlier', 'later'].map((disambiguation) => plain.toZonedDateTime(timeZone,
+    { disambiguation: disambiguation as 'earlier' | 'later' }));
+  return [...new Set(candidates.filter((zoned) => zoned.toPlainDateTime().equals(plain))
+    .map((zoned) => zoned.epochMilliseconds))].map((ms) => validateInstant(new Date(ms)));
+}
+
+export function localDayBounds(date: Date, timeZone: string): { start: Date; end: Date; minutes: number } {
+  const zoned = Temporal.Instant.fromEpochMilliseconds(date.getTime()).toZonedDateTimeISO(timeZone);
+  const start = zoned.startOfDay();
+  const end = start.add({ days: 1 }).startOfDay();
+  return { start: new Date(start.epochMilliseconds), end: new Date(end.epochMilliseconds),
+    minutes: (end.epochMilliseconds - start.epochMilliseconds) / 60000 };
+}
+
+export function civilDayStart(day: string, timeZone: string): Date {
+  return new Date(Temporal.PlainDate.from(day).toZonedDateTime(timeZone).epochMilliseconds);
+}
+
+export function formatOffset(date: Date, timeZone: string): string {
+  return `UTC${Temporal.Instant.fromEpochMilliseconds(date.getTime()).toZonedDateTimeISO(timeZone).offset}`;
 }
 
 export function formatTime(date: Date | null, timeZone: string, options?: Intl.DateTimeFormatOptions): string {
@@ -81,17 +103,12 @@ export function formatTimeZoneLabel(timeZone: string, date: Date = new Date()): 
 }
 
 export function localDayStart(date: Date, timeZone: string): Date {
-  const p = getZonedParts(date, timeZone);
-  return zonedDateTimeToUtc(p.year, p.month, p.day, 0, 0, timeZone);
+  return localDayBounds(date, timeZone).start;
 }
 
 export function shiftLocalDate(date: Date, timeZone: string, days: number): Date {
-  const p = getZonedParts(date, timeZone);
-  const shifted = new Date(Date.UTC(p.year, p.month - 1, p.day + days, 12));
-  return zonedDateTimeToUtc(
-    shifted.getUTCFullYear(), shifted.getUTCMonth() + 1, shifted.getUTCDate(),
-    p.hour, p.minute, timeZone,
-  );
+  const zoned = Temporal.Instant.fromEpochMilliseconds(date.getTime()).toZonedDateTimeISO(timeZone);
+  return validateInstant(new Date(zoned.add({ days }).epochMilliseconds));
 }
 
 function pad(value: number): string {

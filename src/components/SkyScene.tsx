@@ -451,16 +451,18 @@ export default function SkyScene({ sky, weather, showStars, showConstellations, 
         skyUniforms.uWindDirection.value = nextWeather.windDirection;
 
         setAtDirection(sunGroup, nextSky.sun.altitude, nextSky.sun.azimuth, 1650);
-        sunGroup.visible = nextSky.sun.visible && nextWeather.cloudCover < 99;
+        sunGroup.visible = nextSky.sun.visible;
+        sunDisc.scale.setScalar(1650 * 695700 / nextSky.sun.distanceKm / 19);
         const sunOpacity = Math.max(0.025, 1 - nextWeather.cloudCover / 105);
         (sunDisc.material as THREE.MeshBasicMaterial).opacity = sunOpacity;
         (sunGlow.material as THREE.SpriteMaterial).opacity = sunOpacity;
 
         setAtDirection(moonGroup, nextSky.moon.altitude, nextSky.moon.azimuth, 1650);
-        moonGroup.visible = nextSky.moon.visible && nextWeather.cloudCover < 99;
+        moonGroup.visible = nextSky.moon.visible;
+        moonMesh.scale.setScalar(1650 * 1737.4 / nextSky.moon.distanceKm / 20);
         const moonDir = directionVector(nextSky.moon.altitude, nextSky.moon.azimuth);
         const sunDir = directionVector(nextSky.sun.altitude, nextSky.sun.azimuth);
-        const towardSun = sunDir.clone().multiplyScalar(1650).sub(moonDir.clone().multiplyScalar(1650)).normalize();
+        const towardSun = sunDir.clone().multiplyScalar(nextSky.sun.distanceKm).sub(moonDir.clone().multiplyScalar(nextSky.moon.distanceKm)).normalize();
         moonLight.position.copy(moonGroup.position.clone().add(towardSun.clone().multiplyScalar(120)));
         (moonMesh.material as THREE.MeshStandardMaterial).opacity = Math.max(0.025, 1 - nextWeather.cloudCover / 105);
         (moonMesh.material as THREE.MeshStandardMaterial).transparent = true;
@@ -487,6 +489,7 @@ export default function SkyScene({ sky, weather, showStars, showConstellations, 
         if (flags.labels && flags.stars) {
           nextSky.stars.filter((star) => star.altitude > 7 && star.magnitude < 1.35).forEach((star) => {
             const label = makeTextSprite(star.name, '#cbd7e9');
+            (label.material as THREE.SpriteMaterial).opacity = nightVisibility * visibilityFactor;
             setAtDirection(label, star.altitude + 1.8, star.azimuth, 1740);
             starLabels.add(label);
           });
@@ -509,12 +512,14 @@ export default function SkyScene({ sky, weather, showStars, showConstellations, 
             }
             if (visibleSegments.length) {
               const geometry = new THREE.BufferGeometry().setFromPoints(visibleSegments);
-              const lines = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color: 0x7da8d8, transparent: true, opacity: 0.36, depthWrite: false }));
+              const lines = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color: 0x7da8d8, transparent: true, opacity: 0.36 * nightVisibility * visibilityFactor, depthWrite: false }));
               constellationGroup.add(lines);
               const midpoint = usedStars.reduce((sum, p) => sum.add(p), new THREE.Vector3()).multiplyScalar(1 / usedStars.length).normalize().multiplyScalar(1710);
               const label = makeTextSprite(constellation.name, '#93afd2');
               label.scale.set(150, 30, 1);
               label.position.copy(midpoint);
+              label.visible = flags.labels;
+              (label.material as THREE.SpriteMaterial).opacity = nightVisibility * visibilityFactor;
               constellationLabels.add(label);
             }
           }

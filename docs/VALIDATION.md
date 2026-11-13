@@ -4,7 +4,9 @@ Use Node 22.13 or later in the 22.x line, or Node 24+. Run `npm ci` and `npm run
 
 ## Baseline
 
-The original source and roadmap are preserved in local commit `dfe27f5`. Phase 0 introduced 13 tests, including two expected failures reproducing the forecast-range and DST-gap defects. Convert these to ordinary regression tests when phase 1 corrects them.
+The original source and roadmap are preserved in local commit `dfe27f5`; phase 0 is commit `1b95b88`. Phase 1 converts both known failures to ordinary regression tests and extends coverage to missing data, provenance, request cancellation, forecast boundaries, DST folds, half-hour transitions, and civil-day events.
+
+Run `node scripts/weather-smoke.mjs` separately to exercise live current, recent, historical, and final-horizon requests. All four succeeded on November 13, 2026; historical visibility correctly remained unavailable. The final forecast day is clipped to the provider's UTC horizon, and hours beyond that coverage remain unavailable.
 
 The development server supports `?scenario=day`, `?scenario=night`, `?scenario=rain`, and `?scenario=unavailable`. These inject a fixed instant and synthetic, explicitly developer-owned weather. They do not access the weather network and are excluded from production. Precipitation is seeded for repeatability. Use a fixed viewport and pause atmospheric motion when comparing individual image pixels.
 

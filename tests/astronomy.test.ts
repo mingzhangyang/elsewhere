@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { calculateSky } from '../src/lib/astronomy';
+import { calculateDailyEvents, calculateSky } from '../src/lib/astronomy';
+import { civilDayStart, localDayBounds } from '../src/lib/time';
 import { horizontalFromEquatorial } from '../src/lib/stars';
 import { NEW_YORK, SYDNEY, TROMSO } from './fixtures/locations';
 
@@ -23,5 +24,18 @@ describe('sky invariants', () => {
   it('represents polar day and polar night', () => {
     expect(calculateSky(TROMSO, new Date('2026-06-21T12:00Z')).events.daylightHours).toBe(24);
     expect(calculateSky(TROMSO, new Date('2026-12-21T12:00Z')).events.daylightHours).toBe(0);
+  });
+  it.each(['2026-03-08', '2026-11-01'])('keeps events within the civil day %s', (day) => {
+    const instant = civilDayStart(day, NEW_YORK.timezone);
+    const { start, end } = localDayBounds(instant, NEW_YORK.timezone);
+    const events = calculateDailyEvents(NEW_YORK, instant);
+    for (const event of [events.sunrise, events.sunset, events.solarNoon, events.moonrise, events.moonset, events.twilightDawn, events.twilightDusk]) {
+      if (event) { expect(event.getTime()).toBeGreaterThanOrEqual(start.getTime()); expect(event.getTime()).toBeLessThan(end.getTime()); }
+    }
+    expect(events.daylightHours).toBeGreaterThan(0);
+    expect(events.daylightHours).toBeLessThan(25);
+  });
+  it('does not convert invalid observer errors into absent events', () => {
+    expect(() => calculateDailyEvents({ ...NEW_YORK, latitude: NaN }, new Date('2026-11-12T12:00Z'))).toThrow();
   });
 });

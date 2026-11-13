@@ -6,10 +6,12 @@ import {
   Wind, X,
 } from 'lucide-react';
 import SkyScene from './components/SkyScene';
-import type { LocationInfo, WeatherResult, WeatherValues } from './types';
-import { calculateSky } from './lib/astronomy';
-import { formatDate, formatTime, formatTimeZoneLabel, getZonedParts, zonedDateTimeToUtc } from './lib/time';
-import { defaultWeatherValues, fetchWeatherForDate, searchLocations, weatherDescription } from './lib/weather';
+import type { LocationInfo, WeatherValues } from './types';
+import { calculateDailyEvents, calculateSky } from './lib/astronomy';
+import { civilDayStart, formatDate, formatOffset, formatTime, formatTimeZoneLabel, getZonedParts, localDayBounds, MAX_INSTANT, MIN_INSTANT, wallTimeCandidates } from './lib/time';
+import { customConditions, defaultWeatherValues, fetchWeatherForDate, renderingWeather, searchLocations, weatherDescription, weatherSourceLabel } from './lib/weather';
+import { useWeather } from './hooks/useWeather';
+import MoonPhase from './components/MoonPhase';
 
 const PRESETS: LocationInfo[] = [
   { id: 'new-york', name: 'New York', country: 'United States', latitude: 40.7128, longitude: -74.0060, elevation: 10, timezone: 'America/New_York' },
@@ -30,25 +32,6 @@ const directionLabel = (azimuth: number) => {
 const deg = (value: number) => `${Math.round(value)}°`;
 const num = (value: number, digits = 1) => Number.isFinite(value) ? value.toFixed(digits) : '—';
 
-function sourceLabel(source: WeatherResult['source']): string {
-  if (source === 'current') return 'Current conditions';
-  if (source === 'forecast') return 'Forecast';
-  if (source === 'historical') return 'Historical reanalysis';
-  return 'Weather unavailable';
-}
-
-function getWeatherForInstant(result: WeatherResult, date: Date): WeatherValues {
-  if (!result.available || !result.hourly?.length) return result.values;
-  const target = date.getTime();
-  let closest = result.hourly[0];
-  let best = Infinity;
-  for (const row of result.hourly) {
-    const delta = Math.abs(row.time - target);
-    if (delta < best) { best = delta; closest = row; }
-  }
-  return best <= 90 * 60_000 ? closest.values : result.values;
-}
-
 export interface AppProps {
   initialLocation?: LocationInfo;
   initialTime?: Date;
@@ -60,12 +43,8 @@ export default function App({ initialLocation = PRESETS[0], initialTime, weather
   const [simTime, setSimTime] = useState(() => initialTime ?? new Date());
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(60);
-  const [weatherResult, setWeatherResult] = useState<WeatherResult>({
-    available: false, source: 'unavailable', values: defaultWeatherValues(), message: 'Loading weather…',
-  });
-  const [weatherLoading, setWeatherLoading] = useState(true);
   const [customMode, setCustomMode] = useState(false);
-  const [customWeather, setCustomWeather] = useState<WeatherValues>(defaultWeatherValues());
+  const [customWeather, setCustomWeather] = useState<WeatherValues>(defaultWeatherValues);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<LocationInfo[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -77,143 +56,100 @@ export default function App({ initialLocation = PRESETS[0], initialTime, weather
   const [showLabels, setShowLabels] = useState(true);
   const [heading, setHeading] = useState(0);
   const [selectedStarId, setSelectedStarId] = useState<string | null>(null);
-  const customModeRef = useRef(customMode);
-  customModeRef.current = customMode;
+  const [timeError, setTimeError] = useState('');
+  const [timeChoices, setTimeChoices] = useState<Date[]>([]);
+  const [locating, setLocating] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
-  const lastTick = useRef(Date.now());
-
+  const lastTick = useRef(0);
   const localParts = useMemo(() => getZonedParts(simTime, location.timezone), [simTime, location.timezone]);
-  const sky = useMemo(() => calculateSky(location, simTime), [location, simTime]);
-  const actualWeather = useMemo(() => getWeatherForInstant(weatherResult, simTime), [weatherResult, simTime, location.timezone]);
+  const eventDate = useMemo(() => civilDayStart(localParts.date, location.timezone), [localParts.date, location.timezone]);
+  const events = useMemo(() => calculateDailyEvents(location, eventDate), [location, eventDate]);
+  const sky = useMemo(() => calculateSky(location, simTime, events), [location, simTime, events]);
+  const { selection, refresh: refreshWeather } = useWeather(location, simTime, weatherLoader);
+  const actualWeather = useMemo(() => renderingWeather(selection), [selection]);
   const weather = customMode ? customWeather : actualWeather;
-  const weatherIsActual = !customMode && weatherResult.available;
+  const values = customMode ? customWeather : selection.values;
+  const weatherIsActual = !customMode && selection.values !== null;
+  const weatherLoading = selection.status === 'loading';
   const selectedStar = useMemo(() => sky.stars.find((star) => star.id === selectedStarId) ?? null, [sky, selectedStarId]);
-
-  useEffect(() => {
-    let current = true;
-    setWeatherLoading(true);
-    weatherLoader(location, simTime)
-      .then((result) => {
-        if (!current) return;
-        setWeatherResult(result);
-        if (!customModeRef.current) setCustomWeather(result.available ? result.values : defaultWeatherValues());
-      })
-      .catch((error: unknown) => {
-        if (!current) return;
-        setWeatherResult({
-          available: false,
-          source: 'unavailable',
-          values: defaultWeatherValues(),
-          message: error instanceof Error ? error.message : 'Could not load weather data.',
-        });
-        if (!customModeRef.current) setCustomWeather(defaultWeatherValues());
-      })
-      .finally(() => { if (current) setWeatherLoading(false); });
-    return () => { current = false; };
-  }, [location, localParts.date, weatherLoader]);
+  const dayBounds = useMemo(() => localDayBounds(eventDate, location.timezone), [eventDate, location.timezone]);
 
   useEffect(() => {
     if (!playing) return;
-    lastTick.current = Date.now();
+    lastTick.current = performance.now();
     const timer = window.setInterval(() => {
-      const now = Date.now();
-      const elapsed = Math.min(1000, now - lastTick.current);
+      const now = performance.now();
+      const elapsed = now - lastTick.current;
       lastTick.current = now;
-      setSimTime((value) => new Date(value.getTime() + elapsed * speed));
+      if (document.hidden) return;
+      setSimTime((value) => new Date(Math.min(MAX_INSTANT, Math.max(MIN_INSTANT, value.getTime() + Math.min(1000, elapsed) * speed))));
     }, 200);
-    return () => window.clearInterval(timer);
+    const pauseHidden = () => { if (document.hidden) setPlaying(false); };
+    document.addEventListener('visibilitychange', pauseHidden);
+    return () => { clearInterval(timer); document.removeEventListener('visibilitychange', pauseHidden); };
   }, [playing, speed]);
 
   useEffect(() => {
     const query = searchQuery.trim();
-    if (query.length < 2) {
-      setSearchResults([]);
-      setSearchError('');
-      setSearchLoading(false);
-      return;
-    }
-    let current = true;
+    if (query.length < 2) { setSearchResults([]); setSearchError(''); setSearchLoading(false); return; }
+    const controller = new AbortController();
+    setSearchResults([]);
     const timer = window.setTimeout(() => {
       setSearchLoading(true);
-      searchLocations(query)
-        .then((items) => { if (current) { setSearchResults(items); setSearchError(items.length ? '' : 'No matching places found.'); } })
-        .catch((error: unknown) => { if (current) setSearchError(error instanceof Error ? error.message : 'Search failed.'); })
-        .finally(() => { if (current) setSearchLoading(false); });
+      searchLocations(query, controller.signal)
+        .then((items) => { if (!controller.signal.aborted) { setSearchResults(items); setSearchError(items.length ? '' : 'No matching places found.'); } })
+        .catch((error: unknown) => { if (!controller.signal.aborted) setSearchError(error instanceof Error ? error.message : 'Search failed.'); })
+        .finally(() => { if (!controller.signal.aborted) setSearchLoading(false); });
     }, 350);
-    return () => { current = false; window.clearTimeout(timer); };
+    return () => { controller.abort(); window.clearTimeout(timer); };
   }, [searchQuery]);
 
   const chooseLocation = (next: LocationInfo) => {
-    setLocation(next);
-    setSelectedStarId(null);
-    setSearchQuery('');
-    setSearchResults([]);
-    setSearchOpen(false);
-    setPlaying(false);
+    setLocation(next); setSelectedStarId(null); setSearchQuery(''); setSearchResults([]);
+    setSearchOpen(false); setPlaying(false); setTimeError(''); setTimeChoices([]);
   };
-
-  const updateDate = (value: string) => {
-    const [year, month, day] = value.split('-').map(Number);
-    if (!year || !month || !day) return;
-    setSimTime(zonedDateTimeToUtc(year, month, day, localParts.hour, localParts.minute, location.timezone));
+  const editWallTime = (date: string, time: string) => {
+    setPlaying(false); setTimeError(''); setTimeChoices([]);
+    try {
+      const candidates = wallTimeCandidates(date, time, location.timezone);
+      if (!candidates.length) { setTimeError('That local time does not exist because the clock moves forward. Choose another time.'); return; }
+      if (candidates.length === 2) { setTimeChoices(candidates); setTimeError('This local time occurs twice. Choose an offset.'); return; }
+      setSimTime(candidates[0]);
+    } catch (error) { setTimeError(error instanceof RangeError ? 'Choose a valid date between 1900 and 2100.' : 'Choose a valid date and time.'); }
   };
-
-  const updateTime = (value: string) => {
-    const [hour, minute] = value.split(':').map(Number);
-    if (!Number.isFinite(hour) || !Number.isFinite(minute)) return;
-    setSimTime(zonedDateTimeToUtc(localParts.year, localParts.month, localParts.day, hour, minute, location.timezone));
+  const updateDate = (date: string) => editWallTime(date, localParts.time);
+  const updateTime = (time: string) => editWallTime(localParts.date, time);
+  const updateMinuteOfDay = (elapsedMinutes: number) => {
+    setPlaying(false); setTimeError(''); setTimeChoices([]);
+    setSimTime(new Date(Math.min(MAX_INSTANT, dayBounds.start.getTime() + elapsedMinutes * 60000)));
   };
-
-  const updateMinuteOfDay = (minuteOfDay: number) => {
-    const hour = Math.floor(minuteOfDay / 60);
-    const minute = minuteOfDay % 60;
-    setSimTime(zonedDateTimeToUtc(localParts.year, localParts.month, localParts.day, hour, minute, location.timezone));
-  };
-
-  const useNow = () => {
-    setSimTime(new Date());
-    setPlaying(false);
-  };
-
+  const useNow = () => { setSimTime(new Date()); setPlaying(false); setTimeError(''); setTimeChoices([]); };
   const useMyLocation = () => {
-    if (!navigator.geolocation) {
-      setSearchOpen(true);
-      setSearchError('Location access is not available in this browser.');
-      return;
-    }
-    navigator.geolocation.getCurrentPosition((position) => {
-      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-      chooseLocation({
-        id: 'device-location', name: 'Your location', country: '',
-        latitude: position.coords.latitude, longitude: position.coords.longitude,
-        elevation: position.coords.altitude ?? 0, timezone,
-      });
-    }, () => { setSearchOpen(true); setSearchError('Location permission was not granted.'); }, { enableHighAccuracy: true, timeout: 10000 });
+    setSearchOpen(true);
+    if (!navigator.geolocation) { setSearchError('Location access is unavailable. Search for a place instead.'); return; }
+    setLocating(true); setSearchError('');
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      try {
+        const { default: lookup } = await import('tz-lookup');
+        chooseLocation({ id: 'device-location', name: 'Your location', country: 'Device coordinates',
+          latitude: position.coords.latitude, longitude: position.coords.longitude,
+          elevation: position.coords.altitude !== null && Number.isFinite(position.coords.altitude) ? Math.max(-500, Math.min(10000, position.coords.altitude)) : 0,
+          timezone: lookup(position.coords.latitude, position.coords.longitude) });
+      } catch { setSearchError('Could not determine the time zone. Search for a nearby place instead.'); }
+      finally { setLocating(false); }
+    }, (error) => { setLocating(false); setSearchError(error.code === 1 ? 'Location permission was denied. Search for a place instead.' : error.code === 3 ? 'Location lookup timed out. Try again or search for a place.' : 'Your location is unavailable. Search for a place instead.'); }, { enableHighAccuracy: false, timeout: 10000 });
   };
-
   const updateWeatherField = (field: keyof WeatherValues, value: number) => {
-    if (!customMode) setCustomWeather(actualWeather);
-    setCustomMode(true);
-    setCustomWeather((current) => ({ ...current, [field]: value }));
-  };
-
-  const activateCustomWeather = () => {
-    if (!customMode) setCustomWeather(actualWeather);
+    setCustomWeather((current) => customConditions(customMode ? current : actualWeather, field, value));
     setCustomMode(true);
   };
-
-  const resetWeather = () => {
-    setCustomMode(false);
-    setCustomWeather(actualWeather);
-  };
-
-  const dayMinute = localParts.hour * 60 + localParts.minute;
-  const localClock = `${localParts.time}`;
+  const activateCustomWeather = () => { if (!customMode) setCustomWeather(customConditions(actualWeather)); setCustomMode(true); };
+  const resetWeather = () => setCustomMode(false);
+  const dayMinute = Math.floor((simTime.getTime() - dayBounds.start.getTime()) / 60000);
+  const localClock = localParts.time;
   const isToday = localParts.date === getZonedParts(new Date(), location.timezone).date;
-  const sourceText = customMode
-    ? (weatherResult.available ? 'Simulated conditions' : 'Simulation · no source data')
-    : sourceLabel(weatherResult.source);
-
+  const sourceText = customMode ? 'Custom simulation' : weatherSourceLabel(selection);
+  const metric = (value: number | null | undefined, digits = 0) => value === null || value === undefined ? '—' : num(value, digits);
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -235,12 +171,12 @@ export default function App({ initialLocation = PRESETS[0], initialTime, weather
               aria-label="Search for a location"
             />
             {searchQuery && <button className="icon-button tiny" onClick={() => setSearchQuery('')} aria-label="Clear search"><X size={14} /></button>}
-            <button className="locate-button" onClick={useMyLocation} title="Use my location"><LocateFixed size={15} /><span>My location</span></button>
+            <button className="locate-button" onClick={useMyLocation} disabled={locating} aria-label="Use my location"><LocateFixed size={15} /><span>{locating ? 'Locating…' : 'My location'}</span></button>
           </div>
-          {searchOpen && (searchResults.length > 0 || searchLoading || searchError) && (
+          {searchOpen && (
             <div className="search-results">
               {searchLoading && <div className="search-status">Searching the world…</div>}
-              {searchResults.map((item) => (
+              {(searchQuery.trim().length < 2 ? PRESETS : searchResults).map((item) => (
                 <button className="search-result" key={item.id} onClick={() => chooseLocation(item)}>
                   <MapPin size={15} />
                   <span><b>{item.name}</b><small>{item.country} · {item.timezone}</small></span>
@@ -275,13 +211,13 @@ export default function App({ initialLocation = PRESETS[0], initialTime, weather
           <div className="location-eyebrow"><MapPin size={12} /> YOU ARE STANDING IN</div>
           <div className="location-title">{location.name}</div>
           <div className="location-subtitle">{location.country || 'Selected coordinates'}</div>
-          <div className="location-coords">{location.latitude.toFixed(4)}° {location.latitude >= 0 ? 'N' : 'S'} &nbsp; {Math.abs(location.longitude).toFixed(4)}° {location.longitude >= 0 ? 'E' : 'W'}</div>
+          <div className="location-coords">{Math.abs(location.latitude).toFixed(4)}° {location.latitude >= 0 ? 'N' : 'S'} &nbsp; {Math.abs(location.longitude).toFixed(4)}° {location.longitude >= 0 ? 'E' : 'W'}</div>
           <div className="location-time"><span>{localClock}</span><small>{formatTimeZoneLabel(location.timezone, simTime)}</small></div>
           <div className="preset-row">
             {PRESETS.slice(0, 4).map((preset) => (
               <button key={preset.id} className={preset.id === location.id ? 'preset active' : 'preset'} onClick={() => chooseLocation(preset)}>{preset.name === 'Reykjavík' ? 'Reykjavik' : preset.name}</button>
             ))}
-            <button className="preset-more" onClick={() => setSearchOpen(true)}><ChevronDown size={13} /></button>
+            <button className="preset-more" aria-label="More locations" onClick={() => { setSearchOpen(true); searchRef.current?.focus(); }}><ChevronDown size={13} /></button>
           </div>
         </div>
 
@@ -311,27 +247,27 @@ export default function App({ initialLocation = PRESETS[0], initialTime, weather
             <div className="object-heading"><span className="object-icon sun-icon"><Sun size={17} /></span><span>THE SUN</span><b className={sky.sun.visible ? 'status-up' : 'status-down'}>{sky.sun.visible ? 'ABOVE HORIZON' : 'BELOW HORIZON'}</b></div>
             <div className="object-main">{sky.sun.visible ? `${deg(sky.sun.altitude)} altitude` : `${deg(Math.abs(sky.sun.altitude))} below horizon`}</div>
             <div className="object-coordinates">AZ {deg(sky.sun.azimuth)} · {directionLabel(sky.sun.azimuth)}</div>
-            <div className="event-row"><span><Sunrise size={12} /> Sunrise</span><b>{formatTime(sky.events.sunrise, location.timezone)}</b></div>
-            <div className="event-row"><span><Sunset size={12} /> Sunset</span><b>{formatTime(sky.events.sunset, location.timezone)}</b></div>
+            <div className="event-row"><span><Sunrise size={12} /> Sunrise</span><b>{sky.events.sunrise ? formatTime(sky.events.sunrise, location.timezone) : 'No rise today'}</b></div>
+            <div className="event-row"><span><Sunset size={12} /> Sunset</span><b>{sky.events.sunset ? formatTime(sky.events.sunset, location.timezone) : 'No set today'}</b></div>
             <div className="event-row"><span><Sun size={12} /> Solar noon</span><b>{formatTime(sky.events.solarNoon, location.timezone)}</b></div>
             <div className="daylight-row"><span>DAYLIGHT</span><b>{sky.events.daylightHours === null ? '—' : `${num(sky.events.daylightHours, 1)} h`}</b></div>
           </div>
           <div className="panel-separator" />
           <div className="object-block moon-block">
             <div className="object-heading"><span className="object-icon moon-icon"><Moon size={17} /></span><span>THE MOON</span><b className={sky.moon.visible ? 'status-up' : 'status-down'}>{sky.moon.visible ? 'ABOVE HORIZON' : 'BELOW HORIZON'}</b></div>
-            <div className="moon-summary"><div className="moon-phase-art" style={{ '--phase': `${sky.moon.illumination * 100}%` } as CSSProperties}><span /></div><div><div className="object-main">{sky.moon.phaseName}</div><div className="object-coordinates">{Math.round(sky.moon.illumination * 100)}% ILLUMINATED</div></div></div>
+            <div className="moon-summary"><MoonPhase illumination={sky.moon.illumination} angle={sky.moon.brightLimbAngle} label={sky.moon.phaseName} /><div><div className="object-main">{sky.moon.phaseName}</div><div className="object-coordinates">{Math.round(sky.moon.illumination * 100)}% ILLUMINATED</div></div></div>
             <div className="event-row"><span>Altitude / Azimuth</span><b>{deg(sky.moon.altitude)} / {deg(sky.moon.azimuth)}</b></div>
-            <div className="event-row"><span>Moonrise</span><b>{formatTime(sky.events.moonrise, location.timezone)}</b></div>
-            <div className="event-row"><span>Moonset</span><b>{formatTime(sky.events.moonset, location.timezone)}</b></div>
+            <div className="event-row"><span>Moonrise</span><b>{sky.events.moonrise ? formatTime(sky.events.moonrise, location.timezone) : 'No rise today'}</b></div>
+            <div className="event-row"><span>Moonset</span><b>{sky.events.moonset ? formatTime(sky.events.moonset, location.timezone) : 'No set today'}</b></div>
             <div className="event-row"><span>Distance</span><b>{Math.round(sky.moon.distanceKm).toLocaleString('en-US')} km</b></div>
           </div>
         </aside>
 
         <div className="layer-toolbar glass-panel">
           <div className="layer-heading"><LayersIcon /> SKY LAYERS</div>
-          <button className={showStars ? 'layer-toggle active' : 'layer-toggle'} onClick={() => setShowStars((v) => !v)}><Star size={14} /> Stars <span /></button>
-          <button className={showConstellations ? 'layer-toggle active' : 'layer-toggle'} onClick={() => setShowConstellations((v) => !v)}><Sparkles size={14} /> Lines <span /></button>
-          <button className={showLabels ? 'layer-toggle active' : 'layer-toggle'} onClick={() => setShowLabels((v) => !v)}><Crosshair size={14} /> Labels <span /></button>
+          <button aria-pressed={showStars} className={showStars ? 'layer-toggle active' : 'layer-toggle'} onClick={() => setShowStars((v) => !v)}><Star size={14} /> Stars <span /></button>
+          <button aria-pressed={showConstellations} className={showConstellations ? 'layer-toggle active' : 'layer-toggle'} onClick={() => setShowConstellations((v) => !v)}><Sparkles size={14} /> Lines <span /></button>
+          <button aria-pressed={showLabels} className={showLabels ? 'layer-toggle active' : 'layer-toggle'} onClick={() => setShowLabels((v) => !v)}><Crosshair size={14} /> Labels <span /></button>
         </div>
 
         <button className={`weather-open glass-panel ${showWeather ? 'is-active' : ''}`} onClick={() => setShowWeather((value) => !value)}>
@@ -345,25 +281,30 @@ export default function App({ initialLocation = PRESETS[0], initialTime, weather
               <button className="icon-button" onClick={() => setShowWeather(false)} aria-label="Close weather panel"><X size={16} /></button>
             </div>
             <div className="weather-tabs">
-              <button className={!customMode ? 'selected' : ''} onClick={resetWeather}>Live weather</button>
-              <button className={customMode ? 'selected' : ''} onClick={activateCustomWeather}>Custom simulation</button>
+              <button aria-pressed={!customMode} className={!customMode ? 'selected' : ''} onClick={resetWeather}>Weather data</button>
+              <button aria-pressed={customMode} className={customMode ? 'selected' : ''} onClick={activateCustomWeather}>Custom simulation</button>
             </div>
             <div className="weather-source"><span className={weatherIsActual ? 'source-dot actual' : 'source-dot sim'} />{weatherLoading ? 'Updating weather…' : sourceText}</div>
-            {!customMode && !weatherResult.available && <p className="weather-note">{weatherResult.message ?? 'No real weather data for this date. Switch to custom simulation to explore different skies.'}</p>}
-            {!customMode && weatherResult.available && !weather.visibilityAvailable && <p className="weather-note">Visibility is not supplied by the historical archive. Adjust the visibility slider to simulate it.</p>}
+            {!customMode && selection.message && <p className="weather-note" role="status">{selection.message}</p>}
+            {!customMode && selection.status === 'partial' && <p className="weather-note">Some fields are unavailable. Missing atmosphere fields use neutral rendering assumptions.</p>}
+            {!customMode && <button className="reset-weather" onClick={refreshWeather}>Refresh weather</button>}
             <div className="weather-current-grid">
-              <div><Thermometer size={14} /><b>{num(weather.temperature, 0)}°</b><small>TEMP °C</small></div>
-              <div><Wind size={14} /><b>{num(weather.windSpeed, 0)} <small>km/h</small></b><small>WIND</small></div>
-              <div><Cloud size={14} /><b>{Math.round(weather.cloudCover)}%</b><small>CLOUD</small></div>
-              <div><Eye size={14} /><b>{customMode || weather.visibilityAvailable ? <>{num(weather.visibilityKm, 0)} <small>km</small></> : '—'}</b><small>VISIBILITY</small></div>
+              <div><Thermometer size={14} /><b>{metric(values?.temperature)}</b><small>TEMP °C</small></div>
+              <div><Wind size={14} /><b>{metric(values?.windSpeed)}</b><small>WIND km/h</small></div>
+              <div><Cloud size={14} /><b>{metric(values?.cloudCover)}</b><small>CLOUD %</small></div>
+              <div><Eye size={14} /><b>{metric(values?.visibilityKm)}</b><small>VISIBILITY km</small></div>
             </div>
+            {customMode && <>
             <WeatherSlider label="Cloud cover" value={weather.cloudCover} min={0} max={100} suffix="%" onChange={(value) => updateWeatherField('cloudCover', value)} />
             <WeatherSlider label="Visibility" value={weather.visibilityKm} min={1} max={60} suffix="km" onChange={(value) => updateWeatherField('visibilityKm', value)} />
             <WeatherSlider label="Atmospheric haze" value={weather.haze} min={0} max={100} suffix="%" onChange={(value) => updateWeatherField('haze', value)} />
             <WeatherSlider label="Wind speed" value={weather.windSpeed} min={0} max={80} suffix="km/h" onChange={(value) => updateWeatherField('windSpeed', value)} />
             <WeatherSlider label="Wind direction" value={weather.windDirection} min={0} max={359} suffix="°" onChange={(value) => updateWeatherField('windDirection', value)} />
             <WeatherSlider label="Precipitation" value={weather.precipitation} min={0} max={20} step={0.1} suffix="mm/h" onChange={(value) => updateWeatherField('precipitation', value)} />
-            <div className="weather-footnote"><span>{weatherDescription(weather.weatherCode)}</span><span>{Math.round(weather.humidity)}% humidity · {Math.round(weather.pressure)} hPa</span></div>
+            <WeatherSlider label="Temperature" value={weather.temperature} min={-30} max={45} suffix="°C" onChange={(value) => updateWeatherField('temperature', value)} />
+            </>}
+            <div className="weather-footnote"><span>{weatherDescription(values?.weatherCode ?? null)}</span><span>{metric(values?.humidity)}% humidity · {metric(values?.pressure)} hPa</span></div>
+            {!customMode && selection.sampledAt !== undefined && <p className="weather-note">Sample {formatTime(new Date(selection.sampledAt), location.timezone)} · fetched {formatTime(new Date(selection.fetchedAt!), location.timezone)}</p>}
             {customMode && <button className="reset-weather" onClick={resetWeather}><RotateCcw size={13} /> Reset to actual weather</button>}
           </aside>
         )}
@@ -372,11 +313,12 @@ export default function App({ initialLocation = PRESETS[0], initialTime, weather
           <div className="time-topline">
             <div className="time-label"><CalendarDays size={14} /><span>TIME JOURNEY</span><b>{formatDate(simTime, location.timezone)}</b></div>
             <div className="time-inputs">
-              <label><span>DATE</span><input type="date" value={localParts.date} onChange={(event) => updateDate(event.target.value)} /></label>
+              <label><span>DATE</span><input type="date" min="1900-01-01" max="2100-12-31" value={localParts.date} onChange={(event) => updateDate(event.target.value)} /></label>
               <label><span>LOCAL TIME</span><input type="time" value={localParts.time} onChange={(event) => updateTime(event.target.value)} /></label>
               <button className="now-button" onClick={useNow}>NOW</button>
             </div>
           </div>
+          {timeError && <div className="time-error" role="alert">{timeError}{timeChoices.map((candidate) => <button key={candidate.getTime()} onClick={() => { setSimTime(candidate); setTimeError(''); setTimeChoices([]); }}>{formatTime(candidate, location.timezone)} {formatOffset(candidate, location.timezone)}</button>)}</div>}
           <div className="timeline-row">
             <div className="timeline-symbol"><Sunrise size={15} /></div>
             <div className="timeline-wrap">
@@ -384,14 +326,15 @@ export default function App({ initialLocation = PRESETS[0], initialTime, weather
                 aria-label="Time of day"
                 type="range"
                 min={0}
-                max={1439}
+                max={dayBounds.minutes - 1}
                 step={1}
                 value={dayMinute}
+                aria-valuetext={`${localClock} ${formatOffset(simTime, location.timezone)}`}
                 onChange={(event) => updateMinuteOfDay(Number(event.target.value))}
                 className="time-range"
-                style={{ '--range-progress': `${dayMinute / 1439 * 100}%` } as CSSProperties}
+                style={{ '--range-progress': `${dayMinute / (dayBounds.minutes - 1) * 100}%` } as CSSProperties}
               />
-              <div className="timeline-ticks"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>
+              <div className="timeline-ticks">{[0, .25, .5, .75, 1].map((part) => <span key={part}>{formatTime(new Date(dayBounds.start.getTime() + part * (dayBounds.end.getTime() - dayBounds.start.getTime() - 60000)), location.timezone, { hour12: false })}</span>)}</div>
             </div>
             <div className="timeline-symbol sunset-symbol"><Sunset size={15} /></div>
             <div className="playback-controls">
@@ -405,7 +348,7 @@ export default function App({ initialLocation = PRESETS[0], initialTime, weather
 
       <footer className="bottom-bar">
         <div className="footer-left"><span className="footer-dot" /> <b>EARTH, OBSERVED</b><i /> {location.latitude.toFixed(2)}°, {location.longitude.toFixed(2)}°</div>
-        <div className="footer-center">SUN <b>{deg(sky.sun.altitude)}</b><i /> MOON <b>{Math.round(sky.moon.illumination * 100)}% LIT</b><i /> CLOUD <b>{Math.round(weather.cloudCover)}%</b></div>
+        <div className="footer-center">{sourceText}{!customMode && !selection.values ? ' · neutral atmosphere' : ''}<i /> CLOUD <b>{metric(values?.cloudCover)}%</b></div>
         <div className="footer-right"><span>ASTRONOMY ENGINE</span><i /> <span>OPEN-METEO</span></div>
       </footer>
     </main>
@@ -428,3 +371,4 @@ function WeatherSlider({
     </label>
   );
 }
+

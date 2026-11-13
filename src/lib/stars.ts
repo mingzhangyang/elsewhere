@@ -55,7 +55,7 @@ export const CONSTELLATIONS = [
   { name: 'Ursa Major', lines: [['dubhe', 'merak'], ['merak', 'phecda'], ['phecda', 'megrez'], ['megrez', 'alioth'], ['alioth', 'mizar'], ['mizar', 'alkaid'], ['dubhe', 'megrez']] },
   { name: 'Orion', lines: [['betelgeuse', 'bellatrix'], ['bellatrix', 'mintaka'], ['mintaka', 'alnilam'], ['alnilam', 'alnitak'], ['alnitak', 'betelgeuse'], ['rigel', 'mintaka']] },
   { name: 'Crux', lines: [['acrux', 'gacrux'], ['mimosa', 'acrux'], ['gacrux', 'mimosa']] },
-  { name: 'Cygnus', lines: [['deneb', 'vega'], ['deneb', 'altair']] },
+  { name: 'Summer Triangle', lines: [['deneb', 'vega'], ['deneb', 'altair'], ['vega', 'altair']] },
   { name: 'Gemini', lines: [['castor', 'pollux']] },
 ];
 

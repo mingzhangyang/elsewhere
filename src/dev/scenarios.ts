@@ -1,5 +1,6 @@
 import type { AppProps } from '../App';
-import { defaultWeatherValues } from '../lib/weather';
+import { defaultWeatherValues, weatherKey } from '../lib/weather';
+import { localDayBounds } from '../lib/time';
 
 // Development-only entry point; never included in a production build.
 export function scenarioProps(name: string | null): AppProps {
@@ -14,9 +15,12 @@ export function scenarioProps(name: string | null): AppProps {
   const values = { ...defaultWeatherValues(), cloudCover: scene.cloudCover, precipitation: scene.precipitation, weatherCode: scene.code };
   return {
     initialTime: new Date(scene.time),
-    weatherLoader: async () => ({
-      available: name !== 'unavailable', source: name === 'unavailable' ? 'unavailable' : 'forecast',
-      values, message: name === 'unavailable' ? 'Deterministic unavailable-weather scenario.' : undefined,
-    }),
+    weatherLoader: async (location, date) => {
+      const base = { key: weatherKey(location, date), fetchedAt: Date.now() };
+      if (name === 'unavailable') return { ...base, status: 'unavailable', message: 'Deterministic unavailable-weather scenario.' };
+      const { start, end } = localDayBounds(date, location.timezone);
+      return { ...base, status: 'ready', source: 'forecast', start: start.getTime(), end: end.getTime(),
+        hourly: Array.from({ length: Math.ceil((end.getTime() - start.getTime()) / 3600000) + 1 }, (_, i) => ({ time: start.getTime() + i * 3600000, values })) };
+    },
   };
 }

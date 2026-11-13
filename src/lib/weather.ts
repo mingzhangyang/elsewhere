@@ -1,178 +1,186 @@
-import type { LocationInfo, WeatherPoint, WeatherResult, WeatherValues } from '../types';
-import { getZonedParts } from './time';
+import type { LocationInfo, WeatherMeasurements, WeatherPoint, WeatherResult, WeatherSelection, WeatherValues } from '../types';
+import { getZonedParts, localDayBounds } from './time';
+import { validateObserver } from './astronomy';
 
-const EMPTY_WEATHER: WeatherValues = {
-  cloudCover: 18, cloudLow: 8, cloudMid: 7, cloudHigh: 8,
-  visibilityKm: 30, visibilityAvailable: false, haze: 18, humidity: 48, windSpeed: 8, windDirection: 240,
-  precipitation: 0, temperature: 18, pressure: 1013, weatherCode: 0,
-};
+export const WEATHER_FIELDS = {
+  temperature: 'temperature_2m', humidity: 'relative_humidity_2m', precipitation: 'precipitation',
+  weatherCode: 'weather_code', cloudCover: 'cloud_cover', cloudLow: 'cloud_cover_low',
+  cloudMid: 'cloud_cover_mid', cloudHigh: 'cloud_cover_high', visibilityKm: 'visibility',
+  windSpeed: 'wind_speed_10m', windDirection: 'wind_direction_10m', pressure: 'pressure_msl',
+} as const;
+const EMPTY: WeatherMeasurements = Object.fromEntries([...Object.keys(WEATHER_FIELDS), 'haze'].map((key) => [key, null])) as WeatherMeasurements;
+export const defaultWeatherValues = (): WeatherValues => ({
+  cloudCover: 0, cloudLow: 0, cloudMid: 0, cloudHigh: 0, visibilityKm: 30,
+  visibilityAvailable: false, haze: 0, humidity: 50, windSpeed: 0, windDirection: 0,
+  precipitation: 0, temperature: 15, pressure: 1013, weatherCode: 0,
+});
 
-const HOURLY_FIELDS = [
-  'temperature_2m', 'relative_humidity_2m', 'precipitation', 'weather_code',
-  'cloud_cover', 'cloud_cover_low', 'cloud_cover_mid', 'cloud_cover_high',
-  'visibility', 'wind_speed_10m', 'wind_direction_10m', 'pressure_msl',
-].join(',');
-
-export async function searchLocations(query: string): Promise<LocationInfo[]> {
-  const url = new URL('https://geocoding-api.open-meteo.com/v1/search');
-  url.search = new URLSearchParams({ name: query, count: '8', language: 'en', format: 'json' }).toString();
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`Location search failed (${response.status})`);
-  const data = await response.json() as { results?: Array<Record<string, unknown>> };
-  return (data.results ?? []).map((item, index) => ({
-    id: `${String(item.id ?? index)}-${String(item.latitude)}-${String(item.longitude)}`,
-    name: String(item.name ?? 'Unknown place'),
-    country: String(item.country ?? item.admin1 ?? ''),
-    latitude: Number(item.latitude),
-    longitude: Number(item.longitude),
-    elevation: Number(item.elevation ?? 0),
-    timezone: String(item.timezone ?? 'UTC'),
-  }));
+export function weatherKey(location: LocationInfo, date: Date): string {
+  return `${location.latitude},${location.longitude},${location.elevation},${location.timezone},${getZonedParts(date, location.timezone).date}`;
+}
+function record(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Weather service returned an invalid response.');
+  return value as Record<string, unknown>;
+}
+function number(value: unknown): number | null { return typeof value === 'number' && Number.isFinite(value) ? value : null; }
+function validValue(field: keyof typeof WEATHER_FIELDS, value: unknown): number | null {
+  const n = number(value);
+  if (n === null) return null;
+  if (['cloudCover', 'cloudLow', 'cloudMid', 'cloudHigh', 'humidity'].includes(field) && (n < 0 || n > 100)) return null;
+  if (['visibilityKm', 'windSpeed', 'precipitation'].includes(field) && n < 0) return null;
+  if (field === 'windDirection' && (n < 0 || n > 360)) return null;
+  if (field === 'weatherCode' && ![0,1,2,3,45,48,51,53,55,56,57,61,63,65,66,67,71,73,75,77,80,81,82,85,86,95,96,99].includes(n)) return null;
+  return field === 'visibilityKm' ? n / 1000 : n;
+}
+function measurements(data: Record<string, unknown>, index?: number): WeatherMeasurements {
+  const values = { ...EMPTY };
+  for (const field of Object.keys(WEATHER_FIELDS) as (keyof typeof WEATHER_FIELDS)[]) {
+    const raw = data[WEATHER_FIELDS[field]];
+    values[field] = validValue(field, index === undefined ? raw : Array.isArray(raw) ? raw[index] : null);
+  }
+  values.haze = values.visibilityKm === null ? null : Math.max(0, Math.min(100, (1 - Math.min(60, values.visibilityKm) / 60) * 70));
+  return values;
 }
 
-function nullableNumber(value: unknown, fallback: number): number {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+export interface WeatherRequestOptions { signal?: AbortSignal; now?: Date }
+export async function fetchWeatherForDate(location: LocationInfo, requestedDate: Date, options: WeatherRequestOptions = {}): Promise<WeatherResult> {
+  validateObserver(location);
+  const now = options.now ?? new Date();
+  const requested = getZonedParts(requestedDate, location.timezone);
+  const today = getZonedParts(now, location.timezone);
+  const days = Math.round((Date.parse(requested.date) - Date.parse(today.date)) / 86400000);
+  const key = weatherKey(location, requestedDate);
+  const base = { key, fetchedAt: now.getTime() };
+  if (days > 15 || requested.year < 1940) return { ...base, status: 'unavailable', message: 'Weather data does not cover this date. Choose custom weather to explore this sky.' };
+  const archive = days < -5;
+  const params = new URLSearchParams({
+    latitude: String(location.latitude), longitude: String(location.longitude), elevation: String(location.elevation),
+    hourly: Object.values(WEATHER_FIELDS).filter((field) => !archive || field !== 'visibility').join(','),
+    timezone: 'UTC', timeformat: 'unixtime', temperature_unit: 'celsius', wind_speed_unit: 'kmh', precipitation_unit: 'mm',
+  });
+  // Request complete UTC days bracketing the civil day; DST boundaries are handled locally.
+  const bounds = localDayBounds(requestedDate, location.timezone);
+  const requestedStart = new Date(bounds.start.getTime() - 3600000).toISOString().slice(0, 10);
+  const requestedEnd = bounds.end.toISOString().slice(0, 10);
+  const lastForecastDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 15)).toISOString().slice(0, 10);
+  const endDay = archive || requestedEnd < lastForecastDay ? requestedEnd : lastForecastDay;
+  const startDay = requestedStart < '1940-01-01' ? '1940-01-01' : requestedStart;
+  if (startDay > endDay) return { ...base, status: 'unavailable', message: 'This local day falls beyond the weather provider’s UTC coverage.' };
+  params.set('start_date', startDay);
+  params.set('end_date', endDay);
+  if (!archive) params.set('current', Object.values(WEATHER_FIELDS).join(','));
+  try {
+    const timeout = AbortSignal.timeout(12000);
+    const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
+    const response = await fetch(`https://${archive ? 'archive-api' : 'api'}.open-meteo.com/v1/${archive ? 'archive' : 'forecast'}?${params}`, { signal });
+    const payload: unknown = await response.json();
+    const data = record(payload);
+    if (!response.ok) {
+      const reason = typeof data.reason === 'string' ? data.reason : `HTTP ${response.status}`;
+      throw new Error(response.status === 429 ? 'Weather service is busy. Try refreshing in a moment.' : `Weather service: ${reason}`);
+    }
+    const hourlyData = record(data.hourly);
+    if (!Array.isArray(hourlyData.time)) throw new Error('Weather service returned no hourly timeline.');
+    const hourly = hourlyData.time.map((value, i): WeatherPoint => {
+      const seconds = number(value);
+      if (seconds === null) throw new Error('Weather service returned an invalid timestamp.');
+      return { time: seconds * 1000, values: measurements(hourlyData, i) };
+    });
+    if (!hourly.length) return { ...base, status: 'unavailable', message: 'No weather samples are available for this date.' };
+    if (hourly.some((row, i) => i > 0 && row.time <= hourly[i - 1].time)) throw new Error('Weather timeline is not ordered.');
+    let current: WeatherPoint | undefined;
+    if (data.current && typeof data.current === 'object') {
+      const c = record(data.current);
+      const time = number(c.time);
+      if (time !== null) current = { time: time * 1000, values: measurements(c) };
+    }
+    return { ...base, status: 'ready', source: archive ? 'historical' : days < 0 ? 'recent' : 'forecast',
+      start: Math.max(bounds.start.getTime(), hourly[0].time), end: Math.min(bounds.end.getTime(), hourly[hourly.length - 1].time + 3600000), hourly, current };
+  } catch (error) {
+    if (options.signal?.aborted) throw error;
+    return { ...base, status: 'error', message: error instanceof Error ? error.message : 'Could not load weather. Try refreshing.' };
+  }
 }
 
-function diffLocalDays(a: string, b: string): number {
-  const [ay, am, ad] = a.split('-').map(Number);
-  const [by, bm, bd] = b.split('-').map(Number);
-  return Math.round((Date.UTC(ay, am - 1, ad) - Date.UTC(by, bm - 1, bd)) / 86_400_000);
-}
-
-function readHourlyTimeline(data: any, visibilityAvailable: boolean): WeatherPoint[] {
-  const times: number[] | undefined = data?.hourly?.time;
-  if (!times?.length) return [];
-  const field = (name: string, index: number, fallback: number) => nullableNumber(data.hourly[name]?.[index], fallback);
-  return times.map((time, index) => ({
-    time: Number(time) * 1000,
-    values: {
-      temperature: field('temperature_2m', index, EMPTY_WEATHER.temperature),
-      humidity: field('relative_humidity_2m', index, EMPTY_WEATHER.humidity),
-      precipitation: field('precipitation', index, 0),
-      weatherCode: field('weather_code', index, 0),
-      cloudCover: field('cloud_cover', index, EMPTY_WEATHER.cloudCover),
-      cloudLow: field('cloud_cover_low', index, EMPTY_WEATHER.cloudLow),
-      cloudMid: field('cloud_cover_mid', index, EMPTY_WEATHER.cloudMid),
-      cloudHigh: field('cloud_cover_high', index, EMPTY_WEATHER.cloudHigh),
-      visibilityKm: field('visibility', index, 30_000) / 1000,
-      visibilityAvailable,
-      haze: visibilityAvailable
-        ? Math.round((1 - Math.min(60_000, field('visibility', index, 30_000)) / 60_000) * 70 + Math.max(0, field('relative_humidity_2m', index, 48) - 70) * 0.45)
-        : Math.max(0, Math.round((field('relative_humidity_2m', index, 48) - 76) * 0.45)),
-      windSpeed: field('wind_speed_10m', index, EMPTY_WEATHER.windSpeed),
-      windDirection: field('wind_direction_10m', index, EMPTY_WEATHER.windDirection),
-      pressure: field('pressure_msl', index, EMPTY_WEATHER.pressure),
-    },
-  }));
-}
-
-function nearestHourlySample(hourly: WeatherPoint[], requestedDate: Date): WeatherValues | null {
-  if (!hourly.length) return null;
-  const target = requestedDate.getTime();
-  let selected: WeatherPoint | null = null;
-  let bestDistance = Infinity;
-  for (const point of hourly) {
-    const distance = Math.abs(point.time - target);
-    if (distance < bestDistance) {
-      selected = point;
-      bestDistance = distance;
+export function selectWeather(result: WeatherResult | null, location: LocationInfo, instant: Date): WeatherSelection {
+  if (!result || result.key !== weatherKey(location, instant)) return { status: 'loading', values: null, message: 'Loading weather for this place and day…' };
+  if (result.status !== 'ready') return { status: result.status, values: null, message: result.message };
+  const target = instant.getTime();
+  if (target < result.start || target >= result.end) return { status: 'unavailable', values: null, message: 'No weather coverage for this instant.' };
+  const current = result.current && Math.abs(target - result.current.time) <= 15 * 60000 ? result.current : undefined;
+  let values: WeatherMeasurements;
+  let sampledAt: number;
+  if (current) { values = current.values; sampledAt = current.time; }
+  else {
+    let before: WeatherPoint | undefined;
+    for (const row of result.hourly) { if (row.time > target) break; before = row; }
+    const after = result.hourly.find((row) => row.time > target);
+    const nearest = before ?? after;
+    if (!nearest || Math.abs(nearest.time - target) > 3600000) return { status: 'unavailable', values: null, message: 'No weather sample close to this instant.' };
+    sampledAt = nearest.time;
+    values = { ...nearest.values };
+    if (before && after && after.time - before.time <= 3600000) {
+      const t = (target - before.time) / (after.time - before.time);
+      for (const key of Object.keys(values) as (keyof WeatherMeasurements)[]) {
+        const a = before.values[key], b = after.values[key];
+        if (key === 'weatherCode' || key === 'precipitation') continue;
+        if (a === null || b === null) { values[key] = null; continue; }
+        values[key] = key === 'windDirection' ? (a + (((b - a + 540) % 360) - 180) * t + 360) % 360 : a + (b - a) * t;
+      }
     }
   }
-  return bestDistance <= 90 * 60_000 ? selected?.values ?? null : null;
+  return { status: Object.values(values).some((value) => value === null) ? 'partial' : 'ready', values,
+    source: current ? 'current' : result.source, sampledAt, fetchedAt: result.fetchedAt };
 }
 
-function readCurrentSample(data: any, fallback: WeatherValues): WeatherValues | null {
-  const current = data?.current;
-  if (!current) return null;
-  const get = (field: string, fallback: number) => nullableNumber(current[field], fallback);
-  return {
-    temperature: get('temperature_2m', EMPTY_WEATHER.temperature),
-    humidity: get('relative_humidity_2m', EMPTY_WEATHER.humidity),
-    precipitation: get('precipitation', 0),
-    weatherCode: get('weather_code', 0),
-    cloudCover: get('cloud_cover', EMPTY_WEATHER.cloudCover),
-    cloudLow: fallback.cloudLow,
-    cloudMid: fallback.cloudMid,
-    cloudHigh: fallback.cloudHigh,
-    visibilityKm: fallback.visibilityKm,
-    visibilityAvailable: fallback.visibilityAvailable,
-    haze: fallback.haze,
-    windSpeed: get('wind_speed_10m', EMPTY_WEATHER.windSpeed),
-    windDirection: get('wind_direction_10m', EMPTY_WEATHER.windDirection),
-    pressure: get('pressure_msl', EMPTY_WEATHER.pressure),
-  };
+/** Presentation assumptions are confined to the renderer, never to source readouts. */
+export function renderingWeather(selection: WeatherSelection): WeatherValues {
+  const defaults = defaultWeatherValues();
+  if (!selection.values) return defaults;
+  for (const key of Object.keys(selection.values) as (keyof WeatherMeasurements)[]) {
+    const value = selection.values[key];
+    if (value !== null) defaults[key] = value;
+  }
+  defaults.visibilityAvailable = selection.values.visibilityKm !== null;
+  return defaults;
+}
+export function customConditions(weather: WeatherValues, field?: keyof WeatherValues, value?: number): WeatherValues {
+  const next = { ...weather, ...(field ? { [field]: value } : {}), visibilityAvailable: true };
+  if (field !== 'weatherCode') next.weatherCode = next.precipitation > 0 ? (next.temperature < 0 ? 73 : 63) : next.cloudCover > 80 ? 3 : next.cloudCover > 20 ? 2 : 0;
+  return next;
 }
 
-export async function fetchWeatherForDate(
-  location: LocationInfo,
-  requestedDate: Date,
-): Promise<WeatherResult> {
-  const requested = getZonedParts(requestedDate, location.timezone);
-  const now = new Date();
-  const today = getZonedParts(now, location.timezone);
-  const daysFromToday = diffLocalDays(requested.date, today.date);
-  const base = {
-    latitude: String(location.latitude),
-    longitude: String(location.longitude),
-    hourly: HOURLY_FIELDS,
-    timezone: 'auto',
-    timeformat: 'unixtime',
-    start_date: requested.date,
-    end_date: requested.date,
-  };
-
-  if (daysFromToday > 15) {
-    return { available: false, source: 'unavailable', values: { ...EMPTY_WEATHER }, message: 'The 16-day forecast window does not extend to this date.' };
-  }
-
-  const historical = daysFromToday < 0;
-  const endpoint = historical
-    ? 'https://archive-api.open-meteo.com/v1/archive'
-    : 'https://api.open-meteo.com/v1/forecast';
-  // The archive endpoint does not expose hourly visibility; requesting it would
-  // make the entire historical query fail with an invalid-variable response.
-  const hourlyFields = historical ? HOURLY_FIELDS.split(',').filter((field) => field !== 'visibility').join(',') : HOURLY_FIELDS;
-  const params = new URLSearchParams({ ...base, hourly: hourlyFields });
-  if (!historical) {
-    params.set('forecast_days', '16');
-    params.set('current', 'temperature_2m,relative_humidity_2m,precipitation,weather_code,cloud_cover,pressure_msl,wind_speed_10m,wind_direction_10m');
-  }
-  const response = await fetch(`${endpoint}?${params.toString()}`);
-  if (!response.ok) {
-    return { available: false, source: 'unavailable', values: { ...EMPTY_WEATHER }, message: `Weather service returned ${response.status}.` };
-  }
-  const data = await response.json();
-  const hourly = readHourlyTimeline(data, !historical);
-  const sample = nearestHourlySample(hourly, requestedDate);
-  if (!sample) {
-    return { available: false, source: 'unavailable', values: { ...EMPTY_WEATHER }, message: historical ? 'Historical weather is not available for this date.' : 'Weather data is not available for this hour.' };
-  }
-
-  const currentTime = Number(data.current?.time) * 1000;
-  const isNearCurrent = !historical && requested.date === today.date && Number.isFinite(currentTime)
-    && Math.abs(currentTime - requestedDate.getTime()) <= 60 * 60_000;
-  const values = isNearCurrent ? (readCurrentSample(data, sample) ?? sample) : sample;
-  return {
-    available: true,
-    source: historical ? 'historical' : isNearCurrent ? 'current' : 'forecast',
-    values,
-    hourly,
-  };
+export async function searchLocations(query: string, signal?: AbortSignal): Promise<LocationInfo[]> {
+  const url = new URL('https://geocoding-api.open-meteo.com/v1/search');
+  url.search = new URLSearchParams({ name: query, count: '8', language: 'en', format: 'json' }).toString();
+  const response = await fetch(url, { signal });
+  if (!response.ok) throw new Error(`Location search failed (${response.status}). Try again.`);
+  const data = record(await response.json());
+  if (!Array.isArray(data.results)) return [];
+  return data.results.flatMap((raw): LocationInfo[] => {
+    const item = record(raw);
+    const latitude = number(item.latitude), longitude = number(item.longitude);
+    if (latitude === null || longitude === null || typeof item.timezone !== 'string') return [];
+    const location = { id: `${String(item.id)}-${latitude}-${longitude}`, name: String(item.name ?? 'Place'),
+      country: [item.admin1, item.country].filter(Boolean).join(', '), latitude, longitude,
+      elevation: number(item.elevation) ?? 0, timezone: item.timezone };
+    try { validateObserver(location); return [location]; } catch { return []; }
+  });
 }
-
-export function weatherDescription(code: number): string {
+export function weatherDescription(code: number | null): string {
+  if (code === null) return 'Condition unavailable';
   if (code === 0) return 'Clear sky';
-  if (code <= 2) return 'Mostly clear';
+  if (code <= 2) return 'Partly cloudy';
   if (code === 3) return 'Overcast';
-  if (code <= 48) return 'Foggy';
+  if (code <= 48) return 'Fog';
   if (code <= 57) return 'Drizzle';
   if (code <= 67) return 'Rain';
   if (code <= 77) return 'Snow';
   if (code <= 82) return 'Rain showers';
   if (code <= 86) return 'Snow showers';
-  if (code >= 95) return 'Thunderstorm';
-  return 'Variable conditions';
+  return 'Thunderstorm';
 }
-
-export const defaultWeatherValues = (): WeatherValues => ({ ...EMPTY_WEATHER });
+export function weatherSourceLabel(selection: WeatherSelection): string {
+  if (!selection.source) return selection.status === 'loading' ? 'Loading weather' : 'Weather unavailable';
+  return { current: 'Current model estimate', forecast: 'Forecast', recent: 'Recent weather model', historical: 'Historical reanalysis' }[selection.source];
+}

@@ -16,6 +16,4 @@ export default ts.config(
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
-  // Provider payload validation is replaced in phase 1.
-  { files: ['src/lib/weather.ts'], rules: { '@typescript-eslint/no-explicit-any': 'off' } },
 );

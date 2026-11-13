@@ -32,16 +32,20 @@ export interface SkyEvents {
   moonrise: Date | null;
   moonset: Date | null;
   daylightHours: number | null;
+  daylightStatus: 'normal' | 'polar-day' | 'polar-night' | 'partial';
+  twilightDawn: Date | null;
+  twilightDusk: Date | null;
 }
 
 export interface SkyState {
-  sun: CelestialBody;
+  sun: CelestialBody & { distanceKm: number };
   moon: CelestialBody & {
     phaseAngle: number;
     illumination: number;
     phaseName: string;
     distanceKm: number;
     waxing: boolean;
+    brightLimbAngle: number;
   };
   stars: Star[];
   events: SkyEvents;
@@ -65,15 +69,22 @@ export interface WeatherValues {
   weatherCode: number;
 }
 
-export interface WeatherPoint {
-  time: number; // Unix epoch milliseconds, independent of daylight-saving transitions
-  values: WeatherValues;
-}
+export type WeatherMeasurements = { [K in Exclude<keyof WeatherValues, 'visibilityAvailable'>]: number | null };
+export interface WeatherPoint { time: number; values: WeatherMeasurements }
+export type WeatherSource = 'current' | 'forecast' | 'recent' | 'historical';
+export type WeatherResult = {
+  key: string;
+  fetchedAt: number;
+} & ({
+  status: 'ready'; source: Exclude<WeatherSource, 'current'>;
+  start: number; end: number; hourly: WeatherPoint[]; current?: WeatherPoint;
+} | { status: 'unavailable' | 'error'; message: string });
 
-export interface WeatherResult {
-  available: boolean;
-  source: 'current' | 'forecast' | 'historical' | 'unavailable';
-  values: WeatherValues;
-  hourly?: WeatherPoint[];
+export interface WeatherSelection {
+  status: 'loading' | 'ready' | 'partial' | 'unavailable' | 'error';
+  values: WeatherMeasurements | null;
+  source?: WeatherSource;
+  sampledAt?: number;
+  fetchedAt?: number;
   message?: string;
 }
