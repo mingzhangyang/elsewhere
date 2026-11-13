@@ -40,6 +40,7 @@ import {
   parseExploration,
   savePreferences,
   type CameraView,
+  type LayerSettings,
   type Preferences,
 } from './lib/persistence';
 import type { RenderStats } from './renderer/performance';
@@ -64,10 +65,11 @@ export default function App({
     shared:
       initialTime || initialLocation ? { value: null, notice: '' } : parseExploration(window.location.hash),
   }));
-  const [preferences, setPreferences] = useState<Preferences>(() => ({
-    ...launch.preferences.value,
-    layers: launch.shared.value?.layers ?? launch.preferences.value.layers,
-  }));
+  const [preferences, setPreferences] = useState<Preferences>(() => launch.preferences.value);
+  // A shared link's layers apply to this visit only; they never become the recipient's saved defaults.
+  const [sharedLayers, setSharedLayers] = useState<LayerSettings | null>(
+    () => launch.shared.value?.layers ?? null,
+  );
   const simulation = useSimulation(
     initialLocation ?? launch.shared.value?.location ?? PRESETS[0],
     initialTime ?? (launch.shared.value ? new Date(launch.shared.value.instant) : undefined),
@@ -133,7 +135,11 @@ export default function App({
   const objectsTrigger = useRef<HTMLButtonElement>(null);
   const shareDialog = useRef<HTMLDialogElement>(null);
   const shareInput = useRef<HTMLInputElement>(null);
-  const layers = preferences.layers;
+  const layers = sharedLayers ?? preferences.layers;
+  const setLayer = (key: keyof LayerSettings, value: boolean) => {
+    setSharedLayers((shared) => (shared ? { ...shared, [key]: value } : shared));
+    changePreferences((p) => ({ ...p, layers: { ...p.layers, [key]: value } }));
+  };
   const sourceText = clearSky
     ? 'Clear-sky preview'
     : custom
@@ -450,11 +456,7 @@ export default function App({
                 </button>
               )}
               {focusedVisibility.reason === 'layer' && (
-                <button
-                  onClick={() => changePreferences((p) => ({ ...p, layers: { ...p.layers, stars: true } }))}
-                >
-                  Enable stars
-                </button>
+                <button onClick={() => setLayer('stars', true)}>Enable stars</button>
               )}
               {focusedVisibility.reason === 'horizon' && focused.kind !== 'star' && (
                 <button onClick={() => jumpToRise(focused.kind as 'sun' | 'moon')}>Jump to next rise</button>
@@ -559,9 +561,7 @@ export default function App({
                         className="setting-toggle"
                         key={key}
                         aria-pressed={layers[key]}
-                        onClick={() =>
-                          changePreferences((p) => ({ ...p, layers: { ...p.layers, [key]: !p.layers[key] } }))
-                        }
+                        onClick={() => setLayer(key, !layers[key])}
                       >
                         <span>
                           {key === 'stars'

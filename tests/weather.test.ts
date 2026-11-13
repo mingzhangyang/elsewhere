@@ -163,3 +163,29 @@ it('clips the final local forecast day to the provider UTC horizon', async () =>
   const params = new URL(fetcher.mock.calls[0][0]).searchParams;
   expect(params.get('end_date')).toBe('2026-11-28');
 });
+
+it('reads hourly precipitation from the hour that ends after the instant', async () => {
+  const payload = weatherPayload();
+  const rainy = payload.hourly.time.indexOf(Date.parse('2026-11-12T15:00Z') / 1000);
+  payload.hourly.precipitation[rainy] = 2; // Open-Meteo: rain that fell 14:00–15:00.
+  payload.hourly.weather_code[rainy] = 63;
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(payload))));
+  const now = new Date('2026-11-12T10:00Z');
+  const result = await fetchWeatherForDate(NEW_YORK, now, { now });
+  const at = (iso: string) => selectWeather(result, NEW_YORK, new Date(iso)).values;
+  expect(at('2026-11-12T14:30Z')).toMatchObject({ precipitation: 2, weatherCode: 63 });
+  expect(at('2026-11-12T15:00Z')).toMatchObject({ precipitation: 2, weatherCode: 63 });
+  expect(at('2026-11-12T15:30Z')).toMatchObject({ precipitation: 0, weatherCode: 0 });
+  expect(at('2026-11-12T13:30Z')).toMatchObject({ precipitation: 0, weatherCode: 0 });
+});
+
+it('lets Open-Meteo choose the elevation for device coordinates', async () => {
+  const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify(weatherPayload())));
+  vi.stubGlobal('fetch', fetcher);
+  const now = new Date('2026-11-12T12:00Z');
+  await fetchWeatherForDate({ ...NEW_YORK, elevation: 0, source: 'device' }, now, { now });
+  await fetchWeatherForDate(NEW_YORK, now, { now });
+  const [device, preset] = fetcher.mock.calls.map(([url]) => new URL(url).searchParams);
+  expect(device.has('elevation')).toBe(false);
+  expect(preset.get('elevation')).toBe(String(NEW_YORK.elevation));
+});

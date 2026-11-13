@@ -8,6 +8,7 @@ import type {
 } from '../types';
 import { getZonedParts, localDayBounds } from './time';
 import { validateObserver } from '../domain/observer';
+import { isDeviceLocation } from './locations';
 
 export const WEATHER_FIELDS = {
   temperature: 'temperature_2m',
@@ -110,7 +111,8 @@ export async function fetchWeatherForDate(
   const params = new URLSearchParams({
     latitude: String(location.latitude),
     longitude: String(location.longitude),
-    elevation: String(location.elevation),
+    // Device locations carry a placeholder sea-level elevation; let Open-Meteo use its terrain model.
+    ...(isDeviceLocation(location) ? {} : { elevation: String(location.elevation) }),
     hourly: Object.values(WEATHER_FIELDS)
       .filter((field) => !archive || field !== 'visibility')
       .join(','),
@@ -230,6 +232,12 @@ export function selectWeather(
       return { status: 'unavailable', values: null, message: 'No weather sample close to this instant.' };
     sampledAt = nearest.time;
     values = { ...nearest.values };
+    // Hourly precipitation (and the weather code derived from it) covers the hour ending at its timestamp.
+    const period = result.hourly.find((row) => row.time >= target);
+    if (period && period.time - target < 3600000) {
+      values.precipitation = period.values.precipitation;
+      values.weatherCode = period.values.weatherCode;
+    }
     if (before && after && after.time - before.time <= 3600000) {
       const t = (target - before.time) / (after.time - before.time);
       for (const key of Object.keys(values) as (keyof WeatherMeasurements)[]) {

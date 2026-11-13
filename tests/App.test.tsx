@@ -87,3 +87,30 @@ it('does not display source weather defaults when weather is unavailable', async
   fireEvent.click(screen.getByRole('button', { name: 'Custom simulation' }));
   expect(screen.getByRole('slider', { name: /Cloud cover/ })).toBeInTheDocument();
 });
+
+it('applies shared-link layers to the visit without saving them as the recipient defaults', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}')));
+  const { explorationUrl } = await import('../src/lib/persistence');
+  const { PRESETS } = await import('../src/lib/locations');
+  const saved = loadPreferences().value.layers;
+  window.location.hash = new URL(
+    explorationUrl({
+      version: 1,
+      location: PRESETS[0],
+      instant: '2026-11-12T12:00:00.000Z',
+      camera: { heading: 0, altitude: 30, fov: 60 },
+      layers: { stars: false, lines: true, labels: false },
+      custom: null,
+    }),
+  ).hash;
+  try {
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: /Change location/ }));
+    fireEvent.click(screen.getByRole('option', { name: /Tokyo/ }));
+    await waitFor(() => expect(screen.getByText('Japan')).toBeInTheDocument());
+    expect(loadPreferences().value.recent).toHaveLength(1);
+    expect(loadPreferences().value.layers).toEqual(saved);
+  } finally {
+    window.location.hash = '';
+  }
+});
