@@ -30,6 +30,8 @@ const SkyScene = forwardRef<SkySceneHandle, Props>(function SkyScene(props, ref)
         instance = createSkyRenderer(hostRef.current, latest.current, {
           onHeadingChange: (heading) => latest.current.onHeadingChange?.(heading),
           onStarSelect: (star) => latest.current.onStarSelect?.(star),
+          onBodySelect: (body) => latest.current.onBodySelect?.(body),
+          onCameraChange: (view) => latest.current.onCameraChange?.(view),
         });
         runtime.current = instance;
         setError('');
@@ -40,6 +42,7 @@ const SkyScene = forwardRef<SkySceneHandle, Props>(function SkyScene(props, ref)
   useEffect(() => {
     runtime.current?.update(props.sky, props.weather, { stars: props.showStars, constellations: props.showConstellations, labels: props.showLabels });
   }, [props.sky, props.weather, props.showStars, props.showConstellations, props.showLabels]);
+  useEffect(() => { runtime.current?.settings(!!props.reducedMotion, props.quality ?? 'auto'); }, [props.reducedMotion, props.quality]);
   return <>
     <div className="sky-scene" ref={hostRef} aria-label="Interactive three-dimensional sky" />
     {error && <div className="scene-error" role="alert"><p>{error}</p><button onClick={() => retry((n) => n + 1)}>Retry sky</button></div>}

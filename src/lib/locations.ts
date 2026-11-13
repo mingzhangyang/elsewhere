@@ -1,0 +1,13 @@
+import type { LocationInfo } from '../types';
+
+export const PRESETS: LocationInfo[] = [
+  { id: 'new-york', name: 'New York', country: 'United States', latitude: 40.7128, longitude: -74.0060, elevation: 10, timezone: 'America/New_York' },
+  { id: 'beijing', name: 'Beijing', country: 'China', latitude: 39.9042, longitude: 116.4074, elevation: 44, timezone: 'Asia/Shanghai' },
+  { id: 'tokyo', name: 'Tokyo', country: 'Japan', latitude: 35.6762, longitude: 139.6503, elevation: 40, timezone: 'Asia/Tokyo' },
+  { id: 'london', name: 'London', country: 'United Kingdom', latitude: 51.5072, longitude: -0.1276, elevation: 11, timezone: 'Europe/London' },
+  { id: 'reykjavik', name: 'Reykjavík', country: 'Iceland', latitude: 64.1466, longitude: -21.9426, elevation: 61, timezone: 'Atlantic/Reykjavik' },
+  { id: 'sydney', name: 'Sydney', country: 'Australia', latitude: -33.8688, longitude: 151.2093, elevation: 58, timezone: 'Australia/Sydney' },
+  { id: 'cairo', name: 'Cairo', country: 'Egypt', latitude: 30.0444, longitude: 31.2357, elevation: 23, timezone: 'Africa/Cairo' },
+  { id: 'antarctica', name: 'McMurdo Station', country: 'Antarctica', latitude: -77.8419, longitude: 166.6863, elevation: 24, timezone: 'Antarctica/McMurdo' },
+];
+

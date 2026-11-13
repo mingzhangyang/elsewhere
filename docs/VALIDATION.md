@@ -34,3 +34,7 @@ The `minimatch` override selects the patched 11.x API used by the lint dependenc
 6. Check a spring DST gap, both instances of a fall repeated hour, a half-hour transition, a quarter-hour zone, polar day/night, and local midnight.
 
 Store actual hardware, browser version, viewport, scenarios, results, and unresolved limitations alongside release evidence. Do not mark physical-device or independent scientific review complete from emulation or same-library comparisons.
+
+### Phase 3 implementation check (November 13)
+
+The single inspector and separate timeline were checked in the in-app Chromium browser at desktop size and 390 × 844. Keyboard ArrowUp/Enter selection reached the last preset, restored focus to the picker, and preserved the instant across New York and McMurdo. The mobile weather inspector scrolls independently with its close control and timeline visible. Native dialog focus trapping and broader device qualification remain in the release checklist. The deterministic suite now contains 45 passing checks, including share-link validation and preference recovery. The UI distinguishes paused, accelerated playback, and following real time. No new runtime errors appeared after a clean navigation (earlier HMR hook-order diagnostics were from changing hook structure during development).

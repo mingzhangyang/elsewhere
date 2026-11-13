@@ -1,13 +1,14 @@
 import { createCameraControls } from './cameraControls';
 import * as THREE from 'three';
 import type { SkyState, Star, WeatherValues } from '../types';
+import type { CameraView, Preferences } from '../lib/persistence';
 import { createCelestialLayers } from './celestialLayers';
 import { seededRandom } from '../lib/random';
 import { SKY_VERTEX, SKY_FRAGMENT } from './shaders';
 import { directionVector, makeGlowTexture, makeMoonTexture, setAtDirection } from './resources';
 
-export interface RenderInput { sky: SkyState; weather: WeatherValues; showStars: boolean; showConstellations: boolean; showLabels: boolean }
-export interface RenderCallbacks { onHeadingChange?: (heading: number) => void; onStarSelect?: (star: Star | null) => void }
+export interface RenderInput { sky: SkyState; weather: WeatherValues; showStars: boolean; showConstellations: boolean; showLabels: boolean; initialView?: CameraView; reducedMotion?: boolean; quality?: Preferences['quality'] }
+export interface RenderCallbacks { onHeadingChange?: (heading: number) => void; onStarSelect?: (star: Star | null) => void; onCameraChange?: (view: CameraView) => void; onBodySelect?: (body: 'sun' | 'moon') => void }
 
 export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbacks: RenderCallbacks) {
   const { sky, weather, showStars, showConstellations, showLabels } = input;
@@ -154,17 +155,20 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
   let activeWeather = weather;
   let activeStars = sky.stars;
   let activeShowStars = showStars;
+  let reducedMotion = input.reducedMotion;
   const controls = createCameraControls(renderer.domElement, camera, (heading) => onHeadingChange?.(heading), (x, y) => {
-    if (!activeShowStars || starMaterial.uniforms.uOpacity.value < .05) return;
     const rect = renderer.domElement.getBoundingClientRect();
     const pointer = new THREE.Vector2((x - rect.left) / rect.width * 2 - 1, -(y - rect.top) / rect.height * 2 + 1);
     const raycaster = new THREE.Raycaster();
     raycaster.params.Points!.threshold = 15;
     raycaster.setFromCamera(pointer, camera);
+    if (sunGroup.visible && raycaster.intersectObject(sunDisc, false).length) { callbacks.onBodySelect?.('sun'); return; }
+    if (moonGroup.visible && raycaster.intersectObject(moonMesh, false).length) { callbacks.onBodySelect?.('moon'); return; }
+    if (!activeShowStars || starMaterial.uniforms.uOpacity.value < .05) return;
     const index = raycaster.intersectObject(starPoints, false)[0]?.index;
     const star = index === undefined ? undefined : activeStars[index];
     onStarSelect?.(star && star.altitude > 0 ? star : null);
-  });
+  }, callbacks.onCameraChange, input.initialView);
 
   const resizeObserver = new ResizeObserver(() => {
     if (!host.clientWidth || !host.clientHeight) return;
@@ -175,6 +179,11 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
   resizeObserver.observe(host);
 
   const api = {
+    settings: (motion: boolean, quality: Preferences['quality']) => {
+      reducedMotion = motion;
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, quality === 'low' ? 1 : 2));
+      renderer.setSize(host.clientWidth, host.clientHeight);
+    },
     update: (nextSky: SkyState, nextWeather: WeatherValues, flags: { stars: boolean; constellations: boolean; labels: boolean }) => {
     activeStars = nextSky.stars;
     activeShowStars = flags.stars;
@@ -228,12 +237,13 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
     },
   };
   api.update(sky, weather, { stars: showStars, constellations: showConstellations, labels: showLabels });
+  api.settings(!!input.reducedMotion, input.quality ?? 'auto');
 
   let frame = 0;
   let previous = performance.now();
   const animate = (now: number) => {
     frame = requestAnimationFrame(animate);
-    const delta = Math.min(0.08, (now - previous) / 1000);
+    const delta = reducedMotion ? 0 : Math.min(0.08, (now - previous) / 1000);
     previous = now;
     skyUniforms.uTime.value += delta;
     const positions = rainGeometry.attributes.position as THREE.BufferAttribute;

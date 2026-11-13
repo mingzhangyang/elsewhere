@@ -8,13 +8,15 @@ it('changes place without changing the selected instant and controls playback', 
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}')));
   render(<App initialTime={new Date('2026-11-12T12:00Z')} />);
   expect(screen.getByLabelText('LOCAL TIME')).toHaveValue('07:00');
-  fireEvent.click(screen.getByRole('button', { name: 'Tokyo' }));
+  fireEvent.click(screen.getByRole('button', { name: /Change location/ }));
+  fireEvent.click(screen.getByRole('option', { name: /Tokyo/ }));
   await waitFor(() => expect(screen.getByText('Japan')).toBeInTheDocument());
   expect(screen.getByLabelText('LOCAL TIME')).toHaveValue('21:00');
   fireEvent.click(screen.getByRole('button', { name: 'Play time' }));
   expect(screen.getByRole('button', { name: 'Pause time' })).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'NOW' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Now' }));
   expect(screen.getByRole('button', { name: 'Play time' })).toBeInTheDocument();
+  expect(screen.getByText(/Following real time/)).toBeInTheDocument();
 });
 
 it('requires a choice between repeated-hour offsets', async () => {
@@ -30,8 +32,8 @@ it('requires a choice between repeated-hour offsets', async () => {
 it('does not display source weather defaults when weather is unavailable', async () => {
   const { scenarioProps } = await import('../src/dev/scenarios');
   render(<App {...scenarioProps('unavailable')} />);
-  fireEvent.click(screen.getByRole('button', { name: 'WEATHER & ATMOSPHERE' }));
-  await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('unavailable-weather'));
+  fireEvent.click(screen.getByRole('button', { name: 'Weather' }));
+  await waitFor(() => expect(screen.getByText(/unavailable-weather/)).toBeInTheDocument());
   expect(screen.queryByText('1013')).not.toBeInTheDocument();
   expect(screen.queryByRole('slider', { name: /Cloud cover/ })).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Custom simulation' }));

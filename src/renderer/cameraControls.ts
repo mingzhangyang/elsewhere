@@ -1,15 +1,22 @@
 import * as THREE from 'three';
+import type { CameraView } from '../lib/persistence';
 
 export function createCameraControls(canvas: HTMLCanvasElement, camera: THREE.PerspectiveCamera,
-  onHeading: (degrees: number) => void, onPick: (x: number, y: number) => void) {
+  onHeading: (degrees: number) => void, onPick: (x: number, y: number) => void,
+  onChange?: (view: CameraView) => void, initial?: CameraView) {
   let yaw = 0;
   let pitch = THREE.MathUtils.degToRad(18);
   const pointers = new Map<number, { x: number; y: number }>();
   let origin = { x: 0, y: 0 };
   let dragged = false;
   const lifetime = new AbortController();
-  const apply = () => { camera.rotation.set(pitch, yaw, 0, 'YXZ'); onHeading(((-yaw * 180 / Math.PI) % 360 + 360) % 360); };
-  const zoom = (delta: number) => { camera.fov = THREE.MathUtils.clamp(camera.fov + delta, 20, 92); camera.updateProjectionMatrix(); };
+  const apply = () => {
+    camera.rotation.set(pitch, yaw, 0, 'YXZ');
+    const heading = ((-yaw * 180 / Math.PI) % 360 + 360) % 360;
+    onHeading(heading);
+    onChange?.({ heading, altitude: THREE.MathUtils.radToDeg(pitch), fov: camera.fov });
+  };
+  const zoom = (delta: number) => { camera.fov = THREE.MathUtils.clamp(camera.fov + delta, 20, 92); camera.updateProjectionMatrix(); apply(); };
   const focus = (altitude: number, azimuth: number) => { pitch = THREE.MathUtils.clamp(THREE.MathUtils.degToRad(altitude), -1.5, 1.5); yaw = -THREE.MathUtils.degToRad(azimuth); apply(); };
   const resetView = () => { camera.fov = 66; camera.updateProjectionMatrix(); focus(18, 0); };
   const distance = () => { const [a, b] = [...pointers.values()]; return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0; };
@@ -41,9 +48,10 @@ export function createCameraControls(canvas: HTMLCanvasElement, camera: THREE.Pe
   }, { signal: lifetime.signal });
   canvas.addEventListener('pointerup', (event) => {
     if (!pointers.has(event.pointerId)) return;
+    const shouldPick = pointers.size === 1 && !dragged;
     pointers.delete(event.pointerId);
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
-    if (!pointers.size && !dragged) onPick(event.clientX, event.clientY);
+    if (shouldPick) onPick(event.clientX, event.clientY);
   }, { signal: lifetime.signal });
   const cancel = (event: PointerEvent) => { pointers.delete(event.pointerId); dragged = true; };
   canvas.addEventListener('pointercancel', cancel, { signal: lifetime.signal });
@@ -61,6 +69,7 @@ export function createCameraControls(canvas: HTMLCanvasElement, camera: THREE.Pe
     else return;
     event.preventDefault(); apply();
   }, { signal: lifetime.signal });
-  resetView();
+  if (initial) { camera.fov = initial.fov; camera.updateProjectionMatrix(); focus(initial.altitude, initial.heading); }
+  else resetView();
   return { resetView, focus, zoom, dispose: () => lifetime.abort() };
 }
