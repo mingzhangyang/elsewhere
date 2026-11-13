@@ -1783,7 +1783,8 @@ dialog:not([open]) {
    Placed after the short-viewport rules so it also applies to short portrait phones. */
 @media (max-width: 680px) {
   .inspector {
-    top: 38%;
+    /* Prefer 38% sky above the sheet, but never shrink the sheet below 200px (short phones, Android keyboard). */
+    top: max(8px, min(38%, calc(100% - 74px - 200px)));
     bottom: 74px;
     left: 8px;
     right: 8px;
@@ -1806,6 +1807,26 @@ dialog:not([open]) {
   .bottom-bar,
   .bottom-bar > span:nth-child(2) {
     font-size: 10px;
+  }
+}
+/* Short landscape phones: a full-height side sheet, with the toolbar moved left so sky stays visible beside it. */
+@media (max-width: 680px) and (max-height: 620px) and (orientation: landscape) {
+  .inspector {
+    top: 8px;
+    bottom: 8px;
+    left: auto;
+    right: 8px;
+    width: min(360px, 56%);
+  }
+  .explore-toolbar {
+    left: 8px;
+    transform: none;
+    width: calc(44% - 24px);
+    max-width: none;
+  }
+  .explore-toolbar button {
+    padding: 8px 6px;
+    gap: 5px;
   }
 }
 /* iOS Safari zooms the page when a focused field is smaller than 16px. */

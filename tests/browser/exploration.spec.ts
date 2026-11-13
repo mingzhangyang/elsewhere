@@ -125,4 +125,40 @@ test.describe('phones', () => {
     expect(Math.min(...sizes)).toBeGreaterThanOrEqual(16);
     await expect(page.locator('meta[name=viewport]')).toHaveAttribute('content', /viewport-fit=cover/);
   });
+
+  test('closing a panel returns focus to the source pill hidden while it was open', async ({ page }) => {
+    await page.goto('/?scenario=unavailable');
+    const pill = page.locator('.source-pill');
+    for (const close of ['Escape', 'Close inspector']) {
+      await pill.focus();
+      await page.keyboard.press('Enter');
+      await expect(page.getByRole('region', { name: 'weather inspector' })).toBeVisible();
+      await expect(pill).toBeHidden();
+      if (close === 'Escape') await page.keyboard.press('Escape');
+      else await page.getByRole('button', { name: close }).click();
+      await expect(pill).toBeFocused();
+    }
+  });
+
+  for (const viewport of [
+    { width: 667, height: 375 },
+    { width: 320, height: 568 },
+  ]) {
+    test(`panels stay usable at ${viewport.width}×${viewport.height}`, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      await page.goto('/?scenario=unavailable');
+      await page.getByRole('button', { name: 'Weather', exact: true }).click();
+      await page.getByRole('button', { name: 'Custom simulation', exact: true }).click();
+      const sheet = (await page.getByRole('region', { name: 'weather inspector' }).boundingBox())!;
+      expect(sheet.height).toBeGreaterThanOrEqual(180);
+      await expect(page.getByRole('button', { name: 'Close inspector' })).toBeInViewport();
+      const slider = page.getByRole('slider', { name: 'Cloud cover' });
+      await slider.scrollIntoViewIfNeeded();
+      await expect(slider).toBeInViewport();
+      // Some sky stays visible: beside the side sheet in landscape, above the lower sheet in portrait.
+      const stage = (await page.getByRole('region', { name: 'Sky exploration' }).boundingBox())!;
+      const skyVisible = viewport.width > viewport.height ? sheet.x - stage.x : sheet.y - stage.y;
+      expect(skyVisible).toBeGreaterThanOrEqual(100);
+    });
+  }
 });
