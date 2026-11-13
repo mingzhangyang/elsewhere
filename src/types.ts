@@ -6,6 +6,7 @@ export interface LocationInfo {
   longitude: number;
   elevation: number;
   timezone: string;
+  source?: 'device';
 }
 
 export interface HorizontalPosition {
@@ -67,6 +68,7 @@ export interface WeatherValues {
   humidity: number;
   windSpeed: number;
   windDirection: number;
+  /** Average precipitation rate in mm/h over the source sample interval. */
   precipitation: number;
   temperature: number;
   pressure: number;

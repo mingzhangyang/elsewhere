@@ -33,7 +33,7 @@ import {
   renderingWeather,
   weatherSourceLabel,
 } from './lib/weather';
-import { PRESETS } from './lib/locations';
+import { isDeviceLocation, PRESETS } from './lib/locations';
 import {
   explorationUrl,
   loadPreferences,
@@ -190,7 +190,7 @@ export default function App({
     setPlaying(false);
     setSelectedId(null);
     setFocusedId(null);
-    if (next.id !== 'device-location')
+    if (!isDeviceLocation(next))
       changePreferences((prefs) => ({
         ...prefs,
         recent: [next, ...prefs.recent.filter((place) => place.id !== next.id)].slice(0, 6),
@@ -737,7 +737,7 @@ export default function App({
         <p>
           This link includes the place, exact time, camera view, layers{custom ? ', and custom weather' : ''}.
         </p>
-        {location.id === 'device-location' && (
+        {isDeviceLocation(location) && (
           <p className="privacy-note">
             It includes your exact device coordinates: {location.latitude.toFixed(5)},{' '}
             {location.longitude.toFixed(5)}. Share only if you want the recipient to see this location.

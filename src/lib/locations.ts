@@ -1,5 +1,20 @@
 import type { LocationInfo } from '../types';
 
+export function isDeviceLocation(place: LocationInfo): boolean {
+  return place.source === 'device' || place.id === 'device-location';
+}
+
+/** Migrate legacy device IDs while retaining their privacy classification. */
+export function normalizeLocation(place: LocationInfo): LocationInfo {
+  return isDeviceLocation(place)
+    ? {
+        ...place,
+        id: `coordinates:${place.latitude},${place.longitude},${place.elevation}`,
+        source: 'device',
+      }
+    : place;
+}
+
 export const PRESETS: LocationInfo[] = [
   {
     id: 'new-york',

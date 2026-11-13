@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Bookmark, Check, ChevronDown, LocateFixed, MapPin, Search, X } from 'lucide-react';
 import type { LocationInfo } from '../types';
-import { PRESETS } from '../lib/locations';
+import { normalizeLocation, PRESETS } from '../lib/locations';
 import { searchLocations } from '../lib/weather';
 
 export default function LocationPicker({
@@ -96,15 +96,17 @@ export default function LocationPicker({
         try {
           const { default: lookup } = await import('tz-lookup');
           if (request !== locationRequest.current) return;
-          select({
-            id: 'device-location',
-            name: 'Your location',
-            country: 'Device coordinates · sea-level estimate',
-            latitude: coords.latitude,
-            longitude: coords.longitude,
-            elevation: 0, // Geolocation altitude is ellipsoidal; the astronomy contract uses sea level.
-            timezone: lookup(coords.latitude, coords.longitude),
-          });
+          select(
+            normalizeLocation({
+              id: 'device-location',
+              name: 'Your location',
+              country: 'Device coordinates · sea-level estimate',
+              latitude: coords.latitude,
+              longitude: coords.longitude,
+              elevation: 0, // Geolocation altitude is ellipsoidal; the astronomy contract uses sea level.
+              timezone: lookup(coords.latitude, coords.longitude),
+            }),
+          );
         } catch {
           if (request === locationRequest.current)
             setError('Could not resolve the time zone. Search for a nearby place.');

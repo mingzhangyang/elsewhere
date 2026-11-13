@@ -1,5 +1,17 @@
 import { expect, test } from '@playwright/test';
 
+test('clicking centered Mizar selects Mizar instead of Alcor', async ({ page }) => {
+  await page.goto('/?scenario=night');
+  await page.getByRole('button', { name: 'Objects', exact: true }).click();
+  await page.getByRole('searchbox', { name: 'Find an object' }).fill('Mizar');
+  await page.getByRole('group', { name: 'Celestial objects' }).getByRole('button', { name: /Mizar/ }).click();
+  await page.getByRole('button', { name: 'Center in view' }).click();
+  const canvas = page.getByRole('img', { name: /^Sky view\./ });
+  const box = (await canvas.boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(page.getByRole('heading', { name: 'Mizar', exact: true })).toBeVisible();
+});
+
 test('keyboard location selection preserves the instant and returns focus', async ({ page }) => {
   await page.goto('/?scenario=night');
   await page.getByRole('button', { name: /Change location/ }).click();

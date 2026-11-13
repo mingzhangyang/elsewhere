@@ -4,6 +4,8 @@ Explore a calculated sky from any place and time. Elsewhere combines a quiet, re
 
 The substantial refactor in [ROADMAP.md](ROADMAP.md) is implemented through phase 5. Phase 6 has local validation, independent numerical regression fixtures, release tooling, and documentation; the external qualification gates in [docs/RELEASE.md](docs/RELEASE.md) remain open.
 
+The [mobile app roadmap](docs/MOBILE_ROADMAP.md) covers an installable web beta, sensor pointing, and shared Android/iOS editions with device qualification gates.
+
 ## Run locally
 
 Use Node.js 22.13+ in the 22.x line, or Node.js 24+, with npm. The lockfile is the installation contract.

@@ -10,6 +10,41 @@ import {
 import { NEW_YORK } from './fixtures/locations';
 import { weatherPayload } from './fixtures/weather';
 
+it('normalizes current accumulation to the same rate as hourly precipitation', async () => {
+  const payload = weatherPayload();
+  const data = { ...payload, current: { ...payload.current, interval: 900, precipitation: 1 } };
+  data.hourly.precipitation.fill(4);
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(data))));
+  const instant = new Date('2026-11-12T12:00Z');
+  const result = await fetchWeatherForDate(NEW_YORK, instant, { now: instant });
+  const current = selectWeather(result, NEW_YORK, instant);
+  const forecast = selectWeather(result, NEW_YORK, new Date('2026-11-12T16:00Z'));
+  expect(current.values?.precipitation).toBe(4);
+  expect(forecast.values?.precipitation).toBe(4);
+  expect(customConditions(renderingWeather(current)).precipitation).toBe(4);
+});
+
+it.each([undefined, null, 0, -900, '900'])(
+  'preserves unknown precipitation when interval is %s',
+  async (interval) => {
+    const payload = weatherPayload();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            ...payload,
+            current: { ...payload.current, interval, precipitation: 1 },
+          }),
+        ),
+      ),
+    );
+    const instant = new Date('2026-11-12T12:00Z');
+    const result = await fetchWeatherForDate(NEW_YORK, instant, { now: instant });
+    expect(selectWeather(result, NEW_YORK, instant).values?.precipitation).toBeNull();
+  },
+);
+
 it('does not combine conflicting forecast range parameters', async () => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date('2026-11-12T12:00Z'));

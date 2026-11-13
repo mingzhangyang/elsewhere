@@ -1,6 +1,39 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import App from '../src/App';
+import { loadPreferences } from '../src/lib/persistence';
+
+it('saves two device positions independently and keeps their sharing disclosure', async () => {
+  const positions = [
+    { latitude: 40.7, longitude: -74 },
+    { latitude: 35.7, longitude: 139.7 },
+  ];
+  vi.stubGlobal('navigator', {
+    geolocation: {
+      getCurrentPosition: (success: PositionCallback) =>
+        success({ coords: positions.shift() } as GeolocationPosition),
+    },
+  });
+  const { scenarioProps } = await import('../src/dev/scenarios');
+  render(<App {...scenarioProps('unavailable')} />);
+  for (let i = 0; i < 2; i++) {
+    fireEvent.click(screen.getByRole('button', { name: /Change location/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use my location' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'Choose your place' })).not.toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Change location/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save current place' }));
+    expect(loadPreferences().value.saved).toHaveLength(i + 1);
+    fireEvent.click(screen.getByRole('button', { name: 'Close locations' }));
+  }
+  fireEvent.click(screen.getByRole('button', { name: 'Share this sky' }));
+  expect(screen.getByText(/exact device coordinates: 35.70000, 139.70000/)).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Close sharing' }));
+  fireEvent.click(screen.getByRole('button', { name: /Change location/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'Remove saved place' }));
+  expect(loadPreferences().value.saved.map((p) => p.latitude)).toEqual([40.7]);
+});
 
 vi.mock('../src/components/SkyScene', async () => ({
   default: (await import('react')).forwardRef(() => <div role="img" aria-label="Sky preview" />),

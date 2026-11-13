@@ -170,7 +170,16 @@ export async function fetchWeatherForDate(
     if (data.current && typeof data.current === 'object') {
       const c = record(data.current);
       const time = number(c.time);
-      if (time !== null) current = { time: time * 1000, values: measurements(c) };
+      if (time !== null) {
+        const values = measurements(c);
+        const interval = number(c.interval);
+        // Current sums cover the provider's interval; hourly sums already represent mm/h.
+        values.precipitation =
+          values.precipitation !== null && interval !== null && interval > 0
+            ? number((values.precipitation * 3600) / interval)
+            : null;
+        current = { time: time * 1000, values };
+      }
     }
     return {
       ...base,

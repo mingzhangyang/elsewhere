@@ -30,7 +30,9 @@ let offline = false;
 const fetchLocal = async (request) => {
   if (offline) throw new TypeError('Offline');
   const url = new URL(typeof request === 'string' ? request : request.url);
-  return new Response(await readFile('dist' + url.pathname));
+  // Vite's preview server varies responses by Origin. Crossorigin script/style
+  // requests carry that header, while URL-only precache requests do not.
+  return new Response(await readFile('dist' + url.pathname), { headers: { Vary: 'Origin' } });
 };
 const caches = {
   keys: async () => [...stores.keys()],
@@ -40,9 +42,25 @@ const caches = {
     const store = stores.get(key);
     return {
       addAll: async (urls) => {
-        for (const url of urls) store.set(url, await fetchLocal(url));
+        for (const url of urls) {
+          const request = new Request(url);
+          store.set(request.url, { request, response: await fetchLocal(request) });
+        }
       },
-      match: async (req) => store.get(typeof req === 'string' ? req : req.url)?.clone(),
+      match: async (req) => {
+        const request = typeof req === 'string' ? new Request(req) : req;
+        const entry = store.get(request.url);
+        if (!entry) return undefined;
+        const vary = entry.response.headers.get('Vary');
+        if (
+          vary?.split(',').some((name) => {
+            const field = name.trim();
+            return field === '*' || request.headers.get(field) !== entry.request.headers.get(field);
+          })
+        )
+          return undefined;
+        return entry.response.clone();
+      },
     };
   },
 };
@@ -82,14 +100,40 @@ listeners.get('fetch')({
   },
 });
 assert.equal(await (await reply).text(), await readFile('dist/index.html', 'utf8'));
-reply = undefined;
-listeners.get('fetch')({
-  request: { url: 'https://api.open-meteo.com/v1/forecast', method: 'GET' },
-  respondWith: (p) => {
-    reply = p;
-  },
-});
-assert.equal(reply, undefined, 'Service worker must not intercept third-party weather requests');
+const shell = await caches.open([...stores.keys()].find((key) => key.startsWith('elsewhere-')));
+for (const path of paths.filter((p) => /\.(js|css|jpg)$/.test(p))) {
+  const url = `${origin}/assets/${path}`;
+  const request = new Request(url, { headers: { Origin: origin } });
+  assert.equal(await shell.match(request), undefined, 'The cache model must respect Vary: Origin');
+  reply = undefined;
+  listeners.get('fetch')({
+    request,
+    respondWith: (p) => {
+      reply = p;
+    },
+  });
+  assert(reply, `Missing offline asset handler: ${path}`);
+  assert.deepEqual(
+    Buffer.from(await (await reply).arrayBuffer()),
+    await readFile('dist/assets/' + path),
+    `Offline asset differs: ${path}`,
+  );
+}
+for (const request of [
+  new Request('https://api.open-meteo.com/v1/forecast'),
+  new Request(origin + '/api/private'),
+  new Request(origin + '/assets/' + paths[0] + '?variant=other'),
+  new Request(origin + '/index.html', { method: 'POST' }),
+]) {
+  reply = undefined;
+  listeners.get('fetch')({
+    request,
+    respondWith: (p) => {
+      reply = p;
+    },
+  });
+  assert.equal(reply, undefined, `Service worker must not intercept ${request.method} ${request.url}`);
+}
 console.log(
-  `Build budgets: JS ${Math.round(gzip / 1000)} kB gzip; largest chunk ${Math.round(largest / 1000)} kB. Offline manifest, navigation fallback, and API exclusion passed.`,
+  `Build budgets: JS ${Math.round(gzip / 1000)} kB gzip; largest chunk ${Math.round(largest / 1000)} kB. Offline assets with Vary: Origin, navigation fallback, and API exclusion passed.`,
 );

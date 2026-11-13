@@ -2,6 +2,7 @@ import type { LocationInfo, WeatherValues } from '../types';
 import { validateObserver } from '../domain/observer';
 import { validateInstant } from './time';
 import { defaultWeatherValues } from './weather';
+import { normalizeLocation } from './locations';
 
 export interface LayerSettings {
   stars: boolean;
@@ -57,7 +58,7 @@ function locationValue(value: unknown): LocationInfo {
     throw new Error('Invalid saved place');
   const candidate = value as unknown as LocationInfo;
   validateObserver(candidate);
-  return {
+  return normalizeLocation({
     id: candidate.id,
     name: candidate.name,
     country: candidate.country,
@@ -65,7 +66,8 @@ function locationValue(value: unknown): LocationInfo {
     latitude: candidate.latitude,
     longitude: candidate.longitude,
     elevation: candidate.elevation,
-  };
+    ...(candidate.source === 'device' ? { source: 'device' as const } : {}),
+  });
 }
 function layerValue(value: unknown): LayerSettings {
   if (!isObject(value) || !['stars', 'lines', 'labels'].every((key) => typeof value[key] === 'boolean'))

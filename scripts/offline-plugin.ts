@@ -25,13 +25,7 @@ export function offlinePlugin(): Plugin {
       }
       await walk(directory);
       files.sort();
-      const hash = createHash('sha256');
-      for (const file of files) {
-        hash.update(file);
-        hash.update(await readFile(join(directory, file)));
-      }
-      const cache = `elsewhere-${hash.digest('hex').slice(0, 12)}`;
-      const source = `const CACHE=${JSON.stringify(cache)},BASE=new URL(${JSON.stringify(base)},self.location).pathname;
+      const source = `const BASE=new URL(${JSON.stringify(base)},self.location).pathname;
 const FILES=${JSON.stringify(files)}.map(p=>new URL(p,self.registration.scope).href);
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(FILES))));
 self.addEventListener('activate',event=>event.waitUntil((async()=>{for(const key of await caches.keys()){if(key.startsWith('elsewhere-')&&key!==CACHE)await caches.delete(key);}await self.clients.claim();})()));
@@ -41,10 +35,19 @@ self.addEventListener('fetch',event=>{
  if(event.request.mode==='navigate'){
   event.respondWith(fetch(event.request).catch(()=>caches.open(CACHE).then(async c=>(await c.match(url.origin+url.pathname))||(await c.match(new URL('index.html',self.registration.scope).href)))));return;
  }
- if(FILES.includes(url.href))event.respondWith(caches.open(CACHE).then(async c=>(await c.match(event.request))||fetch(event.request)));
+ // Manifest assets have one build-owned representation. Match the same URL-only
+ // request used by addAll, regardless of the caller's Origin or other headers.
+ if(FILES.includes(url.href))event.respondWith(caches.open(CACHE).then(async c=>(await c.match(url.href))||fetch(event.request)));
 });
 `;
-      await writeFile(join(directory, 'sw.js'), source);
+      // Worker-only changes also need a separate cache while the old worker is active.
+      const hash = createHash('sha256').update(source);
+      for (const file of files) {
+        hash.update(file);
+        hash.update(await readFile(join(directory, file)));
+      }
+      const cache = `elsewhere-${hash.digest('hex').slice(0, 12)}`;
+      await writeFile(join(directory, 'sw.js'), `const CACHE=${JSON.stringify(cache)};\n${source}`);
     },
   };
 }

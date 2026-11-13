@@ -17,6 +17,7 @@ import { advancePrecipitation, windVector } from './precipitation';
 import { createFrameLoop } from './frameLoop';
 import { adaptiveRatio, percentile, type RenderStats } from './performance';
 import { aboveHorizon, findSkyObject } from '../lib/exploration';
+import { pickStarIndex, starAlpha } from './starPicking';
 
 export interface RenderSettings {
   reducedMotion?: boolean;
@@ -228,10 +229,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
     starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
     starGeometry.setAttribute('aSize', new THREE.BufferAttribute(starSizes, 1));
     starGeometry.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
-    starGeometry.setAttribute(
-      'aMagnitude',
-      new THREE.BufferAttribute(new Float32Array(sky.stars.map((s) => s.magnitude)), 1),
-    );
+    starGeometry.setAttribute('aAlpha', new THREE.BufferAttribute(new Float32Array(sky.stars.length), 1));
     sky.stars.forEach((star, i) => {
       const color = new THREE.Color('#bdd6ff').lerp(
         new THREE.Color('#fff0cf'),
@@ -244,22 +242,20 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
     const starMaterial = new THREE.ShaderMaterial({
       uniforms: {
         uOpacity: { value: 1 },
-        uLimit: { value: 6 },
         uPixelRatio: { value: renderer.getPixelRatio() },
       },
       vertexShader: `
     attribute float aSize;
-    attribute float aMagnitude;
+    attribute float aAlpha;
     varying vec3 vColor;
     varying float vAlpha;
-    uniform float uLimit, uPixelRatio;
+    uniform float uPixelRatio;
     void main() {
       vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
       gl_Position = projectionMatrix * mvPosition;
       gl_PointSize = aSize * uPixelRatio;
       vColor = color;
-      float extinction = 0.20 / max(0.08, normalize(position).y) - 0.20;
-      vAlpha = (1.0 - smoothstep(uLimit - 1.0, uLimit + 0.3, aMagnitude + extinction)) * clamp(pow(10.0, -0.16 * aMagnitude), 0.15, 1.0);
+      vAlpha = aAlpha;
     }
     `,
       fragmentShader: `
@@ -342,7 +338,10 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
           return;
         }
         if (!activeShowStars || starMaterial.uniforms.uOpacity.value < 0.05) return;
-        const index = raycaster.intersectObject(starPoints, false)[0]?.index;
+        const index = pickStarIndex(
+          raycaster.intersectObject(starPoints, false),
+          (i) => starGeometry.attributes.aAlpha.getX(i) * starMaterial.uniforms.uOpacity.value,
+        );
         const star = index === undefined ? undefined : activeStars[index];
         onStarSelect?.(star && star.altitude > 0 ? star : null);
       },
@@ -438,8 +437,10 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
           (1 - THREE.MathUtils.clamp(nextWeather.haze / 125, 0, 0.85));
         const moonPenalty =
           Math.max(0, Math.sin((nextSky.moon.altitude * Math.PI) / 180)) * nextSky.moon.illumination * 1.6;
-        starMaterial.uniforms.uLimit.value =
-          (skyBrightness === 'city' ? 3 : skyBrightness === 'suburban' ? 4.5 : 6) - moonPenalty;
+        const limit = (skyBrightness === 'city' ? 3 : skyBrightness === 'suburban' ? 4.5 : 6) - moonPenalty;
+        const alphas = starGeometry.attributes.aAlpha as THREE.BufferAttribute;
+        nextSky.stars.forEach((star, index) => alphas.setX(index, starAlpha(star, limit)));
+        alphas.needsUpdate = true;
         starMaterial.uniforms.uOpacity.value = nightVisibility * visibilityFactor;
         starPoints.visible = flags.stars;
 

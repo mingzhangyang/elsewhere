@@ -6,7 +6,7 @@ import {
   savePreferences,
   type Exploration,
 } from '../src/lib/persistence';
-import { PRESETS } from '../src/lib/locations';
+import { isDeviceLocation, normalizeLocation, PRESETS } from '../src/lib/locations';
 import { customConditions, defaultWeatherValues } from '../src/lib/weather';
 
 const exploration: Exploration = {
@@ -18,6 +18,23 @@ const exploration: Exploration = {
   custom: customConditions(defaultWeatherValues()),
 };
 describe('portable exploration state', () => {
+  it('migrates old device locations and retains identity and privacy through storage and sharing', () => {
+    const legacy = { ...PRESETS[0], id: 'device-location' };
+    const a = normalizeLocation(legacy);
+    const b = normalizeLocation({ ...legacy, latitude: legacy.latitude + 1 });
+    expect(a.id).not.toBe(b.id);
+    const prefs = loadPreferences().value;
+    savePreferences({ ...prefs, saved: [legacy] });
+    expect(loadPreferences().value.saved).toEqual([a]);
+    savePreferences({ ...prefs, saved: [a, b] });
+    expect(loadPreferences().value.saved).toEqual([a, b]);
+    for (const location of [legacy, a, b]) {
+      const restored = parseExploration(new URL(explorationUrl({ ...exploration, location })).hash).value!
+        .location;
+      expect(restored).toEqual(normalizeLocation(location));
+      expect(isDeviceLocation(restored)).toBe(true);
+    }
+  });
   it('preserves the repeated-hour instant, camera and custom conditions', () => {
     expect(parseExploration(new URL(explorationUrl(exploration)).hash)).toEqual({
       value: exploration,

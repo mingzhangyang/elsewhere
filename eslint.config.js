@@ -4,7 +4,7 @@ import hooks from 'eslint-plugin-react-hooks';
 import globals from 'globals';
 
 export default ts.config(
-  { ignores: ['dist/**', 'node_modules/**', 'coverage/**', 'test-results/**'] },
+  { ignores: ['dist/**', 'node_modules/**', 'coverage/**', 'test-results/**', 'playwright-report/**'] },
   js.configs.recommended,
   ...ts.configs.recommended,
   {
