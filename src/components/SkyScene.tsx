@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import type { SkyState, Star as StarData, WeatherValues } from '../types';
-import { CONSTELLATIONS, STAR_CATALOG } from '../lib/stars';
+import { CONSTELLATIONS } from '../lib/stars';
+import { seededRandom } from '../lib/random';
 
 type Props = {
   sky: SkyState;
@@ -211,6 +212,7 @@ export default function SkyScene({ sky, weather, showStars, showConstellations, 
     const host = hostRef.current;
     if (!host) return;
     const scene = new THREE.Scene();
+    const random = seededRandom(18431);
     const camera = new THREE.PerspectiveCamera(66, host.clientWidth / host.clientHeight, 0.1, 5000);
     camera.position.set(0, 0, 0);
     camera.rotation.order = 'YXZ';
@@ -342,9 +344,9 @@ export default function SkyScene({ sky, weather, showStars, showConstellations, 
     const rainGeometry = new THREE.BufferGeometry();
     const rainPositions = new Float32Array(rainCount * 3);
     for (let i = 0; i < rainCount; i += 1) {
-      rainPositions[i * 3] = (Math.random() - 0.5) * 70;
-      rainPositions[i * 3 + 1] = Math.random() * 58 - 20;
-      rainPositions[i * 3 + 2] = -12 - Math.random() * 62;
+      rainPositions[i * 3] = (random() - 0.5) * 70;
+      rainPositions[i * 3 + 1] = random() * 58 - 20;
+      rainPositions[i * 3 + 2] = -12 - random() * 62;
     }
     rainGeometry.setAttribute('position', new THREE.BufferAttribute(rainPositions, 3));
     const rainMaterial = new THREE.PointsMaterial({ color: 0xa8c9e9, size: 0.16, transparent: true, opacity: 0.0, depthWrite: false });
@@ -539,7 +541,7 @@ export default function SkyScene({ sky, weather, showStars, showConstellations, 
         for (let i = 0; i < rainCount; i += 1) {
           const snowing = [71, 73, 75, 77, 85, 86].includes(activeWeather.weatherCode);
           const y = positions.getY(i) - delta * (snowing ? 1.4 + activeWeather.windSpeed * 0.035 : 5 + activeWeather.windSpeed * 0.22);
-          positions.setY(i, y < -26 ? 36 + Math.random() * 14 : y);
+          positions.setY(i, y < -26 ? 36 + random() * 14 : y);
           positions.setX(i, positions.getX(i) + Math.sin(THREE.MathUtils.degToRad(activeWeather.windDirection)) * delta * activeWeather.windSpeed * (snowing ? 0.055 : 0.018));
         }
         positions.needsUpdate = true;

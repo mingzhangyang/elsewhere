@@ -6,6 +6,8 @@ The recommended approach is a substantial refactor within React, TypeScript, Vit
 
 ## Current baseline
 
+Implementation status on November 13, 2026: phase 0 automation and reproducible development scenarios are in place; phase 1 is in progress. Physical-device benchmarks and independent scientific review remain qualification tasks. See [validation](docs/VALIDATION.md) for commands and the supported numerical contract.
+
 Assessment date: November 12, 2026. Source review covered all application files; browser inspection covered desktop at 1280 × 720 and mobile at 390 × 844, including daytime, nighttime, and unavailable weather.
 
 - TypeScript checking and the production build pass. The build produces one 741.07 kB JavaScript bundle, 209.86 kB gzip, and a chunk-size warning.

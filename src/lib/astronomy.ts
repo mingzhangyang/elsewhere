@@ -22,7 +22,7 @@ function safeRiseSet(
   }
 }
 
-function getPhaseName(angle: number, waxing: boolean): string {
+function getPhaseName(angle: number): string {
   const a = ((angle % 360) + 360) % 360;
   if (a < 18 || a >= 342) return 'New Moon';
   if (a < 72) return 'Waxing Crescent';
@@ -50,7 +50,7 @@ export function calculateSky(location: LocationInfo, date: Date): SkyState {
   const sunset = safeRiseSet(Astronomy.Body.Sun, observer, -1, midnight);
   const moonrise = safeRiseSet(Astronomy.Body.Moon, observer, +1, midnight);
   const moonset = safeRiseSet(Astronomy.Body.Moon, observer, -1, midnight);
-  let solarNoon: Date | null = null;
+  let solarNoon: Date | null;
   try {
     solarNoon = astroDate(Astronomy.SearchHourAngle(Astronomy.Body.Sun, observer, 0, midnight, +1).time);
   } catch {
@@ -79,7 +79,7 @@ export function calculateSky(location: LocationInfo, date: Date): SkyState {
       visible: moonHor.altitude > 0,
       phaseAngle,
       illumination: illumination.phase_fraction,
-      phaseName: getPhaseName(phaseAngle, waxing),
+      phaseName: getPhaseName(phaseAngle),
       distanceKm,
       waxing,
     },

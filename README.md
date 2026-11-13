@@ -6,7 +6,7 @@ See the [app polish roadmap](ROADMAP.md) for the prioritized refactor, design, f
 
 ## Run locally
 
-Requirements: Node.js 20+ and npm.
+Requirements: Node.js 22.13+ in the 22.x line or Node.js 24+, and npm.
 
 ```bash
 npm install
@@ -19,6 +19,8 @@ Open the local URL printed by Vite. For a production build:
 npm run build
 npm run preview
 ```
+
+Run `npm run validate` for type checking, lint, tests, and the production build. See [validation and development scenarios](docs/VALIDATION.md).
 
 No API key is required for the Open-Meteo endpoints used by this starter.
 

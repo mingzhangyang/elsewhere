@@ -49,9 +49,15 @@ function getWeatherForInstant(result: WeatherResult, date: Date): WeatherValues 
   return best <= 90 * 60_000 ? closest.values : result.values;
 }
 
-export default function App() {
-  const [location, setLocation] = useState<LocationInfo>(PRESETS[0]);
-  const [simTime, setSimTime] = useState(() => new Date());
+export interface AppProps {
+  initialLocation?: LocationInfo;
+  initialTime?: Date;
+  weatherLoader?: typeof fetchWeatherForDate;
+}
+
+export default function App({ initialLocation = PRESETS[0], initialTime, weatherLoader = fetchWeatherForDate }: AppProps) {
+  const [location, setLocation] = useState<LocationInfo>(initialLocation);
+  const [simTime, setSimTime] = useState(() => initialTime ?? new Date());
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(60);
   const [weatherResult, setWeatherResult] = useState<WeatherResult>({
@@ -86,7 +92,7 @@ export default function App() {
   useEffect(() => {
     let current = true;
     setWeatherLoading(true);
-    fetchWeatherForDate(location, simTime)
+    weatherLoader(location, simTime)
       .then((result) => {
         if (!current) return;
         setWeatherResult(result);
@@ -104,7 +110,7 @@ export default function App() {
       })
       .finally(() => { if (current) setWeatherLoading(false); });
     return () => { current = false; };
-  }, [location, localParts.date]);
+  }, [location, localParts.date, weatherLoader]);
 
   useEffect(() => {
     if (!playing) return;
