@@ -8,8 +8,9 @@ export default function ObjectPanel({ sky, timeZone, selectedId, onSelect, onFoc
   sky: SkyState; timeZone: string; selectedId: string; onSelect: (id: string) => void; onFocus: (altitude: number, azimuth: number) => void;
 }) {
   const [query, setQuery] = useState('');
-  const objects = [{ id: 'sun', name: 'Sun', ...sky.sun }, { id: 'moon', name: 'Moon', ...sky.moon }, ...sky.stars.filter((s) => s.name)];
+  const objects = [{ id: 'sun', name: 'Sun', ...sky.sun }, { id: 'moon', name: 'Moon', ...sky.moon }, ...sky.stars.map((s) => ({ ...s, name: s.name || s.id.toUpperCase() }))];
   const selected = objects.find((o) => o.id === selectedId) ?? objects[0];
+  const matches = objects.filter((o) => o.name.toLowerCase().includes(query.toLowerCase()) || o.id.toLowerCase().includes(query.toLowerCase()));
   const isSun = selected.id === 'sun', isMoon = selected.id === 'moon';
   return <>
     <div className="object-detail"><div className="object-detail-heading">{isMoon ? <MoonPhase illumination={sky.moon.illumination} angle={sky.moon.brightLimbAngle} label={sky.moon.phaseName} /> : isSun ? <Sun size={34} className="gold" /> : <Star size={30} />}<div><p className="eyebrow">{isSun || isMoon ? 'Solar system' : 'Star'}</p><h3>{selected.name}</h3></div></div>
@@ -23,7 +24,8 @@ export default function ObjectPanel({ sky, timeZone, selectedId, onSelect, onFoc
       {selected.altitude < 0 && <p className="muted">Move through time to see this object above the horizon.</p>}
     </div>
     <label className="object-search"><span>Find an object</span><input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Sun, Moon, or star name" /></label>
-    <div className="object-list" aria-label="Celestial objects">{objects.filter((o) => o.name.toLowerCase().includes(query.toLowerCase())).map((object) => <button key={object.id} className={object.id === selected.id ? 'active' : ''} onClick={() => onSelect(object.id)} aria-pressed={object.id === selected.id}>
+    <p className="muted" role="status">{matches.length > 60 ? `Showing 60 of ${matches.length} objects. Search by name or HYG ID to find more.` : `${matches.length} matching objects.`}</p>
+    <div className="object-list" aria-label="Celestial objects">{matches.slice(0,60).map((object) => <button key={object.id} className={object.id === selected.id ? 'active' : ''} onClick={() => onSelect(object.id)} aria-pressed={object.id === selected.id}>
       {object.id === 'sun' ? <Sun size={16} /> : object.id === 'moon' ? <Moon size={16} /> : <Star size={15} />}<span>{object.name}</span><small>{object.altitude >= 0 ? `${Math.round(object.altitude)}° up` : 'below'}</small>
     </button>)}</div>
   </>;

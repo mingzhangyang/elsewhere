@@ -24,53 +24,23 @@ export function makeGlowTexture(): THREE.CanvasTexture {
   return new THREE.CanvasTexture(canvas);
 }
 
-export function makeMoonTexture(): THREE.CanvasTexture {
-  const canvas = document.createElement('canvas');
-  canvas.width = 1024;
-  canvas.height = 512;
-  const ctx = canvas.getContext('2d')!;
-  ctx.fillStyle = '#9c9b95';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  let seed = 18431;
-  const random = () => {
-    seed = (seed * 1664525 + 1013904223) % 4294967296;
-    return seed / 4294967296;
-  };
-  for (let i = 0; i < 1800; i += 1) {
-    const x = random() * canvas.width;
-    const y = random() * canvas.height;
-    const r = 1 + random() * (i < 50 ? 16 : 6);
-    const shade = Math.floor(100 + random() * 95);
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(${shade},${shade},${shade - 2},${0.06 + random() * 0.18})`;
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(x - r * 0.18, y - r * 0.18, r * 0.72, Math.PI, Math.PI * 1.8);
-    ctx.strokeStyle = 'rgba(45,46,47,0.13)';
-    ctx.lineWidth = Math.max(1, r * 0.12);
-    ctx.stroke();
-  }
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  return texture;
-}
-
 export function makeTextSprite(text: string, color = '#e8edf7'): THREE.Sprite {
   const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 128;
   const ctx = canvas.getContext('2d')!;
-  ctx.font = '500 40px DM Sans, Arial';
+  ctx.font = '500 32px Arial';
+  canvas.width = Math.ceil(ctx.measureText(text).width) + 32;
+  canvas.height = 56;
+  ctx.font = '500 32px Arial';
   ctx.fillStyle = color;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.shadowColor = 'rgba(0,0,0,.8)';
   ctx.shadowBlur = 10;
-  ctx.fillText(text, 256, 64);
+  ctx.fillText(text, canvas.width / 2, canvas.height / 2);
   const texture = new THREE.CanvasTexture(canvas);
   const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false });
   const sprite = new THREE.Sprite(material);
+  sprite.userData.aspect = canvas.width / canvas.height;
   sprite.scale.set(118, 29, 1);
   return sprite;
 }

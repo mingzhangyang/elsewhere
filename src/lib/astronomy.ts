@@ -72,6 +72,15 @@ export function calculateSky(location: LocationInfo, date: Date, events = calcul
   const sa = sun.altitude * DEG, ma = moon.altitude * DEG, az = (sun.azimuth - moon.azimuth) * DEG;
   const lightRight = Math.cos(sa) * Math.sin(az);
   const lightUp = Math.sin(sa) * Math.cos(ma) - Math.cos(sa) * Math.sin(ma) * Math.cos(az);
+  const axis = Astronomy.RotationAxis(Astronomy.Body.Moon, date);
+  const a = axis.ra * 15 * DEG, d = axis.dec * DEG, w = axis.spin * DEG;
+  const rotation = Astronomy.Rotation_EQJ_HOR(date, observer);
+  const localVector = (vector: Astronomy.Vector): [number, number, number] => {
+    const h = Astronomy.RotateVector(rotation, vector);
+    return [-h.y, h.z, -h.x]; // Three.js: east, zenith, south
+  };
+  const prime = new Astronomy.Vector(-Math.sin(a) * Math.cos(w) - Math.cos(a) * Math.sin(d) * Math.sin(w),
+    Math.cos(a) * Math.cos(w) - Math.sin(a) * Math.sin(d) * Math.sin(w), Math.cos(d) * Math.sin(w), Astronomy.MakeTime(date));
   return {
     sun: { altitude: sun.altitude, azimuth: sun.azimuth, visible: sun.altitude > -0.2666, distanceKm: sunEq.dist * AU_KM },
     moon: {
@@ -79,6 +88,7 @@ export function calculateSky(location: LocationInfo, date: Date, events = calcul
       phaseAngle, illumination: illumination.phase_fraction, phaseName: getPhaseName(phaseAngle),
       distanceKm: moonEq.dist * AU_KM, waxing: phaseAngle < 180,
       brightLimbAngle: Math.atan2(lightRight, lightUp) / DEG,
+      north: localVector(axis.north), prime: localVector(prime),
     },
     stars: calculateStarPositions(location.latitude, location.longitude, date, Astronomy.SiderealTime(date)),
     events, sunAltitude: sun.altitude,

@@ -21,6 +21,7 @@ export interface Star extends HorizontalPosition {
   id: string;
   name: string;
   magnitude: number;
+  colorIndex?: number | null;
   ra: number;
   dec: number;
 }
@@ -46,6 +47,8 @@ export interface SkyState {
     distanceKm: number;
     waxing: boolean;
     brightLimbAngle: number;
+    north: [number, number, number];
+    prime: [number, number, number];
   };
   stars: Star[];
   events: SkyEvents;

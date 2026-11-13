@@ -8,10 +8,11 @@ export interface CameraView { heading: number; altitude: number; fov: number }
 export interface Preferences {
   version: 1; layers: LayerSettings; saved: LocationInfo[]; recent: LocationInfo[];
   hintDismissed: boolean; reducedMotion: boolean; quality: 'auto' | 'low' | 'high';
+  horizon: 'flat' | 'ridge'; skyBrightness: 'dark' | 'suburban' | 'city';
 }
 export interface Exploration { version: 1; location: LocationInfo; instant: string; camera: CameraView; layers: LayerSettings; custom: WeatherValues | null }
 const KEY = 'elsewhere.preferences.v1';
-const defaults = (): Preferences => ({ version: 1, layers: { stars: true, lines: false, labels: true }, saved: [], recent: [], hintDismissed: false, reducedMotion: false, quality: 'auto' });
+const defaults = (): Preferences => ({ version: 1, layers: { stars: true, lines: false, labels: true }, saved: [], recent: [], hintDismissed: false, reducedMotion: false, quality: 'auto', horizon: 'ridge', skyBrightness: 'dark' });
 function isObject(value: unknown): value is Record<string, unknown> { return !!value && typeof value === 'object' && !Array.isArray(value); }
 function locationValue(value: unknown): LocationInfo {
   if (!isObject(value) || !['id', 'name', 'country', 'timezone'].every((key) => typeof value[key] === 'string') || String(value.name).length > 160) throw new Error('Invalid saved place');
@@ -32,6 +33,7 @@ export function loadPreferences(): { value: Preferences; notice: string } {
     if (!isObject(data) || data.version !== 1 || !Array.isArray(data.saved) || !Array.isArray(data.recent)) throw new Error('Invalid preferences');
     return { value: { version: 1, layers: layerValue(data.layers), saved: data.saved.slice(0, 30).map(locationValue), recent: data.recent.slice(0, 6).map(locationValue),
       hintDismissed: data.hintDismissed === true, reducedMotion: data.reducedMotion === true,
+      horizon: data.horizon === 'flat' ? 'flat' : 'ridge', skyBrightness: data.skyBrightness === 'city' || data.skyBrightness === 'suburban' ? data.skyBrightness : 'dark',
       quality: data.quality === 'low' || data.quality === 'high' ? data.quality : 'auto' }, notice: '' };
   } catch { return { value: defaults(), notice: 'Saved settings could not be read. Default settings are active.' }; }
 }
