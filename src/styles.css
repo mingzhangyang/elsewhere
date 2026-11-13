@@ -1779,6 +1779,42 @@ dialog:not([open]) {
     transform: none;
   }
 }
+/* Phones: panels become a lower sheet so the sky stays visible while settings change it.
+   Placed after the short-viewport rules so it also applies to short portrait phones. */
+@media (max-width: 680px) {
+  .inspector {
+    top: 38%;
+    bottom: 74px;
+    left: 8px;
+    right: 8px;
+    width: auto;
+    border-radius: 16px;
+  }
+  .inspector-heading {
+    padding: 10px 16px 6px;
+    align-items: center;
+  }
+  .inspector-heading h2 {
+    font-size: 18px;
+  }
+  .panel-open .sky-context,
+  .panel-open .view-controls,
+  .panel-open .scene-hint {
+    display: none;
+  }
+  .sky-context .eyebrow,
+  .bottom-bar,
+  .bottom-bar > span:nth-child(2) {
+    font-size: 10px;
+  }
+}
+/* iOS Safari zooms the page when a focused field is smaller than 16px. */
+@media (pointer: coarse) {
+  /* :is() lifts select/textarea to the input selector's specificity so component rules can't undercut it. */
+  :is(input:not([type='range']):not([type='checkbox']):not([type='radio']), select, textarea) {
+    font-size: 16px;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   *,
   *:before,

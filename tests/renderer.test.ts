@@ -3,7 +3,7 @@ import { expect, it, vi } from 'vitest';
 import { createCelestialLayers } from '../src/renderer/celestialLayers';
 import { calculateSky } from '../src/lib/astronomy';
 import { NEW_YORK } from './fixtures/locations';
-import { pickStarIndex, starAlpha } from '../src/renderer/starPicking';
+import { pickStarIndex, pickThreshold, STAR_PICK_RADIUS_PX, starAlpha } from '../src/renderer/starPicking';
 
 it('picks the centered star rather than a shallower neighbor and skips extinguished stars', () => {
   const sky = calculateSky(NEW_YORK, new Date('2026-11-13T04:00Z'));
@@ -57,4 +57,14 @@ it('updates moving sky layers without reallocating their geometry or labels', ()
   expect(scene.children.filter((o) => o instanceof THREE.Sprite).every((o) => !o.visible)).toBe(true);
   layers.update(initial.stars, flags, 0);
   expect(scene.children.every((o) => !o.visible)).toBe(true);
+});
+
+it.each([20, 66, 92])('keeps the star tap radius at a fixed screen size at %d° field of view', (fov) => {
+  const height = 700;
+  const camera = new THREE.PerspectiveCamera(fov, 390 / height, 0.1, 5000);
+  camera.updateMatrixWorld();
+  const offset = pickThreshold(1770, fov, height);
+  const center = new THREE.Vector3(0, 0, -1770).project(camera);
+  const edge = new THREE.Vector3(0, offset, -1770).project(camera);
+  expect(((edge.y - center.y) * height) / 2).toBeCloseTo(STAR_PICK_RADIUS_PX, 6);
 });

@@ -24,3 +24,17 @@ export function pickStarIndex(hits: Intersection[], alpha: (index: number) => nu
   }
   return closest;
 }
+
+/** Screen radius, in CSS pixels, within which a tap selects a star at any zoom. */
+export const STAR_PICK_RADIUS_PX = 20;
+
+/** Converts a screen-space pick radius into a world-space ray threshold at `distance`. */
+export function pickThreshold(
+  distance: number,
+  fovDegrees: number,
+  viewportHeight: number,
+  radiusPx = STAR_PICK_RADIUS_PX,
+): number {
+  const visibleHeight = 2 * distance * Math.tan(MathUtils.degToRad(fovDegrees) / 2);
+  return (radiusPx * visibleHeight) / Math.max(1, viewportHeight);
+}

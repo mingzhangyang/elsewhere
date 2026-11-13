@@ -302,7 +302,10 @@ export default function App({
           </button>
         </div>
       </header>
-      <section className={`stage ${focused ? 'has-target' : ''}`} aria-label="Sky exploration">
+      <section
+        className={`stage ${focused ? 'has-target' : ''} ${panel ? 'panel-open' : ''}`}
+        aria-label="Sky exploration"
+      >
         <SkyScene
           ref={skyRef}
           sky={sky}
