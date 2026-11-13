@@ -12,12 +12,13 @@ import { formatTime } from './lib/time';
 import { customConditions, defaultWeatherValues, fetchWeatherForDate, renderingWeather, weatherSourceLabel } from './lib/weather';
 import { PRESETS } from './lib/locations';
 import { explorationUrl, loadPreferences, parseExploration, savePreferences, type CameraView, type Preferences } from './lib/persistence';
+import type { RenderStats } from './renderer/performance';
 
-export interface AppProps { initialLocation?: LocationInfo; initialTime?: Date; weatherLoader?: typeof fetchWeatherForDate }
+export interface AppProps { initialLocation?: LocationInfo; initialTime?: Date; weatherLoader?: typeof fetchWeatherForDate; diagnostics?: boolean }
 type Panel = 'objects' | 'weather' | 'settings';
 const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 
-export default function App({ initialLocation, initialTime, weatherLoader = fetchWeatherForDate }: AppProps) {
+export default function App({ initialLocation, initialTime, weatherLoader = fetchWeatherForDate, diagnostics = false }: AppProps) {
   const [launch] = useState(() => ({ preferences: loadPreferences(), shared: initialTime || initialLocation ? { value: null, notice: '' } : parseExploration(window.location.hash) }));
   const [preferences, setPreferences] = useState<Preferences>(() => ({ ...launch.preferences.value, layers: launch.shared.value?.layers ?? launch.preferences.value.layers }));
   const simulation = useSimulation(initialLocation ?? launch.shared.value?.location ?? PRESETS[0], initialTime ?? (launch.shared.value ? new Date(launch.shared.value.instant) : undefined));
@@ -34,6 +35,7 @@ export default function App({ initialLocation, initialTime, weatherLoader = fetc
   const [immersive, setImmersive] = useState(false);
   const [shareLink, setShareLink] = useState('');
   const [copied, setCopied] = useState(false);
+  const [stats, setStats] = useState<RenderStats | null>(null);
   const [systemMotion, setSystemMotion] = useState(() => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
   const skyRef = useRef<SkySceneHandle>(null);
   const panelTitle = useRef<HTMLHeadingElement>(null);
@@ -50,6 +52,11 @@ export default function App({ initialLocation, initialTime, weatherLoader = fetc
     return () => media?.removeEventListener('change', update);
   }, []);
   useEffect(() => { if (panel) panelTitle.current?.focus({ preventScroll: true }); }, [panel]);
+  useEffect(() => {
+    const unavailable = () => setNotice('Offline caching could not be enabled. This open sky remains usable; reloading offline may require a connection.');
+    window.addEventListener('elsewhere-offline-unavailable', unavailable);
+    return () => window.removeEventListener('elsewhere-offline-unavailable', unavailable);
+  }, []);
   const changePreferences = (change: (value: Preferences) => Preferences) => {
     const next = change(preferences);
     setPreferences(next);
@@ -88,9 +95,11 @@ export default function App({ initialLocation, initialTime, weatherLoader = fetc
         initialView={launch.shared.value?.camera} reducedMotion={preferences.reducedMotion || systemMotion} quality={preferences.quality}
         horizon={preferences.horizon} skyBrightness={preferences.skyBrightness} onAssetError={setNotice}
         onCameraChange={setView}
+        onDiagnostics={import.meta.env.DEV && diagnostics ? setStats : undefined}
         onStarSelect={(star) => { if (star) { setSelectedId(star.id); panelTrigger.current = document.activeElement as HTMLElement; setPanel('objects'); } }}
         onBodySelect={(body) => { setSelectedId(body); panelTrigger.current = document.activeElement as HTMLElement; setPanel('objects'); }} />
       <div className="stage-vignette" />
+      {import.meta.env.DEV && diagnostics && <div className="dev-diagnostics" aria-label="Renderer diagnostics"><strong>Development profile</strong><output>{stats ? `Frames ${stats.frames} · p95 interval ${stats.frameP95.toFixed(1)} ms · CPU draw ${stats.drawP95.toFixed(1)} ms · DPR ${stats.pixelRatio.toFixed(2)} · geometry ${stats.geometries} · textures ${stats.textures} · calls ${stats.calls}` : 'Waiting for renderer…'}</output><button onClick={() => skyRef.current?.simulateContextLoss()}>Simulate graphics loss</button></div>}
       <div className="sky-context"><p className="eyebrow">{skyMood}</p><h1>{location.name}</h1><div className="context-time">{localParts.time}<span>{location.timezone.replaceAll('_', ' ')}</span></div><button className="source-pill" onClick={() => openPanel('weather')}><span className={`status-dot ${custom || !selection.values ? 'amber' : ''}`} />{sourceText}{!custom && !selection.values ? ' · neutral sky' : ''}<ArrowUpRight size={13} /></button></div>
       <div className="sky-compass" aria-label={`Facing ${directions[Math.round(view.heading / 45) % 8]}, ${Math.round(view.heading)} degrees`}><Compass size={24} style={{ transform: `rotate(${-view.heading}deg)` }} /><strong>{directions[Math.round(view.heading / 45) % 8]}</strong><span>{Math.round(view.heading)}°</span></div>
       <div className="view-controls"><button className="icon-button" aria-label="Zoom in" onClick={() => skyRef.current?.zoom(-5)}><Plus size={19} /></button><button className="icon-button" aria-label="Zoom out" onClick={() => skyRef.current?.zoom(5)}><Minus size={19} /></button><span /><button className="icon-button" aria-label="Reset view" onClick={() => skyRef.current?.resetView()}><Crosshair size={19} /></button><button className="icon-button" aria-label={immersive ? 'Show controls' : 'Hide controls'} aria-pressed={immersive} onClick={() => { setImmersive(!immersive); setPanel(null); }}><Eye size={19} /></button></div>

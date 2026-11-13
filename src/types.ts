@@ -78,6 +78,8 @@ export type WeatherSource = 'current' | 'forecast' | 'recent' | 'historical';
 export type WeatherResult = {
   key: string;
   fetchedAt: number;
+  cacheState?: 'cached' | 'stale';
+  notice?: string;
 } & ({
   status: 'ready'; source: Exclude<WeatherSource, 'current'>;
   start: number; end: number; hourly: WeatherPoint[]; current?: WeatherPoint;
@@ -90,4 +92,5 @@ export interface WeatherSelection {
   sampledAt?: number;
   fetchedAt?: number;
   message?: string;
+  cacheState?: 'cached' | 'stale';
 }

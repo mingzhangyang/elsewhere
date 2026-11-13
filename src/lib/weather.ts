@@ -130,7 +130,7 @@ export function selectWeather(result: WeatherResult | null, location: LocationIn
     }
   }
   return { status: Object.values(values).some((value) => value === null) ? 'partial' : 'ready', values,
-    source: current ? 'current' : result.source, sampledAt, fetchedAt: result.fetchedAt };
+    source: current ? 'current' : result.source, sampledAt, fetchedAt: result.fetchedAt, cacheState: result.cacheState, message: result.notice };
 }
 
 /** Presentation assumptions are confined to the renderer, never to source readouts. */
@@ -182,5 +182,6 @@ export function weatherDescription(code: number | null): string {
 }
 export function weatherSourceLabel(selection: WeatherSelection): string {
   if (!selection.source) return selection.status === 'loading' ? 'Loading weather' : 'Weather unavailable';
-  return { current: 'Current model estimate', forecast: 'Forecast', recent: 'Recent weather model', historical: 'Historical reanalysis' }[selection.source];
+  const prefix = selection.cacheState === 'stale' ? 'Stale cached · ' : selection.cacheState === 'cached' ? 'Cached · ' : '';
+  return prefix + { current: 'Current model estimate', forecast: 'Forecast', recent: 'Recent weather model', historical: 'Historical reanalysis' }[selection.source];
 }

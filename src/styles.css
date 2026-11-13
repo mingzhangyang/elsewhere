@@ -18,6 +18,11 @@ input, select { color: #e8eef6; background: #172537; border: 1px solid #ffffff24
 button { transition: background .16s, border-color .16s, color .16s; }
 button:hover:not(:disabled) { filter: brightness(1.15); }
 .app-shell { height: 100dvh; min-height: 380px; display: grid; grid-template-rows: 76px minmax(120px, 1fr) auto 30px; overflow: clip; }
+.recovery-page { max-width: 600px; margin: 15vh auto; padding: 24px; line-height: 1.7; }
+.recovery-page a { display: block; margin-top: 20px; }
+.dev-diagnostics { position: absolute; z-index: 8; left: 20px; bottom: 20px; max-width: 340px; background: #0a111cee; border: 1px solid #8394a9; padding: 12px; border-radius: 8px; font-size: 12px; }
+.dev-diagnostics output { display: block; margin: 8px 0; line-height: 1.7; }
+.dev-diagnostics button { background: #20334a; border: 1px solid #8394a9; padding: 8px; border-radius: 6px; }
 .topbar { display: grid; grid-template-columns: 1fr minmax(200px, 360px) 1fr; align-items: center; gap: 24px; padding: 0 28px; background: #0a111c; border-bottom: 1px solid var(--line); z-index: 10; }
 .brand-lockup { display: inline-flex; align-items: center; gap: 12px; text-decoration: none; color: #eaf1f8; width: fit-content; }
 .brand-mark { display: grid; place-items: center; border: 1px solid #e5ceb143; color: var(--gold); border-radius: 50%; width: 38px; height: 38px; }

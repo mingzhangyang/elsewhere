@@ -1,6 +1,6 @@
 import { Cloud, Eye, RotateCcw, Thermometer, Wind } from 'lucide-react';
 import type { WeatherSelection, WeatherValues } from '../types';
-import { formatTime } from '../lib/time';
+import { formatDate, formatTime } from '../lib/time';
 import { weatherDescription, weatherSourceLabel } from '../lib/weather';
 
 const metric = (value: number | null | undefined, digits = 0) => value === null || value === undefined ? '—' : value.toFixed(digits);
@@ -31,7 +31,7 @@ export default function WeatherPanel({ selection, custom, values, timeZone, onMo
       <WeatherSlider label="Temperature" field="temperature" value={values.temperature} min={-30} max={45} unit="°C" onChange={onField} />
     </div> : <button className="secondary-button full" onClick={onRefresh}><RotateCcw size={15} />Refresh weather</button>}
     <p className="weather-description">{weatherDescription(source?.weatherCode ?? null)}</p><p className="muted">{metric(source?.humidity)}% humidity · {metric(source?.pressure)} hPa</p>
-    {!custom && selection.sampledAt !== undefined && <p className="muted">Sample {formatTime(new Date(selection.sampledAt), timeZone)} · fetched {formatTime(new Date(selection.fetchedAt!), timeZone)}. Weather is a model estimate; the cloud pattern is simulated.</p>}
+    {!custom && selection.sampledAt !== undefined && <p className="muted">Sample {formatTime(new Date(selection.sampledAt), timeZone)} · fetched {formatDate(new Date(selection.fetchedAt!), timeZone)} at {formatTime(new Date(selection.fetchedAt!), timeZone)}. Weather is a model estimate; the cloud pattern is simulated.</p>}
     {custom && <button className="text-button" onClick={() => onMode(false)}>Return to weather data</button>}
   </>;
 }

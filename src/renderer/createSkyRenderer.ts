@@ -7,20 +7,39 @@ import { seededRandom } from '../lib/random';
 import { SKY_VERTEX, SKY_FRAGMENT, CLOUD_FRAGMENT } from './shaders';
 import { directionVector, makeGlowTexture, setAtDirection } from './resources';
 import { advancePrecipitation, windVector } from './precipitation';
+import { createFrameLoop } from './frameLoop';
+import { adaptiveRatio, percentile, type RenderStats } from './performance';
 
 export interface RenderSettings { reducedMotion?: boolean; quality?: Preferences['quality']; horizon?: Preferences['horizon']; skyBrightness?: Preferences['skyBrightness'] }
 export interface RenderInput extends RenderSettings { sky: SkyState; weather: WeatherValues; showStars: boolean; showConstellations: boolean; showLabels: boolean; initialView?: CameraView }
-export interface RenderCallbacks { onHeadingChange?: (heading: number) => void; onStarSelect?: (star: Star | null) => void; onCameraChange?: (view: CameraView) => void; onBodySelect?: (body: 'sun' | 'moon') => void; onAssetError?: (message: string) => void }
+export interface RenderCallbacks { onHeadingChange?: (heading: number) => void; onStarSelect?: (star: Star | null) => void; onCameraChange?: (view: CameraView) => void; onBodySelect?: (body: 'sun' | 'moon') => void; onAssetError?: (message: string) => void; onContextChange?: (lost: boolean) => void; onDiagnostics?: (stats: RenderStats) => void }
 
 export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbacks: RenderCallbacks) {
   const { sky, weather, showStars, showConstellations, showLabels } = input;
   const { onHeadingChange, onStarSelect } = callbacks;
   const scene = new THREE.Scene();
+  let invalidate = () => {};
+  let disposed = false;
   const random = seededRandom(18431);
   const camera = new THREE.PerspectiveCamera(66, host.clientWidth / host.clientHeight, 0.1, 5000);
   camera.position.set(0, 0, 0);
   camera.rotation.order = 'YXZ';
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+  const releases: (() => void)[] = [() => { renderer.dispose(); renderer.domElement.remove(); }, () => {
+    const geometries = new Set<THREE.BufferGeometry>(), materials = new Set<THREE.Material>(), textures = new Set<THREE.Texture>();
+    scene.traverse((object) => {
+      const mesh = object as THREE.Mesh;
+      if (mesh.geometry) geometries.add(mesh.geometry);
+      if (mesh.material) for (const material of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
+        materials.add(material);
+        const mapped = material as THREE.Material & { map?: THREE.Texture; alphaMap?: THREE.Texture };
+        if (mapped.map) textures.add(mapped.map); if (mapped.alphaMap) textures.add(mapped.alphaMap);
+      }
+    });
+    for (const item of [...textures,...materials,...geometries]) item.dispose();
+  }];
+  const dispose = () => { if (disposed) return; disposed = true; for (const release of releases.reverse()) release(); };
+  try {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.setSize(host.clientWidth, host.clientHeight);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -96,9 +115,8 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
   scene.add(sunGroup);
 
   const moonGroup = new THREE.Group();
-  let disposed = false;
   const moonTexture = new THREE.TextureLoader().load(import.meta.env.BASE_URL + 'assets/moon-lroc.jpg', (texture) => {
-    if (disposed) texture.dispose();
+    if (disposed) texture.dispose(); else invalidate();
   }, undefined, () => { if (!disposed) callbacks.onAssetError?.('The Moon surface map could not load. Positions and phase remain available.'); });
   moonTexture.colorSpace = THREE.SRGBColorSpace;
   const moonMesh = new THREE.Mesh(
@@ -176,6 +194,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
   rainGeometry.setAttribute('position', new THREE.BufferAttribute(rainPositions, 3));
   const rainMaterial = new THREE.PointsMaterial({ color: 0xa8c9e9, size: 0.16, transparent: true, opacity: 0.0, depthWrite: false });
   const rainPoints = new THREE.Points(rainGeometry, rainMaterial);
+  rainPoints.renderOrder = 30; // Foreground precipitation is in front of the cloud layer.
   camera.add(rainPoints);
   scene.add(camera);
 
@@ -185,6 +204,9 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
   let activeShowStars = showStars;
   let reducedMotion = input.reducedMotion;
   let skyBrightness = input.skyBrightness ?? 'dark';
+  let quality = input.quality ?? 'auto';
+  let contextLost = false;
+  const updateAnimation = () => loop.setAnimated(!reducedMotion && ((activeWeather.cloudCover > 0 && activeWeather.windSpeed > 0) || activeWeather.precipitation > .08));
   const controls = createCameraControls(renderer.domElement, camera, (heading) => onHeadingChange?.(heading), (x, y) => {
     const rect = renderer.domElement.getBoundingClientRect();
     const pointer = new THREE.Vector2((x - rect.left) / rect.width * 2 - 1, -(y - rect.top) / rect.height * 2 + 1);
@@ -197,23 +219,26 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
     const index = raycaster.intersectObject(starPoints, false)[0]?.index;
     const star = index === undefined ? undefined : activeStars[index];
     onStarSelect?.(star && star.altitude > 0 ? star : null);
-  }, callbacks.onCameraChange, input.initialView);
+  }, (view) => { callbacks.onCameraChange?.(view); invalidate(); }, input.initialView);
 
+  releases.push(() => controls.dispose());
   const resizeObserver = new ResizeObserver(() => {
     if (!host.clientWidth || !host.clientHeight) return;
     camera.aspect = host.clientWidth / host.clientHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(host.clientWidth, host.clientHeight);
+    invalidate();
   });
   resizeObserver.observe(host);
+  releases.push(() => resizeObserver.disconnect());
 
   const api = {
     settings: (settings: RenderSettings) => {
       reducedMotion = settings.reducedMotion;
       skyBrightness = settings.skyBrightness ?? 'dark';
       ridge.visible = settings.horizon !== 'flat';
-      const quality = settings.quality;
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, quality === 'low' ? 1 : 2));
+      quality = settings.quality ?? 'auto';
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, quality === 'low' ? 1 : quality === 'auto' ? 1.5 : 2));
       renderer.setSize(host.clientWidth, host.clientHeight);
       starMaterial.uniforms.uPixelRatio.value = renderer.getPixelRatio();
       api.update(activeSky, activeWeather, activeFlags);
@@ -273,18 +298,20 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
     rainMaterial.opacity = nextWeather.precipitation > 0.08 ? Math.min(0.72, 0.16 + nextWeather.precipitation * 0.08) : 0;
     rainMaterial.size = snowing ? 0.62 : nextWeather.precipitation > 2 ? 0.25 : 0.15;
     rainMaterial.color.set(snowing ? 0xe5efff : 0xa8c9e9);
+    cloudDome.visible = nextWeather.cloudCover > 0;
+    updateAnimation();
+    invalidate();
     },
   };
   let activeFlags = { stars: showStars, constellations: showConstellations, labels: showLabels };
-  api.update(sky, weather, { stars: showStars, constellations: showConstellations, labels: showLabels });
-  api.settings(input);
 
-  let frame = 0;
-  let previous = performance.now();
-  const animate = (now: number) => {
-    frame = requestAnimationFrame(animate);
-    const delta = reducedMotion ? 0 : Math.min(0.08, (now - previous) / 1000);
-    previous = now;
+  let previous = 0, frames = 0, reported = 0, adapted = 0;
+  const frameTimes: number[] = [], drawTimes: number[] = [];
+  const loop = createFrameLoop((now, elapsed, continuous) => {
+    const start = performance.now();
+    const delta = reducedMotion ? 0 : elapsed;
+    if (continuous && previous) { frameTimes.push(now - previous); if (frameTimes.length > 240) frameTimes.shift(); }
+    previous = now; frames++;
     skyUniforms.uTime.value += delta;
     if (rainMaterial.opacity > 0 && delta) {
       const wind = windVector(activeWeather.windSpeed * .06, activeWeather.windDirection).applyQuaternion(camera.quaternion.clone().invert());
@@ -293,30 +320,34 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
     camera.updateMatrixWorld();
     celestialLayers.layout(camera, host.clientWidth, host.clientHeight);
     renderer.render(scene, camera);
-  };
-  frame = requestAnimationFrame(animate);
-
-  const dispose = () => {
-    disposed = true;
-    cancelAnimationFrame(frame);
-    resizeObserver.disconnect();
-    controls.dispose();
-    scene.traverse((object) => {
-    const mesh = object as THREE.Mesh;
-    if (mesh.geometry) mesh.geometry.dispose();
-    if (mesh.material) {
-      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-      materials.forEach((material) => {
-      const textured = material as THREE.Material & { map?: THREE.Texture; alphaMap?: THREE.Texture };
-      textured.map?.dispose();
-      textured.alphaMap?.dispose();
-      material.dispose();
-      });
+    drawTimes.push(performance.now() - start); if (drawTimes.length > 240) drawTimes.shift();
+    if (quality === 'auto' && frameTimes.length >= 120 && now - adapted > 10000) {
+      const next = adaptiveRatio(renderer.getPixelRatio(), percentile(frameTimes,.95), Math.min(window.devicePixelRatio || 1, 1.5));
+      if (next !== renderer.getPixelRatio()) { renderer.setPixelRatio(next); starMaterial.uniforms.uPixelRatio.value = next; }
+      adapted = now; frameTimes.length = 0;
     }
-    });
-    renderer.dispose();
-    renderer.domElement.remove();
-  };
-  return { ...api, resetView: controls.resetView, focus: controls.focus, zoom: controls.zoom, dispose };
+    if (callbacks.onDiagnostics && now - reported > 2000) {
+      callbacks.onDiagnostics({ frames, frameP95: percentile(frameTimes,.95), drawP95: percentile(drawTimes,.95), geometries: renderer.info.memory.geometries,
+        textures: renderer.info.memory.textures, calls: renderer.info.render.calls, pixelRatio: renderer.getPixelRatio() });
+      reported = now;
+    }
+  });
+  releases.push(() => loop.dispose());
+  invalidate = loop.invalidate;
+  const visibility = () => loop.setSuspended(document.hidden || contextLost);
+  const lost = (event: Event) => { event.preventDefault(); contextLost = true; visibility(); callbacks.onContextChange?.(true); };
+  const restored = () => { contextLost = false; previous = 0; visibility(); callbacks.onContextChange?.(false); };
+  renderer.domElement.addEventListener('webglcontextlost', lost);
+  renderer.domElement.addEventListener('webglcontextrestored', restored);
+  document.addEventListener('visibilitychange', visibility);
+  releases.push(() => {
+    document.removeEventListener('visibilitychange', visibility);
+    renderer.domElement.removeEventListener('webglcontextlost', lost);
+    renderer.domElement.removeEventListener('webglcontextrestored', restored);
+  });
+  api.settings(input); visibility();
+
+  return { ...api, resetView: controls.resetView, focus: controls.focus, zoom: controls.zoom, simulateContextLoss: () => { if (import.meta.env.DEV) renderer.forceContextLoss(); }, dispose };
+  } catch (error) { dispose(); throw error; }
 }
 export type SkyRenderer = ReturnType<typeof createSkyRenderer>;

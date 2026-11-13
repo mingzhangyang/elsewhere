@@ -1,10 +1,12 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import type { RenderInput, RenderCallbacks, SkyRenderer } from '../renderer/createSkyRenderer';
+import type { CameraView } from '../lib/persistence';
 
 export interface SkySceneHandle {
   resetView: () => void;
   focus: (altitude: number, azimuth: number) => void;
   zoom: (delta: number) => void;
+  simulateContextLoss: () => void;
 }
 
 type Props = RenderInput & RenderCallbacks;
@@ -12,6 +14,7 @@ type Props = RenderInput & RenderCallbacks;
 const SkyScene = forwardRef<SkySceneHandle, Props>(function SkyScene(props, ref) {
   const hostRef = useRef<HTMLDivElement>(null);
   const runtime = useRef<SkyRenderer | null>(null);
+  const view = useRef<CameraView | undefined>(props.initialView);
   const latest = useRef(props);
   latest.current = props;
   const [error, setError] = useState('');
@@ -20,6 +23,7 @@ const SkyScene = forwardRef<SkySceneHandle, Props>(function SkyScene(props, ref)
     resetView: () => runtime.current?.resetView(),
     focus: (altitude, azimuth) => runtime.current?.focus(altitude, azimuth),
     zoom: (delta) => runtime.current?.zoom(delta),
+    simulateContextLoss: () => runtime.current?.simulateContextLoss(),
   }), []);
   useEffect(() => {
     let disposed = false;
@@ -27,12 +31,14 @@ const SkyScene = forwardRef<SkySceneHandle, Props>(function SkyScene(props, ref)
     import('../renderer/createSkyRenderer').then(({ createSkyRenderer }) => {
       if (disposed || !hostRef.current) return;
       try {
-        instance = createSkyRenderer(hostRef.current, latest.current, {
+        instance = createSkyRenderer(hostRef.current, { ...latest.current, initialView: view.current }, {
           onHeadingChange: (heading) => latest.current.onHeadingChange?.(heading),
           onStarSelect: (star) => latest.current.onStarSelect?.(star),
           onBodySelect: (body) => latest.current.onBodySelect?.(body),
-          onCameraChange: (view) => latest.current.onCameraChange?.(view),
+          onCameraChange: (next) => { view.current = next; latest.current.onCameraChange?.(next); },
           onAssetError: (message) => latest.current.onAssetError?.(message),
+          onContextChange: (lost) => setError(lost ? 'The graphics connection was interrupted. Retry the sky; your place, time, and view are preserved.' : ''),
+          onDiagnostics: (stats) => latest.current.onDiagnostics?.(stats),
         });
         runtime.current = instance;
         setError('');

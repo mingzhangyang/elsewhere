@@ -6,7 +6,7 @@ The recommended approach is a substantial refactor within React, TypeScript, Vit
 
 ## Current baseline
 
-Implementation status on November 13, 2026: phases 0–2 have their implementation and automated checks in place. Phase 1 corrects weather request ranges, missing-data/provenance handling, cancellation, DST ambiguity, civil-day events, time-zone lookup, lunar phase presentation, and layer semantics. Phase 2 separates the simulation controller, weather service, renderer lifecycle, camera controls, shaders, and retained celestial layers. Phase 3 now provides the responsive exploration shell, location picker, object/weather/settings inspector, camera/time controls, saved preferences and share links. Phase 4 adds the licensed catalog, lunar map and orientation, shared cloud occlusion, screen-space labels, and bounded precipitation. Phase 5 is next. Physical-device benchmarks and independent scientific review remain qualification tasks. See [validation](docs/VALIDATION.md) for commands and the supported numerical contract.
+Implementation status on November 13, 2026: phases 0–2 have their implementation and automated checks in place. Phase 1 corrects weather request ranges, missing-data/provenance handling, cancellation, DST ambiguity, civil-day events, time-zone lookup, lunar phase presentation, and layer semantics. Phase 2 separates the simulation controller, weather service, renderer lifecycle, camera controls, shaders, and retained celestial layers. Phase 3 now provides the responsive exploration shell, location picker, object/weather/settings inspector, camera/time controls, saved preferences and share links. Phase 4 adds the licensed catalog, lunar map and orientation, shared cloud occlusion, screen-space labels, and bounded precipitation. Phase 5 adds measured scheduling, adaptive resolution, graphics recovery, cached weather and offline shell support. Phase 6 qualification is in progress; external device and usability gates are still open. Physical-device benchmarks and independent scientific review remain qualification tasks. See [validation](docs/VALIDATION.md) for commands and the supported numerical contract.
 
 Assessment date: November 12, 2026. Source review covered all application files; browser inspection covered desktop at 1280 × 720 and mobile at 390 × 844, including daytime, nighttime, and unavailable weather.
 
@@ -206,5 +206,6 @@ These are separate product investments. They should not delay correcting the exi
 7. Close measured performance, resilience, accessibility, and independent astronomy validation gaps; prepare the release.
 
 Each batch should leave a runnable app and have its own observable acceptance criteria. Avoid mixing unrelated visual redesign, numerical changes, and provider migrations in one review.
+
 
 
