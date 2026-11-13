@@ -1,3 +1,4 @@
+import { validateObserver } from '../domain/observer';
 import * as Astronomy from 'astronomy-engine';
 import type { LocationInfo, SkyEvents, SkyState } from '../types';
 import { localDayBounds, validateInstant } from './time';
@@ -5,15 +6,6 @@ import { calculateStarPositions } from './stars';
 
 const AU_KM = 149_597_870.7;
 const DEG = Math.PI / 180;
-
-export function validateObserver(location: LocationInfo): void {
-  if (!Number.isFinite(location.latitude) || Math.abs(location.latitude) > 90
-    || !Number.isFinite(location.longitude) || Math.abs(location.longitude) > 180
-    || !Number.isFinite(location.elevation) || location.elevation < -500 || location.elevation > 10000) {
-    throw new RangeError('Choose valid coordinates and an elevation between −500 and 10,000 meters.');
-  }
-  new Intl.DateTimeFormat('en', { timeZone: location.timezone }).format();
-}
 
 export function getPhaseName(angle: number): string {
   const names = ['New Moon', 'Waxing Crescent', 'First Quarter', 'Waxing Gibbous', 'Full Moon', 'Waning Gibbous', 'Last Quarter', 'Waning Crescent'];

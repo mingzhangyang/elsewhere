@@ -5,10 +5,10 @@ import {
   Sparkles, Star, Sun, Sunrise, Sunset, Thermometer,
   Wind, X,
 } from 'lucide-react';
-import SkyScene from './components/SkyScene';
+import SkyScene, { type SkySceneHandle } from './components/SkyScene';
 import type { LocationInfo, WeatherValues } from './types';
-import { calculateDailyEvents, calculateSky } from './lib/astronomy';
-import { civilDayStart, formatDate, formatOffset, formatTime, formatTimeZoneLabel, getZonedParts, localDayBounds, MAX_INSTANT, MIN_INSTANT, wallTimeCandidates } from './lib/time';
+import { useSimulation } from './hooks/useSimulation';
+import { formatDate, formatOffset, formatTime, formatTimeZoneLabel, getZonedParts, MAX_INSTANT, wallTimeCandidates } from './lib/time';
 import { customConditions, defaultWeatherValues, fetchWeatherForDate, renderingWeather, searchLocations, weatherDescription, weatherSourceLabel } from './lib/weather';
 import { useWeather } from './hooks/useWeather';
 import MoonPhase from './components/MoonPhase';
@@ -39,10 +39,7 @@ export interface AppProps {
 }
 
 export default function App({ initialLocation = PRESETS[0], initialTime, weatherLoader = fetchWeatherForDate }: AppProps) {
-  const [location, setLocation] = useState<LocationInfo>(initialLocation);
-  const [simTime, setSimTime] = useState(() => initialTime ?? new Date());
-  const [playing, setPlaying] = useState(false);
-  const [speed, setSpeed] = useState(60);
+  const { location, setLocation, simTime, setSimTime, playing, setPlaying, speed, setSpeed, localParts, sky, dayBounds } = useSimulation(initialLocation, initialTime);
   const [customMode, setCustomMode] = useState(false);
   const [customWeather, setCustomWeather] = useState<WeatherValues>(defaultWeatherValues);
   const [searchQuery, setSearchQuery] = useState('');
@@ -60,11 +57,7 @@ export default function App({ initialLocation = PRESETS[0], initialTime, weather
   const [timeChoices, setTimeChoices] = useState<Date[]>([]);
   const [locating, setLocating] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
-  const lastTick = useRef(0);
-  const localParts = useMemo(() => getZonedParts(simTime, location.timezone), [simTime, location.timezone]);
-  const eventDate = useMemo(() => civilDayStart(localParts.date, location.timezone), [localParts.date, location.timezone]);
-  const events = useMemo(() => calculateDailyEvents(location, eventDate), [location, eventDate]);
-  const sky = useMemo(() => calculateSky(location, simTime, events), [location, simTime, events]);
+  const skyRef = useRef<SkySceneHandle>(null);
   const { selection, refresh: refreshWeather } = useWeather(location, simTime, weatherLoader);
   const actualWeather = useMemo(() => renderingWeather(selection), [selection]);
   const weather = customMode ? customWeather : actualWeather;
@@ -72,23 +65,6 @@ export default function App({ initialLocation = PRESETS[0], initialTime, weather
   const weatherIsActual = !customMode && selection.values !== null;
   const weatherLoading = selection.status === 'loading';
   const selectedStar = useMemo(() => sky.stars.find((star) => star.id === selectedStarId) ?? null, [sky, selectedStarId]);
-  const dayBounds = useMemo(() => localDayBounds(eventDate, location.timezone), [eventDate, location.timezone]);
-
-  useEffect(() => {
-    if (!playing) return;
-    lastTick.current = performance.now();
-    const timer = window.setInterval(() => {
-      const now = performance.now();
-      const elapsed = now - lastTick.current;
-      lastTick.current = now;
-      if (document.hidden) return;
-      setSimTime((value) => new Date(Math.min(MAX_INSTANT, Math.max(MIN_INSTANT, value.getTime() + Math.min(1000, elapsed) * speed))));
-    }, 200);
-    const pauseHidden = () => { if (document.hidden) setPlaying(false); };
-    document.addEventListener('visibilitychange', pauseHidden);
-    return () => { clearInterval(timer); document.removeEventListener('visibilitychange', pauseHidden); };
-  }, [playing, speed]);
-
   useEffect(() => {
     const query = searchQuery.trim();
     if (query.length < 2) { setSearchResults([]); setSearchError(''); setSearchLoading(false); return; }
@@ -191,12 +167,13 @@ export default function App({ initialLocation = PRESETS[0], initialTime, weather
 
         <div className="topbar-right">
           <div className="live-indicator"><span className="live-dot" /> SKY SIMULATOR</div>
-          <button className="reset-view" onClick={() => window.dispatchEvent(new Event('sky-reset-view'))}><Crosshair size={15} /> Reset view</button>
+          <button className="reset-view" onClick={() => skyRef.current?.resetView()}><Crosshair size={15} /> Reset view</button>
         </div>
       </header>
 
       <section className="stage">
         <SkyScene
+          ref={skyRef}
           sky={sky}
           weather={weather}
           showStars={showStars}

@@ -6,7 +6,7 @@ The recommended approach is a substantial refactor within React, TypeScript, Vit
 
 ## Current baseline
 
-Implementation status on November 13, 2026: phase 0 automation and reproducible development scenarios are in place. Phase 1 corrects weather request ranges, missing-data/provenance handling, cancellation, DST ambiguity, civil-day events, time-zone lookup, lunar phase presentation, and layer semantics. Phase 2 is next. Physical-device benchmarks and independent scientific review remain qualification tasks. See [validation](docs/VALIDATION.md) for commands and the supported numerical contract.
+Implementation status on November 13, 2026: phases 0–2 have their implementation and automated checks in place. Phase 1 corrects weather request ranges, missing-data/provenance handling, cancellation, DST ambiguity, civil-day events, time-zone lookup, lunar phase presentation, and layer semantics. Phase 2 separates the simulation controller, weather service, renderer lifecycle, camera controls, shaders, and retained celestial layers. Phase 3 is next. Physical-device benchmarks and independent scientific review remain qualification tasks. See [validation](docs/VALIDATION.md) for commands and the supported numerical contract.
 
 Assessment date: November 12, 2026. Source review covered all application files; browser inspection covered desktop at 1280 × 720 and mobile at 390 × 844, including daytime, nighttime, and unavailable weather.
 

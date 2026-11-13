@@ -1,6 +1,6 @@
 import type { LocationInfo, WeatherMeasurements, WeatherPoint, WeatherResult, WeatherSelection, WeatherValues } from '../types';
 import { getZonedParts, localDayBounds } from './time';
-import { validateObserver } from './astronomy';
+import { validateObserver } from '../domain/observer';
 
 export const WEATHER_FIELDS = {
   temperature: 'temperature_2m', humidity: 'relative_humidity_2m', precipitation: 'precipitation',
