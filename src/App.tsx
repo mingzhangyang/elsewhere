@@ -296,7 +296,7 @@ export default function App({
         />
         <div className="stage-vignette" />
         {import.meta.env.DEV && diagnostics && (
-          <div className="dev-diagnostics" role="region" aria-label="Renderer diagnostics">
+          <div className="dev-diagnostics" data-occludes-sky role="region" aria-label="Renderer diagnostics">
             <strong>Development profile</strong>
             <output>
               {stats
@@ -317,7 +317,7 @@ export default function App({
             {audit && <pre role="status">{audit}</pre>}
           </div>
         )}
-        <div className="sky-context">
+        <div className="sky-context" data-occludes-sky>
           <p className="eyebrow">{skyMood}</p>
           <h1>{location.name}</h1>
           {/* The clock lives in the time dock; here, only where that clock is set. */}
@@ -338,7 +338,7 @@ export default function App({
           )}
         </div>
         <SkyCompass view={view} />
-        <div className="view-controls">
+        <div className="view-controls" data-occludes-sky>
           <button
             className="icon-button"
             aria-label="Zoom in"
@@ -367,7 +367,7 @@ export default function App({
           </button>
         </div>
         {!preferences.hintDismissed && !focused && !panel && (
-          <div className="scene-hint">
+          <div className="scene-hint" data-occludes-sky>
             <div>
               <strong>Where will you look?</strong>
               <small>Drag to explore · arrows to look · pinch or + / − to zoom</small>
@@ -399,7 +399,7 @@ export default function App({
             onJumpToRise={jumpToRise}
           />
         )}
-        <nav className="explore-toolbar" aria-label="Explore controls">
+        <nav className="explore-toolbar" data-occludes-sky aria-label="Explore controls">
           <button
             ref={objectsTrigger}
             aria-expanded={panel === 'objects'}
@@ -426,6 +426,7 @@ export default function App({
         {panel && (
           <section
             className="inspector"
+            data-occludes-sky
             aria-label={`${panel} inspector`}
             onKeyDown={(event) => {
               if (event.key === 'Escape') {
@@ -534,7 +535,7 @@ export default function App({
         {Math.round(sky.moon.illumination * 100)} percent illuminated. {sourceText}.
       </div>
       {notice && (
-        <div className="notice" role="status">
+        <div className="notice" data-occludes-sky role="status">
           <span>{notice}</span>
           <button className="icon-button" aria-label="Dismiss notice" onClick={() => setNotice('')}>
             <X size={16} />

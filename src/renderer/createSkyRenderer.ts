@@ -2,7 +2,7 @@ import { createCameraControls } from './cameraControls';
 import * as THREE from 'three';
 import type { SkyState, Star, WeatherValues } from '../types';
 import type { CameraView, Preferences } from '../lib/persistence';
-import { createCelestialLayers } from './celestialLayers';
+import { createCelestialLayers, type ScreenBox } from './celestialLayers';
 import { seededRandom } from '../lib/random';
 import {
   SKY_VERTEX,
@@ -325,6 +325,26 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
         target.copy(directionVector(body.geometricAltitude, body.azimuth)).applyQuaternion(turn),
       );
     const scratch = new THREE.Vector3();
+    /**
+     * Screen boxes, in host pixels, of interface elements drawn over the sky (marked
+     * `data-occludes-sky`), so labels are not hidden beneath them. Read before this frame writes
+     * any styles, so measuring does not force an extra layout.
+     */
+    const occluders = (): ScreenBox[] => {
+      const origin = host.getBoundingClientRect();
+      const boxes: ScreenBox[] = [];
+      for (const element of document.querySelectorAll('[data-occludes-sky]')) {
+        const r = element.getBoundingClientRect();
+        if (!r.width || !r.height) continue;
+        boxes.push({
+          left: r.left - origin.left,
+          right: r.right - origin.left,
+          top: r.top - origin.top,
+          bottom: r.bottom - origin.top,
+        });
+      }
+      return boxes;
+    };
 
     const rainCount = 720;
     const rainGeometry = new THREE.BufferGeometry();
@@ -542,6 +562,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
           [71, 73, 75, 77, 85, 86].includes(activeWeather.weatherCode),
         );
       }
+      const blocked = occluders();
       // Recomputed every frame, so a pause or reduced motion can never leave the sky turned.
       applyTurn(playbackTurn.seconds(now, !!reducedMotion));
       sunGroup.position.copy(bodyDirection(activeSky.sun, scratch).multiplyScalar(1650));
@@ -576,7 +597,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
           targetLabel.textContent = `${target.name} · position`;
         }
       }
-      celestialLayers.layout(camera, host.clientWidth, host.clientHeight);
+      celestialLayers.layout(camera, host.clientWidth, host.clientHeight, blocked);
       renderer.render(scene, camera);
       drawTimes.push(performance.now() - start);
       if (drawTimes.length > 240) drawTimes.shift();
@@ -635,6 +656,8 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
 
     return {
       ...api,
+      /** Redraw on the next frame, e.g. after interface panels over the sky moved. */
+      redraw: () => invalidate(),
       resetView: controls.resetView,
       focus: controls.focus,
       zoom: controls.zoom,
