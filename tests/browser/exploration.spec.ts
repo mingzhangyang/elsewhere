@@ -1,4 +1,7 @@
+import { createRequire } from 'node:module';
 import { expect, test } from '@playwright/test';
+
+const axeScript = createRequire(import.meta.url).resolve('axe-core/axe.min.js');
 
 // Canvas-dependent cases below fail confusingly without WebGL; this names the cause directly.
 test('the 3D sky starts', async ({ page }) => {
@@ -299,3 +302,24 @@ test.describe('safe areas', () => {
     expect(dockPadding).toBeGreaterThanOrEqual(21);
   });
 });
+
+// axe measures text on solid backgrounds; text over the live sky (gradients) it reports as needing
+// review, which docs/VALIDATION.md covers with a worst-case pixel measurement.
+for (const scenario of ['night', 'day'])
+  test(`no colour-contrast violations over the ${scenario} sky`, async ({ page }) => {
+    await page.goto(`/?scenario=${scenario}`);
+    await expect(page.getByRole('img', { name: /^Sky view\./ })).toBeVisible();
+    await page.addScriptTag({ path: axeScript });
+    const violations = await page.evaluate(async () => {
+      const axe = (
+        window as unknown as {
+          axe: {
+            run: (c: Document, o: object) => Promise<{ violations: { nodes: { target: string[] }[] }[] }>;
+          };
+        }
+      ).axe;
+      const result = await axe.run(document, { runOnly: ['color-contrast'] });
+      return result.violations.flatMap((v) => v.nodes.map((n) => n.target.join(' ')));
+    });
+    expect(violations).toEqual([]);
+  });
