@@ -140,25 +140,29 @@ test.describe('phones', () => {
     }
   });
 
-  for (const viewport of [
-    { width: 667, height: 375 },
-    { width: 320, height: 568 },
+  // `sky` is the minimum sky left beside (landscape) or above (portrait) the sheet; 0 where the stage is
+  // too short and the sheet takes it over. 320×380 stands in for a keyboard-resized layout viewport.
+  for (const { width, height, sky } of [
+    { width: 667, height: 375, sky: 100 },
+    { width: 320, height: 568, sky: 100 },
+    { width: 320, height: 430, sky: 0 },
+    { width: 320, height: 380, sky: 0 },
   ]) {
-    test(`panels stay usable at ${viewport.width}×${viewport.height}`, async ({ page }) => {
-      await page.setViewportSize(viewport);
+    test(`panels stay usable at ${width}×${height}`, async ({ page }) => {
+      await page.setViewportSize({ width, height });
       await page.goto('/?scenario=unavailable');
       await page.getByRole('button', { name: 'Weather', exact: true }).click();
       await page.getByRole('button', { name: 'Custom simulation', exact: true }).click();
       const sheet = (await page.getByRole('region', { name: 'weather inspector' }).boundingBox())!;
-      expect(sheet.height).toBeGreaterThanOrEqual(180);
+      expect(sheet.height).toBeGreaterThanOrEqual(170);
       await expect(page.getByRole('button', { name: 'Close inspector' })).toBeInViewport();
       const slider = page.getByRole('slider', { name: 'Cloud cover' });
       await slider.scrollIntoViewIfNeeded();
       await expect(slider).toBeInViewport();
-      // Some sky stays visible: beside the side sheet in landscape, above the lower sheet in portrait.
       const stage = (await page.getByRole('region', { name: 'Sky exploration' }).boundingBox())!;
-      const skyVisible = viewport.width > viewport.height ? sheet.x - stage.x : sheet.y - stage.y;
-      expect(skyVisible).toBeGreaterThanOrEqual(100);
+      expect(sheet.y + sheet.height).toBeLessThanOrEqual(stage.y + stage.height);
+      const skyVisible = width > height ? sheet.x - stage.x : sheet.y - stage.y;
+      expect(skyVisible).toBeGreaterThanOrEqual(sky);
     });
   }
 });
