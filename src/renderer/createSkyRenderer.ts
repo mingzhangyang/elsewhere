@@ -17,7 +17,10 @@ import { advancePrecipitation, windVector } from './precipitation';
 import { createFrameLoop } from './frameLoop';
 import { adaptiveRatio, percentile, type RenderStats } from './performance';
 import { aboveHorizon, findSkyObject } from '../lib/exploration';
-import { pickStarIndex, starAlpha } from './starPicking';
+import { pickStarAt, starAlpha } from './starPicking';
+
+/** Radius of the sphere the star points are placed on. */
+const STAR_DISTANCE = 1770;
 
 export interface RenderSettings {
   reducedMotion?: boolean;
@@ -327,7 +330,6 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
           (-(y - rect.top) / rect.height) * 2 + 1,
         );
         const raycaster = new THREE.Raycaster();
-        raycaster.params.Points!.threshold = 15;
         raycaster.setFromCamera(pointer, camera);
         if (sunGroup.visible && raycaster.intersectObject(sunDisc, false).length) {
           callbacks.onBodySelect?.('sun');
@@ -338,8 +340,13 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
           return;
         }
         if (!activeShowStars || starMaterial.uniforms.uOpacity.value < 0.05) return;
-        const index = pickStarIndex(
-          raycaster.intersectObject(starPoints, false),
+        const index = pickStarAt(
+          starPoints,
+          camera,
+          x,
+          y,
+          rect,
+          STAR_DISTANCE,
           (i) => starGeometry.attributes.aAlpha.getX(i) * starMaterial.uniforms.uOpacity.value,
         );
         const star = index === undefined ? undefined : activeStars[index];
@@ -424,7 +431,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
         const positions = starGeometry.attributes.position as THREE.BufferAttribute;
         const sizes = starGeometry.attributes.aSize as THREE.BufferAttribute;
         nextSky.stars.forEach((star, index) => {
-          const p = directionVector(star.altitude, star.azimuth).multiplyScalar(1770);
+          const p = directionVector(star.altitude, star.azimuth).multiplyScalar(STAR_DISTANCE);
           positions.setXYZ(index, p.x, p.y, p.z);
           sizes.setX(index, Math.max(1.35, 4.1 - star.magnitude * 0.5));
         });

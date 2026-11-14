@@ -78,7 +78,11 @@ button:hover:not(:disabled) {
   height: 100dvh;
   min-height: 380px;
   display: grid;
-  grid-template-rows: 76px minmax(120px, 1fr) auto 30px;
+  /* viewport-fit=cover: the last visible row owns the bottom inset; side insets clear landscape notches. */
+  grid-template-rows: calc(76px + env(safe-area-inset-top)) minmax(120px, 1fr) auto calc(
+      30px + env(safe-area-inset-bottom)
+    );
+  padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
   overflow: clip;
 }
 .recovery-page {
@@ -128,7 +132,7 @@ button:hover:not(:disabled) {
   grid-template-columns: 1fr minmax(200px, 360px) 1fr;
   align-items: center;
   gap: 24px;
-  padding: 0 28px;
+  padding: env(safe-area-inset-top) 28px 0;
   background: #0a111c;
   border-bottom: 1px solid var(--line);
   z-index: 10;
@@ -1198,7 +1202,7 @@ input[type='range'] {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  padding: 0 28px;
+  padding: 0 28px env(safe-area-inset-bottom);
   color: #8698ae;
   font-size: 9px;
   background: #0a111c;
@@ -1460,7 +1464,9 @@ dialog:not([open]) {
     padding: 8px 12px;
   }
   .app-shell {
-    grid-template-rows: calc(64px + env(safe-area-inset-top)) minmax(120px, 1fr) auto 24px;
+    grid-template-rows: calc(64px + env(safe-area-inset-top)) minmax(120px, 1fr) auto calc(
+        24px + env(safe-area-inset-bottom)
+      );
   }
   .topbar {
     padding: 0 12px;
@@ -1591,7 +1597,6 @@ dialog:not([open]) {
   }
   .bottom-dock {
     padding: 10px 14px 9px;
-    padding-bottom: max(10px, env(safe-area-inset-bottom));
   }
   .day-navigation > span {
     font-size: 12px;
@@ -1745,7 +1750,7 @@ dialog:not([open]) {
     right: 12px;
   }
   .bottom-dock {
-    padding: 8px 16px;
+    padding: 8px 16px max(8px, env(safe-area-inset-bottom));
   }
   .timeline-row {
     margin-top: 4px;
@@ -1777,6 +1782,76 @@ dialog:not([open]) {
   .explore-toolbar {
     left: 24px;
     transform: none;
+  }
+}
+/* Phones: panels become a lower sheet so the sky stays visible while settings change it.
+   Placed after the short-viewport rules so it also applies to short portrait phones. */
+@media (max-width: 680px) {
+  .inspector {
+    /* Prefer 38% sky above the sheet, but never shrink the sheet below 200px (short phones, Android keyboard). */
+    top: max(8px, min(38%, calc(100% - 74px - 200px)));
+    bottom: 74px;
+    left: 8px;
+    right: 8px;
+    width: auto;
+    border-radius: 16px;
+  }
+  .inspector-heading {
+    padding: 10px 16px 6px;
+    align-items: center;
+  }
+  .inspector-heading h2 {
+    font-size: 18px;
+  }
+  .panel-open .sky-context,
+  .panel-open .view-controls,
+  .panel-open .scene-hint {
+    display: none;
+  }
+  .sky-context .eyebrow,
+  .bottom-bar,
+  .bottom-bar > span:nth-child(2) {
+    font-size: 10px;
+  }
+}
+/* Very short portrait stages (split screen, Android keyboard): the 200px minimum no longer fits above the
+   toolbar, so the sheet takes the whole stage and covers the toolbar while open. */
+@media (max-width: 680px) {
+  .stage {
+    container: stage / size;
+  }
+  @container stage (max-height: 290px) {
+    .inspector {
+      top: 8px;
+      bottom: 8px;
+    }
+  }
+}
+/* Short landscape phones: a full-height side sheet, with the toolbar moved left so sky stays visible beside it. */
+@media (max-width: 680px) and (max-height: 620px) and (orientation: landscape) {
+  .inspector {
+    top: 8px;
+    bottom: 8px;
+    left: auto;
+    right: 8px;
+    width: min(360px, 56%);
+  }
+  .explore-toolbar {
+    left: 8px;
+    transform: none;
+    width: calc(44% - 24px);
+    max-width: none;
+  }
+  .explore-toolbar button {
+    padding: 8px 6px;
+    gap: 5px;
+  }
+}
+/* iOS Safari zooms the page when a focused field is smaller than 16px. */
+@media (pointer: coarse) {
+  /* :is() lifts select/textarea to the input selector's specificity so component rules can't undercut it. */
+  :is(input:not([type='range']):not([type='checkbox']):not([type='radio']), select, textarea) {
+    font-size: 16px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

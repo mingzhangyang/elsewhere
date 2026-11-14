@@ -131,6 +131,7 @@ export default function App({
   );
   const skyRef = useRef<SkySceneHandle>(null);
   const panelTitle = useRef<HTMLHeadingElement>(null);
+  const restoreFocus = useRef(false);
   const panelTrigger = useRef<HTMLElement | null>(null);
   const objectsTrigger = useRef<HTMLButtonElement>(null);
   const shareDialog = useRef<HTMLDialogElement>(null);
@@ -162,7 +163,15 @@ export default function App({
     return () => media?.removeEventListener('change', update);
   }, []);
   useEffect(() => {
-    if (panel) panelTitle.current?.focus({ preventScroll: true });
+    if (panel) {
+      panelTitle.current?.focus({ preventScroll: true });
+      return;
+    }
+    if (!restoreFocus.current) return;
+    restoreFocus.current = false;
+    const trigger = panelTrigger.current;
+    const usable = trigger?.isConnected && trigger.checkVisibility?.() !== false;
+    (usable ? trigger : objectsTrigger.current)?.focus();
   }, [panel]);
   useEffect(() => {
     const unavailable = () =>
@@ -188,8 +197,9 @@ export default function App({
     setPanel(next);
   };
   const closePanel = () => {
+    // Focus is returned after the close commits: some triggers (e.g. the phone source pill) are hidden while open.
+    if (panel) restoreFocus.current = true;
     setPanel(null);
-    (panelTrigger.current?.isConnected ? panelTrigger.current : objectsTrigger.current)?.focus();
   };
   const chooseLocation = (next: LocationInfo) => {
     setLocation(next);
@@ -302,7 +312,10 @@ export default function App({
           </button>
         </div>
       </header>
-      <section className={`stage ${focused ? 'has-target' : ''}`} aria-label="Sky exploration">
+      <section
+        className={`stage ${focused ? 'has-target' : ''} ${panel ? 'panel-open' : ''}`}
+        aria-label="Sky exploration"
+      >
         <SkyScene
           ref={skyRef}
           sky={sky}

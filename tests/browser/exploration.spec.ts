@@ -114,3 +114,128 @@ test('clear-sky preview preserves custom clouds and keeps selection feedback', a
   await page.getByRole('button', { name: 'Weather', exact: true }).click();
   await expect(page.getByRole('slider', { name: 'Cloud cover', exact: true })).toHaveValue('100');
 });
+
+test.describe('phones', () => {
+  test.use({ viewport: { width: 390, height: 664 }, hasTouch: true, isMobile: true });
+  test.skip(({ browserName }) => browserName === 'firefox', 'Firefox does not emulate mobile viewports');
+
+  test('panels open as a lower sheet that leaves the sky visible', async ({ page }) => {
+    await page.goto('/?scenario=unavailable');
+    await page.getByRole('button', { name: 'Weather', exact: true }).click();
+    await page.getByRole('button', { name: 'Custom simulation', exact: true }).click();
+    // Sliders scroll inside the sheet; once reached, the sky above must still be in view.
+    const slider = page.getByRole('slider', { name: 'Cloud cover' });
+    await slider.scrollIntoViewIfNeeded();
+    await expect(slider).toBeInViewport();
+    const stage = (await page.getByRole('region', { name: 'Sky exploration' }).boundingBox())!;
+    const sheet = (await page.getByRole('region', { name: 'weather inspector' }).boundingBox())!;
+    expect(sheet.y - stage.y).toBeGreaterThanOrEqual(stage.height * 0.3);
+    await expect(page.locator('.sky-context')).toBeHidden();
+  });
+
+  test('form fields are large enough that iOS does not zoom on focus', async ({ page }) => {
+    await page.goto('/?scenario=night');
+    await page.getByRole('button', { name: 'Change date and time' }).click();
+    const sizes = await page
+      .locator('input:not([type=range]):not([type=checkbox]), select, textarea')
+      .evaluateAll((fields) => fields.map((field) => parseFloat(getComputedStyle(field).fontSize)));
+    expect(sizes.length).toBeGreaterThan(2);
+    expect(Math.min(...sizes)).toBeGreaterThanOrEqual(16);
+    await expect(page.locator('meta[name=viewport]')).toHaveAttribute('content', /viewport-fit=cover/);
+  });
+
+  test('closing a panel returns focus to the source pill hidden while it was open', async ({ page }) => {
+    await page.goto('/?scenario=unavailable');
+    const pill = page.locator('.source-pill');
+    for (const close of ['Escape', 'Close inspector']) {
+      await pill.focus();
+      await page.keyboard.press('Enter');
+      await expect(page.getByRole('region', { name: 'weather inspector' })).toBeVisible();
+      await expect(pill).toBeHidden();
+      if (close === 'Escape') await page.keyboard.press('Escape');
+      else await page.getByRole('button', { name: close }).click();
+      await expect(pill).toBeFocused();
+    }
+  });
+
+  // `sky` is the minimum sky left beside (landscape) or above (portrait) the sheet; 0 where the stage is
+  // too short and the sheet takes it over. 320×380 stands in for a keyboard-resized layout viewport.
+  for (const { width, height, sky } of [
+    { width: 667, height: 375, sky: 100 },
+    { width: 320, height: 568, sky: 100 },
+    { width: 320, height: 430, sky: 0 },
+    { width: 320, height: 380, sky: 0 },
+  ]) {
+    test(`panels stay usable at ${width}×${height}`, async ({ page }) => {
+      await page.setViewportSize({ width, height });
+      await page.goto('/?scenario=unavailable');
+      await page.getByRole('button', { name: 'Weather', exact: true }).click();
+      await page.getByRole('button', { name: 'Custom simulation', exact: true }).click();
+      const sheet = (await page.getByRole('region', { name: 'weather inspector' }).boundingBox())!;
+      expect(sheet.height).toBeGreaterThanOrEqual(170);
+      await expect(page.getByRole('button', { name: 'Close inspector' })).toBeInViewport();
+      const slider = page.getByRole('slider', { name: 'Cloud cover' });
+      await slider.scrollIntoViewIfNeeded();
+      await expect(slider).toBeInViewport();
+      const stage = (await page.getByRole('region', { name: 'Sky exploration' }).boundingBox())!;
+      expect(sheet.y + sheet.height).toBeLessThanOrEqual(stage.y + stage.height);
+      const skyVisible = width > height ? sheet.x - stage.x : sheet.y - stage.y;
+      expect(skyVisible).toBeGreaterThanOrEqual(sky);
+    });
+  }
+});
+
+test.describe('safe areas', () => {
+  test.use({ hasTouch: true, isMobile: true });
+  test.skip(({ browserName }) => browserName !== 'chromium', 'Safe-area emulation uses Chromium DevTools');
+
+  const layout = async (
+    page: import('@playwright/test').Page,
+    viewport: { width: number; height: number },
+    insets: { top: number; bottom: number; left: number; right: number },
+  ) => {
+    await page.setViewportSize(viewport);
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets });
+    await page.goto('/?scenario=night');
+    return page.evaluate(() => {
+      const rect = (selector: string) => document.querySelector(selector)!.getBoundingClientRect();
+      const footerText = [...document.querySelectorAll('.bottom-bar > *')]
+        .map((node) => node.getBoundingClientRect())
+        .filter((r) => r.height > 0);
+      return {
+        topbar: rect('.topbar'),
+        dock: rect('.bottom-dock'),
+        dockPadding: parseFloat(getComputedStyle(document.querySelector('.bottom-dock')!).paddingBottom),
+        footerText,
+      };
+    });
+  };
+
+  test('portrait home-indicator inset sits below the footer text, not inside the dock', async ({ page }) => {
+    const { dock, dockPadding, footerText } = await layout(
+      page,
+      { width: 390, height: 664 },
+      { top: 47, bottom: 34, left: 0, right: 0 },
+    );
+    expect(footerText.length).toBeGreaterThan(0);
+    for (const text of footerText) {
+      expect(text.top).toBeGreaterThanOrEqual(dock.bottom);
+      expect(text.bottom).toBeLessThanOrEqual(664 - 34);
+    }
+    expect(dockPadding).toBeLessThan(34);
+  });
+
+  test('landscape keeps content out of the notch and pads the dock for the indicator', async ({ page }) => {
+    const { topbar, dock, dockPadding } = await layout(
+      page,
+      { width: 667, height: 375 },
+      { top: 0, bottom: 21, left: 47, right: 47 },
+    );
+    for (const box of [topbar, dock]) {
+      expect(box.left).toBeGreaterThanOrEqual(47);
+      expect(box.right).toBeLessThanOrEqual(667 - 47);
+    }
+    expect(dockPadding).toBeGreaterThanOrEqual(21);
+  });
+});
