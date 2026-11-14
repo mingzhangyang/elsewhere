@@ -1,4 +1,10 @@
+import { createRequire } from 'node:module';
 import { expect, test } from '@playwright/test';
+
+const axeScript = createRequire(import.meta.url).resolve('axe-core/axe.min.js');
+// The star catalog data request: /src/data/stars.json in development, a hashed assets/stars-*.json
+// in production. No query string: in development `stars.json?url` is a module the app itself needs.
+const CATALOG = /\/stars(-[\w-]+)?\.json$/;
 
 // Canvas-dependent cases below fail confusingly without WebGL; this names the cause directly.
 test('the 3D sky starts', async ({ page }) => {
@@ -28,6 +34,40 @@ test('clicking centered Mizar selects Mizar instead of Alcor', async ({ page }) 
   const box = (await canvas.boundingBox())!;
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   await expect(page.getByRole('heading', { name: 'Mizar', exact: true })).toBeVisible();
+});
+
+test('the first screen does not wait for the star catalog', async ({ page }) => {
+  let release = () => {};
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route(CATALOG, async (route) => {
+    await held;
+    await route.continue();
+  });
+  // Firefox and WebKit hold the load event for in-flight dynamic imports, so wait only for the
+  // document; the point is that the app is usable while the catalog request is still pending.
+  await page.goto('/?scenario=night', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByRole('img', { name: /^Sky view\./ })).toBeVisible();
+  await page.getByRole('button', { name: 'Objects', exact: true }).click();
+  await expect(page.getByText('Stars are still loading…')).toBeVisible();
+  release();
+  await expect(page.getByText('Stars are still loading…')).toHaveCount(0);
+  await page.getByRole('searchbox', { name: 'Find an object' }).fill('Vega');
+  await expect(page.getByRole('group', { name: 'Celestial objects' })).toContainText('Vega');
+});
+
+test('a failed star catalog download can be retried once the connection returns', async ({ page }) => {
+  let offline = true;
+  await page.route(CATALOG, (route) => (offline ? route.abort('internetdisconnected') : route.continue()));
+  await page.goto('/?scenario=night', { waitUntil: 'domcontentloaded' });
+  const notice = page.getByRole('status').filter({ hasText: 'The star catalog could not load' });
+  await expect(notice).toBeVisible();
+  await page.getByRole('button', { name: 'Objects', exact: true }).click();
+  offline = false;
+  await page.getByRole('button', { name: 'Try again' }).click();
+  await page.getByRole('searchbox', { name: 'Find an object' }).fill('Vega');
+  await expect(page.getByRole('group', { name: 'Celestial objects' })).toContainText('Vega');
+  // The failure notice is withdrawn once the stars are in.
+  await expect(notice).toHaveCount(0);
 });
 
 test('keyboard location selection preserves the instant and returns focus', async ({ page }) => {
@@ -281,3 +321,24 @@ test.describe('safe areas', () => {
     expect(dockPadding).toBeGreaterThanOrEqual(21);
   });
 });
+
+// axe measures text on solid backgrounds; text over the live sky (gradients) it reports as needing
+// review, which docs/VALIDATION.md covers with a worst-case pixel measurement.
+for (const scenario of ['night', 'day'])
+  test(`no colour-contrast violations over the ${scenario} sky`, async ({ page }) => {
+    await page.goto(`/?scenario=${scenario}`);
+    await expect(page.getByRole('img', { name: /^Sky view\./ })).toBeVisible();
+    await page.addScriptTag({ path: axeScript });
+    const violations = await page.evaluate(async () => {
+      const axe = (
+        window as unknown as {
+          axe: {
+            run: (c: Document, o: object) => Promise<{ violations: { nodes: { target: string[] }[] }[] }>;
+          };
+        }
+      ).axe;
+      const result = await axe.run(document, { runOnly: ['color-contrast'] });
+      return result.violations.flatMap((v) => v.nodes.map((n) => n.target.join(' ')));
+    });
+    expect(violations).toEqual([]);
+  });

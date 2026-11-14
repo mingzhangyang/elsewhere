@@ -6,9 +6,11 @@ import assert from 'node:assert/strict';
 const paths = await readdir('dist/assets');
 let gzip = 0,
   largest = 0;
-for (const path of paths.filter((p) => p.endsWith('.js'))) {
+// The star catalog ships as a JSON asset fetched at runtime; it counts toward the download budget.
+for (const path of paths.filter((p) => p.endsWith('.js') || p.endsWith('.json'))) {
   const content = await readFile('dist/assets/' + path);
   gzip += gzipSync(content).length;
+  if (path.endsWith('.json')) continue;
   largest = Math.max(largest, content.length);
   assert(
     !content.includes('Deterministic unavailable-weather scenario'),
@@ -16,7 +18,7 @@ for (const path of paths.filter((p) => p.endsWith('.js'))) {
   );
   assert(!content.includes('Simulate graphics loss'), 'Development controls leaked into production');
 }
-assert(gzip < 500000, `Total JS gzip ${gzip} exceeds 500 kB`);
+assert(gzip < 500000, `Total JS and data gzip ${gzip} exceeds 500 kB`);
 assert(largest < 500000, `Largest JS chunk ${largest} exceeds 500 kB`);
 assert((await readFile('dist/assets/moon-lroc.jpg')).length < 600000, 'Moon asset exceeds 600 kB');
 
@@ -135,5 +137,5 @@ for (const request of [
   assert.equal(reply, undefined, `Service worker must not intercept ${request.method} ${request.url}`);
 }
 console.log(
-  `Build budgets: JS ${Math.round(gzip / 1000)} kB gzip; largest chunk ${Math.round(largest / 1000)} kB. Offline assets with Vary: Origin, navigation fallback, and API exclusion passed.`,
+  `Build budgets: JS and data ${Math.round(gzip / 1000)} kB gzip; largest chunk ${Math.round(largest / 1000)} kB. Offline assets with Vary: Origin, navigation fallback, and API exclusion passed.`,
 );

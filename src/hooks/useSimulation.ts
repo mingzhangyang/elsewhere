@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { LocationInfo } from '../types';
 import { calculateDailyEvents, calculateSky } from '../domain/astronomy';
+import { starCatalogLoaded } from '../domain/stars';
+import { loadStars } from '../services/starCatalog';
 import { civilDayStart, getZonedParts, localDayBounds, MAX_INSTANT, MIN_INSTANT } from '../domain/time';
 
 export function useSimulation(initialLocation: LocationInfo, initialTime?: Date) {
@@ -29,7 +31,28 @@ export function useSimulation(initialLocation: LocationInfo, initialTime?: Date)
     [localParts.date, location.timezone],
   );
   const events = useMemo(() => calculateDailyEvents(location, eventDate), [location, eventDate]);
-  const sky = useMemo(() => calculateSky(location, simTime, events), [location, simTime, events]);
+  // The sky renders before the star catalog arrives; it is recalculated once the stars are in.
+  const [stars, setStars] = useState<'loading' | 'ready' | 'error'>(() =>
+    starCatalogLoaded() ? 'ready' : 'loading',
+  );
+  useEffect(() => {
+    if (stars !== 'loading') return;
+    let active = true;
+    loadStars().then(
+      () => active && setStars('ready'),
+      () => active && setStars('error'),
+    );
+    return () => {
+      active = false;
+    };
+  }, [stars]);
+  const retryStars = () => setStars('loading');
+  const sky = useMemo(
+    () => calculateSky(location, simTime, events),
+    // `stars` is a dependency because the catalog is read from module state when it arrives.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [location, simTime, events, stars],
+  );
   const dayBounds = useMemo(
     () => localDayBounds(eventDate, location.timezone),
     [eventDate, location.timezone],
@@ -84,5 +107,7 @@ export function useSimulation(initialLocation: LocationInfo, initialTime?: Date)
     localParts,
     sky,
     dayBounds,
+    stars,
+    retryStars,
   };
 }

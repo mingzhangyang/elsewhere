@@ -8,6 +8,13 @@ import { directionVector, makeTextSprite } from './resources';
  * catalog, so the stars each label and line needs are resolved to indices once; an update touches
  * only those few dozen stars, never the whole catalog.
  */
+export interface ScreenBox {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
 export function createCelestialLayers(parent: THREE.Object3D, catalog: Star[], text = makeTextSprite) {
   const indexOf = new Map(catalog.map((star, index) => [star.id, index]));
   const labels = catalog.flatMap((star, index) => {
@@ -102,9 +109,12 @@ export function createCelestialLayers(parent: THREE.Object3D, catalog: Star[], t
   const sprites = [...labels.map((entry) => entry.sprite), ...patterns.map((p) => p.label)];
   const world = new THREE.Vector3();
   const projected = new THREE.Vector3();
-  /** Expects world matrices to be current: labels may sit in a turning parent. */
-  function layout(camera: THREE.PerspectiveCamera, width: number, height: number) {
-    const occupied: { left: number; top: number; right: number; bottom: number }[] = [];
+  /**
+   * Shows the labels that fit, in priority order, skipping any that would overlap one already
+   * shown or a `blocked` screen box (interface panels drawn over the sky, in host pixels).
+   */
+  function layout(camera: THREE.PerspectiveCamera, width: number, height: number, blocked: ScreenBox[] = []) {
+    const occupied: ScreenBox[] = [...blocked];
     for (const label of sprites) {
       label.visible = false;
       if (!label.userData.eligible) continue;
@@ -134,5 +144,18 @@ export function createCelestialLayers(parent: THREE.Object3D, catalog: Star[], t
       occupied.push(box);
     }
   }
-  return { update, place, layout };
+  /** Removes this layer's objects and frees their GPU resources (the catalog changed). */
+  function dispose() {
+    for (const sprite of sprites) {
+      parent.remove(sprite);
+      sprite.material.map?.dispose();
+      sprite.material.dispose();
+    }
+    for (const { lines } of patterns) {
+      parent.remove(lines);
+      lines.geometry.dispose();
+      lines.material.dispose();
+    }
+  }
+  return { update, place, layout, dispose };
 }

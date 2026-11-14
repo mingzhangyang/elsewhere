@@ -34,6 +34,11 @@ const SkyScene = forwardRef<SkySceneHandle, Props>(function SkyScene(props, ref)
   useEffect(() => {
     runtime.current?.target(props.targetId ?? null);
   }, [props.targetId]);
+  // Panels and cards over the sky change with app renders; labels are laid out around them on the
+  // next frame. Frames are coalesced, so this costs at most one draw per display refresh.
+  useEffect(() => {
+    runtime.current?.redraw();
+  });
   useEffect(() => {
     runtime.current?.playback(props.playbackRate ?? 0);
   }, [props.playbackRate]);

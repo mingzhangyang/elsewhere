@@ -4,7 +4,7 @@ Explore a calculated sky from any place and time. Elsewhere combines a quiet, re
 
 The substantial refactor in [ROADMAP.md](ROADMAP.md) is implemented through phase 5. Phase 6 has local validation, independent numerical regression fixtures, release tooling, and documentation; the external qualification gates in [docs/RELEASE.md](docs/RELEASE.md) remain open.
 
-The [mobile app roadmap](docs/MOBILE_ROADMAP.md) covers an installable web beta, sensor pointing, and shared Android/iOS editions with device qualification gates.
+The [mobile app roadmap](docs/MOBILE_ROADMAP.md) covers an installable web beta, sensor pointing, and shared Android/iOS editions with device qualification gates. A [product direction proposal](docs/PRODUCT_DIRECTION.md) suggests what should make Elsewhere distinctive and in what order to build it.
 
 ## Run locally
 

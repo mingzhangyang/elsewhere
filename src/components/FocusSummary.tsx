@@ -25,7 +25,7 @@ export default function FocusSummary({
 }: Props) {
   const obscured = ['cloud', 'haze', 'partial-cloud'].includes(visibility.reason);
   return (
-    <section className="focus-summary" aria-label="Selected object">
+    <section className="focus-summary" data-occludes-sky aria-label="Selected object">
       <div>
         <strong>{object.name}</strong>
         <span>{visibility.label}</span>

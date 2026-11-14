@@ -140,3 +140,34 @@ it('gives a tap on stars closer than a couple of pixels to the brighter one', ()
     ),
   ).toBe(1);
 });
+
+it('keeps labels out from under interface panels drawn over the sky', () => {
+  const scene = new THREE.Scene();
+  const text = () => {
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial());
+    sprite.userData.aspect = 3;
+    return sprite;
+  };
+  const sky = calculateSky(NEW_YORK, new Date('2026-11-13T04:00Z'));
+  const layers = createCelestialLayers(scene, sky.stars, text);
+  layers.update(sky.stars, { stars: true, labels: true, constellations: false }, 1);
+  const vega = sky.stars.find((s) => s.name === 'Vega')!;
+  const camera = new THREE.PerspectiveCamera(66, 1280 / 560, 0.1, 5000);
+  camera.lookAt(
+    new THREE.Vector3(
+      Math.cos(THREE.MathUtils.degToRad(vega.altitude)) * Math.sin(THREE.MathUtils.degToRad(vega.azimuth)),
+      Math.sin(THREE.MathUtils.degToRad(vega.altitude)),
+      -Math.cos(THREE.MathUtils.degToRad(vega.altitude)) * Math.cos(THREE.MathUtils.degToRad(vega.azimuth)),
+    ),
+  );
+  camera.updateMatrixWorld();
+  const shown = () => scene.children.filter((o) => o instanceof THREE.Sprite && o.visible).length;
+  layers.layout(camera, 1280, 560);
+  const free = shown();
+  expect(free).toBeGreaterThan(0);
+  // A panel covering the middle of the view, where Vega's label sits.
+  layers.layout(camera, 1280, 560, [{ left: 400, right: 880, top: 100, bottom: 460 }]);
+  expect(shown()).toBeLessThan(free);
+  layers.layout(camera, 1280, 560, [{ left: 0, right: 1280, top: 0, bottom: 560 }]);
+  expect(shown()).toBe(0);
+});
