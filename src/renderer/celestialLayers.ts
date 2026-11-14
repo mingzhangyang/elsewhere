@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { Star } from '../types';
 import { CONSTELLATIONS } from '../domain/stars';
-import { directionVector, makeTextSprite, setAtDirection } from './resources';
+import { directionVector, makeTextSprite } from './resources';
 
 /**
  * Topology and text textures are owned for the lifetime of this layer. Star order is fixed by the
@@ -35,7 +35,8 @@ export function createCelestialLayers(parent: THREE.Object3D, catalog: Star[], t
     const star = stars[end.index];
     return star?.id === end.id ? star : undefined;
   };
-  const point = new THREE.Vector3();
+  let patternsShown = false;
+  /** Visibility and opacity for an instant; positions follow from `place`. */
   function update(
     stars: Star[],
     flags: { stars: boolean; labels: boolean; constellations: boolean },
@@ -45,31 +46,56 @@ export function createCelestialLayers(parent: THREE.Object3D, catalog: Star[], t
       const star = starAt(stars, entry);
       const label = entry.sprite;
       label.visible = !!star && star.altitude > 5 && flags.labels && flags.stars && opacity > 0.01;
-      if (star) setAtDirection(label, star.altitude + 1.8, star.azimuth, 1740);
       label.material.opacity = opacity;
       label.userData.eligible = label.visible;
+    }
+    patternsShown = flags.constellations && opacity > 0.01;
+    for (const { lines, label } of patterns) {
+      lines.visible = patternsShown;
+      lines.material.opacity = opacity * 0.36;
+      label.material.opacity = opacity;
+      label.userData.patternLabel = flags.constellations && flags.labels && patternsShown;
+    }
+    // At rest, each star is where its horizontal position says.
+    place((index, target) => {
+      const star = stars[index];
+      return star ? target.copy(directionVector(star.altitude, star.azimuth)) : null;
+    });
+  }
+  const direction = new THREE.Vector3();
+  const point = new THREE.Vector3();
+  const lift = new THREE.Vector3();
+  /**
+   * Positions labels and lines from each star's apparent direction (`null` when unknown). The
+   * renderer calls this every frame so they follow the star points through playback.
+   */
+  function place(apparent: (index: number, target: THREE.Vector3) => THREE.Vector3 | null) {
+    for (const { index, sprite } of labels) {
+      if (!apparent(index, direction)) continue;
+      // Just above the star: 1.8° toward the zenith along the star's vertical circle.
+      const altitude = Math.asin(THREE.MathUtils.clamp(direction.y, -1, 1));
+      const azimuth = Math.atan2(direction.x, -direction.z);
+      lift.copy(directionVector(THREE.MathUtils.radToDeg(altitude) + 1.8, THREE.MathUtils.radToDeg(azimuth)));
+      sprite.position.copy(lift).multiplyScalar(1740);
     }
     for (const { ends, lines, label } of patterns) {
       const attribute = lines.geometry.getAttribute('position') as THREE.BufferAttribute;
       let count = 0;
       const midpoint = new THREE.Vector3();
       for (let i = 0; i + 1 < ends.length; i += 2) {
-        const a = starAt(stars, ends[i]),
-          b = starAt(stars, ends[i + 1]);
-        if (!a || !b) continue;
-        for (const star of [a, b]) {
-          point.copy(directionVector(star.altitude, star.azimuth)).multiplyScalar(1760);
-          attribute.setXYZ(count++, point.x, point.y, point.z);
-          midpoint.add(point);
+        if (ends[i].index < 0 || ends[i + 1].index < 0) continue;
+        if (!apparent(ends[i].index, direction)) continue;
+        if (!apparent(ends[i + 1].index, point)) continue;
+        for (const p of [direction, point]) {
+          p.multiplyScalar(1760);
+          attribute.setXYZ(count++, p.x, p.y, p.z);
+          midpoint.add(p);
         }
       }
       attribute.needsUpdate = true;
       lines.geometry.setDrawRange(0, count);
-      lines.visible = flags.constellations && opacity > 0.01;
-      lines.material.opacity = opacity * 0.36;
       label.position.copy(midpoint.normalize().multiplyScalar(1710));
-      label.visible = flags.constellations && flags.labels && midpoint.y > 0 && opacity > 0.01;
-      label.material.opacity = opacity;
+      label.visible = !!label.userData.patternLabel && midpoint.y > 0;
       label.userData.eligible = label.visible;
     }
   }
@@ -108,5 +134,5 @@ export function createCelestialLayers(parent: THREE.Object3D, catalog: Star[], t
       occupied.push(box);
     }
   }
-  return { update, layout };
+  return { update, place, layout };
 }

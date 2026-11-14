@@ -7,7 +7,7 @@ const glsl = (value: number) => (Number.isInteger(value) ? value.toFixed(1) : St
  * Stars are drawn as one rigid sphere: the position attribute holds equator-of-date directions and
  * the object's matrix turns them into the sky, so a new instant costs one matrix, not a pass over the
  * catalog. Refraction and the visibility model depend on altitude, so they run per vertex here,
- * built from the same constants as the CPU reference in lib/starVisibility.ts.
+ * built from the same constants as the CPU reference in domain/starVisibility.ts.
  */
 export const STAR_VERTEX = /* glsl */ `
 attribute float aSize;
@@ -108,3 +108,55 @@ export function diurnalTurn(
 
 /** Earth's rotation relative to the stars, in radians per second. */
 export const SIDEREAL_RATE_RAD = (2 * Math.PI) / 86_164.0905;
+
+/**
+ * How far the sky has turned past the current tick. It is derived afresh every frame from the
+ * playback rate and the time since the tick, never accumulated, so pausing, stopping, or reducing
+ * motion between ticks returns the scene to exactly the displayed instant.
+ */
+export function createPlaybackTurn(maxExtrapolationSeconds: number) {
+  let rate = 0;
+  let tickedAt = 0;
+  return {
+    /** A new simulated instant arrived; it already includes the turn shown so far. */
+    tick(now: number) {
+      tickedAt = now;
+    },
+    setRate(next: number, now: number) {
+      rate = next;
+      tickedAt = now;
+    },
+    playing: () => rate > 0,
+    /** Simulated seconds to turn past the tick at `now`; 0 when still or motion is reduced. */
+    seconds(now: number, reducedMotion: boolean): number {
+      if (rate <= 0 || reducedMotion) return 0;
+      return Math.min(maxExtrapolationSeconds, Math.max(0, (now - tickedAt) / 1000)) * rate;
+    },
+  };
+}
+
+const DEG = Math.PI / 180;
+
+/** Astronomy Engine's 'normal' refraction (Saemundsson), in degrees: the shader's formula. */
+export function refraction(altitude: number): number {
+  const hd = Math.max(altitude, -1);
+  let r = 1.02 / Math.tan((hd + 10.3 / (hd + 5.11)) * DEG) / 60;
+  if (altitude < -1) r *= (altitude + 90) / 89;
+  return r;
+}
+
+/**
+ * Lifts a geometric scene direction to where it appears through the standard atmosphere, exactly as
+ * the star shader does. Anything drawn beside the stars (labels, lines, markers, the Sun and Moon)
+ * goes through this after the playback turn, so it stays on the points it marks.
+ */
+export function apparentDirection(direction: THREE.Vector3): THREE.Vector3 {
+  direction.normalize();
+  const geometric = Math.asin(THREE.MathUtils.clamp(direction.y, -1, 1)) / DEG;
+  const altitude = Math.min(90, geometric + refraction(geometric));
+  const spread = Math.hypot(direction.x, direction.z);
+  const gx = spread > 1e-6 ? direction.x / spread : 0;
+  const gz = spread > 1e-6 ? direction.z / spread : 0;
+  const c = Math.cos(altitude * DEG);
+  return direction.set(gx * c, Math.sin(altitude * DEG), gz * c);
+}

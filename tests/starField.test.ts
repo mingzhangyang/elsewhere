@@ -8,7 +8,13 @@ import {
   STAR_CATALOG,
 } from '../src/domain/stars';
 import { calculateSky } from '../src/domain/astronomy';
-import { diurnalTurn, setRotationMatrix } from '../src/renderer/starMaterial';
+import {
+  apparentDirection,
+  createPlaybackTurn,
+  diurnalTurn,
+  refraction,
+  setRotationMatrix,
+} from '../src/renderer/starMaterial';
 import { directionVector } from '../src/renderer/resources';
 import { NEW_YORK, SYDNEY } from './fixtures/locations';
 
@@ -63,4 +69,43 @@ it('extrapolates playback by turning the sky the way time does', () => {
     ])
       expect(vector.clone().applyMatrix4(a).angleTo(vector.clone().applyMatrix4(b))).toBeLessThan(2e-4);
   }
+});
+
+it('returns to the displayed instant when playback stops or motion is reduced between ticks', () => {
+  const turn = createPlaybackTurn(0.5);
+  turn.setRate(600, 0);
+  turn.tick(1000);
+  expect(turn.seconds(1150, false)).toBeCloseTo(90, 9); // 0.15 s real at 600×
+  expect(turn.seconds(1150, true)).toBe(0);
+  expect(turn.seconds(5000, false)).toBe(300); // Capped while waiting for a late tick.
+  turn.setRate(0, 1150); // Pause mid-tick: nothing new arrives to reset the scene.
+  expect(turn.seconds(1150, false)).toBe(0);
+  expect(turn.seconds(9000, false)).toBe(0);
+  expect(turn.playing()).toBe(false);
+});
+
+it('mirrors the shader refraction on the CPU', () => {
+  for (const altitude of [-30, -1.5, -0.4, 0, 0.3, 2, 10, 45, 89.9])
+    expect(refraction(altitude)).toBeCloseTo(Astronomy.Refraction('normal', altitude), 10);
+});
+
+// Overlays must follow the shader's order (turn the geometric direction, then refract); turning an
+// already refracted position puts a horizon star's marker or line endpoint beside its point.
+it('keeps low overlays on their stars through a playback turn', () => {
+  const date = new Date('2026-11-13T04:00Z');
+  const span = 120; // One 200 ms tick at 600×.
+  const start = calculateSky(NEW_YORK, date);
+  const later = calculateSky(NEW_YORK, new Date(date.getTime() + span * 1000));
+  const base = setRotationMatrix(new THREE.Matrix4(), start.starField.rotation);
+  const turn = diurnalTurn(start.starField.rotation, span);
+  const low = start.stars.findIndex((star, i) => Math.abs(later.stars[i].altitude - 0.2) < 0.15);
+  expect(low).toBeGreaterThan(-1);
+  const v = start.starField.vectors;
+  const geometric = new THREE.Vector3(v[low * 3], v[low * 3 + 1], v[low * 3 + 2]).applyMatrix4(base);
+  const drawn = apparentDirection(geometric.applyQuaternion(turn));
+  const truth = directionVector(later.stars[low].altitude, later.stars[low].azimuth);
+  const stale = directionVector(start.stars[low].altitude, start.stars[low].azimuth).applyQuaternion(turn);
+  const degrees = (a: THREE.Vector3, b: THREE.Vector3) => THREE.MathUtils.radToDeg(a.angleTo(b));
+  expect(degrees(drawn, truth)).toBeLessThan(0.005);
+  expect(degrees(stale, truth)).toBeGreaterThan(0.03);
 });
