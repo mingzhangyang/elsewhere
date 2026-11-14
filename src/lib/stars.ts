@@ -146,22 +146,79 @@ function precessJ2000(
   return { raHours: (nextRa * 12) / Math.PI, decDegrees: (nextDec * 180) / Math.PI };
 }
 
-export function calculateStarPositions(
+/** Unit vectors of every catalog star in the true equator and equinox of a date (x: equinox, z: pole). */
+export interface StarField {
+  /** Interleaved x, y, z per catalog star, in STAR_CATALOG order. Shared and never mutated. */
+  vectors: Float32Array;
+  /**
+   * Row-major 3×3 rotation from those vectors into the observer's scene frame (x east, y zenith,
+   * z south). Every star shares it, so the sky turns as one rigid sphere.
+   */
+  rotation: number[];
+}
+
+const DAY_MS = 86_400_000;
+const J2000_MS = Date.UTC(2000, 0, 1, 12);
+let vectorCache: { day: number; vectors: Float32Array } | null = null;
+
+/**
+ * Proper motion and precession move a star by well under an arcsecond a day, so the catalog is
+ * placed once per UTC day and reused for every instant in it.
+ */
+export function apparentStarVectors(date: Date): Float32Array {
+  const day = Math.floor(date.getTime() / DAY_MS);
+  if (vectorCache?.day === day) return vectorCache.vectors;
+  const epoch = new Date((day + 0.5) * DAY_MS);
+  const years = (epoch.getTime() - J2000_MS) / (365.25 * DAY_MS);
+  const vectors = new Float32Array(STAR_CATALOG.length * 3);
+  STAR_CATALOG.forEach((star, i) => {
+    const moved = movedEquatorial(star, years);
+    const { raHours, decDegrees } = precessJ2000(moved.ra, moved.dec, epoch);
+    const ra = (raHours * Math.PI) / 12,
+      dec = (decDegrees * Math.PI) / 180;
+    vectors[i * 3] = Math.cos(dec) * Math.cos(ra);
+    vectors[i * 3 + 1] = Math.cos(dec) * Math.sin(ra);
+    vectors[i * 3 + 2] = Math.sin(dec);
+  });
+  vectorCache = { day, vectors };
+  return vectors;
+}
+
+/** Rotation from equator-of-date vectors to the scene frame for an observer at local sidereal time. */
+export function equatorialToScene(latitude: number, longitude: number, greenwichSiderealHours: number) {
+  const theta = ((greenwichSiderealHours * 15 + longitude) * Math.PI) / 180;
+  const phi = (latitude * Math.PI) / 180;
+  const [st, ct, sp, cp] = [Math.sin(theta), Math.cos(theta), Math.sin(phi), Math.cos(phi)];
+  // prettier-ignore
+  return [
+    -st, ct, 0,
+    cp * ct, cp * st, sp,
+    sp * ct, sp * st, -cp,
+  ];
+}
+
+export function calculateStarField(
   latitude: number,
   longitude: number,
   date: Date,
   greenwichSiderealHours: number,
-): Star[] {
-  return STAR_CATALOG.map((star) => {
-    const moved = movedEquatorial(star, (date.getTime() - Date.UTC(2000, 0, 1, 12)) / (365.25 * 86400000));
-    const apparentEquator = precessJ2000(moved.ra, moved.dec, date);
-    const geometric = horizontalFromEquatorial(
-      apparentEquator.raHours,
-      apparentEquator.decDegrees,
-      latitude,
-      longitude,
-      greenwichSiderealHours,
-    );
+): StarField {
+  return {
+    vectors: apparentStarVectors(date),
+    rotation: equatorialToScene(latitude, longitude, greenwichSiderealHours),
+  };
+}
+
+export function calculateStarPositions(field: StarField): Star[] {
+  const { vectors: v, rotation: m } = field;
+  return STAR_CATALOG.map((star, i) => {
+    const ex = v[i * 3],
+      ey = v[i * 3 + 1],
+      ez = v[i * 3 + 2];
+    const x = m[0] * ex + m[1] * ey + m[2] * ez;
+    const y = m[3] * ex + m[4] * ey + m[5] * ez;
+    const z = m[6] * ex + m[7] * ey + m[8] * ez;
+    const geometric = (Math.asin(Math.max(-1, Math.min(1, y))) * 180) / Math.PI;
     return {
       id: star.id,
       name: star.name,
@@ -170,9 +227,9 @@ export function calculateStarPositions(
       ra: star.ra,
       dec: star.dec,
       // The same standard-atmosphere refraction as the Sun and Moon, so low stars keep their places
-      // beside them (up to about 0.5° at the horizon).
-      altitude: geometric.altitude + Astronomy.Refraction('normal', geometric.altitude),
-      azimuth: geometric.azimuth,
+      // beside them (up to about 0.5° at the horizon). The star shader applies the same formula.
+      altitude: geometric + Astronomy.Refraction('normal', geometric),
+      azimuth: ((Math.atan2(x, -z) * 180) / Math.PI + 360) % 360,
     };
   });
 }

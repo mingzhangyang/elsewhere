@@ -329,6 +329,7 @@ export default function App({
           horizon={preferences.horizon}
           skyBrightness={preferences.skyBrightness}
           targetId={immersive ? null : focusedId}
+          playbackRate={playing && simTime.getTime() < MAX_INSTANT ? speed : 0}
           onAssetError={setNotice}
           onCameraChange={view.set}
           onDiagnostics={import.meta.env.DEV && diagnostics ? setStats : undefined}

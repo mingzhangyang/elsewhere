@@ -19,10 +19,21 @@ import { adaptiveRatio, percentile, type RenderStats } from './performance';
 import { aboveHorizon, findSkyObject } from '../lib/exploration';
 import { pickStarAt, starAlpha } from './starPicking';
 import { CLOUD_DRIFT_FPS, PRECIPITATION_VISIBLE, weatherMotion } from './weatherMotion';
-import { limitingMagnitude, twilightVisibility, weatherVisibility } from '../lib/starVisibility';
+import {
+  limitingMagnitude,
+  starIntensity,
+  starPointSize,
+  twilightVisibility,
+  weatherVisibility,
+} from '../lib/starVisibility';
+import { createStarMaterial, diurnalTurn, setRotationMatrix } from './starMaterial';
 
 /** Radius of the sphere the star points are placed on. */
 const STAR_DISTANCE = 1770;
+/** World distance covering the most refraction lifts a star (about 0.6° at the horizon). */
+const REFRACTION_MARGIN = STAR_DISTANCE * Math.sin((0.6 * Math.PI) / 180);
+/** Real time, in seconds, the sky may keep turning past a tick before it waits for the next one. */
+const MAX_EXTRAPOLATION = 0.5;
 
 export interface RenderSettings {
   reducedMotion?: boolean;
@@ -38,6 +49,8 @@ export interface RenderInput extends RenderSettings {
   showLabels: boolean;
   initialView?: CameraView;
   targetId?: string | null;
+  /** Simulated seconds per real second while time plays; 0 or omitted when it is still. */
+  playbackRate?: number;
 }
 export interface RenderCallbacks {
   onHeadingChange?: (heading: number) => void;
@@ -192,7 +205,11 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
     );
     sunGlow.scale.set(170, 170, 1);
     sunGroup.add(sunGlow, sunDisc);
-    scene.add(sunGroup);
+    // Everything that rises and sets. During playback the group turns about the celestial pole
+    // between ticks; otherwise it is at rest.
+    const celestial = new THREE.Group();
+    scene.add(celestial);
+    celestial.add(sunGroup);
 
     const moonGroup = new THREE.Group();
     const moonTexture = new THREE.TextureLoader().load(
@@ -225,17 +242,32 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
       }),
     );
     moonGroup.add(moonMesh);
-    scene.add(moonGroup);
+    celestial.add(moonGroup);
 
+    // Per-star attributes never change; only the sphere's rotation does.
     const starGeometry = new THREE.BufferGeometry();
-    const starPositions = new Float32Array(sky.stars.length * 3);
-    const starSizes = new Float32Array(sky.stars.length);
-    const starColors = new Float32Array(sky.stars.length * 3);
-    starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+    const starCount = sky.stars.length;
+    const starSizes = new Float32Array(starCount);
+    const starMagnitudes = new Float32Array(starCount);
+    const starIntensities = new Float32Array(starCount);
+    const starColors = new Float32Array(starCount * 3);
+    let starVectors = sky.starField.vectors;
+    const starPositions = new THREE.BufferAttribute(new Float32Array(starCount * 3), 3);
+    const placeStars = (vectors: Float32Array) => {
+      starVectors = vectors;
+      for (let i = 0; i < vectors.length; i++) starPositions.array[i] = vectors[i] * STAR_DISTANCE;
+      starPositions.needsUpdate = true;
+    };
+    placeStars(starVectors);
+    starGeometry.setAttribute('position', starPositions);
     starGeometry.setAttribute('aSize', new THREE.BufferAttribute(starSizes, 1));
+    starGeometry.setAttribute('aMagnitude', new THREE.BufferAttribute(starMagnitudes, 1));
+    starGeometry.setAttribute('aIntensity', new THREE.BufferAttribute(starIntensities, 1));
     starGeometry.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
-    starGeometry.setAttribute('aAlpha', new THREE.BufferAttribute(new Float32Array(sky.stars.length), 1));
     sky.stars.forEach((star, i) => {
+      starSizes[i] = starPointSize(star.magnitude);
+      starMagnitudes[i] = star.magnitude;
+      starIntensities[i] = starIntensity(star.magnitude);
       const color = new THREE.Color('#bdd6ff').lerp(
         new THREE.Color('#fff0cf'),
         THREE.MathUtils.clamp(((star.colorIndex ?? 0.4) + 0.3) / 1.4, 0, 1),
@@ -244,47 +276,13 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
         color.lerp(new THREE.Color('#ffb378'), THREE.MathUtils.clamp((star.colorIndex! - 1.1) / 1.1, 0, 1));
       color.toArray(starColors, i * 3);
     });
-    const starMaterial = new THREE.ShaderMaterial({
-      uniforms: {
-        uOpacity: { value: 1 },
-        uPixelRatio: { value: renderer.getPixelRatio() },
-      },
-      vertexShader: `
-    attribute float aSize;
-    attribute float aAlpha;
-    varying vec3 vColor;
-    varying float vAlpha;
-    uniform float uPixelRatio;
-    void main() {
-      vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-      gl_Position = projectionMatrix * mvPosition;
-      gl_PointSize = aSize * uPixelRatio;
-      vColor = color;
-      vAlpha = aAlpha;
-    }
-    `,
-      fragmentShader: `
-    uniform float uOpacity;
-    varying vec3 vColor;
-    varying float vAlpha;
-    void main() {
-      vec2 p = gl_PointCoord - vec2(0.5);
-      float r = length(p);
-      if (r > 0.5) discard;
-      float alpha = (1.0 - smoothstep(0.12, 0.5, r)) * uOpacity * vAlpha;
-      gl_FragColor = vec4(vColor, alpha);
-    }
-    `,
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-      vertexColors: true,
-    });
+    const starMaterial = createStarMaterial(STAR_DISTANCE, renderer.getPixelRatio());
     const starPoints = new THREE.Points(starGeometry, starMaterial);
     starPoints.frustumCulled = false;
-    scene.add(starPoints);
+    starPoints.matrixAutoUpdate = false;
+    celestial.add(starPoints);
 
-    const celestialLayers = createCelestialLayers(scene, sky.stars);
+    const celestialLayers = createCelestialLayers(celestial, sky.stars);
 
     const rainCount = 720;
     const rainGeometry = new THREE.BufferGeometry();
@@ -315,9 +313,16 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
     let skyBrightness = input.skyBrightness ?? 'dark';
     let quality = input.quality ?? 'auto';
     let contextLost = false;
+    let starLimit = 6;
+    // Simulated seconds per real second while playing, and when the current tick arrived.
+    let playbackRate = 0;
+    let tickedAt = performance.now();
+    const turning = () => playbackRate > 0 && !reducedMotion;
     const updateAnimation = () => {
       const motion = weatherMotion(activeWeather, !!reducedMotion);
-      loop.setAnimated(motion !== 'none', motion === 'drift' ? CLOUD_DRIFT_FPS : undefined);
+      const animated = motion !== 'none' || turning();
+      // Playback and drift read as smooth at a capped rate; falling particles keep every frame.
+      loop.setAnimated(animated, motion === 'precipitation' ? undefined : CLOUD_DRIFT_FPS);
     };
     const controls = createCameraControls(
       renderer.domElement,
@@ -340,6 +345,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
           return;
         }
         if (!activeShowStars || starMaterial.uniforms.uOpacity.value < 0.05) return;
+        celestial.updateMatrixWorld();
         const index = pickStarAt(
           starPoints,
           camera,
@@ -347,7 +353,15 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
           y,
           rect,
           STAR_DISTANCE,
-          (i) => starGeometry.attributes.aAlpha.getX(i) * starMaterial.uniforms.uOpacity.value,
+          (i) => starAlpha(activeStars[i], starLimit) * starMaterial.uniforms.uOpacity.value,
+          {
+            margin: REFRACTION_MARGIN,
+            position: (i, target) =>
+              target
+                .copy(directionVector(activeStars[i].altitude, activeStars[i].azimuth))
+                .multiplyScalar(STAR_DISTANCE)
+                .applyMatrix4(celestial.matrixWorld),
+          },
         );
         const star = index === undefined ? undefined : activeStars[index];
         onStarSelect?.(star && star.altitude > 0 ? star : null);
@@ -387,11 +401,18 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
         starMaterial.uniforms.uPixelRatio.value = renderer.getPixelRatio();
         api.update(activeSky, activeWeather, activeFlags);
       },
+      /** Simulated seconds per real second while playing; 0 when time is still or following now. */
+      playback: (rate: number) => {
+        playbackRate = rate;
+        tickedAt = performance.now();
+        updateAnimation();
+      },
       update: (
         nextSky: SkyState,
         nextWeather: WeatherValues,
         flags: { stars: boolean; constellations: boolean; labels: boolean },
       ) => {
+        const ticked = nextSky !== activeSky;
         activeStars = nextSky.stars;
         activeSky = nextSky;
         activeFlags = flags;
@@ -428,22 +449,18 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
           .normalize();
         moonUniforms.uMoonSunDirection.value.copy(towardSun);
 
-        const positions = starGeometry.attributes.position as THREE.BufferAttribute;
-        const sizes = starGeometry.attributes.aSize as THREE.BufferAttribute;
-        nextSky.stars.forEach((star, index) => {
-          const p = directionVector(star.altitude, star.azimuth).multiplyScalar(STAR_DISTANCE);
-          positions.setXYZ(index, p.x, p.y, p.z);
-          sizes.setX(index, Math.max(1.35, 4.1 - star.magnitude * 0.5));
-        });
-        positions.needsUpdate = true;
-        sizes.needsUpdate = true;
-        starGeometry.setDrawRange(0, nextSky.stars.length);
+        if (nextSky.starField.vectors !== starVectors) placeStars(nextSky.starField.vectors);
+        setRotationMatrix(starPoints.matrix, nextSky.starField.rotation);
+        starPoints.matrixWorldNeedsUpdate = true;
+        if (ticked) {
+          // The new instant already includes the turn shown so far; restart from rest.
+          celestial.quaternion.identity();
+          tickedAt = performance.now();
+        }
         const nightVisibility = twilightVisibility(nextSky.sunAltitude);
         const visibilityFactor = weatherVisibility(nextWeather);
-        const limit = limitingMagnitude(skyBrightness, nextSky.moon);
-        const alphas = starGeometry.attributes.aAlpha as THREE.BufferAttribute;
-        nextSky.stars.forEach((star, index) => alphas.setX(index, starAlpha(star, limit)));
-        alphas.needsUpdate = true;
+        starLimit = limitingMagnitude(skyBrightness, nextSky.moon);
+        starMaterial.uniforms.uLimit.value = starLimit;
         starMaterial.uniforms.uOpacity.value = nightVisibility * visibilityFactor;
         starPoints.visible = flags.stars;
 
@@ -489,12 +506,17 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
           [71, 73, 75, 77, 85, 86].includes(activeWeather.weatherCode),
         );
       }
-      camera.updateMatrixWorld();
+      if (turning()) {
+        const seconds = Math.min(MAX_EXTRAPOLATION, Math.max(0, (now - tickedAt) / 1000)) * playbackRate;
+        diurnalTurn(activeSky.starField.rotation, seconds, celestial.quaternion);
+      }
+      scene.updateMatrixWorld();
       const target = findSkyObject(activeSky, targetId);
       targetMarker.hidden = true;
       if (target && aboveHorizon(target)) {
         const projected = directionVector(target.altitude, target.azimuth)
           .multiplyScalar(1650)
+          .applyQuaternion(celestial.quaternion)
           .project(camera);
         if (
           projected.z > -1 &&
@@ -562,6 +584,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
       renderer.domElement.removeEventListener('webglcontextrestored', restored);
     });
     api.settings(input);
+    api.playback(input.playbackRate ?? 0);
     visibility();
 
     return {

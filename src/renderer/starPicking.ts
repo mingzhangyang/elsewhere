@@ -54,6 +54,16 @@ export interface PickViewport {
  * phase: it matches the pick radius at the frame center, which is the largest angular radius 20px
  * can cover, so no star within the radius elsewhere is missed before the exact screen-space test.
  */
+export interface PickOptions {
+  /**
+   * World position at which the star is drawn, when it differs from the geometry (stars are refracted
+   * in the shader). Defaults to the position attribute through the object's world matrix.
+   */
+  position?: (index: number, target: Vector3) => Vector3;
+  /** Extra world-space broad-phase radius covering any gap between the geometry and `position`. */
+  margin?: number;
+}
+
 export function pickStarAt(
   points: Points,
   camera: PerspectiveCamera,
@@ -62,9 +72,12 @@ export function pickStarAt(
   viewport: PickViewport,
   distance: number,
   alpha: (index: number) => number,
+  options: PickOptions = {},
 ): number | undefined {
   const raycaster = new Raycaster();
-  raycaster.params.Points = { threshold: pickThreshold(distance, camera.fov, viewport.height) };
+  raycaster.params.Points = {
+    threshold: pickThreshold(distance, camera.fov, viewport.height) + (options.margin ?? 0),
+  };
   raycaster.setFromCamera(
     new Vector2(
       ((x - viewport.left) / viewport.width) * 2 - 1,
@@ -75,7 +88,8 @@ export function pickStarAt(
   const position = points.geometry.getAttribute('position');
   const projected = new Vector3();
   const screenDistance = (index: number) => {
-    projected.fromBufferAttribute(position, index).applyMatrix4(points.matrixWorld).project(camera);
+    if (options.position) options.position(index, projected).project(camera);
+    else projected.fromBufferAttribute(position, index).applyMatrix4(points.matrixWorld).project(camera);
     const sx = viewport.left + ((projected.x + 1) / 2) * viewport.width;
     const sy = viewport.top + ((1 - projected.y) / 2) * viewport.height;
     return Math.hypot(sx - x, sy - y);
