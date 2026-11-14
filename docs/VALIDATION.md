@@ -19,7 +19,7 @@ The `minimatch` override selects the patched 11.x API used by the lint dependenc
 - Product scope: educational sky exploration, 1900 through 2100 inclusive. Reject instants outside the interval rather than implying accuracy for arbitrary years.
 - Observer coordinates: WGS84 latitude in degrees north, longitude in degrees east, elevation in meters above sea level. Device geolocation explicitly assumes sea level because browser altitude is ellipsoidal, not mean-sea-level elevation.
 - Horizontal coordinates: altitude above the mathematical horizon; azimuth clockwise from north. The generic drawn ridge is not measured local terrain.
-- Sun/Moon displayed horizontal positions use Astronomy Engine's normal refraction. Stellar coordinates use proper motion, precession, and geometric altitude; stellar refraction remains outside scope.
+- Sun, Moon, and star displayed altitudes use Astronomy Engine's normal refraction, so near-horizon objects share one convention. Stellar coordinates also apply proper motion and precession. Sun/Moon `geometricAltitude` remains airless for reference comparisons.
 - Rise/set follows Astronomy Engine's limb and atmospheric conventions at the specified elevation. A civil day runs from local midnight to the next local midnight, not a fixed number of elapsed hours.
 - Missing daily events are meaningful domain states. They must remain distinct from calculation failure. Weather data never changes calculated celestial coordinates.
 - Independent samples meet 0.02-degree Sun/Moon coordinate-component limits and 2-minute ordinary-event limits. See [SCIENCE.md](SCIENCE.md) for actual errors, dates, reference conventions, and limits of the sample coverage. Near-horizon, polar, and extreme-elevation differences still require review.

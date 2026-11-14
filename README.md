@@ -62,7 +62,7 @@ The responsive shell keeps a separate time dock and one inspector. The renderer 
 
 ## Scope and sources
 
-Supported instants span 1900–2100 UTC. This is educational visualization: the generic landscape, clouds, brightness, and precipitation are illustrative. It does not include planets, measured terrain, a Milky Way layer, eclipse timing, or a complete constellation atlas. Device location uses a disclosed sea-level elevation assumption. Stellar refraction, parallax, nutation, and variable brightness are omitted.
+Supported instants span 1900–2100 UTC. This is educational visualization: the generic landscape, clouds, brightness, and precipitation are illustrative. It does not include planets, measured terrain, a Milky Way layer, eclipse timing, or a complete constellation atlas. Device location uses a disclosed sea-level elevation assumption. Displayed altitudes of the Sun, Moon, and stars include standard atmospheric refraction. Stellar parallax, nutation, and variable brightness are omitted.
 
 [Scientific conventions and independent reference results](docs/SCIENCE.md) explain the accuracy budget and its limits. [Asset provenance](docs/ASSETS.md) records catalog/map licenses, source URLs, hashes, and transformations. The app also exposes [sources, privacy, and limitations](public/credits.html).
 
