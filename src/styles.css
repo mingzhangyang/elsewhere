@@ -1,17 +1,26 @@
 :root {
   font-family: 'Segoe UI', ui-sans-serif, system-ui, sans-serif;
-  color: #e8eef6;
-  background: #080e17;
+  color: var(--text);
+  background: var(--bg);
   color-scheme: dark;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+  --bg: #080e17;
+  --chrome: #0a111c;
+  --text: #e8eef6;
+  --text-soft: #c3d1e2;
+  --text-dim: #b8c8da;
   --muted: #a1afc0;
   --quiet: #8394a9;
   --line: #ffffff18;
+  --line-strong: #ffffff24;
   --gold: #e9c697;
-  --surface: #101c2bec;
   --raised: #1c2b3d;
   --radius: 16px;
+  /* Type scale: nothing below --text-xs; controls at --text-sm; panel reading text at --text-md. */
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-md: 14px;
 }
 * {
   box-sizing: border-box;
@@ -60,9 +69,9 @@ select:focus-visible {
 }
 input,
 select {
-  color: #e8eef6;
+  color: var(--text);
   background: #172537;
-  border: 1px solid #ffffff24;
+  border: 1px solid var(--line-strong);
   border-radius: 7px;
 }
 button {
@@ -102,10 +111,10 @@ button:hover:not(:disabled) {
   bottom: 20px;
   max-width: 340px;
   background: #0a111cee;
-  border: 1px solid #8394a9;
+  border: 1px solid var(--quiet);
   padding: 12px;
   border-radius: 8px;
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 .dev-diagnostics output {
   display: block;
@@ -114,7 +123,7 @@ button:hover:not(:disabled) {
 }
 .dev-diagnostics button {
   background: #20334a;
-  border: 1px solid #8394a9;
+  border: 1px solid var(--quiet);
   padding: 8px;
   border-radius: 6px;
 }
@@ -122,7 +131,7 @@ button:hover:not(:disabled) {
   max-height: 170px;
   overflow: auto;
   white-space: pre-wrap;
-  font-size: 11px;
+  font-size: var(--text-sm);
 }
 .dev-diagnostics button + button {
   margin-left: 6px;
@@ -133,7 +142,7 @@ button:hover:not(:disabled) {
   align-items: center;
   gap: 24px;
   padding: env(safe-area-inset-top) 28px 0;
-  background: #0a111c;
+  background: var(--chrome);
   border-bottom: 1px solid var(--line);
   z-index: 10;
 }
@@ -167,7 +176,7 @@ button:hover:not(:disabled) {
   display: block;
   margin-top: 8px;
   color: var(--quiet);
-  font-size: 8px;
+  font-size: var(--text-xs);
   font-weight: 500;
   letter-spacing: 0.17em;
 }
@@ -176,7 +185,7 @@ button:hover:not(:disabled) {
   align-items: center;
   justify-content: center;
   gap: 12px;
-  border: 1px solid #ffffff18;
+  border: 1px solid var(--line);
   background: #132032;
   border-radius: 10px;
   padding: 9px 14px;
@@ -186,15 +195,28 @@ button:hover:not(:disabled) {
 }
 .location-trigger > svg {
   flex: 0 0 auto;
-  color: #b3c5d9;
+  color: var(--text-dim);
 }
 .location-trigger > span {
   flex: 1;
   overflow: hidden;
 }
+/* Wide screens name the place in the sky title; the header trigger only offers the change. */
+.topbar .location-trigger {
+  justify-self: center;
+  min-width: 200px;
+}
+.location-current {
+  display: none;
+}
+.location-change {
+  font-size: var(--text-md);
+  font-weight: 600;
+  white-space: nowrap;
+}
 .location-trigger strong {
   display: block;
-  font-size: 14px;
+  font-size: var(--text-md);
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -203,7 +225,7 @@ button:hover:not(:disabled) {
 .location-trigger small {
   display: block;
   color: var(--quiet);
-  font-size: 12px;
+  font-size: var(--text-sm);
   margin-top: 2px;
   white-space: nowrap;
   overflow: hidden;
@@ -224,7 +246,7 @@ button:hover:not(:disabled) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #b7c7d8;
+  color: var(--text-dim);
   padding: 0;
   min-height: 44px;
 }
@@ -274,7 +296,7 @@ button:hover:not(:disabled) {
 }
 .eyebrow {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-xs);
   letter-spacing: 0.15em;
   text-transform: uppercase;
   line-height: 1.4;
@@ -291,17 +313,10 @@ h1 {
   line-height: 1.1;
   margin: 0 0 12px;
 }
-.context-time {
-  font-size: 24px;
-  font-weight: 300;
-  display: flex;
-  gap: 12px;
-  align-items: baseline;
-  font-variant-numeric: tabular-nums;
-}
-.context-time > span {
-  font-size: 12px;
-  color: #b8c8da;
+.context-place {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-dim);
 }
 .source-pill {
   pointer-events: auto;
@@ -310,10 +325,10 @@ h1 {
   gap: 7px;
   margin-top: 18px;
   background: #0713219c;
-  border: 1px solid #ffffff24;
+  border: 1px solid var(--line-strong);
   border-radius: 30px;
-  font-size: 12px;
-  color: #c2d1e2;
+  font-size: var(--text-sm);
+  color: var(--text-soft);
   padding: 9px 12px;
   backdrop-filter: blur(12px);
   min-height: 44px;
@@ -327,7 +342,7 @@ h1 {
   flex: 0 0 auto;
 }
 .status-dot.amber {
-  background: #ebc48f;
+  background: var(--gold);
 }
 .sky-compass {
   position: absolute;
@@ -337,7 +352,7 @@ h1 {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--text-sm);
   text-shadow: 0 1px 5px #000;
 }
 .sky-compass svg {
@@ -345,7 +360,7 @@ h1 {
 }
 .sky-compass span {
   color: #b1c2d4;
-  font-size: 11px;
+  font-size: var(--text-sm);
 }
 .view-controls {
   position: absolute;
@@ -376,8 +391,8 @@ h1 {
   display: flex;
   align-items: center;
   gap: 14px;
-  color: #c4d0e0;
-  font-size: 12px;
+  color: var(--text-soft);
+  font-size: var(--text-sm);
   text-align: center;
   padding: 8px 8px 8px 16px;
   border-radius: 12px;
@@ -387,7 +402,8 @@ h1 {
   white-space: normal;
 }
 .scene-hint small {
-  font-size: 10px;
+  display: block;
+  font-size: var(--text-xs);
   color: #93a5bc;
   line-height: 1.8;
 }
@@ -401,7 +417,7 @@ h1 {
   padding: 5px;
   gap: 3px;
   border-radius: 12px;
-  border: 1px solid #ffffff24;
+  border: 1px solid var(--line-strong);
   background: #0a1526e8;
   box-shadow: 0 8px 24px #0004;
   backdrop-filter: blur(16px);
@@ -417,7 +433,7 @@ h1 {
   border: none;
   border-radius: 8px;
   color: #c1d0e2;
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 .explore-toolbar button[aria-expanded='true'] {
   background: #e9c69720;
@@ -456,7 +472,7 @@ h2 {
   line-height: 1.25;
 }
 .inspector-heading .eyebrow {
-  font-size: 9px;
+  font-size: var(--text-xs);
   margin-bottom: 6px;
 }
 .inspector-heading h2:focus {
@@ -481,7 +497,7 @@ p {
 }
 .panel-intro {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--text-md);
   margin: 0 0 20px;
 }
 .segmented {
@@ -497,7 +513,7 @@ p {
   background: transparent;
   border: 0;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: var(--text-sm);
   min-height: 44px;
   color: var(--muted);
 }
@@ -509,13 +525,13 @@ p {
   display: flex;
   gap: 8px;
   align-items: center;
-  font-size: 12px;
+  font-size: var(--text-md);
   color: #b9cce1;
   margin: 12px 0;
 }
 .form-status {
   color: #dec29e;
-  font-size: 12px;
+  font-size: var(--text-md);
   line-height: 1.6;
 }
 .form-status:empty {
@@ -548,13 +564,13 @@ p {
   grid-row: 1;
 }
 .weather-grid strong small {
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: var(--muted);
   margin-left: 4px;
 }
 .weather-grid span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--text-xs);
   grid-column: 1 / -1;
 }
 .weather-slider {
@@ -566,12 +582,12 @@ p {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 12px;
+  font-size: var(--text-md);
   color: #bbcadd;
   margin-bottom: 5px;
 }
 .weather-slider b {
-  font-size: 11px;
+  font-size: var(--text-sm);
   font-weight: 500;
   color: #e0e8f3;
 }
@@ -587,11 +603,11 @@ input[type='range'] {
 }
 .weather-description {
   margin: 20px 0 0;
-  font-size: 14px;
+  font-size: var(--text-md);
 }
 .muted {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--text-md);
   line-height: 1.65;
 }
 .full {
@@ -605,12 +621,12 @@ input[type='range'] {
   gap: 8px;
   min-height: 44px;
   padding: 10px 16px;
-  font-size: 12px;
+  font-size: var(--text-sm);
   border-radius: 8px;
 }
 .primary-button {
   border: 1px solid #dfc39c80;
-  background: #e9c697;
+  background: var(--gold);
   color: #17202c;
   font-weight: 600;
 }
@@ -624,7 +640,7 @@ input[type='range'] {
   color: var(--gold);
   background: transparent;
   border: 0;
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 .object-detail {
   margin-bottom: 0;
@@ -645,7 +661,7 @@ input[type='range'] {
   letter-spacing: -0.03em;
 }
 .object-detail-heading .eyebrow {
-  font-size: 9px;
+  font-size: var(--text-xs);
   margin-bottom: 5px;
 }
 .moon-phase {
@@ -657,7 +673,7 @@ input[type='range'] {
   color: var(--gold);
 }
 .object-status {
-  font-size: 11px;
+  font-size: var(--text-sm);
   color: #aec9bf;
 }
 .coordinate-grid {
@@ -674,15 +690,15 @@ input[type='range'] {
 .coordinate-grid span {
   display: block;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--text-sm);
   margin-top: 5px;
 }
 .object-detail > p {
-  font-size: 12px;
+  font-size: var(--text-md);
 }
 .event-list {
   margin: 18px 0 22px;
-  font-size: 12px;
+  font-size: var(--text-md);
 }
 .event-list > div {
   display: flex;
@@ -699,14 +715,14 @@ input[type='range'] {
 .object-search {
   display: block;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 .object-search input {
   display: block;
   width: 100%;
   padding: 12px;
   margin: 6px 0 12px;
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 .object-list {
   display: grid;
@@ -725,10 +741,10 @@ input[type='range'] {
 }
 .object-list button > span {
   flex: 1;
-  font-size: 12px;
+  font-size: var(--text-md);
 }
 .object-list button small {
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: var(--muted);
 }
 .object-list button.active {
@@ -749,7 +765,7 @@ input[type='range'] {
   border: none;
   background: transparent;
   text-align: left;
-  font-size: 12px;
+  font-size: var(--text-md);
   padding: 8px 0;
 }
 .switch {
@@ -782,12 +798,12 @@ input[type='range'] {
   justify-content: space-between;
   align-items: center;
   gap: 10px;
-  font-size: 12px;
+  font-size: var(--text-md);
 }
 .quality-setting select {
   padding: 10px;
   max-width: 150px;
-  font-size: 11px;
+  font-size: var(--text-sm);
 }
 .about-note {
   display: flex;
@@ -800,17 +816,17 @@ input[type='range'] {
   color: #bdcfe1;
 }
 .about-note h3 {
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: #d2deec;
   margin-bottom: 5px;
 }
 .about-note p {
-  font-size: 11px;
+  font-size: var(--text-md);
   margin-top: 0;
 }
 .bottom-dock {
   padding: 10px 24px 12px;
-  background: #0a111c;
+  background: var(--chrome);
   border-top: 1px solid var(--line);
   z-index: 7;
 }
@@ -838,22 +854,22 @@ input[type='range'] {
 }
 .time-readout strong {
   display: block;
-  font-size: 13px;
+  font-size: var(--text-sm);
   font-weight: 500;
 }
 .time-readout small {
   display: block;
   margin-top: 3px;
-  font-size: 10px;
-  color: #b7c7d8;
+  font-size: var(--text-xs);
+  color: var(--text-dim);
 }
 .tonight-button {
   min-height: 44px;
   padding: 8px 12px;
   background: #1b2c40;
-  border: 1px solid #ffffff24;
+  border: 1px solid var(--line-strong);
   border-radius: 7px;
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 .time-editor {
   width: 410px;
@@ -876,7 +892,7 @@ input[type='range'] {
 .time-zone-note {
   margin: 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--text-md);
 }
 .inspector-heading h2 {
   font-size: 20px;
@@ -890,23 +906,23 @@ input[type='range'] {
   border: 0;
   background: transparent;
   color: var(--gold);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 .visibility-label {
-  font-size: 13px;
+  font-size: var(--text-md);
   color: var(--gold);
   margin: 10px 0 4px;
 }
 .visibility-explanation {
-  font-size: 12px;
-  color: #c3d1e2;
+  font-size: var(--text-md);
+  color: var(--text-soft);
   margin: 0 0 16px;
 }
 .object-detail-heading h3:focus {
   outline: none;
 }
 .object-facts {
-  font-size: 12px;
+  font-size: var(--text-md);
   color: var(--muted);
   border-top: 1px solid var(--line);
   padding-top: 12px;
@@ -915,14 +931,14 @@ input[type='range'] {
   min-height: 44px;
   padding: 10px 0;
   cursor: pointer;
-  color: #c3d1e2;
+  color: var(--text-soft);
 }
 .object-list button > span small {
   display: block;
   margin-top: 3px;
 }
 .object-list button > b {
-  font-size: 12px;
+  font-size: var(--text-sm);
   font-weight: 400;
   color: var(--gold);
 }
@@ -931,7 +947,7 @@ input[type='range'] {
   min-height: 56px;
 }
 .catalog-note {
-  font-size: 12px;
+  font-size: var(--text-md);
   color: var(--muted);
   margin: 12px 0;
 }
@@ -940,7 +956,7 @@ input[type='range'] {
   border: 1px solid #e9c69740;
   border-radius: 8px;
   background: #e9c6970a;
-  font-size: 12px;
+  font-size: var(--text-md);
   margin-bottom: 10px;
 }
 .catalog-weather span {
@@ -952,7 +968,7 @@ input[type='range'] {
   border: 0;
   background: transparent;
   color: var(--gold);
-  font-size: 12px;
+  font-size: var(--text-sm);
   padding: 8px 0;
 }
 .restore-atmosphere {
@@ -964,18 +980,15 @@ input[type='range'] {
   padding: 12px;
   border: 1px solid #e9c69740;
   border-radius: 8px;
-  font-size: 12px;
+  font-size: var(--text-md);
 }
 .preview-notice p {
   margin: 0 0 10px;
 }
 .scene-hint strong {
   display: block;
-  font-size: 13px;
+  font-size: var(--text-sm);
   font-weight: 500;
-}
-.scene-hint small {
-  display: block;
 }
 .hint-action {
   border: 1px solid #e9c69755;
@@ -985,14 +998,14 @@ input[type='range'] {
   padding: 8px 12px;
   white-space: nowrap;
   color: var(--gold);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 .sky-target {
   position: absolute;
   z-index: 3;
-  width: 34px;
-  height: 34px;
-  margin: -17px;
+  width: var(--ring, 34px);
+  height: var(--ring, 34px);
+  margin: calc(var(--ring, 34px) / -2);
   border: 1px solid #f2d2a4;
   border-radius: 50%;
   box-shadow: 0 0 0 1px #0008;
@@ -1004,10 +1017,10 @@ input[type='range'] {
 .sky-target span {
   position: absolute;
   left: 50%;
-  top: 42px;
+  top: calc(var(--ring, 34px) + 8px);
   transform: translateX(-50%);
   white-space: nowrap;
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: #f6e2c6;
   background: #0a1423d9;
   padding: 5px 8px;
@@ -1034,12 +1047,12 @@ input[type='range'] {
   font-weight: 500;
 }
 .focus-summary span {
-  font-size: 11px;
+  font-size: var(--text-sm);
   color: var(--gold);
   flex: 1;
 }
 .focus-summary p {
-  font-size: 12px;
+  font-size: var(--text-md);
   color: #c5d3e3;
   margin: 4px 0;
 }
@@ -1053,7 +1066,7 @@ input[type='range'] {
   min-height: 44px;
   color: var(--gold);
   padding: 5px 0;
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 .time-console {
   max-width: 1080px;
@@ -1071,7 +1084,7 @@ input[type='range'] {
   gap: 4px;
 }
 .day-navigation > span {
-  font-size: 13px;
+  font-size: var(--text-sm);
   font-weight: 500;
   min-width: 160px;
   text-align: center;
@@ -1085,7 +1098,7 @@ input[type='range'] {
   display: flex;
   align-items: stretch;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: var(--muted);
   flex-direction: column;
   flex: 1;
@@ -1094,7 +1107,7 @@ input[type='range'] {
 .time-inputs input {
   padding: 8px;
   min-height: 44px;
-  font-size: 12px;
+  font-size: var(--text-sm);
   width: 100%;
   min-width: 0;
 }
@@ -1107,7 +1120,7 @@ input[type='range'] {
   border: 1px solid #e9c69750;
   background: #e9c6970d;
   color: var(--gold);
-  font-size: 12px;
+  font-size: var(--text-sm);
   padding: 8px 13px;
 }
 .now-button[aria-pressed='true'] {
@@ -1159,12 +1172,12 @@ input[type='range'] {
   display: flex;
   justify-content: space-between;
   color: #9baec5;
-  font-size: 10px;
+  font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;
   margin-top: -3px;
 }
 .timeline-row select {
-  font-size: 12px;
+  font-size: var(--text-sm);
   padding: 9px;
   min-height: 44px;
   min-width: 68px;
@@ -1178,7 +1191,7 @@ input[type='range'] {
   border: 0;
   color: #bacde2;
   padding: 4px 0;
-  font-size: 12px;
+  font-size: var(--text-sm);
   min-height: 44px;
 }
 .time-error {
@@ -1186,8 +1199,8 @@ input[type='range'] {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
-  color: #ebc48f;
+  font-size: var(--text-md);
+  color: var(--gold);
   padding: 10px 0;
 }
 .time-error button {
@@ -1204,8 +1217,8 @@ input[type='range'] {
   gap: 12px;
   padding: 0 28px env(safe-area-inset-bottom);
   color: #8698ae;
-  font-size: 9px;
-  background: #0a111c;
+  font-size: var(--text-xs);
+  background: var(--chrome);
   letter-spacing: 0.06em;
 }
 .bottom-bar a {
@@ -1215,10 +1228,10 @@ input[type='range'] {
 }
 .bottom-bar > span:first-child {
   letter-spacing: 0.17em;
-  font-size: 8px;
+  font-size: var(--text-xs);
 }
 dialog {
-  color: #e8eef6;
+  color: var(--text);
   border: 1px solid #ffffff2b;
   background: #101c2b;
   border-radius: 18px;
@@ -1239,7 +1252,7 @@ dialog:not([open]) {
   padding-bottom: 16px;
 }
 .place-dialog .eyebrow {
-  font-size: 9px;
+  font-size: var(--text-xs);
 }
 .place-search {
   display: flex;
@@ -1258,7 +1271,7 @@ dialog:not([open]) {
   border: 0;
   background: transparent;
   padding: 0;
-  font-size: 14px;
+  font-size: var(--text-md);
   outline: none;
 }
 .place-search:focus-within {
@@ -1278,10 +1291,10 @@ dialog:not([open]) {
   gap: 7px;
   border: 1px solid var(--line);
   border-radius: 7px;
-  background: #1c2b3d;
+  background: var(--raised);
   padding: 10px;
   min-height: 44px;
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 .place-dialog > .eyebrow,
 .place-dialog > .form-status {
@@ -1317,13 +1330,13 @@ dialog:not([open]) {
 .place-options strong {
   display: block;
   color: #e5eef8;
-  font-size: 14px;
+  font-size: var(--text-md);
   font-weight: 500;
 }
 .place-options small {
   display: block;
   color: #a2b4c9;
-  font-size: 10px;
+  font-size: var(--text-xs);
   margin-top: 5px;
 }
 .share-dialog {
@@ -1335,16 +1348,16 @@ dialog:not([open]) {
   padding-right: 0;
 }
 .share-dialog > p {
-  font-size: 13px;
+  font-size: var(--text-md);
   color: #bacadd;
   margin-top: 0;
 }
 .share-dialog .privacy-note {
-  color: #ebc48f;
+  color: var(--gold);
 }
 .share-field {
   display: block;
-  font-size: 12px;
+  font-size: var(--text-md);
   color: var(--muted);
   margin: 20px 0;
 }
@@ -1352,7 +1365,7 @@ dialog:not([open]) {
   display: block;
   width: 100%;
   padding: 12px;
-  font-size: 12px;
+  font-size: var(--text-sm);
   margin-top: 8px;
 }
 .notice {
@@ -1369,7 +1382,7 @@ dialog:not([open]) {
   background: #24384ef5;
   border: 1px solid #aec7e04f;
   border-radius: 10px;
-  font-size: 12px;
+  font-size: var(--text-md);
   box-shadow: 0 10px 40px #0006;
 }
 .scene-error {
@@ -1384,10 +1397,10 @@ dialog:not([open]) {
   border: 1px solid #ffffff30;
   background: #16273e;
   text-align: center;
-  font-size: 13px;
+  font-size: var(--text-md);
 }
 .scene-error button {
-  background: #e9c697;
+  background: var(--gold);
   border: 0;
   border-radius: 7px;
   padding: 12px 16px;
@@ -1484,21 +1497,24 @@ dialog:not([open]) {
   .brand-mark svg {
     width: 20px;
   }
-  .header-actions > button:last-child {
-    display: none;
-  }
   .location-trigger {
     min-height: 42px;
     padding: 8px 10px;
     gap: 8px;
     border-color: #ffffff15;
   }
+  .topbar .location-trigger {
+    justify-self: stretch;
+  }
+  .location-current {
+    display: block;
+  }
+  .location-change,
   .location-trigger small {
     display: none;
-    font-size: 12px;
   }
   .location-trigger strong {
-    font-size: 13px;
+    font-size: var(--text-sm);
   }
   .sky-context {
     top: 20px;
@@ -1506,25 +1522,28 @@ dialog:not([open]) {
     max-width: calc(100% - 100px);
   }
   .sky-context .eyebrow {
-    font-size: 8px;
+    font-size: var(--text-xs);
     margin-bottom: 8px;
   }
   h1 {
     font-size: 30px;
     margin-bottom: 8px;
   }
-  .context-time {
-    font-size: 21px;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 3px;
+  /* The header names the place on phones; the title stays for screen readers only. */
+  .sky-context h1 {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
-  .context-time > span {
-    font-size: 12px;
+  .context-place {
+    display: none;
   }
   .source-pill {
     margin-top: 13px;
-    font-size: 12px;
+    font-size: var(--text-sm);
     padding: 8px 10px;
     max-width: 250px;
     text-align: left;
@@ -1567,19 +1586,16 @@ dialog:not([open]) {
   .explore-toolbar button {
     flex: 1;
     padding: 8px 12px;
-    font-size: 12px;
+    font-size: var(--text-sm);
     min-height: 44px;
   }
   .scene-hint {
     bottom: 83px;
-    font-size: 11px;
+    font-size: var(--text-sm);
     padding: 5px 6px 5px 12px;
     white-space: normal;
     width: max-content;
     max-width: calc(100% - 34px);
-  }
-  .scene-hint small {
-    display: none;
   }
   .inspector {
     top: 12px;
@@ -1599,7 +1615,7 @@ dialog:not([open]) {
     padding: 10px 14px 9px;
   }
   .day-navigation > span {
-    font-size: 12px;
+    font-size: var(--text-sm);
   }
   .day-navigation .icon-button {
     height: 28px;
@@ -1609,7 +1625,7 @@ dialog:not([open]) {
   .time-inputs input {
     width: 100%;
     min-width: 0;
-    font-size: 12px;
+    font-size: var(--text-sm);
     min-height: 44px;
     padding: 6px 8px;
   }
@@ -1619,7 +1635,7 @@ dialog:not([open]) {
   .now-button {
     min-height: 44px;
     padding: 6px 13px;
-    font-size: 12px;
+    font-size: var(--text-sm);
   }
   .timeline-row {
     gap: 12px;
@@ -1629,7 +1645,7 @@ dialog:not([open]) {
     min-width: 60px;
     padding: 7px;
     min-height: 44px;
-    font-size: 11px;
+    font-size: var(--text-sm);
   }
   .play-button {
     width: 44px;
@@ -1638,24 +1654,24 @@ dialog:not([open]) {
     min-height: 44px;
   }
   .timeline-ticks {
-    font-size: 10px;
+    font-size: var(--text-xs);
   }
   .event-jumps {
     gap: 28px;
   }
   .event-jumps button {
-    font-size: 12px;
+    font-size: var(--text-sm);
     min-height: 44px;
   }
   .bottom-bar {
     padding: 0 15px env(safe-area-inset-bottom);
-    font-size: 8px;
+    font-size: var(--text-xs);
   }
   .bottom-bar > span:first-child {
     display: none;
   }
   .bottom-bar > span:nth-child(2) {
-    font-size: 8px;
+    font-size: var(--text-xs);
   }
   .place-dialog {
     max-height: calc(100dvh - 24px);
@@ -1665,7 +1681,7 @@ dialog:not([open]) {
   }
   .place-actions button {
     padding: 10px 7px;
-    font-size: 12px;
+    font-size: var(--text-sm);
     min-height: 44px;
   }
   .place-actions {
@@ -1681,7 +1697,7 @@ dialog:not([open]) {
 @media (max-height: 620px) {
   .sky-target span {
     top: auto;
-    bottom: 42px;
+    bottom: calc(var(--ring, 34px) + 8px);
   }
   .focus-summary p {
     display: none;
@@ -1720,7 +1736,7 @@ dialog:not([open]) {
     top: 16px;
   }
   .sky-context .eyebrow,
-  .context-time > span,
+  .context-place,
   .scene-hint {
     display: none;
   }
@@ -1729,7 +1745,7 @@ dialog:not([open]) {
   }
   .source-pill {
     margin-top: 8px;
-    font-size: 12px;
+    font-size: var(--text-sm);
     min-height: 44px;
   }
   .view-controls {
@@ -1811,7 +1827,7 @@ dialog:not([open]) {
   .sky-context .eyebrow,
   .bottom-bar,
   .bottom-bar > span:nth-child(2) {
-    font-size: 10px;
+    font-size: var(--text-xs);
   }
 }
 /* Very short portrait stages (split screen, Android keyboard): the 200px minimum no longer fits above the

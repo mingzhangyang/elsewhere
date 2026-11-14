@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import { useWeather } from '../src/hooks/useWeather';
-import { weatherKey } from '../src/lib/weather';
+import { weatherKey } from '../src/domain/weather';
 import type { WeatherResult } from '../src/types';
 import { NEW_YORK, SYDNEY } from './fixtures/locations';
 

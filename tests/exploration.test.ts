@@ -1,9 +1,16 @@
-import { expect, it } from 'vitest';
-import { calculateSky, nextBodyRise } from '../src/lib/astronomy';
-import { findSkyObject, objectVisibility, skyObjects } from '../src/lib/exploration';
-import { defaultWeatherValues } from '../src/lib/weather';
+import { describe, expect, it } from 'vitest';
+import { calculateSky, nextBodyRise } from '../src/domain/astronomy';
+import {
+  angularDiameter,
+  findSkyObject,
+  framingFov,
+  objectVisibility,
+  skyObjects,
+  type SkyObject,
+} from '../src/lib/exploration';
+import { defaultWeatherValues } from '../src/domain/weather';
 import { NEW_YORK } from './fixtures/locations';
-import type { Preferences } from '../src/lib/persistence';
+import { MIN_FOV, type Preferences } from '../src/lib/persistence';
 
 const preferences: Preferences = {
   version: 1,
@@ -46,4 +53,20 @@ it('finds the next lunar rise after an evening set', () => {
   expect(rise.getTime()).toBeGreaterThan(start.getTime());
   expect(rise.getTime() - start.getTime()).toBeLessThan(86400000);
   expect(calculateSky(NEW_YORK, new Date(rise.getTime() + 15 * 60000)).moon.visible).toBe(true);
+});
+
+describe('framing the Sun and Moon', () => {
+  it('zooms a risen Moon to fill about a quarter of the view, never past the zoom limit', () => {
+    const sky = calculateSky(NEW_YORK, new Date('2026-11-24T02:00Z'));
+    const moon = findSkyObject(sky, 'moon') as Extract<SkyObject, { kind: 'moon' }>;
+    expect(angularDiameter(moon)).toBeGreaterThan(0.48);
+    expect(angularDiameter(moon)).toBeLessThan(0.57);
+    if (moon.visible) expect(framingFov(moon)).toBeCloseTo(Math.max(MIN_FOV, angularDiameter(moon) * 4), 6);
+    expect(framingFov({ ...moon, visible: false })).toBeUndefined();
+    expect(framingFov({ ...moon, visible: true, distanceKm: 1e9 })).toBe(MIN_FOV);
+  });
+  it('keeps the current zoom for stars', () => {
+    const sky = calculateSky(NEW_YORK, new Date('2026-11-24T02:00Z'));
+    expect(framingFov(findSkyObject(sky, sky.stars[0].id)!)).toBeUndefined();
+  });
 });

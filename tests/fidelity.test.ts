@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { expect, it } from 'vitest';
-import { CONSTELLATIONS, STAR_CATALOG, movedEquatorial } from '../src/lib/stars';
-import { calculateSky } from '../src/lib/astronomy';
+import { CONSTELLATIONS, STAR_CATALOG, movedEquatorial } from '../src/domain/stars';
+import { calculateSky } from '../src/domain/astronomy';
 import { directionVector } from '../src/renderer/resources';
 import { advancePrecipitation, windVector, wrap } from '../src/renderer/precipitation';
 import { NEW_YORK, SYDNEY } from './fixtures/locations';

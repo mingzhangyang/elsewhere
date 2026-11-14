@@ -7,8 +7,11 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
+        // Stable, separately cached pieces that download in parallel with the app.
         manualChunks(id) {
           if (id.includes('/node_modules/three/')) return 'three';
+          if (id.includes('/node_modules/astronomy-engine/')) return 'astronomy';
+          if (id.endsWith('/src/data/stars.json')) return 'catalog';
         },
       },
     },

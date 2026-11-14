@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, it } from 'vitest';
-import { calculateSky } from '../src/lib/astronomy';
+import { calculateSky } from '../src/domain/astronomy';
 import references from './fixtures/horizons/provenance.json';
 
 // JPL DE441 airless, topocentric coordinates. Refraction is deliberately excluded

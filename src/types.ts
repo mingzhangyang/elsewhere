@@ -1,3 +1,4 @@
+import type { StarField } from './domain/stars';
 export interface LocationInfo {
   id: string;
   name: string;
@@ -53,6 +54,8 @@ export interface SkyState {
     prime: [number, number, number];
   };
   stars: Star[];
+  /** The rigid star sphere the renderer draws; `stars` are its positions in horizontal coordinates. */
+  starField: StarField;
   events: SkyEvents;
   sunAltitude: number;
 }

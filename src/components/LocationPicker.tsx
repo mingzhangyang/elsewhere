@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Bookmark, Check, ChevronDown, LocateFixed, MapPin, Search, X } from 'lucide-react';
 import type { LocationInfo } from '../types';
 import { normalizeLocation, PRESETS } from '../lib/locations';
-import { searchLocations } from '../lib/weather';
+import { searchLocations } from '../services/placeSearch';
 import { describeNetworkFailure } from '../lib/networkErrors';
 
 export default function LocationPicker({
@@ -141,10 +141,12 @@ export default function LocationPicker({
         aria-label={`Change location, ${location.name}`}
       >
         <MapPin size={18} />
-        <span>
+        {/* Wide screens name the place in the sky title, so the trigger only offers the change. */}
+        <span className="location-current">
           <strong>{location.name}</strong>
           <small>{location.country}</small>
         </span>
+        <span className="location-change">Change place</span>
         <ChevronDown size={16} />
       </button>
       <dialog

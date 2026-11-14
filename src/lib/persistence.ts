@@ -1,7 +1,8 @@
 import type { LocationInfo, WeatherValues } from '../types';
+import type { SkyBrightness } from '../domain/starVisibility';
 import { validateObserver } from '../domain/observer';
-import { validateInstant } from './time';
-import { defaultWeatherValues } from './weather';
+import { validateInstant } from '../domain/time';
+import { defaultWeatherValues } from '../domain/weather';
 import { normalizeLocation } from './locations';
 
 export interface LayerSettings {
@@ -14,6 +15,12 @@ export interface CameraView {
   altitude: number;
   fov: number;
 }
+/** Vertical field of view limits, in degrees. The narrow end frames the Sun or Moon in detail. */
+export const MIN_FOV = 2;
+export const MAX_FOV = 92;
+export const DEFAULT_FOV = 66;
+/** One zoom-in step (button or key) narrows the view by this factor. */
+export const ZOOM_STEP = 0.8;
 export interface Preferences {
   version: 1;
   layers: LayerSettings;
@@ -23,7 +30,7 @@ export interface Preferences {
   reducedMotion: boolean;
   quality: 'auto' | 'low' | 'high';
   horizon: 'flat' | 'ridge';
-  skyBrightness: 'dark' | 'suburban' | 'city';
+  skyBrightness: SkyBrightness;
 }
 export interface Exploration {
   version: 1;
@@ -120,8 +127,8 @@ export function parseExploration(hash: string): { value: Exploration | null; not
     if (
       ![camera.heading, camera.altitude, camera.fov].every(Number.isFinite) ||
       Math.abs(camera.altitude) > 90 ||
-      camera.fov < 20 ||
-      camera.fov > 92 ||
+      camera.fov < MIN_FOV ||
+      camera.fov > MAX_FOV ||
       camera.heading < 0 ||
       camera.heading >= 360
     )

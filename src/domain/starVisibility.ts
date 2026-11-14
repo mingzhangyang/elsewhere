@@ -1,5 +1,7 @@
 import type { SkyState, Star, WeatherValues } from '../types';
-import type { Preferences } from './persistence';
+
+/** Illustrative light-pollution setting chosen by the visitor. */
+export type SkyBrightness = 'dark' | 'suburban' | 'city';
 
 /**
  * One star-visibility model shared by the renderer (what is drawn) and the exploration text (what
@@ -29,28 +31,51 @@ export function twilightVisibility(sunAltitude: number): number {
 
 /** Faintest magnitude visible overhead for the chosen light pollution, reduced by a high bright Moon. */
 export function limitingMagnitude(
-  skyBrightness: Preferences['skyBrightness'],
+  skyBrightness: SkyBrightness,
   moon: Pick<SkyState['moon'], 'altitude' | 'illumination'>,
 ): number {
   const base = skyBrightness === 'city' ? 3 : skyBrightness === 'suburban' ? 4.5 : 6;
   return base - Math.max(0, sinDeg(moon.altitude)) * moon.illumination * 1.6;
 }
 
+/**
+ * Model constants. The star shader is generated from these same values (renderer/starMaterial.ts),
+ * so the GPU and this reference implementation stay in step.
+ */
+export const STAR_MODEL = {
+  /** Extinction at the zenith, in magnitudes per air mass. */
+  extinction: 0.2,
+  /** Air mass is capped where sin(altitude) falls below this. */
+  minSinAltitude: 0.08,
+  /** Stars fade from fully visible at `limit + fadeStart` to hidden at `limit + fadeEnd`. */
+  fadeStart: -1,
+  fadeEnd: 0.3,
+  /** Display intensity is 10^(intensitySlope · magnitude), clamped to [minIntensity, 1]. */
+  intensitySlope: -0.16,
+  minIntensity: 0.15,
+} as const;
+
 /** Magnitudes lost to the longer air path near the horizon; 0 at the zenith. */
 export function atmosphericExtinction(altitude: number): number {
-  return 0.2 / Math.max(0.08, sinDeg(altitude)) - 0.2;
+  const { extinction, minSinAltitude } = STAR_MODEL;
+  return extinction / Math.max(minSinAltitude, sinDeg(altitude)) - extinction;
 }
 
 /** 0–1: how much a star of this magnitude and altitude survives the limiting magnitude. */
 export function magnitudeVisibility(star: Pick<Star, 'altitude' | 'magnitude'>, limit: number): number {
   if (star.altitude <= 0) return 0;
   const apparent = star.magnitude + atmosphericExtinction(star.altitude);
-  return 1 - smoothstep(apparent, limit - 1, limit + 0.3);
+  return 1 - smoothstep(apparent, limit + STAR_MODEL.fadeStart, limit + STAR_MODEL.fadeEnd);
 }
 
 /** Display intensity by catalog brightness; dims faint stars without hiding them. */
 export function starIntensity(magnitude: number): number {
-  return clamp(10 ** (-0.16 * magnitude), 0.15, 1);
+  return clamp(10 ** (STAR_MODEL.intensitySlope * magnitude), STAR_MODEL.minIntensity, 1);
+}
+
+/** On-screen point size, in CSS pixels, by catalog brightness. */
+export function starPointSize(magnitude: number): number {
+  return Math.max(1.35, 4.1 - magnitude * 0.5);
 }
 
 /** 0.1–1: overall contrast lost to reported haze and poor visibility. */
@@ -70,7 +95,7 @@ export function starVisibilityFactors(
   star: Pick<Star, 'altitude' | 'magnitude'>,
   sky: Pick<SkyState, 'sunAltitude' | 'moon'>,
   weather: Pick<WeatherValues, 'visibilityKm' | 'haze'>,
-  skyBrightness: Preferences['skyBrightness'],
+  skyBrightness: SkyBrightness,
 ): StarVisibilityFactors {
   const twilight = twilightVisibility(sky.sunAltitude);
   const magnitude = magnitudeVisibility(star, limitingMagnitude(skyBrightness, sky.moon));

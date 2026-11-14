@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { LocationInfo } from '../types';
-import { calculateDailyEvents, calculateSky } from '../lib/astronomy';
-import { civilDayStart, getZonedParts, localDayBounds, MAX_INSTANT, MIN_INSTANT } from '../lib/time';
+import { calculateDailyEvents, calculateSky } from '../domain/astronomy';
+import { civilDayStart, getZonedParts, localDayBounds, MAX_INSTANT, MIN_INSTANT } from '../domain/time';
 
 export function useSimulation(initialLocation: LocationInfo, initialTime?: Date) {
   const [location, setLocation] = useState(initialLocation);

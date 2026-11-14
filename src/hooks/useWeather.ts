@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { LocationInfo, WeatherResult } from '../types';
-import { fetchWeatherForDate, selectWeather, weatherKey } from '../lib/weather';
-import { civilDayStart, getZonedParts } from '../lib/time';
+import { fetchWeatherForDate } from '../services/openMeteo';
+import { selectWeather, weatherKey } from '../domain/weather';
+import { civilDayStart, getZonedParts } from '../domain/time';
 import { WeatherRepository } from '../services/weatherRepository';
 
 export function useWeather(location: LocationInfo, instant: Date, loader = fetchWeatherForDate) {

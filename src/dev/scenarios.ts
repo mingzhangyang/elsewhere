@@ -1,6 +1,6 @@
 import type { AppProps } from '../App';
-import { defaultWeatherValues, weatherKey } from '../lib/weather';
-import { localDayBounds } from '../lib/time';
+import { defaultWeatherValues, weatherKey } from '../domain/weather';
+import { localDayBounds } from '../domain/time';
 import { PRESETS } from '../lib/locations';
 
 // Development-only entry point; never included in a production build.

@@ -3,7 +3,9 @@ import { createServer } from 'vite';
 // Explicit, optional network check. Deterministic validation never invokes this script.
 const server = await createServer({ server: { middlewareMode: true }, appType: 'custom' });
 try {
-  const { fetchWeatherForDate, selectWeather } = await server.ssrLoadModule('/src/lib/weather.ts');
+  await (await server.ssrLoadModule('/src/domain/temporal.ts')).ensureTemporal();
+  const { fetchWeatherForDate } = await server.ssrLoadModule('/src/services/openMeteo.ts');
+  const { selectWeather } = await server.ssrLoadModule('/src/domain/weather.ts');
   const location = {
     id: 'nyc',
     name: 'New York',

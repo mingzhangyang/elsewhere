@@ -1,7 +1,7 @@
 import { Cloud, Eye, RotateCcw, Thermometer, Wind } from 'lucide-react';
 import type { WeatherSelection, WeatherValues } from '../types';
-import { formatDate, formatTime } from '../lib/time';
-import { weatherDescription, weatherSourceLabel } from '../lib/weather';
+import { formatDate, formatTime } from '../domain/time';
+import { weatherDescription, weatherSourceLabel } from '../lib/weatherText';
 
 const metric = (value: number | null | undefined, digits = 0) =>
   value === null || value === undefined ? '—' : value.toFixed(digits);

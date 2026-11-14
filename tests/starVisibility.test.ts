@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculateSky } from '../src/lib/astronomy';
+import { calculateSky } from '../src/domain/astronomy';
 import { objectVisibility, skyObjects, type SkyObject } from '../src/lib/exploration';
 import {
   limitingMagnitude,
@@ -7,8 +7,8 @@ import {
   starIntensity,
   twilightVisibility,
   weatherVisibility,
-} from '../src/lib/starVisibility';
-import { defaultWeatherValues } from '../src/lib/weather';
+} from '../src/domain/starVisibility';
+import { defaultWeatherValues } from '../src/domain/weather';
 import { starAlpha } from '../src/renderer/starPicking';
 import type { Preferences } from '../src/lib/persistence';
 import type { SkyState } from '../src/types';

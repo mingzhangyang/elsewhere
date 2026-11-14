@@ -13,6 +13,7 @@ export default defineConfig({
           environment: 'node',
           include: ['tests/**/*.test.ts'],
           exclude: ['tests/persistence.test.ts'],
+          setupFiles: ['tests/setupTemporal.ts'],
         },
       },
       {
@@ -20,7 +21,7 @@ export default defineConfig({
           name: 'interface',
           environment: 'jsdom',
           include: ['tests/**/*.test.tsx', 'tests/persistence.test.ts'],
-          setupFiles: ['tests/setup.ts'],
+          setupFiles: ['tests/setupTemporal.ts', 'tests/setup.ts'],
         },
       },
     ],

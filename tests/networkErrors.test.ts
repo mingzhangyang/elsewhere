@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fetchWeatherForDate, searchLocations } from '../src/lib/weather';
+import { fetchWeatherForDate } from '../src/services/openMeteo';
+import { searchLocations } from '../src/services/placeSearch';
 import { describeNetworkFailure } from '../src/lib/networkErrors';
 import type { LocationInfo } from '../src/types';
 import { NEW_YORK } from './fixtures/locations';

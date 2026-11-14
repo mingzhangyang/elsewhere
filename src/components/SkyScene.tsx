@@ -4,8 +4,10 @@ import type { CameraView } from '../lib/persistence';
 
 export interface SkySceneHandle {
   resetView: () => void;
-  focus: (altitude: number, azimuth: number) => void;
-  zoom: (delta: number) => void;
+  /** Centers a direction; `fov` also sets the zoom, in degrees. */
+  focus: (altitude: number, azimuth: number, fov?: number) => void;
+  /** Multiplies the field of view: below 1 zooms in. */
+  zoom: (factor: number) => void;
   simulateContextLoss: () => void;
 }
 
@@ -23,8 +25,8 @@ const SkyScene = forwardRef<SkySceneHandle, Props>(function SkyScene(props, ref)
     ref,
     () => ({
       resetView: () => runtime.current?.resetView(),
-      focus: (altitude, azimuth) => runtime.current?.focus(altitude, azimuth),
-      zoom: (delta) => runtime.current?.zoom(delta),
+      focus: (altitude, azimuth, fov) => runtime.current?.focus(altitude, azimuth, fov),
+      zoom: (factor) => runtime.current?.zoom(factor),
       simulateContextLoss: () => runtime.current?.simulateContextLoss(),
     }),
     [],
@@ -32,6 +34,9 @@ const SkyScene = forwardRef<SkySceneHandle, Props>(function SkyScene(props, ref)
   useEffect(() => {
     runtime.current?.target(props.targetId ?? null);
   }, [props.targetId]);
+  useEffect(() => {
+    runtime.current?.playback(props.playbackRate ?? 0);
+  }, [props.playbackRate]);
   useEffect(() => {
     let disposed = false;
     let instance: SkyRenderer | null = null;

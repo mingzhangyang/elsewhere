@@ -41,7 +41,7 @@ Click the compact date/time readout for exact editing, previous/next day, and su
 
 - Choose among eight presets, search for a place, use device location explicitly, or return to saved/recent places. Changing place preserves the instant and updates its local clock.
 - Enter a local date/time, move through an actual civil-day timeline, jump to sunrise/sunset/tonight, or play at 1×, 10×, 60×, or 600×. **Now** follows the real clock. Editing pauses it. Repeated DST hours offer both UTC offsets; nonexistent times explain the problem.
-- Drag the sky, pinch or scroll to zoom, or use arrows, +/−, and Home. Visible zoom/reset controls and a textual sky summary provide alternatives. Select objects in the scene or searchable Objects panel and center them in view.
+- Drag the sky, pinch or scroll to zoom, or use arrows, +/−, and Home. Visible zoom/reset controls and a textual sky summary provide alternatives. Select objects in the scene or searchable Objects panel and center them in view; centering the Sun or Moon zooms in (down to a 2° field) so the lunar surface map is visible, and the target ring circles the disc.
 - Inspect Sun/Moon events, observer-relative lunar illumination, approximate lunar distance, and star coordinates. Toggle independent star, label, and line layers. Choose dark/suburban/city brightness, an unobstructed or illustrative horizon, reduced motion, and rendering quality.
 - Use model-backed weather with explicit current/forecast/recent/historical source, timestamps, missing values, and stale-cache labels. Custom weather is a separate simulation. Neither mode changes calculated astronomical positions.
 - Save preferences/places locally and copy a versioned link containing the chosen place, instant, camera, layers, and custom conditions. Exact coordinates are disclosed before sharing. No accounts or analytics are included.
@@ -50,15 +50,15 @@ The responsive shell keeps a separate time dock and one inspector. The renderer 
 
 ## Architecture
 
-| Area                                                         | Responsibility                                                                                    |
-| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
-| `src/lib/astronomy.ts`, `stars.ts`, `time.ts`                | Domain calculations, numerical and time-zone contracts                                            |
-| `src/lib/weather.ts`, `src/lib/locations.ts`, `src/services` | Provider adapters, validation, cancellation, cache and provenance                                 |
-| `src/hooks`                                                  | Simulation clock and data subscriptions                                                           |
-| `src/renderer`                                               | Camera input, retained celestial layers, atmosphere, particles, scheduling and resource ownership |
-| `src/components`, `src/App.tsx`                              | Accessible exploration controls and presentation                                                  |
-| `src/lib/persistence.ts`                                     | Versioned preferences and shareable state                                                         |
-| `src/dev`, `tests`, `scripts`                                | Development fixtures, qualification checks and asset tooling                                      |
+| Area                            | Responsibility                                                                                                                                                                                           |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/domain`                    | Platform-independent calculations: astronomy, stars, time zones, star visibility, weather sample selection. Imports nothing from the app, network or renderer (enforced by `tests/architecture.test.ts`) |
+| `src/services`                  | Open-Meteo weather and place-search clients, response validation, cancellation, cache and provenance                                                                                                     |
+| `src/lib`                       | Application state and wording: exploration reducer, visibility explanations, preferences and share links, locations, network messages                                                                    |
+| `src/hooks`                     | Simulation clock and data subscriptions                                                                                                                                                                  |
+| `src/renderer`                  | Camera input, the rigid star sphere and its shader, retained celestial layers, atmosphere, particles, scheduling and resource ownership                                                                  |
+| `src/components`, `src/App.tsx` | Accessible exploration controls and presentation; App wires state to components                                                                                                                          |
+| `src/dev`, `tests`, `scripts`   | Development fixtures, qualification checks and asset tooling                                                                                                                                             |
 
 ## Scope and sources
 

@@ -1,13 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import {
   ArrowUpRight,
-  Bookmark,
-  Check,
   Cloud,
   Compass,
   Crosshair,
   Eye,
-  HelpCircle,
   Layers,
   Minus,
   Plus,
@@ -21,26 +18,28 @@ import TimeConsole from './components/TimeConsole';
 import WeatherPanel from './components/WeatherPanel';
 import ObjectPanel from './components/ObjectPanel';
 import SkyCompass from './components/SkyCompass';
+import SettingsPanel from './components/SettingsPanel';
+import ShareDialog, { type ShareDialogHandle } from './components/ShareDialog';
+import FocusSummary from './components/FocusSummary';
 import { createCameraViewStore } from './lib/cameraViewStore';
-import type { LocationInfo, WeatherValues } from './types';
+import type { LocationInfo } from './types';
 import { useSimulation } from './hooks/useSimulation';
 import { useWeather } from './hooks/useWeather';
-import { formatTime, MAX_INSTANT } from './lib/time';
-import { calculateSky, nextBodyRise } from './lib/astronomy';
-import { findSkyObject, objectVisibility, type SkyObject } from './lib/exploration';
-import {
-  customConditions,
-  defaultWeatherValues,
-  fetchWeatherForDate,
-  renderingWeather,
-  weatherSourceLabel,
-} from './lib/weather';
+import { formatTime, MAX_INSTANT } from './domain/time';
+import { calculateSky, nextBodyRise } from './domain/astronomy';
+import { findSkyObject, framingFov, objectVisibility, type SkyObject } from './lib/exploration';
+import { explorationReducer, initialExploration, presentedWeather, type Panel } from './lib/explorationState';
+import { fetchWeatherForDate } from './services/openMeteo';
+import { renderingWeather } from './domain/weather';
+import { weatherSourceLabel } from './lib/weatherText';
 import { isDeviceLocation, PRESETS } from './lib/locations';
 import {
+  DEFAULT_FOV,
   explorationUrl,
   loadPreferences,
   parseExploration,
   savePreferences,
+  ZOOM_STEP,
   type LayerSettings,
   type Preferences,
 } from './lib/persistence';
@@ -52,8 +51,6 @@ export interface AppProps {
   weatherLoader?: typeof fetchWeatherForDate;
   diagnostics?: boolean;
 }
-type Panel = 'objects' | 'weather' | 'settings';
-
 export default function App({
   initialLocation,
   initialTime,
@@ -66,10 +63,10 @@ export default function App({
       initialTime || initialLocation ? { value: null, notice: '' } : parseExploration(window.location.hash),
   }));
   const [preferences, setPreferences] = useState<Preferences>(() => launch.preferences.value);
-  // A shared link's layers apply to this visit only; they never become the recipient's saved defaults.
-  const [sharedLayers, setSharedLayers] = useState<LayerSettings | null>(
-    () => launch.shared.value?.layers ?? null,
+  const [state, dispatch] = useReducer(explorationReducer, undefined, () =>
+    initialExploration(launch.shared.value, launch.shared.notice || launch.preferences.notice),
   );
+  const { panel, selectedId, focusedId, custom, customWeather, clearSky, immersive, notice } = state;
   const simulation = useSimulation(
     initialLocation ?? launch.shared.value?.location ?? PRESETS[0],
     initialTime ?? (launch.shared.value ? new Date(launch.shared.value.instant) : undefined),
@@ -85,62 +82,30 @@ export default function App({
     followNow,
     speed,
     setSpeed,
-    localParts,
     sky,
     dayBounds,
   } = simulation;
   const { selection, refresh } = useWeather(location, simTime, weatherLoader);
   const atmosphere = useMemo(() => renderingWeather(selection), [selection]);
-  const [custom, setCustom] = useState(!!launch.shared.value?.custom);
-  const [customWeather, setCustomWeather] = useState<WeatherValues>(
-    () => launch.shared.value?.custom ?? defaultWeatherValues(),
-  );
   const baseWeather = custom ? customWeather : atmosphere;
-  const [clearSky, setClearSky] = useState(launch.shared.value?.clearSky ?? false);
-  const weather = useMemo(
-    () =>
-      clearSky
-        ? {
-            ...baseWeather,
-            cloudCover: 0,
-            cloudLow: 0,
-            cloudMid: 0,
-            cloudHigh: 0,
-            haze: 0,
-            precipitation: 0,
-            visibilityKm: 60,
-            weatherCode: 0,
-          }
-        : baseWeather,
-    [baseWeather, clearSky],
-  );
-  const [panel, setPanel] = useState<Panel | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [focusedId, setFocusedId] = useState<string | null>(null);
+  const weather = useMemo(() => presentedWeather(baseWeather, clearSky), [baseWeather, clearSky]);
   const [view] = useState(() =>
-    createCameraViewStore(launch.shared.value?.camera ?? { heading: 0, altitude: 18, fov: 66 }),
+    createCameraViewStore(launch.shared.value?.camera ?? { heading: 0, altitude: 18, fov: DEFAULT_FOV }),
   );
-  const [notice, setNotice] = useState(launch.shared.notice || launch.preferences.notice);
-  const [immersive, setImmersive] = useState(false);
-  const [shareLink, setShareLink] = useState('');
-  const [copied, setCopied] = useState(false);
   const [stats, setStats] = useState<RenderStats | null>(null);
   const [audit, setAudit] = useState('');
   const [systemMotion, setSystemMotion] = useState(
     () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
   );
   const skyRef = useRef<SkySceneHandle>(null);
+  const shareDialog = useRef<ShareDialogHandle>(null);
   const panelTitle = useRef<HTMLHeadingElement>(null);
   const restoreFocus = useRef(false);
   const panelTrigger = useRef<HTMLElement | null>(null);
   const objectsTrigger = useRef<HTMLButtonElement>(null);
-  const shareDialog = useRef<HTMLDialogElement>(null);
-  const shareInput = useRef<HTMLInputElement>(null);
-  const layers = sharedLayers ?? preferences.layers;
-  const setLayer = (key: keyof LayerSettings, value: boolean) => {
-    setSharedLayers((shared) => (shared ? { ...shared, [key]: value } : shared));
-    changePreferences((p) => ({ ...p, layers: { ...p.layers, [key]: value } }));
-  };
+  const layers = state.sharedLayers ?? preferences.layers;
+  const setNotice = (message: string) => dispatch({ type: 'notice', message });
+  const setClearSky = (value: boolean) => dispatch({ type: 'clear-sky', value });
   const sourceText = clearSky
     ? 'Clear-sky preview'
     : custom
@@ -187,25 +152,32 @@ export default function App({
     if (!savePreferences(next))
       setNotice('Changes are active, but this browser could not save your preferences.');
   };
+  const setLayer = (key: keyof LayerSettings, value: boolean) => {
+    dispatch({ type: 'layer', key, value });
+    changePreferences((p) => ({ ...p, layers: { ...p.layers, [key]: value } }));
+  };
+  const closePanel = () => {
+    // Focus is returned after the close commits: some triggers (e.g. the phone source pill) are hidden while open.
+    if (panel) restoreFocus.current = true;
+    dispatch({ type: 'close-panel' });
+  };
   const openPanel = (next: Panel, trigger: HTMLElement) => {
     if (panel === next) {
       closePanel();
       return;
     }
     panelTrigger.current = trigger;
-    if (next === 'objects') setSelectedId(null);
-    setPanel(next);
+    dispatch({ type: 'toggle-panel', panel: next });
   };
-  const closePanel = () => {
-    // Focus is returned after the close commits: some triggers (e.g. the phone source pill) are hidden while open.
-    if (panel) restoreFocus.current = true;
-    setPanel(null);
+  /** Opens the Objects panel on an object chosen outside it (a tap in the sky, the hint). */
+  const inspect = (id: string, trigger: HTMLElement | null) => {
+    panelTrigger.current = trigger;
+    dispatch({ type: 'inspect', id });
   };
   const chooseLocation = (next: LocationInfo) => {
     setLocation(next);
     setPlaying(false);
-    setSelectedId(null);
-    setFocusedId(null);
+    dispatch({ type: 'location-changed' });
     if (!isDeviceLocation(next))
       changePreferences((prefs) => ({
         ...prefs,
@@ -219,17 +191,11 @@ export default function App({
         ? prefs.saved.filter((p) => p.id !== place.id)
         : [...prefs.saved, place].slice(-30),
     }));
-  const mode = (next: boolean) => {
-    setClearSky(false);
-    if (next && !custom) setCustomWeather(customConditions(atmosphere));
-    setCustom(next);
-  };
-  const field = (name: keyof WeatherValues, value: number) =>
-    setCustomWeather((current) => customConditions(current, name, value));
-  const focusObject = (object: SkyObject) => {
-    setFocusedId(object.id);
-    skyRef.current?.focus(object.altitude, object.azimuth);
-    if (panel) closePanel();
+  /** `frame` zooms the Sun or Moon to fill the view; a jump to a rise keeps the horizon in context. */
+  const focusObject = (object: SkyObject, frame = true) => {
+    if (panel) restoreFocus.current = true;
+    dispatch({ type: 'focus', id: object.id });
+    skyRef.current?.focus(object.altitude, object.azimuth, frame ? framingFov(object) : undefined);
   };
   const jumpToRise = (id: 'sun' | 'moon') => {
     try {
@@ -241,15 +207,14 @@ export default function App({
       const time = new Date(Math.min(MAX_INSTANT, rise.getTime() + 15 * 60000));
       setPlaying(false);
       setSimTime(time);
-      focusObject(findSkyObject(calculateSky(location, time), id)!);
+      focusObject(findSkyObject(calculateSky(location, time), id)!, false);
     } catch {
       setNotice('This rise could not be calculated. Choose another date or place.');
     }
   };
   const share = () => {
     setPlaying(false);
-    setCopied(false);
-    setShareLink(
+    shareDialog.current?.open(
       explorationUrl({
         version: 1,
         location,
@@ -260,16 +225,6 @@ export default function App({
         clearSky,
       }),
     );
-    shareDialog.current?.showModal();
-  };
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(shareLink);
-      setCopied(true);
-    } catch {
-      shareInput.current?.select();
-      setNotice('Select the link and copy it with your keyboard.');
-    }
   };
   return (
     <div className={`app-shell ${immersive ? 'immersive' : ''}`}>
@@ -280,8 +235,8 @@ export default function App({
           aria-label="Elsewhere home"
           onClick={(event) => {
             event.preventDefault();
-            setImmersive(false);
             closePanel();
+            dispatch({ type: 'immersive', value: false });
           }}
         >
           <span className="brand-mark">
@@ -303,13 +258,6 @@ export default function App({
           <button className="icon-button" aria-label="Share this sky" onClick={share}>
             <Share2 size={19} />
           </button>
-          <button
-            className="icon-button"
-            aria-label="Open sky settings"
-            onClick={(event) => openPanel('settings', event.currentTarget)}
-          >
-            <Layers size={19} />
-          </button>
         </div>
       </header>
       <main
@@ -329,21 +277,14 @@ export default function App({
           horizon={preferences.horizon}
           skyBrightness={preferences.skyBrightness}
           targetId={immersive ? null : focusedId}
+          playbackRate={playing && simTime.getTime() < MAX_INSTANT ? speed : 0}
           onAssetError={setNotice}
           onCameraChange={view.set}
           onDiagnostics={import.meta.env.DEV && diagnostics ? setStats : undefined}
           onStarSelect={(star) => {
-            if (star) {
-              setSelectedId(star.id);
-              panelTrigger.current = document.activeElement as HTMLElement;
-              setPanel('objects');
-            }
+            if (star) inspect(star.id, document.activeElement as HTMLElement);
           }}
-          onBodySelect={(body) => {
-            setSelectedId(body);
-            panelTrigger.current = document.activeElement as HTMLElement;
-            setPanel('objects');
-          }}
+          onBodySelect={(body) => inspect(body, document.activeElement as HTMLElement)}
         />
         <div className="stage-vignette" />
         {import.meta.env.DEV && diagnostics && (
@@ -371,17 +312,18 @@ export default function App({
         <div className="sky-context">
           <p className="eyebrow">{skyMood}</p>
           <h1>{location.name}</h1>
-          <div className="context-time">
-            {localParts.time}
-            <span>{location.timezone.replaceAll('_', ' ')}</span>
-          </div>
+          {/* The clock lives in the time dock; here, only where that clock is set. */}
+          <p className="context-place">
+            {[location.country, location.timezone.replaceAll('_', ' ')].filter(Boolean).join(' · ')}
+          </p>
           <button className="source-pill" onClick={(event) => openPanel('weather', event.currentTarget)}>
             <span className={`status-dot ${clearSky || custom || !selection.values ? 'amber' : ''}`} />
             {sourceText}
             {!clearSky && !custom && !selection.values ? ' · neutral sky' : ''}
             <ArrowUpRight size={13} />
           </button>
-          {clearSky && (
+          {/* Only when no panel or object card already offers its own Restore button. */}
+          {clearSky && !panel && !focusedVisibility && (
             <button className="restore-atmosphere" onClick={() => setClearSky(false)}>
               Restore {custom ? 'custom atmosphere' : 'weather atmosphere'}
             </button>
@@ -389,10 +331,18 @@ export default function App({
         </div>
         <SkyCompass view={view} />
         <div className="view-controls">
-          <button className="icon-button" aria-label="Zoom in" onClick={() => skyRef.current?.zoom(-5)}>
+          <button
+            className="icon-button"
+            aria-label="Zoom in"
+            onClick={() => skyRef.current?.zoom(ZOOM_STEP)}
+          >
             <Plus size={19} />
           </button>
-          <button className="icon-button" aria-label="Zoom out" onClick={() => skyRef.current?.zoom(5)}>
+          <button
+            className="icon-button"
+            aria-label="Zoom out"
+            onClick={() => skyRef.current?.zoom(1 / ZOOM_STEP)}
+          >
             <Minus size={19} />
           </button>
           <span />
@@ -403,10 +353,7 @@ export default function App({
             className="icon-button"
             aria-label={immersive ? 'Show controls' : 'Hide controls'}
             aria-pressed={immersive}
-            onClick={() => {
-              setImmersive(!immersive);
-              setPanel(null);
-            }}
+            onClick={() => dispatch({ type: 'immersive', value: !immersive })}
           >
             <Eye size={19} />
           </button>
@@ -417,14 +364,7 @@ export default function App({
               <strong>Where will you look?</strong>
               <small>Drag to explore · arrows to look · pinch or + / − to zoom</small>
             </div>
-            <button
-              className="hint-action"
-              onClick={(event) => {
-                panelTrigger.current = event.currentTarget;
-                setSelectedId('moon');
-                setPanel('objects');
-              }}
-            >
+            <button className="hint-action" onClick={(event) => inspect('moon', event.currentTarget)}>
               Find the Moon
             </button>
             <button
@@ -437,37 +377,19 @@ export default function App({
           </div>
         )}
         {focused && focusedVisibility && !panel && !immersive && (
-          <section className="focus-summary" aria-label="Selected object">
-            <div>
-              <strong>{focused.name}</strong>
-              <span>{focusedVisibility.label}</span>
-              <button
-                className="icon-button"
-                aria-label="Clear object selection"
-                onClick={() => {
-                  setFocusedId(null);
-                  objectsTrigger.current?.focus();
-                }}
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <p>{focusedVisibility.detail}</p>
-            <div className="focus-actions">
-              <button onClick={() => focusObject(focused)}>Recenter</button>
-              {(clearSky || ['cloud', 'haze', 'partial-cloud'].includes(focusedVisibility.reason)) && (
-                <button onClick={() => setClearSky((value) => !value)}>
-                  {clearSky ? 'Restore atmosphere' : 'Preview a clear sky'}
-                </button>
-              )}
-              {focusedVisibility.reason === 'layer' && (
-                <button onClick={() => setLayer('stars', true)}>Enable stars</button>
-              )}
-              {focusedVisibility.reason === 'horizon' && focused.kind !== 'star' && (
-                <button onClick={() => jumpToRise(focused.kind as 'sun' | 'moon')}>Jump to next rise</button>
-              )}
-            </div>
-          </section>
+          <FocusSummary
+            object={focused}
+            visibility={focusedVisibility}
+            clearSky={clearSky}
+            onClear={() => {
+              dispatch({ type: 'clear-focus' });
+              objectsTrigger.current?.focus();
+            }}
+            onRecenter={() => focusObject(focused)}
+            onToggleClearSky={() => setClearSky(!clearSky)}
+            onEnableStars={() => setLayer('stars', true)}
+            onJumpToRise={jumpToRise}
+          />
         )}
         <nav className="explore-toolbar" aria-label="Explore controls">
           <button
@@ -527,10 +449,10 @@ export default function App({
                   preferences={preferences}
                   weather={weather}
                   clearSky={clearSky}
-                  onSelect={setSelectedId}
+                  onSelect={(id) => dispatch({ type: 'select', id })}
                   onFocus={focusObject}
                   onRise={jumpToRise}
-                  onClearSky={() => setClearSky((value) => !value)}
+                  onClearSky={() => setClearSky(!clearSky)}
                 />
               )}
               {panel === 'weather' && (
@@ -550,138 +472,22 @@ export default function App({
                     custom={custom}
                     values={baseWeather}
                     timeZone={location.timezone}
-                    onMode={mode}
-                    onField={field}
+                    onMode={(next) => dispatch({ type: 'weather-mode', custom: next, atmosphere })}
+                    onField={(field, value) => dispatch({ type: 'weather-field', field, value })}
                     onRefresh={refresh}
                   />
                 </>
               )}
               {panel === 'settings' && (
-                <>
-                  <p className="panel-intro">A clear view, with just the details you want.</p>
-                  <div className="setting-group">
-                    <h3>Sky layers</h3>
-                    {(['stars', 'lines', 'labels'] as const).map((key) => (
-                      <button
-                        className="setting-toggle"
-                        key={key}
-                        aria-pressed={layers[key]}
-                        onClick={() => setLayer(key, !layers[key])}
-                      >
-                        <span>
-                          {key === 'stars'
-                            ? 'Stars'
-                            : key === 'lines'
-                              ? 'Constellation lines'
-                              : 'Object labels'}
-                        </span>
-                        <span className="switch" />
-                      </button>
-                    ))}
-                  </div>
-                  <div className="setting-group">
-                    <h3>Comfort & performance</h3>
-                    <button
-                      className="setting-toggle"
-                      aria-pressed={preferences.reducedMotion || systemMotion}
-                      disabled={systemMotion}
-                      onClick={() => changePreferences((p) => ({ ...p, reducedMotion: !p.reducedMotion }))}
-                    >
-                      <span>Reduce atmosphere motion</span>
-                      <span className="switch" />
-                    </button>
-                    {systemMotion && (
-                      <p className="muted">Following your system’s reduced-motion preference.</p>
-                    )}
-                    <label className="quality-setting">
-                      Rendering quality
-                      <select
-                        value={preferences.quality}
-                        onChange={(e) =>
-                          changePreferences((p) => ({
-                            ...p,
-                            quality: e.target.value as Preferences['quality'],
-                          }))
-                        }
-                      >
-                        <option value="auto">Automatic</option>
-                        <option value="low">Battery saver</option>
-                        <option value="high">High</option>
-                      </select>
-                    </label>
-                  </div>
-                  <div className="setting-group">
-                    <h3>Sky appearance</h3>
-                    <label className="quality-setting">
-                      Light pollution
-                      <select
-                        value={preferences.skyBrightness}
-                        onChange={(e) =>
-                          changePreferences((p) => ({
-                            ...p,
-                            skyBrightness: e.target.value as Preferences['skyBrightness'],
-                          }))
-                        }
-                      >
-                        <option value="dark">Dark sky</option>
-                        <option value="suburban">Suburban sky</option>
-                        <option value="city">City sky</option>
-                      </select>
-                    </label>
-                    <label className="quality-setting">
-                      Horizon
-                      <select
-                        value={preferences.horizon}
-                        onChange={(e) =>
-                          changePreferences((p) => ({
-                            ...p,
-                            horizon: e.target.value as Preferences['horizon'],
-                          }))
-                        }
-                      >
-                        <option value="flat">Unobstructed</option>
-                        <option value="ridge">Illustrative ridge</option>
-                      </select>
-                    </label>
-                    <p className="muted">
-                      Appearance settings are illustrative. They do not measure local light pollution or
-                      terrain. Patterns include the Big Dipper and Summer Triangle asterisms.
-                    </p>
-                  </div>
-                  <div className="setting-group">
-                    <h3>Your places</h3>
-                    <button className="secondary-button full" onClick={() => saveLocation(location)}>
-                      <Bookmark size={16} />
-                      {preferences.saved.some((p) => p.id === location.id)
-                        ? 'Remove saved place'
-                        : 'Save this place'}
-                    </button>
-                  </div>
-                  <div className="about-note">
-                    <HelpCircle size={19} />
-                    <div>
-                      <h3>A calculated sky</h3>
-                      <p>
-                        Positions use Astronomy Engine. The landscape and clouds are illustrative; local
-                        obstructions and actual cloud shapes can differ. Explore dates from 1900 through 2100.
-                      </p>
-                      <p>
-                        <a href={import.meta.env.BASE_URL + 'credits.html'} target="_blank" rel="noreferrer">
-                          Sources, privacy & limitations
-                        </a>
-                      </p>
-                      <p>
-                        <a href="https://github.com/cosinekitty/astronomy" target="_blank" rel="noreferrer">
-                          Astronomy Engine
-                        </a>{' '}
-                        ·{' '}
-                        <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">
-                          Open-Meteo
-                        </a>
-                      </p>
-                    </div>
-                  </div>
-                </>
+                <SettingsPanel
+                  layers={layers}
+                  preferences={preferences}
+                  systemMotion={systemMotion}
+                  placeSaved={preferences.saved.some((p) => p.id === location.id)}
+                  onLayer={setLayer}
+                  onPreferences={changePreferences}
+                  onToggleSaved={() => saveLocation(location)}
+                />
               )}
             </div>
           </section>
@@ -725,38 +531,12 @@ export default function App({
           </button>
         </div>
       )}
-      <dialog ref={shareDialog} className="share-dialog" aria-labelledby="share-title">
-        <div className="dialog-heading">
-          <div>
-            <p className="eyebrow">Keep a moment</p>
-            <h2 id="share-title">Share this sky</h2>
-          </div>
-          <button
-            className="icon-button"
-            aria-label="Close sharing"
-            onClick={() => shareDialog.current?.close()}
-          >
-            <X />
-          </button>
-        </div>
-        <p>
-          This link includes the place, exact time, camera view, layers{custom ? ', and custom weather' : ''}.
-        </p>
-        {isDeviceLocation(location) && (
-          <p className="privacy-note">
-            It includes your exact device coordinates: {location.latitude.toFixed(5)},{' '}
-            {location.longitude.toFixed(5)}. Share only if you want the recipient to see this location.
-          </p>
-        )}
-        <label className="share-field">
-          Sky link
-          <input ref={shareInput} readOnly value={shareLink} onFocus={(e) => e.target.select()} />
-        </label>
-        <button className="primary-button full" onClick={copy}>
-          {copied ? <Check size={17} /> : <Share2 size={17} />}
-          {copied ? 'Copied' : 'Copy link'}
-        </button>
-      </dialog>
+      <ShareDialog
+        ref={shareDialog}
+        location={location}
+        includesCustomWeather={custom}
+        onNotice={setNotice}
+      />
     </div>
   );
 }

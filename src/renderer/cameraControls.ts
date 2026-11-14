@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { CameraView } from '../lib/persistence';
+import { DEFAULT_FOV, MAX_FOV, MIN_FOV, ZOOM_STEP, type CameraView } from '../lib/persistence';
 
 export function createCameraControls(
   canvas: HTMLCanvasElement,
@@ -21,21 +21,24 @@ export function createCameraControls(
     onHeading(heading);
     onChange?.({ heading, altitude: THREE.MathUtils.radToDeg(pitch), fov: camera.fov });
   };
-  const zoom = (delta: number) => {
-    camera.fov = THREE.MathUtils.clamp(camera.fov + delta, 20, 92);
+  const setFov = (fov: number) => {
+    camera.fov = THREE.MathUtils.clamp(fov, MIN_FOV, MAX_FOV);
     camera.updateProjectionMatrix();
+  };
+  /** Zoom is multiplicative (`factor` < 1 zooms in) so each step feels alike from 92° down to 2°. */
+  const zoom = (factor: number) => {
+    setFov(camera.fov * factor);
     apply();
   };
-  const focus = (altitude: number, azimuth: number) => {
+  // Looking moves the view by the same share of the screen at any zoom.
+  const lookScale = () => camera.fov / DEFAULT_FOV;
+  const focus = (altitude: number, azimuth: number, fov?: number) => {
+    if (fov !== undefined) setFov(fov);
     pitch = THREE.MathUtils.clamp(THREE.MathUtils.degToRad(altitude), -Math.PI / 2, Math.PI / 2);
     yaw = -THREE.MathUtils.degToRad(azimuth);
     apply();
   };
-  const resetView = () => {
-    camera.fov = 66;
-    camera.updateProjectionMatrix();
-    focus(18, 0);
-  };
+  const resetView = () => focus(18, 0, DEFAULT_FOV);
   const distance = () => {
     const [a, b] = [...pointers.values()];
     return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0;
@@ -69,11 +72,11 @@ export function createCameraControls(
       pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
       if (pointers.size === 2) {
         const nextDistance = distance();
-        if (oldDistance > 0 && nextDistance > 0) zoom(camera.fov * (oldDistance / nextDistance - 1));
+        if (oldDistance > 0 && nextDistance > 0) zoom(oldDistance / nextDistance);
       } else {
-        yaw -= (event.clientX - previous.x) * 0.0038;
+        yaw -= (event.clientX - previous.x) * 0.0038 * lookScale();
         pitch = THREE.MathUtils.clamp(
-          pitch - (event.clientY - previous.y) * 0.0034,
+          pitch - (event.clientY - previous.y) * 0.0034 * lookScale(),
           -Math.PI / 2,
           Math.PI / 2,
         );
@@ -104,20 +107,20 @@ export function createCameraControls(
     'wheel',
     (event) => {
       event.preventDefault();
-      zoom(event.deltaY * 0.025);
+      zoom(Math.exp(event.deltaY * 0.002));
     },
     { passive: false, signal: lifetime.signal },
   );
   canvas.addEventListener(
     'keydown',
     (event) => {
-      const step = ((event.shiftKey ? 10 : 3) * Math.PI) / 180;
+      const step = (((event.shiftKey ? 10 : 3) * Math.PI) / 180) * lookScale();
       if (event.key === 'ArrowLeft') yaw += step;
       else if (event.key === 'ArrowRight') yaw -= step;
       else if (event.key === 'ArrowUp') pitch = Math.min(Math.PI / 2, pitch + step);
       else if (event.key === 'ArrowDown') pitch = Math.max(-Math.PI / 2, pitch - step);
-      else if (event.key === '+' || event.key === '=') zoom(-5);
-      else if (event.key === '-') zoom(5);
+      else if (event.key === '+' || event.key === '=') zoom(ZOOM_STEP);
+      else if (event.key === '-') zoom(1 / ZOOM_STEP);
       else if (event.key === 'Home') resetView();
       else return;
       event.preventDefault();
@@ -125,10 +128,7 @@ export function createCameraControls(
     },
     { signal: lifetime.signal },
   );
-  if (initial) {
-    camera.fov = initial.fov;
-    camera.updateProjectionMatrix();
-    focus(initial.altitude, initial.heading);
-  } else resetView();
+  if (initial) focus(initial.altitude, initial.heading, initial.fov);
+  else resetView();
   return { resetView, focus, zoom, dispose: () => lifetime.abort() };
 }

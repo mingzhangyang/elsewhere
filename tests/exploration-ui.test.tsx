@@ -44,6 +44,8 @@ it('keeps selection feedback and restores weather after a clear-sky preview', as
   expect(shared.clearSky).toBe(true);
   expect(shared.custom).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'Close sharing' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Restore weather atmosphere' }));
+  // The object card offers the restore; the sky title does not repeat it.
+  expect(screen.queryByRole('button', { name: 'Restore weather atmosphere' })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Restore atmosphere' }));
   expect(screen.getByRole('region', { name: 'Selected object' })).toHaveTextContent('100% cloud cover');
 });

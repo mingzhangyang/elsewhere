@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import references from './fixtures/usno-events.json';
-import { calculateDailyEvents } from '../src/lib/astronomy';
-import { civilDayStart, wallTimeCandidates } from '../src/lib/time';
+import { calculateDailyEvents } from '../src/domain/astronomy';
+import { civilDayStart, wallTimeCandidates } from '../src/domain/time';
 import type { SkyEvents } from '../src/types';
 
 for (const item of references.cases) {

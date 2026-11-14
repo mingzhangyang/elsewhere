@@ -1,8 +1,8 @@
-import { validateObserver } from '../domain/observer';
+import { validateObserver } from './observer';
 import * as Astronomy from 'astronomy-engine';
 import type { LocationInfo, SkyEvents, SkyState } from '../types';
 import { localDayBounds, validateInstant, MIN_INSTANT, MAX_INSTANT } from './time';
-import { calculateStarPositions } from './stars';
+import { calculateStarField, calculateStarPositions } from './stars';
 
 const AU_KM = 149_597_870.7;
 const DEG = Math.PI / 180;
@@ -157,6 +157,12 @@ export function calculateSky(
     Math.cos(d) * Math.sin(w),
     Astronomy.MakeTime(date),
   );
+  const starField = calculateStarField(
+    location.latitude,
+    location.longitude,
+    date,
+    Astronomy.SiderealTime(date),
+  );
   return {
     sun: {
       altitude: sun.altitude,
@@ -179,7 +185,8 @@ export function calculateSky(
       north: localVector(axis.north),
       prime: localVector(prime),
     },
-    stars: calculateStarPositions(location.latitude, location.longitude, date, Astronomy.SiderealTime(date)),
+    stars: calculateStarPositions(starField),
+    starField,
     events,
     sunAltitude: sun.altitude,
   };
