@@ -127,7 +127,7 @@ test.describe('phones', () => {
     const slider = page.getByRole('slider', { name: 'Cloud cover' });
     await slider.scrollIntoViewIfNeeded();
     await expect(slider).toBeInViewport();
-    const stage = (await page.getByRole('region', { name: 'Sky exploration' }).boundingBox())!;
+    const stage = (await page.getByRole('main', { name: 'Sky exploration' }).boundingBox())!;
     const sheet = (await page.getByRole('region', { name: 'weather inspector' }).boundingBox())!;
     expect(sheet.y - stage.y).toBeGreaterThanOrEqual(stage.height * 0.3);
     await expect(page.locator('.sky-context')).toBeHidden();
@@ -177,7 +177,7 @@ test.describe('phones', () => {
       const slider = page.getByRole('slider', { name: 'Cloud cover' });
       await slider.scrollIntoViewIfNeeded();
       await expect(slider).toBeInViewport();
-      const stage = (await page.getByRole('region', { name: 'Sky exploration' }).boundingBox())!;
+      const stage = (await page.getByRole('main', { name: 'Sky exploration' }).boundingBox())!;
       expect(sheet.y + sheet.height).toBeLessThanOrEqual(stage.y + stage.height);
       const skyVisible = width > height ? sheet.x - stage.x : sheet.y - stage.y;
       expect(skyVisible).toBeGreaterThanOrEqual(sky);
@@ -198,6 +198,9 @@ test.describe('safe areas', () => {
     const cdp = await page.context().newCDPSession(page);
     await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets });
     await page.goto('/?scenario=night');
+    // The app renders after its modules load; measuring straight after navigation can find no shell.
+    await expect(page.locator('.topbar')).toBeVisible();
+    await expect(page.locator('.bottom-dock')).toBeVisible();
     return page.evaluate(() => {
       const rect = (selector: string) => document.querySelector(selector)!.getBoundingClientRect();
       const footerText = [...document.querySelectorAll('.bottom-bar > *')]
