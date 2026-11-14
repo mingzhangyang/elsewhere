@@ -41,7 +41,9 @@ test('the first screen does not wait for the star catalog', async ({ page }) => 
     await held;
     await route.continue();
   });
-  await page.goto('/?scenario=night');
+  // Firefox and WebKit hold the load event for in-flight dynamic imports, so wait only for the
+  // document; the point is that the app is usable while the catalog request is still pending.
+  await page.goto('/?scenario=night', { waitUntil: 'domcontentloaded' });
   await expect(page.getByRole('img', { name: /^Sky view\./ })).toBeVisible();
   await page.getByRole('button', { name: 'Objects', exact: true }).click();
   await expect(page.getByText('Stars are still loading…')).toBeVisible();
