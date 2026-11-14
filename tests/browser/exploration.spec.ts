@@ -3,6 +3,14 @@ import { expect, test } from '@playwright/test';
 // Canvas-dependent cases below fail confusingly without WebGL; this names the cause directly.
 test('the 3D sky starts', async ({ page }) => {
   await page.goto('/?scenario=night');
+  // Report the browser's own WebGL failure reason (e.g. missing GL drivers) rather than only a missing canvas.
+  const webgl = await page.evaluate(() => {
+    const canvas = document.createElement('canvas');
+    let reason = '';
+    canvas.addEventListener('webglcontextcreationerror', (event) => (reason = event.statusMessage));
+    return canvas.getContext('webgl2') || canvas.getContext('webgl') ? 'available' : reason || 'unavailable';
+  });
+  expect(webgl, 'WebGL context').toBe('available');
   await expect(page.getByRole('img', { name: /^Sky view\./ })).toBeVisible();
   await expect(page.getByText('The 3D sky could not start', { exact: false })).toHaveCount(0);
 });
