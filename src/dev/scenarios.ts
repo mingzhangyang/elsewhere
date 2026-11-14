@@ -12,6 +12,7 @@ export function scenarioProps(name: string | null): AppProps {
       rain: { time: '2026-11-12T17:00:00Z', cloudCover: 95, precipitation: 5, code: 63 },
       snow: { time: '2026-12-21T17:00:00Z', cloudCover: 100, precipitation: 3, code: 73 },
       overcast: { time: '2026-11-13T04:00:00Z', cloudCover: 100, precipitation: 0, code: 3 },
+      windy: { time: '2026-11-12T17:00:00Z', cloudCover: 60, precipitation: 0, code: 2 },
       sunset: { time: '2026-11-12T21:35:00Z', cloudCover: 30, precipitation: 0, code: 2 },
       moon: { time: '2026-11-24T02:00:00Z', cloudCover: 0, precipitation: 0, code: 0 },
       south: { time: '2026-06-21T12:00:00Z', cloudCover: 0, precipitation: 0, code: 0 },
@@ -26,7 +27,7 @@ export function scenarioProps(name: string | null): AppProps {
     precipitation: scene.precipitation,
     weatherCode: scene.code,
     temperature: name === 'snow' ? -4 : 15,
-    windSpeed: name === 'rain' || name === 'snow' ? 20 : 0,
+    windSpeed: name === 'rain' || name === 'snow' ? 20 : name === 'windy' ? 15 : 0,
   };
   return {
     initialTime: new Date(scene.time),
