@@ -2,9 +2,9 @@
 
 Explore a calculated sky from any place and time. Elsewhere combines a quiet, responsive interface with Sun/Moon ephemerides, a 5,070-star catalog, and a weather-driven illustrative atmosphere.
 
-The substantial refactor in [ROADMAP.md](ROADMAP.md) is implemented through phase 5. Phase 6 has local validation, independent numerical regression fixtures, release tooling, and documentation; the external qualification gates in [docs/RELEASE.md](docs/RELEASE.md) remain open.
+The planned refactor is complete, and CI passes on GitHub Actions. The remaining release gates, such as deployment, physical devices and screen readers, are in [docs/RELEASE.md](docs/RELEASE.md).
 
-The [mobile app roadmap](docs/MOBILE_ROADMAP.md) covers an installable web beta, sensor pointing, and shared Android/iOS editions with device qualification gates. A [product direction proposal](docs/PRODUCT_DIRECTION.md) suggests what should make Elsewhere distinctive and in what order to build it.
+The [roadmap](ROADMAP.md) sets out what comes next: planets, Chinese and English, shareable sky moments, horizon scenery and a viewing planner. Earlier plans and reviews are in the [archive](docs/archive/README.md).
 
 ## Run locally
 

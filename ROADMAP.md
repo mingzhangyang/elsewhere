@@ -1,216 +1,188 @@
-# Elsewhere app polish roadmap
+# Elsewhere roadmap
 
-Elsewhere should make it effortless to choose a place and time, explore a convincing sky, and understand what is calculated, supplied by a weather model, or simulated. Keep the quiet visual identity and make the sky the main experience. Rebuild the internal boundaries and responsive interface where needed.
+Status: current plan, November 14, 2026. It replaces the refactor roadmap, the mobile roadmap and the product direction proposal, which are now in the [archive](docs/archive/README.md). Release gates stay in [RELEASE.md](docs/RELEASE.md), evidence in [VALIDATION.md](docs/VALIDATION.md), and scientific conventions in [SCIENCE.md](docs/SCIENCE.md).
 
-The recommended approach is a substantial refactor within React, TypeScript, Vite, Three.js, and Astronomy Engine. These tools already support the product. The main constraints are the app's state model, rendering lifecycle, scientific presentation, and interaction design. Replace those parts incrementally behind verified behavior rather than making a framework migration the first milestone.
+## Summary
 
-The [mobile app roadmap](docs/MOBILE_ROADMAP.md) extends this foundation with an installable web beta, qualified sensor pointing, and Android/iOS editions that share the existing application code.
+Elsewhere shows **the sky of a particular moment, anywhere, as it really was**: the calculated sky at that place and time, that moment's weather, and a plain explanation of what you could see. That combination, not phone pointing, is what should make it stand out.
 
-## Current baseline
+Build in this order:
 
-Implementation status on November 13, 2026: phases 0–5 are implemented and locally checked. Phase 6 has independent JPL/USNO regression fixtures, automated accessibility checks, formatting, dependency notices, build budgets, CI/browser-suite definitions, and deployment/rollback documentation. Local validation passes 101 tests, type checking, lint, and the production build. All 25 browser cases now pass locally, including production offline reload and fresh-tab shared-link restoration after correcting cache request matching. Full release qualification is still open: the first remote CI run, physical devices, screen readers, a long GPU soak, broader scientific review, and unfamiliar-user sessions are not replaced by local checks. See [validation](docs/VALIDATION.md), [scientific evidence](docs/SCIENCE.md), and the explicit [release gates](docs/RELEASE.md).
+0. **Go live.** Deploy to a public origin and close the remaining release gates that a public beta needs.
+1. **Planets.** The answer to "what is that bright star?" is often Venus or Jupiter.
+2. **Chinese and English.** Before the interface gains many more sentences.
+3. **Prototype a sky moment** and test it with people new to the app.
+4. **Sky moments**: keepsake images and shared links that open on their subject. The flagship.
+5. **Horizon scenery**: illustrative mountains, snow peaks, forest, sea or city at the horizon.
+6. **Will I see it?** A planner for the next few nights, together with a red night theme and the installable web app, for use outdoors.
+7. **Two skies side by side.**
 
-The following findings describe the preserved original baseline, before the refactor. Assessment date: November 12, 2026. Source review covered all application files; browser inspection covered desktop at 1280 × 720 and mobile at 390 × 844, including daytime, nighttime, and unavailable weather.
+Phone pointing, a cartoon-style live view, real terrain horizons and a general light theme are deferred; see [Deferred](#deferred).
 
-- TypeScript checking and the production build pass. The build produces one 741.07 kB JavaScript bundle, 209.86 kB gzip, and a chunk-size warning.
-- The application has a procedural sky, Sun and Moon calculations, location search, time controls, weather controls, 37 catalog stars, and five hand-built line patterns.
-- The package provides no test or lint scripts, and this extracted project has no Git repository. Preserve a baseline before starting the refactor.
-- Browser inspection was a focused assessment, not cross-browser, accessibility, performance, or scientific qualification. Those checks are deliverables below.
+## Where things stand
 
-### Findings that determine priority
+- The refactor in the [archived refactor roadmap](docs/archive/refactor-roadmap.md) is implemented through phase 5. Every finding in the [code evaluation](docs/archive/code-evaluation.md) is fixed.
+- GitHub Actions passes on `main`: validation, formatting and audit on Linux and Windows with Node 22 and 24, and the Playwright browser suite on Linux (Chromium, Firefox, WebKit, mobile emulation, production offline).
+- Startup loads about 100 kB of JavaScript (gzip); the star catalog arrives afterwards.
+- The sky has the Sun, the Moon and 5,070 stars (347 with proper names). There are no planets.
+- Weather comes from Open-Meteo: forecast up to 15 days ahead, recent days, and historical reanalysis back to 1940. The astronomy covers 1900–2100.
+- The interface is English only. The horizon is either flat or a procedural ridge.
+- **Not yet done:** deployment to a public origin, physical phones, screen readers, the 30-minute GPU soak, unfamiliar-user sessions, broader scientific review, the application licence and confirmation of Open-Meteo's terms for the intended use. See [RELEASE.md](docs/RELEASE.md).
 
-| Priority | Finding and evidence                                                                                                                                                                                                                                                                                 | Root correction                                                                                                                                                                                                                                    |
-| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| P0       | The forecast request fails. A request matching the app returned HTTP 400 with the reason `Parameter 'forecast_days' is mutually exclusive with 'start_date' and 'end_date'`. Both are assembled in `src/lib/weather.ts:121–138`.                                                                     | Define one valid request shape for each time-range strategy. Preserve provider error reasons and verify the request contract.                                                                                                                      |
-| P0       | Unavailable weather still displays default temperature, wind, cloud cover, humidity, and pressure. This was visible in the browser. Missing hourly values also become plausible defaults in `src/lib/weather.ts:43–66`.                                                                              | Represent missing data explicitly; keep rendering assumptions separate from sourced measurements.                                                                                                                                                  |
-| P1       | `getWeatherForInstant` always prefers hourly data, bypassing the current sample, while the source label remains attached to the original fetch. Previous location/day data also remains available during a replacement fetch. See `src/App.tsx:40–107`.                                              | Resolve sample, provenance, freshness, and coverage together for the active location and instant.                                                                                                                                                  |
-| P1       | New York local time `2026-03-08 02:30` converts to `01:30` when round-tripped. The iterative conversion has no gap/fold policy. The fall repeated hour also has no way to select its second occurrence. See `src/lib/time.ts:33–47`.                                                                 | Use explicit time-zone disambiguation and actual local-day boundaries.                                                                                                                                                                             |
-| P1       | Rise/set searches use a fixed one-day interval, and daylight duration assumes a same-day sunrise before sunset. Errors and absent events both become `null`. See `src/lib/astronomy.ts:12–23,48–76`.                                                                                                 | Compute events within the selected civil day, including partial and polar days, and retain distinct event statuses.                                                                                                                                |
-| P1       | The Moon phase icon appears mostly lit while the panel reports a small crescent. Its CSS uses only illumination. The scene also derives lighting by subtracting Sun and Moon positions placed at the same artificial radius. See `src/styles.css:110–113` and `src/components/SkyScene.tsx:457–464`. | Drive the icon and rendered terminator from consistent phase geometry and observer orientation.                                                                                                                                                    |
-| P1       | Mobile keeps a 190 px wide details panel over much of a 390 px viewport. The weather control is partly covered by the time console. Numerous labels shrink to 6–8 px. See `src/styles.css:212–288`.                                                                                                  | Introduce a mobile sheet and compact controls with deliberate layout ownership.                                                                                                                                                                    |
-| P1       | Playback updates React every 200 ms, recalculates daily events, and disposes/recreates text textures and line geometry on every scene update. See `src/App.tsx:80,109–119` and `src/components/SkyScene.tsx:484–519`.                                                                                | Separate calculation cadences and retain GPU resources across updates.                                                                                                                                                                             |
-| P1       | Constellation labels ignore the Labels toggle; lines and labels are not attenuated with the stars. Lines remain visible in daytime. The pattern named Cygnus connects Deneb to Vega and Altair.                                                                                                      | Define independent layer behavior and audit the data. Those stars belong to the Summer Triangle across three constellations. [NASA reference](https://science.nasa.gov/solar-system/skywatching/night-sky-network/summer-triangle-corner-altair/). |
-| P2       | Only four of eight presets are rendered; the chevron only opens a search state whose empty results are hidden. Geolocation uses the browser's time zone rather than resolving the coordinates.                                                                                                       | Give location selection one complete interaction and an explicit location/time-zone contract.                                                                                                                                                      |
-| P2       | Camera controls support drag and wheel, but no keyboard navigation or pinch zoom. Reset view disappears below 900 px. Layer state is communicated visually without `aria-pressed`.                                                                                                                   | Provide equivalent keyboard and touch controls and accessible state.                                                                                                                                                                               |
+## Why this direction
 
-P0 means the primary experience is broken or misrepresents data. P1 is required for a polished release. P2 is usability and completeness work that follows the foundations.
+Sky Guide, Star Walk, SkySafari and Stellarium Mobile have offered "point your phone at the sky" for years, with larger catalogs and polished calibration. Leading with it would make Elsewhere a late entrant on its competitors' strongest ground.
 
-### Preview review follow-up — November 13
+Three things Elsewhere already does are rare together:
 
-Revisited phases 3 and 4 after evaluating the preview as a first-time user. Object discovery now opens with search and an above-horizon list; details follow selection. Centering keeps a labeled position marker and explains cloud, daylight, horizon, layer, and faintness limits. Sun/Moon below the horizon have a next-rise action. Clear-sky preview is reversible and preserves source/custom weather, including in shared links.
+- **Any place, any time.** Not only "what is above me now".
+- **Real weather in the sky**, with its source labelled: forecast, recent or historical reanalysis.
+- **An honest voice.** Visibility explanations say why something can or cannot be seen, and illustrative parts are labelled as such.
 
-The time dock is 130 px at 390 × 844 (previously 275 px), with exact date/time editing in a native dialog. Wide, short screens use a 78 px single-row dock and a taller inspector. The first-use prompt provides a Find the Moon action. Daytime lunar rendering now includes the foreground atmosphere; the ground responds to daylight, and clouds use a curved deck to avoid horizon streaks. See the latest [validation evidence](docs/VALIDATION.md) and [preview captures](docs/evidence/README.md). External phase 6 gates remain open.
+Together they support one idea: the sky of a moment that matters to someone. "The sky over Tromsø the night you were born, with that night's clouds." "Tonight's Moon, as your family 7,000 km away sees it." Star-map apps chart the present; printed star-map posters are static and have no weather. The name and the tagline ("a little perspective") already point this way.
 
-## Product decisions to establish first
+## Principles
 
-Use these defaults to keep implementation moving. Revisit them only if the intended audience changes.
+These carry forward from the earlier roadmaps and apply to every phase.
 
-1. **Audience:** curious people exploring the sky and learning where objects appear. Define a separate scientific qualification effort if research-grade use becomes a requirement.
-2. **Initial view:** start at the selected place and current instant, with an upward-looking camera and a clear route to tonight or sunset. Make paused, playing, and following real time distinct states.
-3. **Changing places:** preserve the instant by default and update the local clock. A later explicit option may preserve wall-clock time; never switch this implicitly.
-4. **Weather:** use “Weather data” for model-backed conditions, with current, forecast, or historical provenance beneath it. Custom weather is a separate mode. Missing source data stays missing in the readout; a neutral rendered atmosphere must be labeled as an assumption.
-5. **Sky layers:** stars, constellation lines, and labels are independent settings. Labels can annotate enabled object layers; turning Labels off removes all labels. An optional educational overlay may remain visible by day if that behavior is explicit.
-6. **Presentation:** realistic object size and brightness are the default goal. Any visibility enhancement is a named display setting and does not change astronomical values.
+1. **Audience:** curious people exploring the sky and learning where things appear. Research-grade use would be a separate qualification effort.
+2. **Realistic by default.** Any stylization or enhancement is a named display setting and never changes calculated positions, times or visibility.
+3. **Say where everything comes from.** Calculated, from a weather model, chosen by the visitor, or illustrative. Missing data stays missing. Images and shared links carry the same labels as the screen.
+4. **Disclose little.** Shared moments use city-level coordinates by default; precise device coordinates are shared only when the person chooses to share them. Diagnostics and any measurement avoid coordinates.
+5. **Every batch leaves a runnable app** with its own observable acceptance criteria. Do not mix visual redesign, numerical changes and provider migrations in one review.
+6. **Keep the test matrix deliberate.** Languages, themes and styles multiply the screenshot and contrast checks. Add a new dimension only with a plan for how it is tested.
 
-## Delivery sequence
+## Phases
 
-Estimates are planning ranges for one experienced developer, including routine design and verification, with occasional astronomy and accessibility review. They are not measured delivery commitments. Allow approximately 6–10 focused weeks for phases 0–6, then adjust after the first milestone. Optional features have a separate budget.
+Sizes are relative (S, M, L) for one developer and are planning guides, not commitments.
 
-| Phase                                     | Effort    | Depends on  | Deliverable                                         |
-| ----------------------------------------- | --------- | ----------- | --------------------------------------------------- |
-| 0 Establish the baseline                  | 2–3 days  | None        | Reproducible scenarios and checks                   |
-| 1 Make the simulation trustworthy         | 5–8 days  | 0           | Correct time, weather, and event semantics          |
-| 2 Refactor the application boundaries     | 3–5 days  | 1 contracts | Modular simulation, data, and renderer layers       |
-| 3 Redesign the exploration interface      | 6–9 days  | 1–2         | Complete desktop, mobile, keyboard, and touch flows |
-| 4 Improve sky fidelity                    | 8–12 days | 1–2         | Convincing and internally consistent sky rendering  |
-| 5 Meet performance and resilience targets | 3–5 days  | 2–4         | Measured performance and recovery                   |
-| 6 Qualify and release                     | 3–5 days  | 0–5         | Tested release candidate and deployment process     |
+### 0. Go live (S–M)
 
-Phases 3 and 4 can proceed concurrently after the shared contracts settle. Performance profiling and accessibility checks begin in phase 0 and continue throughout; phase 5 closes the measured gaps. The first useful milestone is phases 0–1: restore working weather and trustworthy controls before investing in richer imagery.
+Choose a hosting origin and deploy following [RELEASE.md](docs/RELEASE.md). Run a first round on physical phones (one midrange Android, one iPhone) and with a screen reader, and fix whatever blocks the primary tasks. Choose the application licence. Confirm Open-Meteo's terms for the intended deployment; commercial use needs a paid plan.
 
-### Phase 0 Establish the baseline
+Planets can be built in parallel.
 
-- Preserve this version in version control and document the local runtime, install, build, and preview commands.
-- Add domain tests, component interaction tests, and a small browser suite. Expose typecheck, lint, test, and build commands in one reproducible validation workflow.
-- Create deterministic scenarios using fixed instants, locations, seeded rendering randomness, and captured weather fixtures. Keep live provider smoke checks separate from deterministic CI.
-- Record representative screenshots and startup, frame-time, memory, and request-count baselines on named devices. Include a midrange phone and an integrated-GPU laptop.
-- Define the supported date range, browsers, coordinate conventions, refraction policy, and intended numerical tolerances. Cover normal days, DST, midnight crossings, northern and southern hemispheres, polar conditions, and unavailable weather.
+**Done when:** a public URL serves the qualified build; share links and offline reload work there; device and screen-reader findings are recorded with the build identifier.
 
-**Exit criteria:** a fresh checkout builds; the forecast request conflict and DST round-trip bug have reproducible checks; representative scenes can be replayed without relying on live weather or the current clock.
+### 1. Planets (M)
 
-### Phase 1 Make the simulation trustworthy
+Add Mercury, Venus, Mars, Jupiter and Saturn. Astronomy Engine already computes them. Reuse body rendering, the Objects panel, search, focus framing, rise and set, and visibility explanations. Draw them at their calculated magnitude; Venus's phase belongs in the object details.
 
-**Weather contract**
+**Done when:** independent reference fixtures (as for the Sun and Moon) meet recorded tolerances and are documented in [SCIENCE.md](docs/SCIENCE.md); "what is that bright point?" can be answered for an evening Venus and a midnight Jupiter; share links can focus a planet.
 
-- Fix the conflicting forecast query parameters by selecting one documented range strategy. Validate the URL before sending it and surface the provider's useful error reason.
-- Route current, recent-past, archive, and future requests by actual coverage. Open-Meteo supports recent past data through the forecast API; historical model availability and delay vary. Encode a tested routing policy rather than assuming every previous day has the same archive coverage. [Forecast documentation](https://open-meteo.com/en/docs), [historical documentation](https://open-meteo.com/en/docs/historical-weather-api).
-- Replace `available + values` with explicit loading, ready, partial, unavailable, and error states. Attach coordinates, covered interval, sample time, fetch time, source kind, units, and missing fields.
-- Select the weather value and its source label in a single operation. Make interpolation field-specific: continuous quantities, circular wind direction, categorical codes, and precipitation intervals require different treatment.
-- Key cached data by observer, interval, provider, and requested variables; cancel obsolete requests. Never show another location's values as current while a new request loads.
-- Add freshness rules and explicit refresh for current conditions. Handle timeout, offline, rate limiting, invalid payloads, and out-of-range dates with useful recovery actions.
-- Give custom weather a coherent model for cloud amount, visibility, haze, wind, and precipitation type/intensity. Derive descriptive text from that model so a rainy custom scene cannot retain a stale “Clear sky” code.
+### 2. Chinese and English (M)
 
-**Time and astronomy contract**
+Every phase after this one adds sentences, so the cost of translating grows the longer it waits.
 
-- Store one canonical UTC instant and a separate IANA time zone. Inject the wall clock into logic that depends on “now.”
-- Replace the iterative wall-clock solver with a maintained time-zone implementation that supports explicit disambiguation. Reject nonexistent input with an explanation; allow choosing the earlier or later repeated hour, displaying its offset.
-- Build the timeline from local midnight to the following local midnight. Its duration can vary; repeated hour labels must be distinguishable. Preserve sub-hour offsets such as Asia/Kathmandu and cover Australia/Lord_Howe transitions.
-- Derive daily events separately from instantaneous positions. Filter results to the local-day interval and calculate the union of daylight intervals, including days that start or end in daylight.
-- Distinguish “does not rise today,” “does not set today,” polar day/night, unavailable calculations, and errors. Declare whether a displayed event means today or the next occurrence.
-- Resolve geolocation time zones from coordinates independently of weather availability. Define elevation semantics and invalid-coordinate/date handling.
-- Establish a phase and observer-orientation model shared by the Moon readout, icon, and scene. Correct mislabeled sky patterns and unify layer visibility rules.
+- Move all interface text into message catalogs. Visibility explanations are currently assembled from fragments (`src/lib/exploration.ts`); rewrite them as whole-sentence messages with placeholders, plurals and choices, because word order differs between languages.
+- Format dates, times and numbers with the active locale instead of the hard-coded `en-US` (`src/domain/time.ts`, `src/components/TimeConsole.tsx`).
+- Choose the language from the browser, offer an override in Settings and remember it. Set `lang` on the document.
+- Star names: use common Chinese names for the bright named stars (天狼星, 织女星). Do not map traditional Chinese asterisms onto IAU constellations; they are different systems.
+- Sky labels are drawn into canvas textures (`src/renderer/resources.ts`); wait for the CJK font before drawing them, and check label widths and collision spacing.
+- Place search can pass `language` to Open-Meteo geocoding.
+- Load each language as its own chunk so the startup budget holds.
+- Shared links carry no language: the recipient sees their own. A keepsake image uses the sender's language.
 
-**Exit criteria:** forecast requests succeed for a supported fixture location/date; missing values never masquerade as observations; rapid location/date changes cannot leak stale values; DST cases round-trip according to the visible policy; daily events remain inside the selected civil day; the Moon icon and numerical phase agree at new, quarter, and full phases.
+**Done when:** a test fails if any key is missing from a language; no visible English remains in Chinese, checked by browser screenshots at desktop and 390 × 844; axe and the contrast checks pass in both languages; the startup bundle stays within budget.
 
-### Phase 2 Refactor the application boundaries
+### 3. Prototype and test a sky moment (S)
 
-Replace the responsibilities concentrated in `App.tsx` and `SkyScene.tsx` with the following boundaries. File count is not the objective; each boundary should have one clear owner and independent verification.
+Build the cheapest convincing version: a static image of a chosen moment and a share link that turns to its subject. Show it to five or six people new to the app (this also covers the unfamiliar-user gate in [RELEASE.md](docs/RELEASE.md)). Observe whether they want to send it, and to whom. Try the realistic image against an illustrated one, and the ridge against horizon scenery (phase 5), as variants.
 
-| Boundary              | Owns                                                                                     | Must not own                                     |
-| --------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| Domain                | Observer, instant, daily events, astronomical positions, units and coordinate transforms | React, fetch calls, Three.js objects             |
-| Data services         | Weather and geocoding adapters, validation, caching, cancellation and provenance         | Camera state or presentation defaults            |
-| Simulation controller | Playback clock, selection, custom weather and derived snapshots                          | GPU resources                                    |
-| Renderer              | Camera, layers, uniforms, picking, textures and disposal                                 | Network calls, date parsing or application truth |
-| Interface             | Location picker, timeline, inspector, settings and accessible summaries                  | Independent copies of calculation logic          |
-| Persistence           | Versioned preferences, saved places and shareable exploration state                      | Implicit persistence of exact device location    |
+**Decision:** if the response is strong, build phase 4; if it is weak, build the planner (phase 6) first.
 
-- Keep React as the interface layer and a dedicated Three.js renderer behind a small typed API. Replace the global `sky-reset-view` event with explicit camera commands.
-- Separate persistent user preferences, shareable simulation state, transient UI state, and remote data. A reducer and focused subscriptions may suffice; add a state library only for a demonstrated need.
-- Cache daily events by observer and local day. Update positions at an appropriate simulation cadence and interpolate rendering where validated. Camera dragging must not trigger astronomical recalculation.
-- Keep a single renderer lifecycle. Allocate geometry and label resources once, update buffers in place, and dispose when their owner is removed.
-- Allocate star buffers from the catalog size; remove the hard-coded capacity of 90 before expanding the catalog.
-- Move shaders, camera input, label placement, atmosphere, celestial bodies, and precipitation into testable renderer modules. Retain the current shell while migrating one module at a time.
+### 4. Sky moments (L)
 
-**Exit criteria:** domain tests run without a DOM or WebGL; data adapters run against fixtures; the scene consumes an immutable snapshot; playback does not recreate unchanged label textures or line topology; mount/unmount leaves no extra loops, listeners, or GPU resources.
+- **Save as image.** A postcard layout: the sky, the place, local time, Moon phase and that night's conditions, in the browser with no server.
+  - The renderer does not keep its drawing buffer, so capture in the same frame as the render, or render off-screen at the export size.
+  - The place line, compass and target marker are HTML, not canvas; compose the postcard on a 2D canvas.
+  - Star point sizes depend on pixel ratio; check that an export at a higher resolution looks like the screen.
+  - Respect phones' maximum render-buffer size and memory.
+  - Carry the provenance line ("Clouds based on reanalysis for this area") and the weather data attribution.
+- **Guided arrival.** A shared link opens with the camera turning to its subject (the Moon, a planet, a constellation) and one sentence about that sky before the full interface appears. The subject is a new share-link field: bump the schema version and keep reading old links.
+- **Link previews.** A link pasted into a chat app shows a preview image only through Open Graph tags, which a static host cannot make per link. Decide between a generic preview image and a small service that renders one per moment (see [Open decisions](#open-decisions)).
+- **Privacy.** Default to city-level coordinates and print only the place name on images.
 
-### Phase 3 Redesign the exploration interface
+**Done when:** an image matches the on-screen sky in both languages and themes on the test phones; old and new links restore; the time from opening a link to seeing its subject is measured.
 
-**Desktop:** use a compact place/time header, a generous sky viewport, one collapsible inspector, and a bottom timeline. Consolidate the existing location card, celestial panel, weather panel, and footer where they duplicate context. Display deeper coordinates and metadata on demand.
+### 5. Horizon scenery (M)
 
-**Mobile:** keep place and time visible in a compact header, retain a small timeline, and open object details, weather, or layers in a single bottom sheet. Use safe-area insets and dynamic viewport height. The idle view should expose most of the sky; panels must scroll internally without hiding their close controls or blocking the timeline.
+Today's horizon is flat or a procedural ridge (`src/renderer/createSkyRenderer.ts`). Add a set of illustrative silhouettes the visitor chooses: distant mountains, snow peaks, forest, sea and city skyline.
 
-- Establish tokens for typography, spacing, surfaces, focus, contrast, and motion. Preserve the restrained blue/gold palette, but increase essential text and touch targets. Aim for 44 px primary touch targets as a product choice; verify applicable WCAG 2.2 AA criteria separately. [W3C target-size guidance](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum).
-- Turn search into a complete combobox: keyboard navigation, enter-to-select, escape-to-close, loading/error/empty states, and ambiguous-place disambiguation. Include all presets, recent places, and saved places.
-- Give geolocation pending, denied, timeout, and unavailable states their own messages and an ordinary search route.
-- Improve time travel with previous/next day, now, sunrise/sunset/twilight jumps, visible simulation speed, and an event-marked timeline. Pause playback while editing or scrubbing; make resume deliberate.
-- Support drag, pinch, visible zoom/reset controls, and keyboard camera movement. Track pointer identity, separate cancelled gestures from selection, and keep the final compass heading accurate.
-- Make Sun, Moon, and stars selectable through both the scene and an accessible object list. Offer “center in view” and a useful explanation when an object is below the horizon.
-- Show weather provenance and custom mode near the main view, including when the weather panel is closed. Add readable source time, units, refresh, and reset behavior.
-- Add a dismissible first-use hint and an uncluttered viewing mode. Provide reduced-motion behavior and a useful textual sky summary.
-- Persist preferences and saved places with a schema version. Share links should restore place, instant, camera, layers, and custom settings; invalid links must produce a clear recoverable state. Make inclusion of precise device coordinates deliberate.
+- Label them as illustrative, as the ridge is now.
+- Keep them within about 1–2° of altitude so they never hide an object the app reports as visible. A visible scene that contradicts the visibility explanation would break the app's honest voice.
+- Do not guess the scenery from the location; a coastal city shown with snow peaks would mislead. Real terrain is the honest automatic version, and is deferred.
+- Link them to existing data where it is honest: city lights glow according to the light-pollution setting; the sea can reflect the Moon; snow can follow Open-Meteo's `snow_depth` for that night.
+- Use generic shapes, not real named landmarks.
+- At night the silhouettes are nearly black outlines, which are cheap to draw; check twilight and daytime lighting, and phone frame times.
 
-**Exit criteria:** a person can choose a place, change time, inspect an object, adjust weather, and return to now using keyboard or touch; controls remain reachable at 320 px width, short landscape heights, and 200% zoom; no competing panels or timeline overlap; toggle and loading states are announced correctly.
+**Done when:** each scene renders by day, at twilight and at night within the frame-time targets; label layout and object picking treat the scenery correctly; the illustrative label appears in the interface and on images.
 
-### Phase 4 Improve sky fidelity
+### 6. Will I see it?, night theme and installable app (L)
 
-Prioritize the images users spend most time looking at: a clear day, golden hour, twilight, a clear night, a cloudy night, and the Moon. Fix geometry and visibility before adding effects.
+- **Planner.** For the next few nights, combine forecast cloud, Moon phase and altitude, twilight and planet positions into plain answers: "Best chance to see the Moon and Jupiter: Thursday at 20:00; cloud clears after midnight."
+  - Say how far to trust it: cloud forecasts lose skill after two or three days, and high thin cloud matters differently from low cloud.
+  - Light pollution is the visitor's illustrative setting, so the answer names the setting it assumed.
+  - Weather is requested one day at a time today; the planner needs a multi-day request.
+- **Red night theme** for the controls, labels and panels, for dark-adapted eyes outdoors.
+- **Installable web app**: manifest, icons, standalone display, and the installed offline lifecycle tested on the phones from phase 0.
 
-- **Sun and Moon:** use consistent observer-relative geometry, distance-derived angular sizes, correct phase/bright-limb orientation, and a documented refraction/horizon convention. Replace the procedural Moon texture with a licensed, attributed surface map after validating orientation. The 2D icon and 3D Moon must tell the same story.
-- **Stars:** replace the sparse hand-curated set with a licensed catalog containing stable IDs, magnitude, color, epoch, and any motion fields required by the supported date range. Choose catalog size against the performance budget. Add magnitude-based visibility and a deliberate policy for extinction, moonlight, and light pollution.
-- **Constellations:** use a documented, attributed line dataset and distinguish constellations from asterisms. Make labeling rules apply to every label type. Add collision avoidance, screen-space sizing, horizon clipping, and fades tied to the chosen display mode.
-- **Atmosphere:** create coherent exposure and color transitions across daylight, twilight, and night. Use a shared cloud-transmittance model for the sky, stars, Sun, and Moon so objects disappear behind rendered clouds consistently. Avoid the current abrupt disappearance at 99% total cloud cover.
-- **Weather motion:** keep meteorological wind direction consistent across clouds and particles. Bound and recycle precipitation in all axes; particles currently drift in X without being recycled there. Define how atmosphere animation behaves when time is paused or accelerated.
-- **Horizon:** make the foreground intentional and keep the default camera looking into the sky. Offer a clear unobstructed horizon and a small set of attractive generic silhouettes, visibly distinguished from actual terrain.
-- **Visual stability:** seed procedural effects and handle font loading before generating text textures. Review blending, depth, and tone mapping at different pixel densities.
+**Done when:** planner answers agree with a set of recorded forecast and astronomy cases; the night theme passes its contrast checks; installation, offline relaunch and updates pass on Android and iPhone.
 
-**Exit criteria:** a fixed visual matrix covers seasons, hemispheres, polar conditions, lunar phases, clear/overcast skies, rain, and snow; objects and labels obey layer and visibility rules; phase geometry agrees with the numeric state; reference checks meet the agreed tolerances; assets and catalogs have traceable licenses.
+### 7. Two skies side by side (M)
 
-### Phase 5 Meet performance and resilience targets
+The same instant from two places. Render both with one renderer and a split viewport rather than two WebGL contexts, which would double the load on phones. Share and export both halves together.
 
-The following are initial acceptance targets to confirm on the phase 0 device matrix, not claims about present performance.
+## Ideas reviewed
 
-| Area                   | Target                                                                                                                                   |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Camera interaction     | Smooth 60 fps desktop / 30 fps midrange mobile, with p95 frame time at or below roughly 20 / 40 ms in the agreed demanding scenes        |
-| Controls               | p95 response below 100 ms for local controls and time scrubbing                                                                          |
-| Startup                | Usable shell within 1.5 s and interactive sky within 3 s on the named test network/device profile                                        |
-| Resource stability     | No monotonic growth in retained label textures, geometries, listeners, or loops during a 30-minute playback and location-switch scenario |
-| Data fetching          | No weather requests caused solely by frame ticks; obsolete requests cancel and identical coverage requests deduplicate                   |
-| Hidden/background view | Rendering suspends when hidden; playback resume follows an explicit catch-up or pause policy                                             |
+| Idea                                          | Decision                                                                                                                                                                                                                                                                                                                                   |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Multilingual interface                        | **Do early** (phase 2), Chinese and English first. Shared moments between places and families are naturally multilingual, and the cost grows with every new sentence.                                                                                                                                                                      |
+| Light mode                                    | **Not as a general theme.** The sky is the main surface and is dark at night; light panels over it would glare, and outdoors the need is a red night theme. Use light styling where nothing sits over the sky: postcard exports and the credits page. The colour tokens make a full theme possible later if people ask for it.             |
+| Cartoon world                                 | **Deferred for the live view; try as an export style.** It conflicts with realistic by default and would need a whole second art direction across sky, clouds, Moon, stars and ground. An illustrated postcard may suit gifts better than a realistic one, so test it in phase 3. Reconsider the live view if children become an audience. |
+| Horizon elements (mountains, sea, city, etc.) | **Do** (phase 5) as illustrative silhouettes the visitor chooses, kept low enough not to contradict visibility. Real terrain is the later, distinctive version.                                                                                                                                                                            |
+| Phone pointing                                | **Deferred.** Common in competing apps; reconsider as a convenience once sky moments and the planner show use.                                                                                                                                                                                                                             |
 
-- Profile before adding workers. Move bulk catalog transforms or heavier calculations off the UI thread only if measurements justify it.
-- Split the interface from the renderer and load large catalogs/textures progressively. Set bundle budgets from the measured baseline; splitting a file alone is not a performance improvement.
-- Add adaptive pixel ratio and visual quality tiers. Reduce cost gracefully without changing astronomical state.
-- Handle WebGL initialization failure and context loss with an actionable recovery state and an accessible numerical summary. Verify restoration after resize, orientation change, and background/resume.
-- Keep preset locations and astronomy usable offline. Label cached weather and stale data explicitly.
+## Deferred
 
-**Exit criteria:** recorded profiles meet the agreed budgets; long sessions remain stable; the app handles offline operation, failed assets, unavailable WebGL, and context restoration without losing the selected exploration state.
+| Feature                                   | Why later                                                                                                                                                                         |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phone pointing, Android and iOS editions  | Reconsider after phase 6. The [archived mobile roadmap](docs/archive/mobile-roadmap.md) (phases 2–5) has the sensor contract, the Capacitor approach and the qualification steps. |
+| Real terrain horizons from elevation data | Makes "as it really was" stronger and could account for mountains in sunrise times, but needs elevation data, licensing and probably a server. Revisit after phase 5.             |
+| Cartoon-style live view                   | See [Ideas reviewed](#ideas-reviewed).                                                                                                                                            |
+| General light theme                       | See [Ideas reviewed](#ideas-reviewed).                                                                                                                                            |
+| Map picker and curated destinations       | Useful for discovery; pairs well with two skies.                                                                                                                                  |
+| Milky Way, meteor showers, eclipses       | Need more data, licensing and scientific validation.                                                                                                                              |
+| Accounts, cloud sync, AR, VR              | Only when saved explorations and sharing show a need.                                                                                                                             |
 
-### Phase 6 Qualify and release
+## Acceptance targets
 
-- Run the full validation workflow in CI and create a preview build for review. Document deployment, cache behavior, and rollback before publishing.
-- Verify current Chrome, Edge, Firefox, Safari, Android Chrome, and iOS Safari on the agreed support matrix. Include real touch and GPU testing; desktop viewport emulation alone is insufficient.
-- Perform manual keyboard and screen-reader checks alongside automated accessibility checks. Include focus return, combobox behavior, sheets, slider value text, contrast, reduced motion, and zoom.
-- Cross-check representative astronomical positions and events against an independent reference with the same coordinate frame, refraction assumptions, and event definitions. Record tolerances and differences.
-- Exercise network delay, cancellation, malformed/partial data, HTTP 400/429/500, stale caches, corrupt preferences, invalid links, and date boundaries.
-- Add useful error reporting with bounded diagnostics; avoid collecting precise coordinates by default. Show friendly recovery paths instead of raw provider failures.
-- Review linked attribution, dependency and asset licensing, provider usage terms for the intended deployment, font delivery, metadata, favicon, and help content.
-- Run short usability sessions with a few first-time users: find tonight's sky, move to another hemisphere, locate the Moon, change weather, and restore now. Resolve repeated confusion before calling the release polished.
+Initial targets, carried from the earlier roadmaps; confirm them on the phase 0 devices and record measurements with the build identifier.
 
-**Exit criteria:** all P0/P1 findings are closed with evidence; the primary tasks pass across the supported platforms; scientific limitations are explicit; source attribution and release/rollback instructions are complete; a fresh user can complete the exploration tasks without coaching.
+| Area               | Target                                                                                                                   |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| Rendering          | 60 fps desktop and 30 fps midrange phone; p95 frame interval at or below about 20 / 40 ms in demanding scenes            |
+| Controls           | p95 response below 100 ms for time scrubbing and ordinary controls                                                       |
+| Startup            | Usable shell within 1.5 s and interactive sky within 3 s on the named network and device profile                         |
+| Resource stability | No sustained growth in geometries, textures, listeners or loops over a 30-minute playback and location-switch session    |
+| Accessibility      | Primary tasks complete with VoiceOver and TalkBack, 200% zoom, text scaling and reduced motion                           |
+| Offline            | The sky and saved or shared explorations work after caching; weather and place search report that they need a connection |
 
-## Optional expansion after the polished release
+## Measuring success
 
-These are separate product investments. They should not delay correcting the existing experience.
+The app collects no analytics, and the privacy principle above limits what it may collect. Before phase 4, decide how to measure, for example aggregate counts with no identifiers and no coordinates, or a referral marker in shared links; otherwise rely on sessions with users. What to look at:
 
-| Order | Feature                                                         | Why it belongs later                                                              |
-| ----- | --------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| 1     | Venus, Mars, Jupiter, and Saturn with search and object details | Valuable for exploration once body rendering and inspection are reusable          |
-| 2     | Tonight highlights and guided tours                             | Depends on reliable events, selection, and visibility semantics                   |
-| 3     | Map picker and curated destinations                             | Improves discovery after the location contract and mobile navigation are stable   |
-| 4     | Milky Way, meteor showers, eclipse visualization                | Requires additional data, licensing, and scientific validation                    |
-| 5     | Terrain-aware horizons, device orientation, AR, or VR           | Separate complexity and platform qualification; pursue only for a clear user need |
-| 6     | Accounts, cloud sync, and collaboration                         | Add only when local saved explorations and sharing show a need                    |
+- Moments shared per active visitor, and how many people who open a shared link go on to make their own.
+- Return visits to the planner in the days before a forecast-dependent event.
+- Time from opening a shared link to seeing its subject.
 
-## First implementation batches
+## Open decisions
 
-1. Baseline scripts and fixtures; reproduce and correct forecast request construction, with provider error parsing.
-2. Replace weather state and sampling with provenance-aware coverage; remove source-value defaults from readouts; add cancellation and freshness.
-3. Replace local-time conversion and define civil-day/event behavior; cover DST, polar days, and local midnight.
-4. Separate domain snapshots, daily-event computation, simulation clock, and renderer API; retain label and geometry resources.
-5. Ship the responsive shell, mobile sheet, complete location picker, and accessible camera/time controls.
-6. Correct Moon geometry and sky-layer data, expand the catalog, and improve atmosphere and visibility.
-7. Close measured performance, resilience, accessibility, and independent astronomy validation gaps; prepare the release.
+For the project owner:
 
-Each batch should leave a runnable app and have its own observable acceptance criteria. Avoid mixing unrelated visual redesign, numerical changes, and provider migrations in one review.
+1. Hosting origin, and whether a small server is acceptable (per-moment link previews, possibly terrain later).
+2. Open-Meteo plan and terms for the intended use.
+3. The application licence ([RELEASE.md](docs/RELEASE.md) notes that none is granted yet).
+4. Languages after Chinese and English.
+5. Whether children are an intended audience; this changes the case for a cartoon style.
+6. How success is measured (see above).

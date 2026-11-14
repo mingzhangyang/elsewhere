@@ -1,3 +1,7 @@
+# Code and product evaluation (November 2026)
+
+> **Archived November 14, 2026.** Every issue it raised is fixed; the closing status table records how. Line references point at code as it was before #1–#5. Figures and status below are as of the document's own date.
+
 ## Architecture and layering
 
 The layering is sound, and the renderer is the best boundary. Three.js sits behind a small typed API, loads lazily, and React only touches it through `SkyScene`. The domain code runs without a browser, which is why those tests run in plain Node.
@@ -95,4 +99,4 @@ The tests check real behaviour, CI actions are pinned to exact versions, and the
 | Labels beneath interface panels (found during follow-up) | Fixed: label layout avoids elements drawn over the sky |
 | Text contrast at the new sizes, including over the daytime sky (found during follow-up) | Fixed: six daytime failures corrected; axe colour-contrast runs in the browser suite |
 
-Details and measurements are in [VALIDATION.md](VALIDATION.md).
+Details and measurements are in [VALIDATION.md](../VALIDATION.md).

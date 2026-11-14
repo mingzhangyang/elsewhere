@@ -1,12 +1,14 @@
 # Elsewhere mobile app roadmap
 
+> **Archived November 14, 2026.** The [current roadmap](../../ROADMAP.md) no longer treats phone pointing as the distinctive feature. Its phase 0 baseline, installable web beta, night theme and acceptance targets are carried into that roadmap; phases 2–5 (sensor pointing, Android and iOS editions) are deferred, and this document is the starting point if they resume. Figures and status below are as of the document's own date.
+
 Status: proposed implementation plan. Updated November 13, 2026.
 
 Build a mobile sky explorer around the existing React, TypeScript, Three.js, and Astronomy Engine implementation. Start with an installable web app, prove the experience on physical phones, then introduce Android and iOS editions through Capacitor. Keep astronomy, weather, saved explorations, and most interface code shared across platforms.
 
 The first milestone is an installable mobile beta. The distinctive feature for the dedicated mobile edition is pointing the phone toward the sky to locate objects, with clear calibration and visibility feedback. Its usefulness depends on measured sensor behavior, so sensor qualification is a separate milestone from packaging.
 
-This plan extends the [app polish roadmap](../ROADMAP.md). The existing [release gates](RELEASE.md), [scientific conventions](SCIENCE.md), and [validation evidence](VALIDATION.md) continue to apply.
+This plan extends the [app polish roadmap](refactor-roadmap.md). The existing [release gates](../RELEASE.md), [scientific conventions](../SCIENCE.md), and [validation evidence](../VALIDATION.md) continue to apply.
 
 ## Current foundation
 
@@ -108,7 +110,7 @@ Prepare signing, versioning, privacy declarations, beta distribution, and a repr
 
 ## Phase 5 Qualify and release
 
-Complete the applicable [release checklist](RELEASE.md), including remote CI, broader scientific review, device testing, and the sustained renderer checks. Confirm supported device/OS combinations, known limitations, support contact, attribution, and privacy text. Review the current store requirements against the final app and prepare screenshots and descriptions that match delivered functionality.
+Complete the applicable [release checklist](../RELEASE.md), including remote CI, broader scientific review, device testing, and the sustained renderer checks. Confirm supported device/OS combinations, known limitations, support contact, attribution, and privacy text. Review the current store requirements against the final app and prepare screenshots and descriptions that match delivered functionality.
 
 Separate hosted-web rollback from native recovery. Preserve complete web artifacts for rollback; retain native release artifacts and document distribution pause, staged rollout, and corrective-update procedures. Test schema compatibility so a failed release does not strand saved places or shared explorations.
 
