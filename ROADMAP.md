@@ -8,16 +8,26 @@ Elsewhere shows **the sky of a particular moment, anywhere, as it really was**: 
 
 Build in this order:
 
-0. **Go live.** Deploy to a public origin and close the remaining release gates that a public beta needs.
+0. **Go live on Cloudflare.** Deploy and close the remaining release gates that a public beta needs.
 1. **Planets.** The answer to "what is that bright star?" is often Venus or Jupiter.
 2. **Chinese and English.** Before the interface gains many more sentences.
 3. **Prototype a sky moment** and test it with people new to the app.
-4. **Sky moments**: keepsake images and shared links that open on their subject. The flagship.
+4. **Sky moments**: keepsake images, realistic or illustrated (cartoon style), and shared links that open on their subject. The flagship.
 5. **Horizon scenery**: illustrative mountains, snow peaks, forest, sea or city at the horizon.
 6. **Will I see it?** A planner for the next few nights, together with a red night theme and the installable web app, for use outdoors.
 7. **Two skies side by side.**
 
-Phone pointing, a cartoon-style live view, real terrain horizons and a general light theme are deferred; see [Deferred](#deferred).
+Phone pointing, real terrain horizons and a general light theme are deferred, and the cartoon style is for exported images only; see [Deferred](#deferred).
+
+## Decisions
+
+Made by the project owner on November 14, 2026:
+
+| Decision                               | Consequence                                                                                                                                                                               |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Host on Cloudflare (Workers or Pages)  | Static hosting plus a place to run small code later, such as per-link previews, without a separate server. See [phase 0](#0-go-live-on-cloudflare-sm).                                    |
+| Stay on Open-Meteo's free tier for now | The free tier is for non-commercial use, so no ads, subscriptions or paid features while it is in use. Weather requests stay in the visitor's browser. Revisit before any form of income. |
+| Cartoon style only for exported images | The live view stays realistic. The illustrated style is a second way to draw a sky moment. See [phase 4](#4-sky-moments-l).                                                               |
 
 ## Where things stand
 
@@ -27,7 +37,8 @@ Phone pointing, a cartoon-style live view, real terrain horizons and a general l
 - The sky has the Sun, the Moon and 5,070 stars (347 with proper names). There are no planets.
 - Weather comes from Open-Meteo: forecast up to 15 days ahead, recent days, and historical reanalysis back to 1940. The astronomy covers 1900–2100.
 - The interface is English only. The horizon is either flat or a procedural ridge.
-- **Not yet done:** deployment to a public origin, physical phones, screen readers, the 30-minute GPU soak, unfamiliar-user sessions, broader scientific review, the application licence and confirmation of Open-Meteo's terms for the intended use. See [RELEASE.md](docs/RELEASE.md).
+- **Not yet done:** deployment, physical phones, screen readers, the 30-minute GPU soak, unfamiliar-user sessions, broader scientific review and the application licence. See [RELEASE.md](docs/RELEASE.md).
+- Shared links keep their state after `#` (`src/App.tsx`), which browsers never send to a server. That keeps them private, and it also means a server cannot read them to build a preview.
 
 ## Why this direction
 
@@ -56,13 +67,23 @@ These carry forward from the earlier roadmaps and apply to every phase.
 
 Sizes are relative (S, M, L) for one developer and are planning guides, not commitments.
 
-### 0. Go live (S–M)
+### 0. Go live on Cloudflare (S–M)
 
-Choose a hosting origin and deploy following [RELEASE.md](docs/RELEASE.md). Run a first round on physical phones (one midrange Android, one iPhone) and with a screen reader, and fix whatever blocks the primary tasks. Choose the application licence. Confirm Open-Meteo's terms for the intended deployment; commercial use needs a paid plan.
+**Hosting.** Prefer Workers with static assets: one Worker serves `dist/` and can later run the link-preview code (phase 4) on the same origin. Cloudflare now steers new projects to Workers; Pages with Pages Functions also works if preferred.
+
+- Follow [RELEASE.md](docs/RELEASE.md). Put its cache rules in a `_headers` file in `public/`, which both products read: revalidate `index.html`, `sw.js` and unhashed public files; mark hashed `assets/*` immutable. Check the headers and the offline contract (including the `Vary: Origin` case) on the real origin, not only locally.
+- Serve from the origin root so the service worker's scope needs no `base` change. Shared links live after `#`, so no single-page fallback is needed; unknown paths can return 404.
+- Deploy from GitHub Actions after the existing validation passes on `main` (Wrangler with an API token stored as a repository secret), or through Cloudflare's Git integration. Keep each version so a rollback restores a complete previous build, as RELEASE.md requires; rehearse it once. Use preview deployments for pull requests.
+- Static asset requests are not Worker invocations. Run the Worker first only on routes that need it (link previews later) and check the current free-plan limits before phase 4.
+- Add a custom domain when one is chosen; the shared-link origin must not change afterwards, or old links break.
+
+**Weather on the free tier.** Keep every Open-Meteo request in the visitor's browser. Routing them through the Worker would put every visitor's requests on Cloudflare's addresses and against one set of free-tier limits. Keep the attribution that the app and `public/credits.html` already show (CC BY 4.0), and add it to exported images.
+
+**Also in this phase:** a first round on physical phones (one midrange Android, one iPhone) and with a screen reader, fixing whatever blocks the primary tasks; and the application licence.
 
 Planets can be built in parallel.
 
-**Done when:** a public URL serves the qualified build; share links and offline reload work there; device and screen-reader findings are recorded with the build identifier.
+**Done when:** the public URL serves the qualified build with the cache headers from RELEASE.md; share links and offline reload work there; a rollback has been rehearsed; device and screen-reader findings are recorded with the build identifier.
 
 ### 1. Planets (M)
 
@@ -87,23 +108,31 @@ Every phase after this one adds sentences, so the cost of translating grows the 
 
 ### 3. Prototype and test a sky moment (S)
 
-Build the cheapest convincing version: a static image of a chosen moment and a share link that turns to its subject. Show it to five or six people new to the app (this also covers the unfamiliar-user gate in [RELEASE.md](docs/RELEASE.md)). Observe whether they want to send it, and to whom. Try the realistic image against an illustrated one, and the ridge against horizon scenery (phase 5), as variants.
+Build the cheapest convincing version: a static image of a chosen moment and a share link that turns to its subject. Show it to five or six people new to the app (this also covers the unfamiliar-user gate in [RELEASE.md](docs/RELEASE.md)). Observe whether they want to send it, and to whom. Try the realistic image against an illustrated (cartoon-style) one, and the ridge against horizon scenery (phase 5), as variants. A hand-made illustration is enough for the test; the illustrated renderer comes in phase 4.
 
 **Decision:** if the response is strong, build phase 4; if it is weak, build the planner (phase 6) first.
 
 ### 4. Sky moments (L)
 
-- **Save as image.** A postcard layout: the sky, the place, local time, Moon phase and that night's conditions, in the browser with no server.
+- **Save as image.** A postcard layout: the sky, the place, local time, Moon phase and that night's conditions, made in the browser. Two styles: realistic and illustrated.
+- **Realistic image**, captured from the live renderer:
   - The renderer does not keep its drawing buffer, so capture in the same frame as the render, or render off-screen at the export size.
   - The place line, compass and target marker are HTML, not canvas; compose the postcard on a 2D canvas.
   - Star point sizes depend on pixel ratio; check that an export at a higher resolution looks like the screen.
   - Respect phones' maximum render-buffer size and memory.
-  - Carry the provenance line ("Clouds based on reanalysis for this area") and the weather data attribution.
+- **Illustrated (cartoon-style) image.** Draw it from the same calculated snapshot (star and planet positions, Moon phase, Sun altitude, cloud cover, horizon scenery) with a separate 2D canvas or SVG drawing module, not by restyling the WebGL scene. That keeps the cost to one drawing module and one set of artwork, leaves the live view untouched and avoids WebGL capture limits on phones.
+  - Positions stay calculated; only the drawing is stylized. Bright stars and planets in their true places are what make it this sky rather than a generic picture.
+  - The image says "Illustration" next to the place and time.
+  - Because `src/domain` has no browser dependencies, the same module could later draw link-preview images in the Worker.
+- **Both styles** carry the provenance line ("Clouds based on reanalysis for this area") and attribution for the weather data (Open-Meteo, CC BY 4.0) and the star catalog (HYG, CC BY-SA 4.0).
 - **Guided arrival.** A shared link opens with the camera turning to its subject (the Moon, a planet, a constellation) and one sentence about that sky before the full interface appears. The subject is a new share-link field: bump the schema version and keep reading old links.
-- **Link previews.** A link pasted into a chat app shows a preview image only through Open Graph tags, which a static host cannot make per link. Decide between a generic preview image and a small service that renders one per moment (see [Open decisions](#open-decisions)).
+- **Link previews.** A chat app shows a preview of a link only from Open Graph tags in the page the server returns. The Worker can write those tags per link (with `HTMLRewriter`), but it cannot see anything after `#`.
+  - Give moment links a path or query the Worker can read, for example `/m?…`, holding only what the preview shows: the city-level place, the time, the subject and a short summary of conditions encoded by the sender's app. The app reads the same link. Anything a server can read can also appear in its logs, so nothing more precise goes there.
+  - Step 1: per-link title and description with one generic image. Step 2: a per-moment image drawn by the Worker with the illustrated module.
+  - The Worker never calls Open-Meteo; conditions come from the link. This keeps weather requests in browsers and within the free tier.
 - **Privacy.** Default to city-level coordinates and print only the place name on images.
 
-**Done when:** an image matches the on-screen sky in both languages and themes on the test phones; old and new links restore; the time from opening a link to seeing its subject is measured.
+**Done when:** realistic images match the on-screen sky, and illustrated images put objects in the same places, in both languages on the test phones; old `#` links and new moment links restore; a moment link shows its own title and description when pasted into a chat app; the time from opening a link to seeing its subject is measured.
 
 ### 5. Horizon scenery (M)
 
@@ -135,13 +164,13 @@ The same instant from two places. Render both with one renderer and a split view
 
 ## Ideas reviewed
 
-| Idea                                          | Decision                                                                                                                                                                                                                                                                                                                                   |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Multilingual interface                        | **Do early** (phase 2), Chinese and English first. Shared moments between places and families are naturally multilingual, and the cost grows with every new sentence.                                                                                                                                                                      |
-| Light mode                                    | **Not as a general theme.** The sky is the main surface and is dark at night; light panels over it would glare, and outdoors the need is a red night theme. Use light styling where nothing sits over the sky: postcard exports and the credits page. The colour tokens make a full theme possible later if people ask for it.             |
-| Cartoon world                                 | **Deferred for the live view; try as an export style.** It conflicts with realistic by default and would need a whole second art direction across sky, clouds, Moon, stars and ground. An illustrated postcard may suit gifts better than a realistic one, so test it in phase 3. Reconsider the live view if children become an audience. |
-| Horizon elements (mountains, sea, city, etc.) | **Do** (phase 5) as illustrative silhouettes the visitor chooses, kept low enough not to contradict visibility. Real terrain is the later, distinctive version.                                                                                                                                                                            |
-| Phone pointing                                | **Deferred.** Common in competing apps; reconsider as a convenience once sky moments and the planner show use.                                                                                                                                                                                                                             |
+| Idea                                          | Decision                                                                                                                                                                                                                                                                                                                                 |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Multilingual interface                        | **Do early** (phase 2), Chinese and English first. Shared moments between places and families are naturally multilingual, and the cost grows with every new sentence.                                                                                                                                                                    |
+| Light mode                                    | **Not as a general theme.** The sky is the main surface and is dark at night; light panels over it would glare, and outdoors the need is a red night theme. Use light styling where nothing sits over the sky: postcard exports and the credits page. The colour tokens make a full theme possible later if people ask for it.           |
+| Cartoon world                                 | **Exported images only** (decided November 14). A cartoon live view would conflict with realistic by default and need a second art direction across sky, clouds, Moon, stars and ground. As an export style it costs one 2D drawing module, may suit gifts better than a realistic image, and is tested in phase 3 and built in phase 4. |
+| Horizon elements (mountains, sea, city, etc.) | **Do** (phase 5) as illustrative silhouettes the visitor chooses, kept low enough not to contradict visibility. Real terrain is the later, distinctive version.                                                                                                                                                                          |
+| Phone pointing                                | **Deferred.** Common in competing apps; reconsider as a convenience once sky moments and the planner show use.                                                                                                                                                                                                                           |
 
 ## Deferred
 
@@ -149,7 +178,7 @@ The same instant from two places. Render both with one renderer and a split view
 | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phone pointing, Android and iOS editions  | Reconsider after phase 6. The [archived mobile roadmap](docs/archive/mobile-roadmap.md) (phases 2–5) has the sensor contract, the Capacitor approach and the qualification steps. |
 | Real terrain horizons from elevation data | Makes "as it really was" stronger and could account for mountains in sunrise times, but needs elevation data, licensing and probably a server. Revisit after phase 5.             |
-| Cartoon-style live view                   | See [Ideas reviewed](#ideas-reviewed).                                                                                                                                            |
+| Cartoon-style live view                   | Not planned; the style is for exported images. See [Ideas reviewed](#ideas-reviewed).                                                                                             |
 | General light theme                       | See [Ideas reviewed](#ideas-reviewed).                                                                                                                                            |
 | Map picker and curated destinations       | Useful for discovery; pairs well with two skies.                                                                                                                                  |
 | Milky Way, meteor showers, eclipses       | Need more data, licensing and scientific validation.                                                                                                                              |
@@ -170,7 +199,7 @@ Initial targets, carried from the earlier roadmaps; confirm them on the phase 0 
 
 ## Measuring success
 
-The app collects no analytics, and the privacy principle above limits what it may collect. Before phase 4, decide how to measure, for example aggregate counts with no identifiers and no coordinates, or a referral marker in shared links; otherwise rely on sessions with users. What to look at:
+The app collects no analytics, and the privacy principle above limits what it may collect. Before phase 4, decide how to measure. Once moment links pass through the Worker, Cloudflare's own aggregate request counts for them give a measure without adding a tracker; anything more needs aggregate counts with no identifiers and no coordinates. Otherwise rely on sessions with users. What to look at:
 
 - Moments shared per active visitor, and how many people who open a shared link go on to make their own.
 - Return visits to the planner in the days before a forecast-dependent event.
@@ -180,9 +209,11 @@ The app collects no analytics, and the privacy principle above limits what it ma
 
 For the project owner:
 
-1. Hosting origin, and whether a small server is acceptable (per-moment link previews, possibly terrain later).
-2. Open-Meteo plan and terms for the intended use.
-3. The application licence ([RELEASE.md](docs/RELEASE.md) notes that none is granted yet).
-4. Languages after Chinese and English.
-5. Whether children are an intended audience; this changes the case for a cartoon style.
+1. Workers or Pages. Workers is recommended (phase 0).
+2. The custom domain. It must stay fixed once links are shared.
+3. The moment-link format for previews (phase 4): what a server may read, against the privacy of `#` links.
+4. The application licence ([RELEASE.md](docs/RELEASE.md) notes that none is granted yet).
+5. Languages after Chinese and English.
 6. How success is measured (see above).
+
+Constraint to revisit: the Open-Meteo free tier rules out commercial use. Choose a paid plan or another provider before adding any income.
