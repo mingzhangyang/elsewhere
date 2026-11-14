@@ -166,3 +166,58 @@ test.describe('phones', () => {
     });
   }
 });
+
+test.describe('safe areas', () => {
+  test.use({ hasTouch: true, isMobile: true });
+  test.skip(({ browserName }) => browserName !== 'chromium', 'Safe-area emulation uses Chromium DevTools');
+
+  const layout = async (
+    page: import('@playwright/test').Page,
+    viewport: { width: number; height: number },
+    insets: { top: number; bottom: number; left: number; right: number },
+  ) => {
+    await page.setViewportSize(viewport);
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets });
+    await page.goto('/?scenario=night');
+    return page.evaluate(() => {
+      const rect = (selector: string) => document.querySelector(selector)!.getBoundingClientRect();
+      const footerText = [...document.querySelectorAll('.bottom-bar > *')]
+        .map((node) => node.getBoundingClientRect())
+        .filter((r) => r.height > 0);
+      return {
+        topbar: rect('.topbar'),
+        dock: rect('.bottom-dock'),
+        dockPadding: parseFloat(getComputedStyle(document.querySelector('.bottom-dock')!).paddingBottom),
+        footerText,
+      };
+    });
+  };
+
+  test('portrait home-indicator inset sits below the footer text, not inside the dock', async ({ page }) => {
+    const { dock, dockPadding, footerText } = await layout(
+      page,
+      { width: 390, height: 664 },
+      { top: 47, bottom: 34, left: 0, right: 0 },
+    );
+    expect(footerText.length).toBeGreaterThan(0);
+    for (const text of footerText) {
+      expect(text.top).toBeGreaterThanOrEqual(dock.bottom);
+      expect(text.bottom).toBeLessThanOrEqual(664 - 34);
+    }
+    expect(dockPadding).toBeLessThan(34);
+  });
+
+  test('landscape keeps content out of the notch and pads the dock for the indicator', async ({ page }) => {
+    const { topbar, dock, dockPadding } = await layout(
+      page,
+      { width: 667, height: 375 },
+      { top: 0, bottom: 21, left: 47, right: 47 },
+    );
+    for (const box of [topbar, dock]) {
+      expect(box.left).toBeGreaterThanOrEqual(47);
+      expect(box.right).toBeLessThanOrEqual(667 - 47);
+    }
+    expect(dockPadding).toBeGreaterThanOrEqual(21);
+  });
+});
