@@ -43,8 +43,8 @@ test('keyboard location selection preserves the instant and returns focus', asyn
 test('DST fold choice and returning to real time are explicit', async ({ page }) => {
   await page.goto('/?scenario=night');
   await page.getByRole('button', { name: 'Change date and time' }).click();
-  await page.getByLabel('DATE', { exact: true }).fill('2026-11-01');
-  await page.getByLabel('LOCAL TIME', { exact: true }).fill('01:30');
+  await page.getByLabel('Date', { exact: true }).fill('2026-11-01');
+  await page.getByLabel('Local time', { exact: true }).fill('01:30');
   await expect(page.getByRole('alert').filter({ hasText: 'occurs twice' })).toBeVisible();
   await page.getByRole('button', { name: /UTC-05:00/ }).click();
   await expect(page.getByRole('slider', { name: 'Time of day' })).toHaveAttribute(

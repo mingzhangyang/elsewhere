@@ -37,3 +37,17 @@ it('has no detected structural accessibility violations in the primary flows', a
   fireEvent.click(screen.getByRole('button', { name: 'Share this sky' }));
   await audit();
 }, 20000);
+it('exposes the header and footer as page landmarks beside the main sky', () => {
+  render(<App {...scenarioProps('night')} />);
+  const main = screen.getByRole('main', { name: 'Sky exploration' });
+  expect(main).not.toContainElement(screen.getByRole('banner'));
+  expect(main).not.toContainElement(screen.getByRole('contentinfo'));
+  expect(screen.getByRole('region', { name: 'Time controls' })).toBeInTheDocument();
+});
+it('names the time inputs by their visible labels', () => {
+  render(<App {...scenarioProps('night')} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Change date and time' }));
+  expect(screen.getByLabelText('Date')).toHaveAttribute('type', 'date');
+  expect(screen.getByLabelText('Local time')).toHaveAttribute('type', 'time');
+  expect(screen.queryByLabelText('DATE')).toBeNull();
+});

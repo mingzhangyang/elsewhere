@@ -43,13 +43,13 @@ it('changes place without changing the selected instant and controls playback', 
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}')));
   render(<App initialTime={new Date('2026-11-12T12:00Z')} />);
   fireEvent.click(screen.getByRole('button', { name: 'Change date and time' }));
-  expect(screen.getByLabelText('LOCAL TIME')).toHaveValue('07:00');
+  expect(screen.getByLabelText('Local time')).toHaveValue('07:00');
   fireEvent.click(screen.getByRole('button', { name: 'Close time editor' }));
   fireEvent.click(screen.getByRole('button', { name: /Change location/ }));
   fireEvent.click(screen.getByRole('option', { name: /Tokyo/ }));
   await waitFor(() => expect(screen.getByText('Japan')).toBeInTheDocument());
   fireEvent.click(screen.getByRole('button', { name: 'Change date and time' }));
-  expect(screen.getByLabelText('LOCAL TIME')).toHaveValue('21:00');
+  expect(screen.getByLabelText('Local time')).toHaveValue('21:00');
   fireEvent.click(screen.getByRole('button', { name: 'Close time editor' }));
   fireEvent.click(screen.getByRole('button', { name: 'Play time' }));
   expect(screen.getByRole('button', { name: 'Pause time' })).toBeInTheDocument();
@@ -67,10 +67,10 @@ it('requires a choice between repeated-hour offsets', async () => {
   );
   render(<App initialTime={new Date('2026-11-01T17:00Z')} />);
   fireEvent.click(screen.getByRole('button', { name: 'Change date and time' }));
-  fireEvent.change(screen.getByLabelText('LOCAL TIME'), { target: { value: '01:30' } });
+  fireEvent.change(screen.getByLabelText('Local time'), { target: { value: '01:30' } });
   expect(screen.getByRole('alert')).toHaveTextContent('occurs twice');
   fireEvent.click(screen.getByRole('button', { name: /UTC-05:00/ }));
-  expect(screen.getByLabelText('LOCAL TIME')).toHaveValue('01:30');
+  expect(screen.getByLabelText('Local time')).toHaveValue('01:30');
   expect(screen.getByRole('slider', { name: 'Time of day' })).toHaveAttribute(
     'aria-valuetext',
     '01:30 UTC-05:00',

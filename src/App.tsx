@@ -272,7 +272,7 @@ export default function App({
     }
   };
   return (
-    <main className={`app-shell ${immersive ? 'immersive' : ''}`}>
+    <div className={`app-shell ${immersive ? 'immersive' : ''}`}>
       <header className="topbar">
         <a
           className="brand-lockup"
@@ -312,7 +312,7 @@ export default function App({
           </button>
         </div>
       </header>
-      <section
+      <main
         className={`stage ${focused ? 'has-target' : ''} ${panel ? 'panel-open' : ''}`}
         aria-label="Sky exploration"
       >
@@ -686,7 +686,7 @@ export default function App({
             </div>
           </section>
         )}
-      </section>
+      </main>
       <div className="bottom-dock">
         <TimeConsole
           key={location.timezone}
@@ -757,6 +757,6 @@ export default function App({
           {copied ? 'Copied' : 'Copy link'}
         </button>
       </dialog>
-    </main>
+    </div>
   );
 }
