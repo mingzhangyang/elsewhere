@@ -1,5 +1,23 @@
 import { expect, test } from '@playwright/test';
 
+// Canvas-dependent cases below fail confusingly without WebGL; this names the cause directly.
+test('the 3D sky starts', async ({ page }) => {
+  await page.goto('/?scenario=night');
+  // Report the browser's own WebGL failure reason (e.g. missing GL drivers) rather than only a missing canvas.
+  const webgl = await page.evaluate(() => {
+    const canvas = document.createElement('canvas');
+    let reason = '';
+    canvas.addEventListener(
+      'webglcontextcreationerror',
+      (event) => (reason = (event as WebGLContextEvent).statusMessage),
+    );
+    return canvas.getContext('webgl2') || canvas.getContext('webgl') ? 'available' : reason || 'unavailable';
+  });
+  expect(webgl, 'WebGL context').toBe('available');
+  await expect(page.getByRole('img', { name: /^Sky view\./ })).toBeVisible();
+  await expect(page.getByText('The 3D sky could not start', { exact: false })).toHaveCount(0);
+});
+
 test('clicking centered Mizar selects Mizar instead of Alcor', async ({ page }) => {
   await page.goto('/?scenario=night');
   await page.getByRole('button', { name: 'Objects', exact: true }).click();
@@ -27,7 +45,7 @@ test('DST fold choice and returning to real time are explicit', async ({ page })
   await page.getByRole('button', { name: 'Change date and time' }).click();
   await page.getByLabel('DATE', { exact: true }).fill('2026-11-01');
   await page.getByLabel('LOCAL TIME', { exact: true }).fill('01:30');
-  await expect(page.getByRole('alert')).toContainText('occurs twice');
+  await expect(page.getByRole('alert').filter({ hasText: 'occurs twice' })).toBeVisible();
   await page.getByRole('button', { name: /UTC-05:00/ }).click();
   await expect(page.getByRole('slider', { name: 'Time of day' })).toHaveAttribute(
     'aria-valuetext',

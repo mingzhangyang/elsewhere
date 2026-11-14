@@ -17,7 +17,7 @@ One small gap: stars aren't corrected for atmospheric refraction but the Sun and
 
 Weather handling is otherwise excellent: explicit states, source labels tied to each sample, de-duplicated and cancellable requests, and a stale-cache fallback.
 
-- **Rain shows an hour late.** Open-Meteo reports hourly precipitation as the total for the *preceding* hour. `selectWeather` uses the sample at or before the current time (`weather.ts:228, 238`). Rain falling 14:00–15:00 is stamped 15:00, so the scene is dry at 14:30 and still raining at 15:30. It should use the first sample at or after the current time.
+- **Rain shows an hour late.** Open-Meteo reports hourly precipitation as the total for the _preceding_ hour. `selectWeather` uses the sample at or before the current time (`weather.ts:228, 238`). Rain falling 14:00–15:00 is stamped 15:00, so the scene is dry at 14:30 and still raining at 15:30. It should use the first sample at or after the current time.
 - **"Use my location" skews temperatures.** It sets `elevation: 0` (`LocationPicker.tsx:106`), and that's sent to Open-Meteo (`weather.ts:113`). Open-Meteo adjusts temperatures to the elevation you give it, so a user in Denver gets sea-level temperatures, roughly 10 °C too warm. Leave the parameter out for device locations so Open-Meteo uses its own elevation map.
 - **Shared links overwrite the recipient's layer settings.** A link's layers seed preferences (`App.tsx:67–70`), and any preference change saves the whole object (169–174). Even picking a place triggers a save, so the sender's layer choices become the recipient's defaults.
 
@@ -63,16 +63,16 @@ The tests check real behaviour, CI actions are pinned to exact versions, and the
 
 ## Priorities
 
-| Priority | Issue | Where |
-|---|---|---|
-| High | Device elevation skews temperatures | `LocationPicker.tsx:106`, `weather.ts:113` |
-| High | Rain shows an hour late | `weather.ts:228, 238` |
-| High | Phone panel hides the sky | `styles.css:1578` |
-| Medium | Shared links overwrite saved layers | `App.tsx:67, 169` |
-| Medium | Twilight text vs. picture mismatch | `exploration.ts:57, 75`; `createSkyRenderer.ts:434` |
-| Medium | Repeated screen-reader announcements | `ObjectPanel.tsx:241` |
-| Medium | iOS input zoom | input rules in `styles.css` |
-| Medium | Camera drags re-render the app | `cameraControls.ts:22`, `App.tsx:314` |
-| Medium | Constant animation in normal weather | `createSkyRenderer.ts:313` |
-| Larger | Star recalculation on CPU, choppy fast playback | `stars.ts:148`, `createSkyRenderer.ts:424` |
-| Larger | Split up `App.tsx` and reorganise `lib/` | `App.tsx`, `src/lib` |
+| Priority | Issue                                           | Where                                               |
+| -------- | ----------------------------------------------- | --------------------------------------------------- |
+| High     | Device elevation skews temperatures             | `LocationPicker.tsx:106`, `weather.ts:113`          |
+| High     | Rain shows an hour late                         | `weather.ts:228, 238`                               |
+| High     | Phone panel hides the sky                       | `styles.css:1578`                                   |
+| Medium   | Shared links overwrite saved layers             | `App.tsx:67, 169`                                   |
+| Medium   | Twilight text vs. picture mismatch              | `exploration.ts:57, 75`; `createSkyRenderer.ts:434` |
+| Medium   | Repeated screen-reader announcements            | `ObjectPanel.tsx:241`                               |
+| Medium   | iOS input zoom                                  | input rules in `styles.css`                         |
+| Medium   | Camera drags re-render the app                  | `cameraControls.ts:22`, `App.tsx:314`               |
+| Medium   | Constant animation in normal weather            | `createSkyRenderer.ts:313`                          |
+| Larger   | Star recalculation on CPU, choppy fast playback | `stars.ts:148`, `createSkyRenderer.ts:424`          |
+| Larger   | Split up `App.tsx` and reorganise `lib/`        | `App.tsx`, `src/lib`                                |
