@@ -3,7 +3,7 @@ export interface FrameDriver {
   cancel: (id: number) => void;
 }
 
-/** Display refreshes rarely land exactly on a capped interval; this keeps 30 fps from slipping to 20. */
+/** Absorbs timestamp jitter so a refresh landing a hair before its deadline still draws. */
 const PACING_TOLERANCE_MS = 2;
 
 /**
@@ -23,6 +23,9 @@ export function createFrameLoop(
   let pending = 0,
     last = 0,
     interval = 0,
+    // When the next capped frame is due. It advances by whole intervals rather than restarting from
+    // each draw, so refresh rates that don't divide the cap (75, 100 Hz) keep its average rate.
+    due = 0,
     animated = false,
     dirty = false,
     suspended = false,
@@ -33,13 +36,21 @@ export function createFrameLoop(
   const tick: FrameRequestCallback = (time) => {
     pending = 0;
     if (disposed || suspended) return;
-    if (animated && !dirty && last > 0 && time - last < interval - PACING_TOLERANCE_MS) {
+    const onCadence = last === 0 || time >= due - PACING_TOLERANCE_MS;
+    if (animated && interval && !dirty && !onCadence) {
       schedule();
       return;
     }
     const stepped = animated && last > 0;
+    const requested = dirty;
     dirty = false;
     draw(time, stepped ? Math.min(0.08, (time - last) / 1000) : 0, stepped && interval === 0);
+    if (interval) {
+      // An off-cadence frame drawn for interaction already advanced the animation, and a late frame
+      // (slow draw, resumed tab) should not trigger a catch-up burst: both restart the cadence here.
+      if (last === 0 || (requested && !onCadence) || time - due >= interval) due = time;
+      due += interval;
+    }
     last = time;
     if (animated) schedule();
   };

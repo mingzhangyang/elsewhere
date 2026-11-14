@@ -25,7 +25,9 @@ function display(hz: number) {
     const end = now + ms;
     while (now + 1000 / hz <= end + 1e-6) refresh();
   };
-  return { loop, draws, run, refresh };
+  /** A long frame: the display delivers nothing for `ms`. */
+  const stall = (ms: number) => (now += ms);
+  return { loop, draws, run, refresh, stall };
 }
 
 describe('weather motion', () => {
@@ -45,11 +47,11 @@ describe('weather motion', () => {
 });
 
 describe('frame pacing', () => {
-  it.each([60, 120, 144])('caps cloud drift to %i Hz displays at about 30 fps', (hz) => {
+  it.each([60, 75, 100, 120, 144])('caps cloud drift to %i Hz displays at about 30 fps', (hz) => {
     const { loop, draws, run } = display(hz);
     loop.setAnimated(true, CLOUD_DRIFT_FPS);
     run(2000);
-    expect(draws.length / 2).toBeGreaterThanOrEqual(28);
+    expect(draws.length / 2).toBeGreaterThanOrEqual(CLOUD_DRIFT_FPS - 1);
     expect(draws.length / 2).toBeLessThanOrEqual(CLOUD_DRIFT_FPS + 1);
     // Animation time still advances in step with the clock, and capped frames are not measured.
     const animated = draws.reduce((sum, draw) => sum + draw.delta, 0);
@@ -77,6 +79,20 @@ describe('frame pacing', () => {
     expect(draws.length).toBe(drawn + 1);
     refresh();
     expect(draws.length).toBe(drawn + 1);
+  });
+
+  it('resumes the cap after a stalled frame instead of drawing a catch-up burst', () => {
+    const { loop, draws, run, stall } = display(60);
+    loop.setAnimated(true, CLOUD_DRIFT_FPS);
+    run(500);
+    stall(400);
+    const before = draws.length;
+    run(1000);
+    const after = draws.slice(before);
+    expect(after.length).toBeGreaterThanOrEqual(CLOUD_DRIFT_FPS - 1);
+    expect(after.length).toBeLessThanOrEqual(CLOUD_DRIFT_FPS + 1);
+    for (let i = 1; i < after.length; i++)
+      expect(after[i]!.time - after[i - 1]!.time).toBeGreaterThan(1000 / CLOUD_DRIFT_FPS - 2);
   });
 
   it('stops requesting frames when the weather turns still', () => {
