@@ -161,7 +161,6 @@ export default function TimeConsole({
           <label>
             <span>Date</span>
             <input
-              aria-label="DATE"
               type="date"
               min="1900-01-01"
               max="2100-12-31"
@@ -171,12 +170,7 @@ export default function TimeConsole({
           </label>
           <label>
             <span>Local time</span>
-            <input
-              aria-label="LOCAL TIME"
-              type="time"
-              value={local.time}
-              onChange={(e) => edit(local.date, e.target.value)}
-            />
+            <input type="time" value={local.time} onChange={(e) => edit(local.date, e.target.value)} />
           </label>
         </div>
         {error && (

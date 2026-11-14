@@ -31,6 +31,9 @@ export default function ObjectPanel({
 }) {
   const [query, setQuery] = useState('');
   const [upOnly, setUpOnly] = useState(true);
+  // Announced only when the reader changes the search or filter. Playback changes the count as stars
+  // rise and set; a live region bound to it would interrupt the reader on every tick.
+  const [announcement, setAnnouncement] = useState('');
   const heading = useRef<HTMLHeadingElement>(null);
   const search = useRef<HTMLInputElement>(null);
   const previousSelection = useRef(selectedId);
@@ -42,6 +45,8 @@ export default function ObjectPanel({
     const content = (heading.current ?? search.current)?.closest('.inspector-content');
     if (content) content.scrollTop = 0;
     previousSelection.current = selectedId;
+    // The list's status region remounts on return; a stale count there must not be re-announced.
+    setAnnouncement('');
   }, [selectedId]);
 
   if (selected) {
@@ -164,11 +169,12 @@ export default function ObjectPanel({
     );
   }
   const term = query.trim().toLowerCase();
-  const matches = objects.filter((object) =>
-    term
-      ? object.name.toLowerCase().includes(term) || object.id.toLowerCase().includes(term)
-      : !upOnly || aboveHorizon(object),
-  );
+  const matches = matchObjects(objects, term, upOnly);
+  const filter = (nextQuery: string, nextUpOnly: boolean) => {
+    setQuery(nextQuery);
+    setUpOnly(nextUpOnly);
+    setAnnouncement(countLabel(matchObjects(objects, nextQuery.trim().toLowerCase(), nextUpOnly).length));
+  };
   return (
     <>
       <label className="object-search">
@@ -177,27 +183,15 @@ export default function ObjectPanel({
           ref={search}
           type="search"
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => filter(event.target.value, upOnly)}
           placeholder="Sun, Moon, or star name"
         />
       </label>
       <div className="segmented object-filters">
-        <button
-          aria-pressed={upOnly && !term}
-          onClick={() => {
-            setUpOnly(true);
-            setQuery('');
-          }}
-        >
+        <button aria-pressed={upOnly && !term} onClick={() => filter('', true)}>
           Above horizon
         </button>
-        <button
-          aria-pressed={!upOnly && !term}
-          onClick={() => {
-            setUpOnly(false);
-            setQuery('');
-          }}
-        >
+        <button aria-pressed={!upOnly && !term} onClick={() => filter('', false)}>
           All objects
         </button>
       </div>
@@ -238,13 +232,24 @@ export default function ObjectPanel({
           </button>
         ))}
       </div>
-      <p className="catalog-note" role="status">
-        {matches.length > 40
-          ? `Showing 40 of ${matches.length}. Search by name or HYG ID for more.`
-          : `${matches.length} matching ${matches.length === 1 ? 'object' : 'objects'}.`}
+      <p className="catalog-note">{countLabel(matches.length)}</p>
+      <p className="sr-only" role="status">
+        {announcement}
       </p>
     </>
   );
+}
+function matchObjects(objects: SkyObject[], term: string, upOnly: boolean): SkyObject[] {
+  return objects.filter((object) =>
+    term
+      ? object.name.toLowerCase().includes(term) || object.id.toLowerCase().includes(term)
+      : !upOnly || aboveHorizon(object),
+  );
+}
+function countLabel(count: number): string {
+  return count > 40
+    ? `Showing 40 of ${count}. Search by name or HYG ID for more.`
+    : `${count} matching ${count === 1 ? 'object' : 'objects'}.`;
 }
 function formatEvent(date: Date | null, zone: string, absent: string): string {
   return date ? formatTime(date, zone) : absent;

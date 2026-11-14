@@ -20,6 +20,8 @@ import LocationPicker from './components/LocationPicker';
 import TimeConsole from './components/TimeConsole';
 import WeatherPanel from './components/WeatherPanel';
 import ObjectPanel from './components/ObjectPanel';
+import SkyCompass from './components/SkyCompass';
+import { createCameraViewStore } from './lib/cameraViewStore';
 import type { LocationInfo, WeatherValues } from './types';
 import { useSimulation } from './hooks/useSimulation';
 import { useWeather } from './hooks/useWeather';
@@ -39,7 +41,6 @@ import {
   loadPreferences,
   parseExploration,
   savePreferences,
-  type CameraView,
   type LayerSettings,
   type Preferences,
 } from './lib/persistence';
@@ -52,7 +53,6 @@ export interface AppProps {
   diagnostics?: boolean;
 }
 type Panel = 'objects' | 'weather' | 'settings';
-const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 
 export default function App({
   initialLocation,
@@ -117,8 +117,8 @@ export default function App({
   const [panel, setPanel] = useState<Panel | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [focusedId, setFocusedId] = useState<string | null>(null);
-  const [view, setView] = useState<CameraView>(
-    () => launch.shared.value?.camera ?? { heading: 0, altitude: 18, fov: 66 },
+  const [view] = useState(() =>
+    createCameraViewStore(launch.shared.value?.camera ?? { heading: 0, altitude: 18, fov: 66 }),
   );
   const [notice, setNotice] = useState(launch.shared.notice || launch.preferences.notice);
   const [immersive, setImmersive] = useState(false);
@@ -254,7 +254,7 @@ export default function App({
         version: 1,
         location,
         instant: simTime.toISOString(),
-        camera: view,
+        camera: view.get(),
         layers,
         custom: custom ? customWeather : null,
         clearSky,
@@ -272,7 +272,7 @@ export default function App({
     }
   };
   return (
-    <main className={`app-shell ${immersive ? 'immersive' : ''}`}>
+    <div className={`app-shell ${immersive ? 'immersive' : ''}`}>
       <header className="topbar">
         <a
           className="brand-lockup"
@@ -312,7 +312,7 @@ export default function App({
           </button>
         </div>
       </header>
-      <section
+      <main
         className={`stage ${focused ? 'has-target' : ''} ${panel ? 'panel-open' : ''}`}
         aria-label="Sky exploration"
       >
@@ -330,7 +330,7 @@ export default function App({
           skyBrightness={preferences.skyBrightness}
           targetId={immersive ? null : focusedId}
           onAssetError={setNotice}
-          onCameraChange={setView}
+          onCameraChange={view.set}
           onDiagnostics={import.meta.env.DEV && diagnostics ? setStats : undefined}
           onStarSelect={(star) => {
             if (star) {
@@ -387,15 +387,7 @@ export default function App({
             </button>
           )}
         </div>
-        <div
-          className="sky-compass"
-          role="img"
-          aria-label={`Facing ${directions[Math.round(view.heading / 45) % 8]}, ${Math.round(view.heading)} degrees`}
-        >
-          <Compass size={24} style={{ transform: `rotate(${-view.heading}deg)` }} />
-          <strong>{directions[Math.round(view.heading / 45) % 8]}</strong>
-          <span>{Math.round(view.heading)}°</span>
-        </div>
+        <SkyCompass view={view} />
         <div className="view-controls">
           <button className="icon-button" aria-label="Zoom in" onClick={() => skyRef.current?.zoom(-5)}>
             <Plus size={19} />
@@ -694,7 +686,7 @@ export default function App({
             </div>
           </section>
         )}
-      </section>
+      </main>
       <div className="bottom-dock">
         <TimeConsole
           key={location.timezone}
@@ -765,6 +757,6 @@ export default function App({
           {copied ? 'Copied' : 'Copy link'}
         </button>
       </dialog>
-    </main>
+    </div>
   );
 }

@@ -1,5 +1,6 @@
 import type { SkyState, Star, WeatherValues } from '../types';
 import type { Preferences } from './persistence';
+import { STAR_VISIBLE_THRESHOLD, starVisibilityFactors, twilightVisibility } from './starVisibility';
 
 export type SkyObject =
   | (SkyState['sun'] & { id: 'sun'; name: string; kind: 'sun' })
@@ -28,6 +29,12 @@ export function findSkyObject(sky: SkyState, id: string | null): SkyObject | und
   return star && { ...star, name: star.name || star.id.toUpperCase(), kind: 'star' };
 }
 
+const HAZE = {
+  reason: 'haze',
+  label: 'Poor atmospheric visibility',
+  detail: 'Haze reduces contrast in this view. The marker shows the calculated position.',
+};
+
 /** A visibility explanation, not a claim to know the real cloud mask along a sightline. */
 export function objectVisibility(
   object: SkyObject,
@@ -54,7 +61,7 @@ export function objectVisibility(
       detail:
         'The ridge may cover this low position. Choose an unobstructed horizon in Layers for a clear view.',
     };
-  if (object.kind === 'star' && sky.sunAltitude > -3)
+  if (object.kind === 'star' && twilightVisibility(sky.sunAltitude) === 0)
     return {
       reason: 'daylight',
       label: 'Hidden by daylight',
@@ -66,24 +73,26 @@ export function objectVisibility(
       label: 'Heavy cloud cover',
       detail: `${Math.round(weather.cloudCover)}% cloud cover may obscure this object. The marker shows its calculated position.`,
     };
-  if (weather.haze >= 65 || weather.visibilityKm < 5)
-    return {
-      reason: 'haze',
-      label: 'Poor atmospheric visibility',
-      detail: 'Haze reduces contrast in this view. The marker shows the calculated position.',
-    };
+  if (weather.haze >= 65 || weather.visibilityKm < 5) return HAZE;
   if (object.kind === 'star') {
-    const limit =
-      (preferences.skyBrightness === 'city' ? 3 : preferences.skyBrightness === 'suburban' ? 4.5 : 6) -
-      Math.max(0, Math.sin((sky.moon.altitude * Math.PI) / 180)) * sky.moon.illumination * 1.6;
-    const extinction = 0.2 / Math.max(0.08, Math.sin((object.altitude * Math.PI) / 180)) - 0.2;
-    if (object.magnitude + extinction > limit - 0.5)
+    const factors = starVisibilityFactors(object, sky, weather, preferences.skyBrightness);
+    if (factors.combined < STAR_VISIBLE_THRESHOLD) {
+      // Name whichever factor dims the drawn star most, so the reason matches what the picture shows.
+      const weakest = Math.min(factors.twilight, factors.magnitude, factors.weather);
+      if (factors.twilight === weakest)
+        return {
+          reason: 'twilight',
+          label: 'Washed out by twilight',
+          detail: 'Twilight still brightens the sky too much for this star. It appears as the sky darkens.',
+        };
+      if (factors.weather === weakest) return HAZE;
       return {
         reason: 'faint',
         label: 'Faint in this sky',
         detail:
           'Its brightness, elevation, moonlight, and the selected light pollution reduce its visibility.',
       };
+    }
   }
   if (object.kind === 'moon' && sky.moon.illumination < 0.06)
     return {

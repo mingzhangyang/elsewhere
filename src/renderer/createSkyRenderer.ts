@@ -18,6 +18,8 @@ import { createFrameLoop } from './frameLoop';
 import { adaptiveRatio, percentile, type RenderStats } from './performance';
 import { aboveHorizon, findSkyObject } from '../lib/exploration';
 import { pickStarAt, starAlpha } from './starPicking';
+import { CLOUD_DRIFT_FPS, PRECIPITATION_VISIBLE, weatherMotion } from './weatherMotion';
+import { limitingMagnitude, twilightVisibility, weatherVisibility } from '../lib/starVisibility';
 
 /** Radius of the sphere the star points are placed on. */
 const STAR_DISTANCE = 1770;
@@ -313,12 +315,10 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
     let skyBrightness = input.skyBrightness ?? 'dark';
     let quality = input.quality ?? 'auto';
     let contextLost = false;
-    const updateAnimation = () =>
-      loop.setAnimated(
-        !reducedMotion &&
-          ((activeWeather.cloudCover > 0 && activeWeather.windSpeed > 0) ||
-            activeWeather.precipitation > 0.08),
-      );
+    const updateAnimation = () => {
+      const motion = weatherMotion(activeWeather, !!reducedMotion);
+      loop.setAnimated(motion !== 'none', motion === 'drift' ? CLOUD_DRIFT_FPS : undefined);
+    };
     const controls = createCameraControls(
       renderer.domElement,
       camera,
@@ -438,13 +438,9 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
         positions.needsUpdate = true;
         sizes.needsUpdate = true;
         starGeometry.setDrawRange(0, nextSky.stars.length);
-        const nightVisibility = 1 - THREE.MathUtils.smoothstep(nextSky.sunAltitude, -18, -3);
-        const visibilityFactor =
-          THREE.MathUtils.clamp(nextWeather.visibilityKm / 28, 0.1, 1) *
-          (1 - THREE.MathUtils.clamp(nextWeather.haze / 125, 0, 0.85));
-        const moonPenalty =
-          Math.max(0, Math.sin((nextSky.moon.altitude * Math.PI) / 180)) * nextSky.moon.illumination * 1.6;
-        const limit = (skyBrightness === 'city' ? 3 : skyBrightness === 'suburban' ? 4.5 : 6) - moonPenalty;
+        const nightVisibility = twilightVisibility(nextSky.sunAltitude);
+        const visibilityFactor = weatherVisibility(nextWeather);
+        const limit = limitingMagnitude(skyBrightness, nextSky.moon);
         const alphas = starGeometry.attributes.aAlpha as THREE.BufferAttribute;
         nextSky.stars.forEach((star, index) => alphas.setX(index, starAlpha(star, limit)));
         alphas.needsUpdate = true;
@@ -454,7 +450,9 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
         celestialLayers.update(nextSky.stars, flags, nightVisibility * visibilityFactor);
         const snowing = [71, 73, 75, 77, 85, 86].includes(nextWeather.weatherCode);
         rainMaterial.opacity =
-          nextWeather.precipitation > 0.08 ? Math.min(0.72, 0.16 + nextWeather.precipitation * 0.08) : 0;
+          nextWeather.precipitation > PRECIPITATION_VISIBLE
+            ? Math.min(0.72, 0.16 + nextWeather.precipitation * 0.08)
+            : 0;
         rainMaterial.size = snowing ? 0.62 : nextWeather.precipitation > 2 ? 0.25 : 0.15;
         rainMaterial.color.set(snowing ? 0xe5efff : 0xa8c9e9);
         cloudDome.visible = nextWeather.cloudCover > 0;

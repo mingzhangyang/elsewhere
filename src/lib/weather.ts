@@ -9,6 +9,9 @@ import type {
 import { getZonedParts, localDayBounds } from './time';
 import { validateObserver } from '../domain/observer';
 import { isDeviceLocation } from './locations';
+import { describeNetworkFailure, ReadableError } from './networkErrors';
+
+const roundTo = (value: number, digits: number) => Number(value.toFixed(digits));
 
 export const WEATHER_FIELDS = {
   temperature: 'temperature_2m',
@@ -49,7 +52,7 @@ export function weatherKey(location: LocationInfo, date: Date): string {
 }
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value))
-    throw new Error('Weather service returned an invalid response.');
+    throw new ReadableError('Weather service returned an invalid response.');
   return value as Record<string, unknown>;
 }
 function number(value: unknown): number | null {
@@ -109,8 +112,9 @@ export async function fetchWeatherForDate(
     };
   const archive = days < -5;
   const params = new URLSearchParams({
-    latitude: String(location.latitude),
-    longitude: String(location.longitude),
+    // Device positions are rounded to about 1 km: plenty for weather, and no more precise than needed.
+    latitude: String(isDeviceLocation(location) ? roundTo(location.latitude, 2) : location.latitude),
+    longitude: String(isDeviceLocation(location) ? roundTo(location.longitude, 2) : location.longitude),
     // Device locations carry a placeholder sea-level elevation; let Open-Meteo use its terrain model.
     ...(isDeviceLocation(location) ? {} : { elevation: String(location.elevation) }),
     hourly: Object.values(WEATHER_FIELDS)
@@ -151,23 +155,24 @@ export async function fetchWeatherForDate(
     const data = record(payload);
     if (!response.ok) {
       const reason = typeof data.reason === 'string' ? data.reason : `HTTP ${response.status}`;
-      throw new Error(
+      throw new ReadableError(
         response.status === 429
           ? 'Weather service is busy. Try refreshing in a moment.'
           : `Weather service: ${reason}`,
       );
     }
     const hourlyData = record(data.hourly);
-    if (!Array.isArray(hourlyData.time)) throw new Error('Weather service returned no hourly timeline.');
+    if (!Array.isArray(hourlyData.time))
+      throw new ReadableError('Weather service returned no hourly timeline.');
     const hourly = hourlyData.time.map((value, i): WeatherPoint => {
       const seconds = number(value);
-      if (seconds === null) throw new Error('Weather service returned an invalid timestamp.');
+      if (seconds === null) throw new ReadableError('Weather service returned an invalid timestamp.');
       return { time: seconds * 1000, values: measurements(hourlyData, i) };
     });
     if (!hourly.length)
       return { ...base, status: 'unavailable', message: 'No weather samples are available for this date.' };
     if (hourly.some((row, i) => i > 0 && row.time <= hourly[i - 1].time))
-      throw new Error('Weather timeline is not ordered.');
+      throw new ReadableError('Weather timeline is not ordered.');
     let current: WeatherPoint | undefined;
     if (data.current && typeof data.current === 'object') {
       const c = record(data.current);
@@ -197,7 +202,7 @@ export async function fetchWeatherForDate(
     return {
       ...base,
       status: 'error',
-      message: error instanceof Error ? error.message : 'Could not load weather. Try refreshing.',
+      message: describeNetworkFailure(error, 'weather'),
     };
   }
 }
@@ -298,8 +303,9 @@ export function customConditions(
 export async function searchLocations(query: string, signal?: AbortSignal): Promise<LocationInfo[]> {
   const url = new URL('https://geocoding-api.open-meteo.com/v1/search');
   url.search = new URLSearchParams({ name: query, count: '8', language: 'en', format: 'json' }).toString();
-  const response = await fetch(url, { signal });
-  if (!response.ok) throw new Error(`Location search failed (${response.status}). Try again.`);
+  const timeout = AbortSignal.timeout(10000);
+  const response = await fetch(url, { signal: signal ? AbortSignal.any([signal, timeout]) : timeout });
+  if (!response.ok) throw new ReadableError(`Place search failed (${response.status}). Try again.`);
   const data = record(await response.json());
   if (!Array.isArray(data.results)) return [];
   return data.results.flatMap((raw): LocationInfo[] => {
