@@ -46,7 +46,7 @@ Click the compact date/time readout for exact editing, previous/next day, and su
 - Use model-backed weather with explicit current/forecast/recent/historical source, timestamps, missing values, and stale-cache labels. Custom weather is a separate simulation. Neither mode changes calculated astronomical positions.
 - Save preferences/places locally and copy a versioned link containing the chosen place, instant, camera, layers, and custom conditions. Exact coordinates are disclosed before sharing. No accounts or analytics are included.
 
-The responsive shell keeps a separate time dock and one inspector. The renderer retains geometry/textures, schedules static scenes on demand, suspends hidden-tab animation, adapts resolution, and recovers from graphics loss without resetting the exploration. After a successful production load and asset-cache installation, the local shell and catalog can reopen offline; remote search/weather still require a network connection. Weather caching is memory-only.
+The responsive shell keeps a separate time dock and one inspector. The renderer retains geometry/textures, schedules static scenes on demand, animates clouds only when their drift is visible (capped at 30 fps; rain and snow run at the display rate), suspends hidden-tab animation, adapts resolution, and recovers from graphics loss without resetting the exploration. After a successful production load and asset-cache installation, the local shell and catalog can reopen offline; remote search/weather still require a network connection. Weather caching is memory-only.
 
 ## Architecture
 
