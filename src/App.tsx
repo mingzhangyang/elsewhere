@@ -82,7 +82,6 @@ export default function App({
     followNow,
     speed,
     setSpeed,
-    localParts,
     sky,
     dayBounds,
   } = simulation;
@@ -259,13 +258,6 @@ export default function App({
           <button className="icon-button" aria-label="Share this sky" onClick={share}>
             <Share2 size={19} />
           </button>
-          <button
-            className="icon-button"
-            aria-label="Open sky settings"
-            onClick={(event) => openPanel('settings', event.currentTarget)}
-          >
-            <Layers size={19} />
-          </button>
         </div>
       </header>
       <main
@@ -320,17 +312,18 @@ export default function App({
         <div className="sky-context">
           <p className="eyebrow">{skyMood}</p>
           <h1>{location.name}</h1>
-          <div className="context-time">
-            {localParts.time}
-            <span>{location.timezone.replaceAll('_', ' ')}</span>
-          </div>
+          {/* The clock lives in the time dock; here, only where that clock is set. */}
+          <p className="context-place">
+            {[location.country, location.timezone.replaceAll('_', ' ')].filter(Boolean).join(' · ')}
+          </p>
           <button className="source-pill" onClick={(event) => openPanel('weather', event.currentTarget)}>
             <span className={`status-dot ${clearSky || custom || !selection.values ? 'amber' : ''}`} />
             {sourceText}
             {!clearSky && !custom && !selection.values ? ' · neutral sky' : ''}
             <ArrowUpRight size={13} />
           </button>
-          {clearSky && (
+          {/* Only when no panel or object card already offers its own Restore button. */}
+          {clearSky && !panel && !focusedVisibility && (
             <button className="restore-atmosphere" onClick={() => setClearSky(false)}>
               Restore {custom ? 'custom atmosphere' : 'weather atmosphere'}
             </button>
