@@ -71,4 +71,10 @@ Supported instants span 1900–2100 UTC. This is educational visualization: the 
 - [NASA CGI Moon Kit](https://svs.gsfc.nasa.gov/4720/): lunar surface imagery; provenance and mirror caveat are recorded in the asset notes.
 - [Open-Meteo](https://open-meteo.com/): weather models and geocoding, with GeoNames place data. Weather data attribution and API usage terms are distinct. No API key is required for the configured public endpoints; confirm intended deployment usage against the provider's terms.
 
-No deployment has been performed. Follow the qualification, deployment, cache-update, and rollback procedure in [docs/RELEASE.md](docs/RELEASE.md).
+## Deployment
+
+Cloudflare Workers serves the built site as static assets at `https://elsewhere.orangely.xyz`. Cloudflare's Git integration builds and deploys every push to `main`; `wrangler.jsonc` holds the configuration and `public/_headers` the cache rules. After a deployment, `npm run check:deployment` checks the live site. Setup, qualification, cache updates and rollback are in [docs/RELEASE.md](docs/RELEASE.md).
+
+## Licence
+
+Elsewhere's own code and documentation are under the [MIT licence](LICENSE). Bundled data and images keep their own licences, listed above and in [asset provenance](docs/ASSETS.md): in particular the star catalog derivative `src/data/stars.json` remains CC BY-SA 4.0.

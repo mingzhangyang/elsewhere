@@ -23,11 +23,12 @@ Phone pointing, real terrain horizons and a general light theme are deferred, an
 
 Made by the project owner on November 14, 2026:
 
-| Decision                               | Consequence                                                                                                                                                                               |
-| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Host on Cloudflare (Workers or Pages)  | Static hosting plus a place to run small code later, such as per-link previews, without a separate server. See [phase 0](#0-go-live-on-cloudflare-sm).                                    |
-| Stay on Open-Meteo's free tier for now | The free tier is for non-commercial use, so no ads, subscriptions or paid features while it is in use. Weather requests stay in the visitor's browser. Revisit before any form of income. |
-| Cartoon style only for exported images | The live view stays realistic. The illustrated style is a second way to draw a sky moment. See [phase 4](#4-sky-moments-l).                                                               |
+| Decision                                                                                                                 | Consequence                                                                                                                                                                                             |
+| ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Host on Cloudflare Workers at `elsewhere.orangely.xyz`, deployed by Cloudflare's Git integration on every push to `main` | Static hosting now, and a place to run small code later, such as per-link previews, without a separate server. See [phase 0](#0-go-live-on-cloudflare-sm).                                              |
+| MIT licence for Elsewhere's own code and documentation                                                                   | No commercial plans and permissive dependencies; MIT is the simplest licence that lets others learn from and reuse the code. Bundled data keeps its own licences (the star catalog stays CC BY-SA 4.0). |
+| Stay on Open-Meteo's free tier for now                                                                                   | The free tier is for non-commercial use, so no ads, subscriptions or paid features while it is in use. Weather requests stay in the visitor's browser. Revisit before any form of income.               |
+| Cartoon style only for exported images                                                                                   | The live view stays realistic. The illustrated style is a second way to draw a sky moment. See [phase 4](#4-sky-moments-l).                                                                             |
 
 ## Where things stand
 
@@ -37,7 +38,8 @@ Made by the project owner on November 14, 2026:
 - The sky has the Sun, the Moon and 5,070 stars (347 with proper names). There are no planets.
 - Weather comes from Open-Meteo: forecast up to 15 days ahead, recent days, and historical reanalysis back to 1940. The astronomy covers 1900–2100.
 - The interface is English only. The horizon is either flat or a procedural ridge.
-- **Not yet done:** deployment, physical phones, screen readers, the 30-minute GPU soak, unfamiliar-user sessions, broader scientific review and the application licence. See [RELEASE.md](docs/RELEASE.md).
+- Deployment is configured (`wrangler.jsonc`, `public/_headers`) and checked against Wrangler's local runtime, including an offline reload in Chromium. The Cloudflare dashboard setup and the first deployment remain.
+- **Not yet done:** the first deployment, physical phones, screen readers, the 30-minute GPU soak, unfamiliar-user sessions and broader scientific review. See [RELEASE.md](docs/RELEASE.md).
 - Shared links keep their state after `#` (`src/App.tsx`), which browsers never send to a server. That keeps them private, and it also means a server cannot read them to build a preview.
 
 ## Why this direction
@@ -69,17 +71,18 @@ Sizes are relative (S, M, L) for one developer and are planning guides, not comm
 
 ### 0. Go live on Cloudflare (S–M)
 
-**Hosting.** Prefer Workers with static assets: one Worker serves `dist/` and can later run the link-preview code (phase 4) on the same origin. Cloudflare now steers new projects to Workers; Pages with Pages Functions also works if preferred.
+**Hosting.** A Worker named `elsewhere` serves `dist/` as static assets at `elsewhere.orangely.xyz`; Cloudflare's Git integration builds and deploys each push to `main`. Setup and release steps are in [RELEASE.md](docs/RELEASE.md#build-and-deploy). Already in the repository:
 
-- Follow [RELEASE.md](docs/RELEASE.md). Put its cache rules in a `_headers` file in `public/`, which both products read: revalidate `index.html`, `sw.js` and unhashed public files; mark hashed `assets/*` immutable. Check the headers and the offline contract (including the `Vary: Origin` case) on the real origin, not only locally.
-- Serve from the origin root so the service worker's scope needs no `base` change. Shared links live after `#`, so no single-page fallback is needed; unknown paths can return 404.
-- Deploy from GitHub Actions after the existing validation passes on `main` (Wrangler with an API token stored as a repository secret), or through Cloudflare's Git integration. Keep each version so a rollback restores a complete previous build, as RELEASE.md requires; rehearse it once. Use preview deployments for pull requests.
-- Static asset requests are not Worker invocations. Run the Worker first only on routes that need it (link previews later) and check the current free-plan limits before phase 4.
-- Add a custom domain when one is chosen; the shared-link origin must not change afterwards, or old links break.
+- `wrangler.jsonc`: static assets only, the custom domain, and no `workers.dev` or preview URLs, so shared links have one origin.
+- `public/_headers`: hashed files under `/assets/` are immutable; the shell and `sw.js` revalidate. The Moon map is now bundled by Vite so that every file under `/assets/` has a content hash, and the build check enforces it.
+- The service worker no longer precaches `_headers`, which Cloudflare does not serve, and stores plain copies of redirected responses, because Cloudflare redirects `/index.html` to `/`. Without that change, the app did not open offline on Cloudflare's runtime at all.
+- `npm run check:deployment` checks the live site after each deployment.
+
+Still to do: the dashboard setup, the first deployment, required status checks on `main` (Cloudflare deploys whatever reaches it), and one rehearsed rollback. Static asset requests are not Worker invocations; run Worker code only on routes that need it (link previews later), and check the free-plan limits before phase 4.
 
 **Weather on the free tier.** Keep every Open-Meteo request in the visitor's browser. Routing them through the Worker would put every visitor's requests on Cloudflare's addresses and against one set of free-tier limits. Keep the attribution that the app and `public/credits.html` already show (CC BY 4.0), and add it to exported images.
 
-**Also in this phase:** a first round on physical phones (one midrange Android, one iPhone) and with a screen reader, fixing whatever blocks the primary tasks; and the application licence.
+**Also in this phase:** a first round on physical phones (one midrange Android, one iPhone) and with a screen reader, fixing whatever blocks the primary tasks.
 
 Planets can be built in parallel.
 
@@ -209,11 +212,8 @@ The app collects no analytics, and the privacy principle above limits what it ma
 
 For the project owner:
 
-1. Workers or Pages. Workers is recommended (phase 0).
-2. The custom domain. It must stay fixed once links are shared.
-3. The moment-link format for previews (phase 4): what a server may read, against the privacy of `#` links.
-4. The application licence ([RELEASE.md](docs/RELEASE.md) notes that none is granted yet).
-5. Languages after Chinese and English.
-6. How success is measured (see above).
+1. The moment-link format for previews (phase 4): what a server may read, against the privacy of `#` links.
+2. Languages after Chinese and English.
+3. How success is measured (see above).
 
 Constraint to revisit: the Open-Meteo free tier rules out commercial use. Choose a paid plan or another provider before adding any income.
