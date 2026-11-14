@@ -249,46 +249,56 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
     moonGroup.add(moonMesh);
     scene.add(moonGroup);
 
-    // Per-star attributes never change; only the sphere's rotation does.
+    // Per-star attributes never change for a catalog; only the sphere's rotation does. The first
+    // screen can arrive before the catalog, so they are (re)built when it does.
     const starGeometry = new THREE.BufferGeometry();
-    const starCount = sky.stars.length;
-    const starSizes = new Float32Array(starCount);
-    const starMagnitudes = new Float32Array(starCount);
-    const starIntensities = new Float32Array(starCount);
-    const starColors = new Float32Array(starCount * 3);
+    let starCount = -1;
     let starVectors = sky.starField.vectors;
-    const starPositions = new THREE.BufferAttribute(new Float32Array(starCount * 3), 3);
+    let starPositions = new THREE.BufferAttribute(new Float32Array(0), 3);
     const placeStars = (vectors: Float32Array) => {
       starVectors = vectors;
       for (let i = 0; i < vectors.length; i++) starPositions.array[i] = vectors[i] * STAR_DISTANCE;
       starPositions.needsUpdate = true;
     };
-    placeStars(starVectors);
-    starGeometry.setAttribute('position', starPositions);
-    starGeometry.setAttribute('aSize', new THREE.BufferAttribute(starSizes, 1));
-    starGeometry.setAttribute('aMagnitude', new THREE.BufferAttribute(starMagnitudes, 1));
-    starGeometry.setAttribute('aIntensity', new THREE.BufferAttribute(starIntensities, 1));
-    starGeometry.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
-    sky.stars.forEach((star, i) => {
-      starSizes[i] = starPointSize(star.magnitude);
-      starMagnitudes[i] = star.magnitude;
-      starIntensities[i] = starIntensity(star.magnitude);
-      const color = new THREE.Color('#bdd6ff').lerp(
-        new THREE.Color('#fff0cf'),
-        THREE.MathUtils.clamp(((star.colorIndex ?? 0.4) + 0.3) / 1.4, 0, 1),
-      );
-      if ((star.colorIndex ?? 0) > 1.1)
-        color.lerp(new THREE.Color('#ffb378'), THREE.MathUtils.clamp((star.colorIndex! - 1.1) / 1.1, 0, 1));
-      color.toArray(starColors, i * 3);
-    });
     const starMaterial = createStarMaterial(STAR_DISTANCE, renderer.getPixelRatio());
     const starPoints = new THREE.Points(starGeometry, starMaterial);
     starPoints.frustumCulled = false;
     starPoints.matrixAutoUpdate = false;
     scene.add(starPoints);
-    const starIndex = new Map(sky.stars.map((star, index) => [star.id, index]));
-
-    const celestialLayers = createCelestialLayers(scene, sky.stars);
+    let starIndex = new Map<string, number>();
+    let celestialLayers = createCelestialLayers(scene, []);
+    const buildStars = (stars: Star[], vectors: Float32Array) => {
+      starCount = stars.length;
+      const sizes = new Float32Array(starCount);
+      const magnitudes = new Float32Array(starCount);
+      const intensities = new Float32Array(starCount);
+      const colors = new Float32Array(starCount * 3);
+      stars.forEach((star, i) => {
+        sizes[i] = starPointSize(star.magnitude);
+        magnitudes[i] = star.magnitude;
+        intensities[i] = starIntensity(star.magnitude);
+        const color = new THREE.Color('#bdd6ff').lerp(
+          new THREE.Color('#fff0cf'),
+          THREE.MathUtils.clamp(((star.colorIndex ?? 0.4) + 0.3) / 1.4, 0, 1),
+        );
+        if ((star.colorIndex ?? 0) > 1.1)
+          color.lerp(new THREE.Color('#ffb378'), THREE.MathUtils.clamp((star.colorIndex! - 1.1) / 1.1, 0, 1));
+        color.toArray(colors, i * 3);
+      });
+      // Release the previous buffers on the GPU; the geometry re-uploads the new ones on next draw.
+      starGeometry.dispose();
+      starPositions = new THREE.BufferAttribute(new Float32Array(starCount * 3), 3);
+      starGeometry.setAttribute('position', starPositions);
+      starGeometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
+      starGeometry.setAttribute('aMagnitude', new THREE.BufferAttribute(magnitudes, 1));
+      starGeometry.setAttribute('aIntensity', new THREE.BufferAttribute(intensities, 1));
+      starGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+      placeStars(vectors);
+      starIndex = new Map(stars.map((star, index) => [star.id, index]));
+      celestialLayers.dispose();
+      celestialLayers = createCelestialLayers(scene, stars);
+    };
+    buildStars(sky.stars, sky.starField.vectors);
 
     // During playback the sky turns about the celestial pole between ticks. Every rising and setting
     // thing is placed the way the star shader places stars: turn the geometric direction, then
@@ -477,7 +487,8 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
           .normalize();
         moonUniforms.uMoonSunDirection.value.copy(towardSun);
 
-        if (nextSky.starField.vectors !== starVectors) placeStars(nextSky.starField.vectors);
+        if (nextSky.stars.length !== starCount) buildStars(nextSky.stars, nextSky.starField.vectors);
+        else if (nextSky.starField.vectors !== starVectors) placeStars(nextSky.starField.vectors);
         setRotationMatrix(starBase, nextSky.starField.rotation);
         // The new instant already includes the turn shown so far; restart from rest.
         if (ticked) playbackTurn.tick(performance.now());

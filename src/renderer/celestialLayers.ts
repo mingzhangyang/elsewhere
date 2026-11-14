@@ -134,5 +134,18 @@ export function createCelestialLayers(parent: THREE.Object3D, catalog: Star[], t
       occupied.push(box);
     }
   }
-  return { update, place, layout };
+  /** Removes this layer's objects and frees their GPU resources (the catalog changed). */
+  function dispose() {
+    for (const sprite of sprites) {
+      parent.remove(sprite);
+      sprite.material.map?.dispose();
+      sprite.material.dispose();
+    }
+    for (const { lines } of patterns) {
+      parent.remove(lines);
+      lines.geometry.dispose();
+      lines.material.dispose();
+    }
+  }
+  return { update, place, layout, dispose };
 }

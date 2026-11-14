@@ -4,6 +4,10 @@ import App from './App';
 import RecoveryBoundary from './components/RecoveryBoundary';
 import './styles.css';
 import { ensureTemporal } from './domain/temporal';
+import { loadStarCatalog } from './domain/stars';
+
+// Start fetching the star catalog now, but draw the first screen without waiting for it.
+loadStarCatalog().catch(() => {});
 
 async function start() {
   // Civil-time work needs Temporal; browsers without it fetch the polyfill first.

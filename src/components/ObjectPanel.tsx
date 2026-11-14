@@ -13,10 +13,12 @@ export default function ObjectPanel({
   preferences,
   weather,
   clearSky,
+  stars = 'ready',
   onSelect,
   onFocus,
   onRise,
   onClearSky,
+  onRetryStars,
 }: {
   sky: SkyState;
   timeZone: string;
@@ -24,10 +26,13 @@ export default function ObjectPanel({
   preferences: Preferences;
   weather: WeatherValues;
   clearSky: boolean;
+  /** The star catalog loads after the first screen. */
+  stars?: 'loading' | 'ready' | 'error';
   onSelect: (id: string | null) => void;
   onFocus: (object: SkyObject) => void;
   onRise: (id: 'sun' | 'moon') => void;
   onClearSky: () => void;
+  onRetryStars?: () => void;
 }) {
   const [query, setQuery] = useState('');
   const [upOnly, setUpOnly] = useState(true);
@@ -233,6 +238,13 @@ export default function ObjectPanel({
         ))}
       </div>
       <p className="catalog-note">{countLabel(matches.length)}</p>
+      {stars === 'loading' && <p className="catalog-note">Stars are still loading…</p>}
+      {stars === 'error' && (
+        <div className="catalog-weather">
+          <span>The star catalog could not load. The Sun and Moon remain available.</span>
+          <button onClick={onRetryStars}>Try again</button>
+        </div>
+      )}
       <p className="sr-only" role="status">
         {announcement}
       </p>

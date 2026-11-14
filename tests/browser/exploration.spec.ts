@@ -30,6 +30,24 @@ test('clicking centered Mizar selects Mizar instead of Alcor', async ({ page }) 
   await expect(page.getByRole('heading', { name: 'Mizar', exact: true })).toBeVisible();
 });
 
+test('the first screen does not wait for the star catalog', async ({ page }) => {
+  let release = () => {};
+  const held = new Promise<void>((resolve) => (release = resolve));
+  // Dev serves the catalog module as /src/data/stars.json; production as a catalog-*.js chunk.
+  await page.route(/stars\.json|\/catalog-[\w-]+\.js/, async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.goto('/?scenario=night');
+  await expect(page.getByRole('img', { name: /^Sky view\./ })).toBeVisible();
+  await page.getByRole('button', { name: 'Objects', exact: true }).click();
+  await expect(page.getByText('Stars are still loading…')).toBeVisible();
+  release();
+  await expect(page.getByText('Stars are still loading…')).toHaveCount(0);
+  await page.getByRole('searchbox', { name: 'Find an object' }).fill('Vega');
+  await expect(page.getByRole('group', { name: 'Celestial objects' })).toContainText('Vega');
+});
+
 test('keyboard location selection preserves the instant and returns focus', async ({ page }) => {
   await page.goto('/?scenario=night');
   await page.getByRole('button', { name: /Change location/ }).click();

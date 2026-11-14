@@ -55,3 +55,29 @@ it('announces the object count when the reader filters, not when playback moves 
   fireEvent.click(screen.getByRole('button', { name: 'All objects' }));
   expect(status).toHaveTextContent(`Showing 40 of ${skyObjects(dusk).length}.`);
 });
+
+it('lists the Sun and Moon while stars load, and offers a retry if the catalog fails', () => {
+  const sky = { ...calculateSky(NEW_YORK, new Date('2026-11-13T04:00Z')), stars: [] };
+  let retried = 0;
+  const props = {
+    sky,
+    timeZone: NEW_YORK.timezone,
+    selectedId: null,
+    preferences,
+    weather: defaultWeatherValues(),
+    clearSky: false,
+    onSelect: () => {},
+    onFocus: () => {},
+    onRise: () => {},
+    onClearSky: () => {},
+    onRetryStars: () => retried++,
+  };
+  const { rerender } = render(<ObjectPanel {...props} stars="loading" />);
+  expect(screen.getByText('Stars are still loading…')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'All objects' }));
+  expect(screen.getByRole('group', { name: 'Celestial objects' })).toHaveTextContent(/Sun.*Moon/);
+  rerender(<ObjectPanel {...props} stars="error" />);
+  expect(screen.queryByText('Stars are still loading…')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+  expect(retried).toBe(1);
+});

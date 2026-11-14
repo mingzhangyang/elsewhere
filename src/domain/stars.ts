@@ -1,6 +1,5 @@
 import * as Astronomy from 'astronomy-engine';
 import type { Star } from '../types';
-import rows from '../data/stars.json';
 
 // HYG v4.1 derivative, David Nash / Astronexus, CC BY-SA 4.0.
 // Rows: HYG ID, name, J2000 RA hours, Dec degrees, V magnitude, B-V, pmRA*cosDec and pmDec (mas/year).
@@ -16,20 +15,64 @@ export interface CatalogStar {
   pmra: number;
   pmdec: number;
 }
-export const STAR_CATALOG: CatalogStar[] = rows.map((r) => ({
-  id: 'hyg-' + r[0],
-  catalogId: Number(r[0]),
-  name: String(r[1]),
-  ra: Number(r[2]),
-  dec: Number(r[3]),
-  magnitude: Number(r[4]),
-  colorIndex: r[5] === null ? null : Number(r[5]),
-  pmra: Number(r[6]),
-  pmdec: Number(r[7]),
-}));
+type CatalogRow = (string | number | null)[];
+
+export interface Constellation {
+  name: string;
+  /** Pairs of catalog star IDs. */
+  lines: string[][];
+}
+
+/**
+ * The catalog is about 120 kB compressed, so it loads after the first screen rather than before it.
+ * Until `loadStarCatalog()` resolves, these are empty and the sky shows the Sun and Moon only. They
+ * are live bindings: importers see the catalog once it arrives.
+ */
+export let STAR_CATALOG: CatalogStar[] = [];
+export let CONSTELLATIONS: Constellation[] = [];
+let loading: Promise<void> | null = null;
+
+export const starCatalogLoaded = () => STAR_CATALOG.length > 0;
+
+/** Loads the catalog once; a failed attempt can be retried. */
+export function loadStarCatalog(): Promise<void> {
+  loading ??= import('../data/stars.json').then(
+    (module) => installCatalog(module.default as CatalogRow[]),
+    (error) => {
+      loading = null;
+      throw error;
+    },
+  );
+  return loading;
+}
+
+function installCatalog(rows: CatalogRow[]) {
+  const catalog = rows.map((r) => ({
+    id: 'hyg-' + r[0],
+    catalogId: Number(r[0]),
+    name: String(r[1]),
+    ra: Number(r[2]),
+    dec: Number(r[3]),
+    magnitude: Number(r[4]),
+    colorIndex: r[5] === null ? null : Number(r[5]),
+    pmra: Number(r[6]),
+    pmdec: Number(r[7]),
+  }));
+  CONSTELLATIONS = PATTERNS.map((pattern) => ({
+    ...pattern,
+    lines: pattern.lines.map((pair) =>
+      pair.map((name) => {
+        const star = catalog.find((s) => s.name.toLowerCase() === name);
+        if (!star) throw new Error(`Missing pattern star: ${name}`);
+        return star.id;
+      }),
+    ),
+  }));
+  STAR_CATALOG = catalog;
+}
 
 // Original, deliberately simplified teaching patterns; these are not IAU boundaries.
-export const CONSTELLATIONS = [
+const PATTERNS = [
   {
     name: 'Big Dipper · asterism',
     lines: [
@@ -70,16 +113,7 @@ export const CONSTELLATIONS = [
       ['vega', 'altair'],
     ],
   },
-].map((pattern) => ({
-  ...pattern,
-  lines: pattern.lines.map((pair) =>
-    pair.map((name) => {
-      const star = STAR_CATALOG.find((s) => s.name.toLowerCase() === name);
-      if (!star) throw new Error(`Missing pattern star: ${name}`);
-      return star.id;
-    }),
-  ),
-}));
+];
 
 // Tangent-plane proper motion avoids singular RA corrections near the poles.
 export function movedEquatorial(star: CatalogStar, years: number) {
@@ -159,7 +193,7 @@ export interface StarField {
 
 const DAY_MS = 86_400_000;
 const J2000_MS = Date.UTC(2000, 0, 1, 12);
-let vectorCache: { day: number; vectors: Float32Array } | null = null;
+let vectorCache: { day: number; catalog: CatalogStar[]; vectors: Float32Array } | null = null;
 
 /**
  * Proper motion and precession move a star by well under an arcsecond a day, so the catalog is
@@ -167,7 +201,7 @@ let vectorCache: { day: number; vectors: Float32Array } | null = null;
  */
 export function apparentStarVectors(date: Date): Float32Array {
   const day = Math.floor(date.getTime() / DAY_MS);
-  if (vectorCache?.day === day) return vectorCache.vectors;
+  if (vectorCache?.day === day && vectorCache.catalog === STAR_CATALOG) return vectorCache.vectors;
   const epoch = new Date((day + 0.5) * DAY_MS);
   const years = (epoch.getTime() - J2000_MS) / (365.25 * DAY_MS);
   const vectors = new Float32Array(STAR_CATALOG.length * 3);
@@ -180,7 +214,7 @@ export function apparentStarVectors(date: Date): Float32Array {
     vectors[i * 3 + 1] = Math.cos(dec) * Math.sin(ra);
     vectors[i * 3 + 2] = Math.sin(dec);
   });
-  vectorCache = { day, vectors };
+  vectorCache = { day, catalog: STAR_CATALOG, vectors };
   return vectors;
 }
 

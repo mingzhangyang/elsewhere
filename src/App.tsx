@@ -84,6 +84,8 @@ export default function App({
     setSpeed,
     sky,
     dayBounds,
+    stars,
+    retryStars,
   } = simulation;
   const { selection, refresh } = useWeather(location, simTime, weatherLoader);
   const atmosphere = useMemo(() => renderingWeather(selection), [selection]);
@@ -138,6 +140,12 @@ export default function App({
     const usable = trigger?.isConnected && trigger.checkVisibility?.() !== false;
     (usable ? trigger : objectsTrigger.current)?.focus();
   }, [panel]);
+  useEffect(() => {
+    if (stars === 'error')
+      setNotice(
+        'The star catalog could not load. The Sun and Moon remain available; try again from Objects.',
+      );
+  }, [stars]);
   useEffect(() => {
     const unavailable = () =>
       setNotice(
@@ -453,6 +461,8 @@ export default function App({
                   onFocus={focusObject}
                   onRise={jumpToRise}
                   onClearSky={() => setClearSky(!clearSky)}
+                  stars={stars}
+                  onRetryStars={retryStars}
                 />
               )}
               {panel === 'weather' && (
