@@ -7,6 +7,7 @@ import {
   type PerspectiveCamera,
   type Points,
 } from 'three';
+import { magnitudeVisibility, starIntensity } from '../lib/starVisibility';
 import type { Star } from '../types';
 
 /** Screen radius, in CSS pixels, within which a tap selects a star at any zoom. */
@@ -14,12 +15,7 @@ export const STAR_PICK_RADIUS_PX = 20;
 
 /** Used by both the point shader's alpha attribute and hit eligibility. */
 export function starAlpha(star: Star, limit: number): number {
-  if (star.altitude <= 0) return 0;
-  const extinction = 0.2 / Math.max(0.08, Math.sin(MathUtils.degToRad(star.altitude))) - 0.2;
-  return (
-    (1 - MathUtils.smoothstep(star.magnitude + extinction, limit - 1, limit + 0.3)) *
-    MathUtils.clamp(10 ** (-0.16 * star.magnitude), 0.15, 1)
-  );
+  return magnitudeVisibility(star, limit) * starIntensity(star.magnitude);
 }
 
 /**

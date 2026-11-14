@@ -18,6 +18,7 @@ import { createFrameLoop } from './frameLoop';
 import { adaptiveRatio, percentile, type RenderStats } from './performance';
 import { aboveHorizon, findSkyObject } from '../lib/exploration';
 import { pickStarAt, starAlpha } from './starPicking';
+import { limitingMagnitude, twilightVisibility, weatherVisibility } from '../lib/starVisibility';
 
 /** Radius of the sphere the star points are placed on. */
 const STAR_DISTANCE = 1770;
@@ -438,13 +439,9 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
         positions.needsUpdate = true;
         sizes.needsUpdate = true;
         starGeometry.setDrawRange(0, nextSky.stars.length);
-        const nightVisibility = 1 - THREE.MathUtils.smoothstep(nextSky.sunAltitude, -18, -3);
-        const visibilityFactor =
-          THREE.MathUtils.clamp(nextWeather.visibilityKm / 28, 0.1, 1) *
-          (1 - THREE.MathUtils.clamp(nextWeather.haze / 125, 0, 0.85));
-        const moonPenalty =
-          Math.max(0, Math.sin((nextSky.moon.altitude * Math.PI) / 180)) * nextSky.moon.illumination * 1.6;
-        const limit = (skyBrightness === 'city' ? 3 : skyBrightness === 'suburban' ? 4.5 : 6) - moonPenalty;
+        const nightVisibility = twilightVisibility(nextSky.sunAltitude);
+        const visibilityFactor = weatherVisibility(nextWeather);
+        const limit = limitingMagnitude(skyBrightness, nextSky.moon);
         const alphas = starGeometry.attributes.aAlpha as THREE.BufferAttribute;
         nextSky.stars.forEach((star, index) => alphas.setX(index, starAlpha(star, limit)));
         alphas.needsUpdate = true;
