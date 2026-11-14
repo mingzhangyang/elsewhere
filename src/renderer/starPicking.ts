@@ -19,9 +19,16 @@ export function starAlpha(star: Star, limit: number): number {
 }
 
 /**
+ * Stars closer together than this on screen are one point to the eye (Mizar and its companion are
+ * 19″ apart); among them a tap means the brighter one.
+ */
+export const STAR_TIE_PX = 2;
+
+/**
  * Chooses the visible hit whose projected position is nearest the tap, rejecting hits farther than
  * `radiusPx`. Ranking by screen distance (not ray depth or world distance) keeps the radius exact
  * anywhere in the frame; a perspective camera magnifies the world-space threshold off-center.
+ * Near-ties within STAR_TIE_PX go to the brighter star.
  */
 export function pickStarIndex(
   hits: Intersection[],
@@ -29,17 +36,22 @@ export function pickStarIndex(
   screenDistance: (index: number) => number,
   radiusPx = STAR_PICK_RADIUS_PX,
 ): number | undefined {
-  let closest: number | undefined;
-  let distance = radiusPx;
-  for (const hit of hits) {
-    if (hit.index === undefined || alpha(hit.index) < 0.05) continue;
-    const d = screenDistance(hit.index);
-    if (d <= distance) {
-      closest = hit.index;
-      distance = d;
-    }
-  }
-  return closest;
+  const candidates = hits.flatMap((hit) => {
+    if (hit.index === undefined) return [];
+    const brightness = alpha(hit.index);
+    if (brightness < 0.05) return [];
+    const distance = screenDistance(hit.index);
+    return distance <= radiusPx ? [{ index: hit.index, distance, brightness }] : [];
+  });
+  if (!candidates.length) return undefined;
+  const nearest = Math.min(...candidates.map((c) => c.distance));
+  return candidates
+    .filter((c) => c.distance <= nearest + STAR_TIE_PX)
+    .reduce((best, c) =>
+      c.brightness > best.brightness || (c.brightness === best.brightness && c.distance < best.distance)
+        ? c
+        : best,
+    ).index;
 }
 
 export interface PickViewport {

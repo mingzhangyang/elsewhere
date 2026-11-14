@@ -96,6 +96,20 @@ test('object discovery finds the Moon below the horizon and jumps to its next ri
   await expect(page.getByRole('button', { name: 'Objects', exact: true })).toBeFocused();
 });
 
+test('finding the Moon ends on the Moon itself, circled rather than covered', async ({ page }) => {
+  await page.goto('/?scenario=moon');
+  await page.getByRole('button', { name: 'Find the Moon' }).click();
+  await page.getByRole('button', { name: 'Center in view' }).click();
+  await expect(page.getByRole('region', { name: 'Selected object' })).toContainText('Moon');
+  const ring = page.locator('.sky-target');
+  const width = async () => (await ring.boundingBox())?.width ?? 0;
+  // Framed, the disc is about a quarter of the view tall and the ring circles it.
+  await expect.poll(width).toBeGreaterThan(100);
+  // Zoomed back out, the Moon is small again and the ring returns to its marker size.
+  for (let step = 0; step < 12; step++) await page.getByRole('button', { name: 'Zoom out' }).click();
+  await expect.poll(width).toBeLessThan(40);
+});
+
 test('clear-sky preview preserves custom clouds and keeps selection feedback', async ({ page }) => {
   await page.goto('/?scenario=day');
   await page.getByRole('button', { name: 'Weather', exact: true }).click();

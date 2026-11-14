@@ -1,5 +1,5 @@
 import type { SkyState, Star, WeatherValues } from '../types';
-import type { Preferences } from './persistence';
+import { MIN_FOV, type Preferences } from './persistence';
 import { STAR_VISIBLE_THRESHOLD, starVisibilityFactors, twilightVisibility } from './starVisibility';
 
 export type SkyObject =
@@ -27,6 +27,25 @@ export function findSkyObject(sky: SkyState, id: string | null): SkyObject | und
   if (id === 'moon') return { ...sky.moon, id: 'moon', name: 'Moon', kind: 'moon' };
   const star = sky.stars.find((s) => s.id === id);
   return star && { ...star, name: star.name || star.id.toUpperCase(), kind: 'star' };
+}
+
+/** Physical radius in km, for apparent size. */
+const RADIUS_KM = { sun: 695_700, moon: 1737.4 };
+
+/** Apparent angular diameter of the Sun or Moon, in degrees; 0 for stars. */
+export function angularDiameter(object: SkyObject): number {
+  if (object.kind === 'star') return 0;
+  return (2 * Math.asin(RADIUS_KM[object.kind] / object.distanceKm) * 180) / Math.PI;
+}
+
+/**
+ * Field of view that frames an object when it is centered: the Sun or Moon fills about a quarter
+ * of the view height so its surface is visible. Stars, and bodies below the horizon, keep the
+ * current zoom (undefined).
+ */
+export function framingFov(object: SkyObject): number | undefined {
+  if (object.kind === 'star' || !aboveHorizon(object)) return undefined;
+  return Math.max(MIN_FOV, angularDiameter(object) * 4);
 }
 
 const HAZE = {
@@ -117,6 +136,9 @@ export function objectVisibility(
   return {
     reason: 'clear',
     label: 'Above the horizon',
-    detail: 'Look inside the position marker. Object sizes are true to scale; zoom for a closer view.',
+    detail:
+      object.kind === 'star'
+        ? 'Look inside the position marker. Stars are drawn as points of light, brighter for brighter stars.'
+        : `Centering frames the ${object.name} at true scale; zoom out to see it among the sky.`,
   };
 }

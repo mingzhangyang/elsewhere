@@ -3,7 +3,13 @@ import { expect, it, vi } from 'vitest';
 import { createCelestialLayers } from '../src/renderer/celestialLayers';
 import { calculateSky } from '../src/lib/astronomy';
 import { NEW_YORK } from './fixtures/locations';
-import { pickStarAt, pickThreshold, STAR_PICK_RADIUS_PX, starAlpha } from '../src/renderer/starPicking';
+import {
+  pickStarAt,
+  pickStarIndex,
+  pickThreshold,
+  STAR_PICK_RADIUS_PX,
+  starAlpha,
+} from '../src/renderer/starPicking';
 
 const VIEWPORT = { left: 0, top: 0, width: 390, height: 449 };
 
@@ -112,4 +118,25 @@ it('needs the screen-space check: the ray threshold alone accepts a 30px tap off
   ray.setFromCamera(new THREE.Vector2(((335 + 30) / 390) * 2 - 1, 0), camera);
   expect(ray.intersectObject(points)).toHaveLength(1);
   expect(pickStarAt(points, camera, 335 + 30, 224.5, VIEWPORT, 1770, () => 1)).toBeUndefined();
+});
+
+it('gives a tap on stars closer than a couple of pixels to the brighter one', () => {
+  const hits = [{ index: 0 }, { index: 1 }, { index: 2 }] as THREE.Intersection[];
+  const brightness = [0.4, 0.9, 1];
+  const distance = [0.3, 0.8, 6];
+  // Index 1 is 0.5px farther than 0 but brighter; index 2 is brightest but clearly farther away.
+  expect(
+    pickStarIndex(
+      hits,
+      (i) => brightness[i],
+      (i) => distance[i],
+    ),
+  ).toBe(1);
+  expect(
+    pickStarIndex(
+      hits,
+      () => 1,
+      (i) => [9, 4, 25][i],
+    ),
+  ).toBe(1);
 });

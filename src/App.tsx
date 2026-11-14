@@ -27,7 +27,7 @@ import { useSimulation } from './hooks/useSimulation';
 import { useWeather } from './hooks/useWeather';
 import { formatTime, MAX_INSTANT } from './lib/time';
 import { calculateSky, nextBodyRise } from './lib/astronomy';
-import { findSkyObject, objectVisibility, type SkyObject } from './lib/exploration';
+import { findSkyObject, framingFov, objectVisibility, type SkyObject } from './lib/exploration';
 import {
   customConditions,
   defaultWeatherValues,
@@ -41,6 +41,8 @@ import {
   loadPreferences,
   parseExploration,
   savePreferences,
+  DEFAULT_FOV,
+  ZOOM_STEP,
   type LayerSettings,
   type Preferences,
 } from './lib/persistence';
@@ -118,7 +120,7 @@ export default function App({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [view] = useState(() =>
-    createCameraViewStore(launch.shared.value?.camera ?? { heading: 0, altitude: 18, fov: 66 }),
+    createCameraViewStore(launch.shared.value?.camera ?? { heading: 0, altitude: 18, fov: DEFAULT_FOV }),
   );
   const [notice, setNotice] = useState(launch.shared.notice || launch.preferences.notice);
   const [immersive, setImmersive] = useState(false);
@@ -226,9 +228,10 @@ export default function App({
   };
   const field = (name: keyof WeatherValues, value: number) =>
     setCustomWeather((current) => customConditions(current, name, value));
-  const focusObject = (object: SkyObject) => {
+  /** `frame` zooms the Sun or Moon to fill the view; a jump to a rise keeps the horizon in context. */
+  const focusObject = (object: SkyObject, frame = true) => {
     setFocusedId(object.id);
-    skyRef.current?.focus(object.altitude, object.azimuth);
+    skyRef.current?.focus(object.altitude, object.azimuth, frame ? framingFov(object) : undefined);
     if (panel) closePanel();
   };
   const jumpToRise = (id: 'sun' | 'moon') => {
@@ -241,7 +244,7 @@ export default function App({
       const time = new Date(Math.min(MAX_INSTANT, rise.getTime() + 15 * 60000));
       setPlaying(false);
       setSimTime(time);
-      focusObject(findSkyObject(calculateSky(location, time), id)!);
+      focusObject(findSkyObject(calculateSky(location, time), id)!, false);
     } catch {
       setNotice('This rise could not be calculated. Choose another date or place.');
     }
@@ -390,10 +393,18 @@ export default function App({
         </div>
         <SkyCompass view={view} />
         <div className="view-controls">
-          <button className="icon-button" aria-label="Zoom in" onClick={() => skyRef.current?.zoom(-5)}>
+          <button
+            className="icon-button"
+            aria-label="Zoom in"
+            onClick={() => skyRef.current?.zoom(ZOOM_STEP)}
+          >
             <Plus size={19} />
           </button>
-          <button className="icon-button" aria-label="Zoom out" onClick={() => skyRef.current?.zoom(5)}>
+          <button
+            className="icon-button"
+            aria-label="Zoom out"
+            onClick={() => skyRef.current?.zoom(1 / ZOOM_STEP)}
+          >
             <Minus size={19} />
           </button>
           <span />

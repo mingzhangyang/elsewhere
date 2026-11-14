@@ -46,12 +46,18 @@ describe('portable exploration state', () => {
     { ...exploration, instant: 'invalid' },
     { ...exploration, location: { ...exploration.location, latitude: 91 } },
     { ...exploration, camera: { ...exploration.camera, fov: 0 } },
+    { ...exploration, camera: { ...exploration.camera, fov: 1.9 } },
+    { ...exploration, camera: { ...exploration.camera, fov: 93 } },
     { ...exploration, custom: { ...exploration.custom, cloudCover: -1 } },
     { ...exploration, clearSky: 'yes' },
   ])('rejects unsupported or invalid state', (state) => {
     const result = parseExploration('#sky=' + encodeURIComponent(JSON.stringify(state)));
     expect(result.value).toBeNull();
     expect(result.notice).toMatch(/invalid or unsupported/);
+  });
+  it('accepts the deepest Sun and Moon zoom in a shared view', () => {
+    const zoomed = { ...exploration, camera: { ...exploration.camera, fov: 2 } };
+    expect(parseExploration(new URL(explorationUrl(zoomed)).hash).value?.camera.fov).toBe(2);
   });
   it('recovers from corrupt preferences without silently overwriting them', () => {
     localStorage.setItem('elsewhere.preferences.v1', '{broken');

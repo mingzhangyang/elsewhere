@@ -14,6 +14,12 @@ export interface CameraView {
   altitude: number;
   fov: number;
 }
+/** Vertical field of view limits, in degrees. The narrow end frames the Sun or Moon in detail. */
+export const MIN_FOV = 2;
+export const MAX_FOV = 92;
+export const DEFAULT_FOV = 66;
+/** One zoom-in step (button or key) narrows the view by this factor. */
+export const ZOOM_STEP = 0.8;
 export interface Preferences {
   version: 1;
   layers: LayerSettings;
@@ -120,8 +126,8 @@ export function parseExploration(hash: string): { value: Exploration | null; not
     if (
       ![camera.heading, camera.altitude, camera.fov].every(Number.isFinite) ||
       Math.abs(camera.altitude) > 90 ||
-      camera.fov < 20 ||
-      camera.fov > 92 ||
+      camera.fov < MIN_FOV ||
+      camera.fov > MAX_FOV ||
       camera.heading < 0 ||
       camera.heading >= 360
     )

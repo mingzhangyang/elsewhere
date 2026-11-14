@@ -16,7 +16,7 @@ import { directionVector, makeGlowTexture, setAtDirection } from './resources';
 import { advancePrecipitation, windVector } from './precipitation';
 import { createFrameLoop } from './frameLoop';
 import { adaptiveRatio, percentile, type RenderStats } from './performance';
-import { aboveHorizon, findSkyObject } from '../lib/exploration';
+import { aboveHorizon, angularDiameter, findSkyObject } from '../lib/exploration';
 import { pickStarAt, starAlpha } from './starPicking';
 import { CLOUD_DRIFT_FPS, PRECIPITATION_VISIBLE, weatherMotion } from './weatherMotion';
 import {
@@ -32,6 +32,9 @@ import { createStarMaterial, diurnalTurn, setRotationMatrix } from './starMateri
 const STAR_DISTANCE = 1770;
 /** World distance covering the most refraction lifts a star (about 0.6° at the horizon). */
 const REFRACTION_MARGIN = STAR_DISTANCE * Math.sin((0.6 * Math.PI) / 180);
+/** Smallest radius of the target ring (.sky-target), and its gap around a zoomed disc. */
+const MARKER_RADIUS_PX = 17;
+const MARKER_GAP_PX = 8;
 /** Real time, in seconds, the sky may keep turning past a tick before it waits for the next one. */
 const MAX_EXTRAPOLATION = 0.5;
 
@@ -329,6 +332,10 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
       camera,
       (heading) => onHeadingChange?.(heading),
       (x, y) => {
+        // A tap can arrive before the next frame after the view moved (e.g. right after centering an
+        // object); pick against the camera as it is now, not as it was last drawn.
+        camera.updateMatrixWorld();
+        celestial.updateMatrixWorld();
         const rect = renderer.domElement.getBoundingClientRect();
         const pointer = new THREE.Vector2(
           ((x - rect.left) / rect.width) * 2 - 1,
@@ -345,7 +352,6 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
           return;
         }
         if (!activeShowStars || starMaterial.uniforms.uOpacity.value < 0.05) return;
-        celestial.updateMatrixWorld();
         const index = pickStarAt(
           starPoints,
           camera,
@@ -525,6 +531,12 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
           Math.abs(projected.y) < 0.88
         ) {
           targetMarker.hidden = false;
+          // A zoomed Sun or Moon is circled rather than covered, even when cloud hides the disc.
+          const discPx = ((angularDiameter(target) / camera.fov) * host.clientHeight) / 2;
+          targetMarker.style.setProperty(
+            '--ring',
+            `${Math.round(Math.max(MARKER_RADIUS_PX, discPx + MARKER_GAP_PX) * 2)}px`,
+          );
           targetMarker.style.left = `${(projected.x + 1) * 50}%`;
           targetMarker.style.top = `${(1 - projected.y) * 50}%`;
           targetLabel.textContent = `${target.name} · position`;

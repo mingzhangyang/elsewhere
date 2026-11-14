@@ -990,9 +990,9 @@ input[type='range'] {
 .sky-target {
   position: absolute;
   z-index: 3;
-  width: 34px;
-  height: 34px;
-  margin: -17px;
+  width: var(--ring, 34px);
+  height: var(--ring, 34px);
+  margin: calc(var(--ring, 34px) / -2);
   border: 1px solid #f2d2a4;
   border-radius: 50%;
   box-shadow: 0 0 0 1px #0008;
@@ -1004,7 +1004,7 @@ input[type='range'] {
 .sky-target span {
   position: absolute;
   left: 50%;
-  top: 42px;
+  top: calc(var(--ring, 34px) + 8px);
   transform: translateX(-50%);
   white-space: nowrap;
   font-size: 12px;
@@ -1681,7 +1681,7 @@ dialog:not([open]) {
 @media (max-height: 620px) {
   .sky-target span {
     top: auto;
-    bottom: 42px;
+    bottom: calc(var(--ring, 34px) + 8px);
   }
   .focus-summary p {
     display: none;
