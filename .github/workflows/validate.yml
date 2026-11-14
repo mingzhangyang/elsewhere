@@ -46,6 +46,9 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npx playwright install --with-deps chromium firefox webkit
+      # Chromium bundles a software GL (SwiftShader); Firefox does not. Without Mesa's drivers on the
+      # GPU-less runner, Firefox cannot create a WebGL context and the 3D sky never starts.
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libegl1 libgl1-mesa-dri
       - run: npm run test:browser
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
