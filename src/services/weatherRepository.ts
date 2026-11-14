@@ -1,5 +1,6 @@
 import { fetchWeatherForDate, weatherKey } from '../lib/weather';
 import type { LocationInfo, WeatherResult } from '../types';
+import { describeNetworkFailure } from '../lib/networkErrors';
 
 /** In-memory only: choosing device coordinates never persists them implicitly. */
 export class WeatherRepository {
@@ -38,7 +39,7 @@ export class WeatherRepository {
             key,
             fetchedAt: this.now(),
             status: 'error',
-            message: error instanceof Error ? error.message : 'Could not load weather.',
+            message: describeNetworkFailure(error, 'weather'),
           }),
         )
         .then((data): WeatherResult => {

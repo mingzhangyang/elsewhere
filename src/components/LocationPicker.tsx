@@ -3,6 +3,7 @@ import { Bookmark, Check, ChevronDown, LocateFixed, MapPin, Search, X } from 'lu
 import type { LocationInfo } from '../types';
 import { normalizeLocation, PRESETS } from '../lib/locations';
 import { searchLocations } from '../lib/weather';
+import { describeNetworkFailure } from '../lib/networkErrors';
 
 export default function LocationPicker({
   location,
@@ -55,8 +56,7 @@ export default function LocationPicker({
           if (!controller.signal.aborted) setResults(items);
         })
         .catch((reason) => {
-          if (!controller.signal.aborted)
-            setError(reason instanceof Error ? reason.message : 'Search failed.');
+          if (!controller.signal.aborted) setError(describeNetworkFailure(reason, 'search'));
         })
         .finally(() => {
           if (!controller.signal.aborted) setBusy(false);
