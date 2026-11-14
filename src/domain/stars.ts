@@ -15,7 +15,8 @@ export interface CatalogStar {
   pmra: number;
   pmdec: number;
 }
-type CatalogRow = (string | number | null)[];
+/** One HYG row as stored in src/data/stars.json. */
+export type CatalogRow = (string | number | null)[];
 
 export interface Constellation {
   name: string;
@@ -34,15 +35,18 @@ let loading: Promise<void> | null = null;
 
 export const starCatalogLoaded = () => STAR_CATALOG.length > 0;
 
-/** Loads the catalog once; a failed attempt can be retried. */
-export function loadStarCatalog(): Promise<void> {
-  loading ??= import('../data/stars.json').then(
-    (module) => installCatalog(module.default as CatalogRow[]),
-    (error) => {
+/**
+ * Installs the catalog once from `load` (services/starCatalog.ts in the app, the file system in
+ * tests and scripts). Any failure, in loading or in installing, clears the attempt so a later call
+ * starts over.
+ */
+export function loadStarCatalog(load: () => Promise<CatalogRow[]>): Promise<void> {
+  loading ??= load()
+    .then(installCatalog)
+    .catch((error: unknown) => {
       loading = null;
       throw error;
-    },
-  );
+    });
   return loading;
 }
 

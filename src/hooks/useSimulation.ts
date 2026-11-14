@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { LocationInfo } from '../types';
 import { calculateDailyEvents, calculateSky } from '../domain/astronomy';
-import { loadStarCatalog, starCatalogLoaded } from '../domain/stars';
+import { starCatalogLoaded } from '../domain/stars';
+import { loadStars } from '../services/starCatalog';
 import { civilDayStart, getZonedParts, localDayBounds, MAX_INSTANT, MIN_INSTANT } from '../domain/time';
 
 export function useSimulation(initialLocation: LocationInfo, initialTime?: Date) {
@@ -37,7 +38,7 @@ export function useSimulation(initialLocation: LocationInfo, initialTime?: Date)
   useEffect(() => {
     if (stars !== 'loading') return;
     let active = true;
-    loadStarCatalog().then(
+    loadStars().then(
       () => active && setStars('ready'),
       () => active && setStars('error'),
     );

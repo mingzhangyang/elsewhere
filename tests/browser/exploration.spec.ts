@@ -2,6 +2,9 @@ import { createRequire } from 'node:module';
 import { expect, test } from '@playwright/test';
 
 const axeScript = createRequire(import.meta.url).resolve('axe-core/axe.min.js');
+// The star catalog data request: /src/data/stars.json in development, a hashed assets/stars-*.json
+// in production. No query string: in development `stars.json?url` is a module the app itself needs.
+const CATALOG = /\/stars(-[\w-]+)?\.json$/;
 
 // Canvas-dependent cases below fail confusingly without WebGL; this names the cause directly.
 test('the 3D sky starts', async ({ page }) => {
@@ -36,8 +39,7 @@ test('clicking centered Mizar selects Mizar instead of Alcor', async ({ page }) 
 test('the first screen does not wait for the star catalog', async ({ page }) => {
   let release = () => {};
   const held = new Promise<void>((resolve) => (release = resolve));
-  // Dev serves the catalog module as /src/data/stars.json; production as a catalog-*.js chunk.
-  await page.route(/stars\.json|\/catalog-[\w-]+\.js/, async (route) => {
+  await page.route(CATALOG, async (route) => {
     await held;
     await route.continue();
   });
@@ -51,6 +53,21 @@ test('the first screen does not wait for the star catalog', async ({ page }) => 
   await expect(page.getByText('Stars are still loading…')).toHaveCount(0);
   await page.getByRole('searchbox', { name: 'Find an object' }).fill('Vega');
   await expect(page.getByRole('group', { name: 'Celestial objects' })).toContainText('Vega');
+});
+
+test('a failed star catalog download can be retried once the connection returns', async ({ page }) => {
+  let offline = true;
+  await page.route(CATALOG, (route) => (offline ? route.abort('internetdisconnected') : route.continue()));
+  await page.goto('/?scenario=night', { waitUntil: 'domcontentloaded' });
+  const notice = page.getByRole('status').filter({ hasText: 'The star catalog could not load' });
+  await expect(notice).toBeVisible();
+  await page.getByRole('button', { name: 'Objects', exact: true }).click();
+  offline = false;
+  await page.getByRole('button', { name: 'Try again' }).click();
+  await page.getByRole('searchbox', { name: 'Find an object' }).fill('Vega');
+  await expect(page.getByRole('group', { name: 'Celestial objects' })).toContainText('Vega');
+  // The failure notice is withdrawn once the stars are in.
+  await expect(notice).toHaveCount(0);
 });
 
 test('keyboard location selection preserves the instant and returns focus', async ({ page }) => {

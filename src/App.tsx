@@ -45,6 +45,9 @@ import {
 } from './lib/persistence';
 import type { RenderStats } from './renderer/performance';
 
+const STARS_UNAVAILABLE =
+  'The star catalog could not load. The Sun and Moon remain available; try again from Objects.';
+
 export interface AppProps {
   initialLocation?: LocationInfo;
   initialTime?: Date;
@@ -141,10 +144,9 @@ export default function App({
     (usable ? trigger : objectsTrigger.current)?.focus();
   }, [panel]);
   useEffect(() => {
-    if (stars === 'error')
-      setNotice(
-        'The star catalog could not load. The Sun and Moon remain available; try again from Objects.',
-      );
+    if (stars === 'error') setNotice(STARS_UNAVAILABLE);
+    // Once a retry succeeds, withdraw the failure notice (but never someone else's).
+    else if (stars === 'ready') dispatch({ type: 'dismiss-notice', message: STARS_UNAVAILABLE });
   }, [stars]);
   useEffect(() => {
     const unavailable = () =>

@@ -1,8 +1,11 @@
+import { readFile } from 'node:fs/promises';
 import { createServer } from 'vite';
 const server = await createServer({ server: { middlewareMode: true } });
 try {
   await (await server.ssrLoadModule('/src/domain/temporal.ts')).ensureTemporal();
-  await (await server.ssrLoadModule('/src/domain/stars.ts')).loadStarCatalog();
+  await (
+    await server.ssrLoadModule('/src/domain/stars.ts')
+  ).loadStarCatalog(async () => JSON.parse(await readFile('src/data/stars.json', 'utf8')));
   const { calculateSky, calculateDailyEvents } = await server.ssrLoadModule('/src/domain/astronomy.ts');
   const { PRESETS } = await server.ssrLoadModule('/src/lib/locations.ts');
   const date = new Date('2026-11-24T02:00Z'),

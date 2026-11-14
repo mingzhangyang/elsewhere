@@ -71,6 +71,15 @@ describe('exploration flows without rendering', () => {
     });
   });
 
+  it('withdraws a notice only while it still says the same thing', () => {
+    const failed = run(fresh(), { type: 'notice', message: 'Stars could not load.' });
+    expect(run(failed, { type: 'dismiss-notice', message: 'Stars could not load.' }).notice).toBe('');
+    const replaced = run(failed, { type: 'notice', message: 'Preferences could not be saved.' });
+    expect(run(replaced, { type: 'dismiss-notice', message: 'Stars could not load.' }).notice).toBe(
+      'Preferences could not be saved.',
+    );
+  });
+
   it('previews a clear sky without touching the underlying conditions', () => {
     const base = { ...defaultWeatherValues(), cloudCover: 100, precipitation: 3, haze: 40 };
     expect(presentedWeather(base, false)).toBe(base);

@@ -38,7 +38,9 @@ export type ExplorationAction =
   | { type: 'clear-sky'; value: boolean }
   | { type: 'layer'; key: keyof LayerSettings; value: boolean }
   | { type: 'immersive'; value: boolean }
-  | { type: 'notice'; message: string };
+  | { type: 'notice'; message: string }
+  /** Clears the notice only if it still says `message`, so an unrelated notice survives. */
+  | { type: 'dismiss-notice'; message: string };
 
 export function initialExploration(shared: Exploration | null, notice = ''): ExplorationState {
   return {
@@ -98,6 +100,8 @@ export function explorationReducer(state: ExplorationState, action: ExplorationA
       return { ...state, immersive: action.value, panel: null };
     case 'notice':
       return { ...state, notice: action.message };
+    case 'dismiss-notice':
+      return state.notice === action.message ? { ...state, notice: '' } : state;
   }
 }
 
