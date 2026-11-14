@@ -1,6 +1,8 @@
 # Product direction: making Elsewhere stand out
 
-Status: proposal for discussion, November 14, 2026. It does not replace the [app roadmap](../ROADMAP.md) or the [mobile roadmap](MOBILE_ROADMAP.md); where it disagrees with them, that is called out below and is a decision for the project owner.
+> **Archived November 14, 2026.** The proposal was reviewed and adopted, with changes, in the [current roadmap](../../ROADMAP.md). Figures and status below are as of the document's own date.
+
+Status: proposal for discussion, November 14, 2026. It does not replace the [app roadmap](refactor-roadmap.md) or the [mobile roadmap](mobile-roadmap.md); where it disagrees with them, that is called out below and is a decision for the project owner.
 
 ## Summary
 

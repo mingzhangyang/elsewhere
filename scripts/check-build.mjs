@@ -20,7 +20,11 @@ for (const path of paths.filter((p) => p.endsWith('.js') || p.endsWith('.json'))
 }
 assert(gzip < 500000, `Total JS and data gzip ${gzip} exceeds 500 kB`);
 assert(largest < 500000, `Largest JS chunk ${largest} exceeds 500 kB`);
-assert((await readFile('dist/assets/moon-lroc.jpg')).length < 600000, 'Moon asset exceeds 600 kB');
+const moonMap = paths.find((p) => /^moon-lroc-[\w-]{8}\.jpg$/.test(p));
+assert(moonMap, 'Moon map missing or not content-hashed');
+assert((await readFile('dist/assets/' + moonMap)).length < 600000, 'Moon asset exceeds 600 kB');
+// Cloudflare serves everything under /assets/ as immutable (public/_headers), so every file there must be content-hashed.
+for (const path of paths) assert(/-[\w-]{8}\.\w+$/.test(path), `Unhashed file under dist/assets: ${path}`);
 
 const listeners = new Map(),
   stores = new Map([
@@ -34,7 +38,11 @@ const fetchLocal = async (request) => {
   const url = new URL(typeof request === 'string' ? request : request.url);
   // Vite's preview server varies responses by Origin. Crossorigin script/style
   // requests carry that header, while URL-only precache requests do not.
-  return new Response(await readFile('dist' + url.pathname), { headers: { Vary: 'Origin' } });
+  // Like Cloudflare, answer /index.html and /credits.html through a redirect to / and /credits.
+  const redirected = url.pathname.endsWith('.html');
+  const response = new Response(await readFile('dist' + url.pathname), { headers: { Vary: 'Origin' } });
+  if (redirected) Object.defineProperty(response, 'redirected', { value: true });
+  return response;
 };
 const caches = {
   keys: async () => [...stores.keys()],
@@ -43,11 +51,8 @@ const caches = {
     if (!stores.has(key)) stores.set(key, new Map());
     const store = stores.get(key);
     return {
-      addAll: async (urls) => {
-        for (const url of urls) {
-          const request = new Request(url);
-          store.set(request.url, { request, response: await fetchLocal(request) });
-        }
+      put: async (request, response) => {
+        store.set(request.url, { request, response });
       },
       match: async (req) => {
         const request = typeof req === 'string' ? new Request(req) : req;
@@ -68,6 +73,7 @@ const caches = {
 };
 vm.runInNewContext(await readFile('dist/sw.js', 'utf8'), {
   URL,
+  Request,
   Response,
   caches,
   fetch: fetchLocal,
@@ -101,7 +107,19 @@ listeners.get('fetch')({
     reply = p;
   },
 });
-assert.equal(await (await reply).text(), await readFile('dist/index.html', 'utf8'));
+const shellReply = await reply;
+assert.equal(shellReply.redirected, false, 'A navigation must not be answered with a redirected response');
+assert.equal(await shellReply.text(), await readFile('dist/index.html', 'utf8'));
+reply = undefined;
+listeners.get('fetch')({
+  request: { url: origin + '/credits', method: 'GET', mode: 'navigate' },
+  respondWith: (p) => {
+    reply = p;
+  },
+});
+assert.equal(await (await reply).text(), await readFile('dist/credits.html', 'utf8'), 'Offline /credits');
+const manifest = await readFile('dist/sw.js', 'utf8');
+assert(!manifest.includes('_headers'), 'Host configuration must not be precached');
 const shell = await caches.open([...stores.keys()].find((key) => key.startsWith('elsewhere-')));
 for (const path of paths.filter((p) => /\.(js|css|jpg)$/.test(p))) {
   const url = `${origin}/assets/${path}`;

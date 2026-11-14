@@ -4,6 +4,8 @@ import type { SkyState, Star, WeatherValues } from '../types';
 import type { CameraView, Preferences } from '../lib/persistence';
 import { createCelestialLayers, type ScreenBox } from './celestialLayers';
 import { seededRandom } from '../lib/random';
+// Bundled through Vite so its URL carries a content hash and can be cached as immutable.
+import moonMapUrl from '../assets/moon-lroc.jpg?url';
 import {
   SKY_VERTEX,
   SKY_FRAGMENT,
@@ -218,7 +220,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
 
     const moonGroup = new THREE.Group();
     const moonTexture = new THREE.TextureLoader().load(
-      import.meta.env.BASE_URL + 'assets/moon-lroc.jpg',
+      moonMapUrl,
       (texture) => {
         if (disposed) texture.dispose();
         else invalidate();

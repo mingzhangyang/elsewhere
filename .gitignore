@@ -6,6 +6,7 @@ dist/
 coverage/
 test-results/
 playwright-report/
+.wrangler/
 .env.local
 
 # Logs
