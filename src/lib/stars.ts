@@ -1,3 +1,4 @@
+import * as Astronomy from 'astronomy-engine';
 import type { Star } from '../types';
 import rows from '../data/stars.json';
 
@@ -154,6 +155,13 @@ export function calculateStarPositions(
   return STAR_CATALOG.map((star) => {
     const moved = movedEquatorial(star, (date.getTime() - Date.UTC(2000, 0, 1, 12)) / (365.25 * 86400000));
     const apparentEquator = precessJ2000(moved.ra, moved.dec, date);
+    const geometric = horizontalFromEquatorial(
+      apparentEquator.raHours,
+      apparentEquator.decDegrees,
+      latitude,
+      longitude,
+      greenwichSiderealHours,
+    );
     return {
       id: star.id,
       name: star.name,
@@ -161,13 +169,10 @@ export function calculateStarPositions(
       colorIndex: star.colorIndex,
       ra: star.ra,
       dec: star.dec,
-      ...horizontalFromEquatorial(
-        apparentEquator.raHours,
-        apparentEquator.decDegrees,
-        latitude,
-        longitude,
-        greenwichSiderealHours,
-      ),
+      // The same standard-atmosphere refraction as the Sun and Moon, so low stars keep their places
+      // beside them (up to about 0.5° at the horizon).
+      altitude: geometric.altitude + Astronomy.Refraction('normal', geometric.altitude),
+      azimuth: geometric.azimuth,
     };
   });
 }
