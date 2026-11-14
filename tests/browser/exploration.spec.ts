@@ -7,7 +7,10 @@ test('the 3D sky starts', async ({ page }) => {
   const webgl = await page.evaluate(() => {
     const canvas = document.createElement('canvas');
     let reason = '';
-    canvas.addEventListener('webglcontextcreationerror', (event) => (reason = event.statusMessage));
+    canvas.addEventListener(
+      'webglcontextcreationerror',
+      (event) => (reason = (event as WebGLContextEvent).statusMessage),
+    );
     return canvas.getContext('webgl2') || canvas.getContext('webgl') ? 'available' : reason || 'unavailable';
   });
   expect(webgl, 'WebGL context').toBe('available');
