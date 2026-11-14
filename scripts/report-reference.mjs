@@ -3,6 +3,7 @@ import { createServer } from 'vite';
 
 const server = await createServer({ server: { middlewareMode: true } });
 try {
+  await (await server.ssrLoadModule('/src/domain/temporal.ts')).ensureTemporal();
   const { calculateSky, calculateDailyEvents } = await server.ssrLoadModule('/src/domain/astronomy.ts');
   const { civilDayStart, wallTimeCandidates } = await server.ssrLoadModule('/src/domain/time.ts');
   const references = JSON.parse(await readFile('tests/fixtures/horizons/provenance.json', 'utf8'));

@@ -1,4 +1,4 @@
-import { Temporal } from '@js-temporal/polyfill';
+import { Temporal } from './temporal';
 
 export const MIN_INSTANT = Date.UTC(1900, 0, 1);
 export const MAX_INSTANT = Date.UTC(2101, 0, 1) - 1;
