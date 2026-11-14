@@ -7,7 +7,7 @@ import {
   shiftLocalDate,
   wallTimeCandidates,
   zonedDateTimeToUtc,
-} from '../src/lib/time';
+} from '../src/domain/time';
 
 describe('civil time', () => {
   it.each([

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { Star } from '../types';
-import { CONSTELLATIONS } from '../lib/stars';
+import { CONSTELLATIONS } from '../domain/stars';
 import { directionVector, makeTextSprite, setAtDirection } from './resources';
 
 /**

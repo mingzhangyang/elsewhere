@@ -25,11 +25,13 @@ import { createCameraViewStore } from './lib/cameraViewStore';
 import type { LocationInfo } from './types';
 import { useSimulation } from './hooks/useSimulation';
 import { useWeather } from './hooks/useWeather';
-import { formatTime, MAX_INSTANT } from './lib/time';
-import { calculateSky, nextBodyRise } from './lib/astronomy';
+import { formatTime, MAX_INSTANT } from './domain/time';
+import { calculateSky, nextBodyRise } from './domain/astronomy';
 import { findSkyObject, framingFov, objectVisibility, type SkyObject } from './lib/exploration';
 import { explorationReducer, initialExploration, presentedWeather, type Panel } from './lib/explorationState';
-import { fetchWeatherForDate, renderingWeather, weatherSourceLabel } from './lib/weather';
+import { fetchWeatherForDate } from './services/openMeteo';
+import { renderingWeather } from './domain/weather';
+import { weatherSourceLabel } from './lib/weatherText';
 import { isDeviceLocation, PRESETS } from './lib/locations';
 import {
   DEFAULT_FOV,

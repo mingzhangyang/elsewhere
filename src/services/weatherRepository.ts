@@ -1,4 +1,5 @@
-import { fetchWeatherForDate, weatherKey } from '../lib/weather';
+import { fetchWeatherForDate } from './openMeteo';
+import { weatherKey } from '../domain/weather';
 import type { LocationInfo, WeatherResult } from '../types';
 import { describeNetworkFailure } from '../lib/networkErrors';
 

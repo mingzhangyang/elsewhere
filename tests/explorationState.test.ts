@@ -6,7 +6,7 @@ import {
   type ExplorationAction,
   type ExplorationState,
 } from '../src/lib/explorationState';
-import { defaultWeatherValues } from '../src/lib/weather';
+import { defaultWeatherValues } from '../src/domain/weather';
 import type { Exploration } from '../src/lib/persistence';
 import { NEW_YORK } from './fixtures/locations';
 

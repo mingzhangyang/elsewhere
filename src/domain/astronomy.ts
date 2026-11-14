@@ -1,4 +1,4 @@
-import { validateObserver } from '../domain/observer';
+import { validateObserver } from './observer';
 import * as Astronomy from 'astronomy-engine';
 import type { LocationInfo, SkyEvents, SkyState } from '../types';
 import { localDayBounds, validateInstant, MIN_INSTANT, MAX_INSTANT } from './time';

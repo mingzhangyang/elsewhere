@@ -1,6 +1,6 @@
 import type { WeatherValues } from '../types';
 import type { Exploration, LayerSettings } from './persistence';
-import { customConditions, defaultWeatherValues } from './weather';
+import { customConditions, defaultWeatherValues } from '../domain/weather';
 
 export type Panel = 'objects' | 'weather' | 'settings';
 

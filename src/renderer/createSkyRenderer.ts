@@ -25,7 +25,7 @@ import {
   starPointSize,
   twilightVisibility,
   weatherVisibility,
-} from '../lib/starVisibility';
+} from '../domain/starVisibility';
 import { createStarMaterial, diurnalTurn, setRotationMatrix } from './starMaterial';
 
 /** Radius of the sphere the star points are placed on. */

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { calculateDailyEvents, calculateSky } from '../src/lib/astronomy';
-import { civilDayStart, localDayBounds } from '../src/lib/time';
-import { horizontalFromEquatorial } from '../src/lib/stars';
+import { calculateDailyEvents, calculateSky } from '../src/domain/astronomy';
+import { civilDayStart, localDayBounds } from '../src/domain/time';
+import { horizontalFromEquatorial } from '../src/domain/stars';
 import { NEW_YORK, SYDNEY, TROMSO } from './fixtures/locations';
-import { MIN_INSTANT, MAX_INSTANT } from '../src/lib/time';
+import { MIN_INSTANT, MAX_INSTANT } from '../src/domain/time';
 
 describe('sky invariants', () => {
   it.each([MIN_INSTANT, MAX_INSTANT])(

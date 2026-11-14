@@ -1,4 +1,4 @@
-import type { StarField } from './lib/stars';
+import type { StarField } from './domain/stars';
 export interface LocationInfo {
   id: string;
   name: string;

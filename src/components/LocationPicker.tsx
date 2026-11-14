@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Bookmark, Check, ChevronDown, LocateFixed, MapPin, Search, X } from 'lucide-react';
 import type { LocationInfo } from '../types';
 import { normalizeLocation, PRESETS } from '../lib/locations';
-import { searchLocations } from '../lib/weather';
+import { searchLocations } from '../services/placeSearch';
 import { describeNetworkFailure } from '../lib/networkErrors';
 
 export default function LocationPicker({

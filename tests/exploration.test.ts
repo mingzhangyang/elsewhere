@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculateSky, nextBodyRise } from '../src/lib/astronomy';
+import { calculateSky, nextBodyRise } from '../src/domain/astronomy';
 import {
   angularDiameter,
   findSkyObject,
@@ -8,7 +8,7 @@ import {
   skyObjects,
   type SkyObject,
 } from '../src/lib/exploration';
-import { defaultWeatherValues } from '../src/lib/weather';
+import { defaultWeatherValues } from '../src/domain/weather';
 import { NEW_YORK } from './fixtures/locations';
 import { MIN_FOV, type Preferences } from '../src/lib/persistence';
 

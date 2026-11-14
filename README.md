@@ -50,15 +50,15 @@ The responsive shell keeps a separate time dock and one inspector. The renderer 
 
 ## Architecture
 
-| Area                                                         | Responsibility                                                                                    |
-| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
-| `src/lib/astronomy.ts`, `stars.ts`, `time.ts`                | Domain calculations, numerical and time-zone contracts                                            |
-| `src/lib/weather.ts`, `src/lib/locations.ts`, `src/services` | Provider adapters, validation, cancellation, cache and provenance                                 |
-| `src/hooks`                                                  | Simulation clock and data subscriptions                                                           |
-| `src/renderer`                                               | Camera input, retained celestial layers, atmosphere, particles, scheduling and resource ownership |
-| `src/components`, `src/App.tsx`                              | Accessible exploration controls and presentation                                                  |
-| `src/lib/persistence.ts`                                     | Versioned preferences and shareable state                                                         |
-| `src/dev`, `tests`, `scripts`                                | Development fixtures, qualification checks and asset tooling                                      |
+| Area                            | Responsibility                                                                                                                                                                                           |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/domain`                    | Platform-independent calculations: astronomy, stars, time zones, star visibility, weather sample selection. Imports nothing from the app, network or renderer (enforced by `tests/architecture.test.ts`) |
+| `src/services`                  | Open-Meteo weather and place-search clients, response validation, cancellation, cache and provenance                                                                                                     |
+| `src/lib`                       | Application state and wording: exploration reducer, visibility explanations, preferences and share links, locations, network messages                                                                    |
+| `src/hooks`                     | Simulation clock and data subscriptions                                                                                                                                                                  |
+| `src/renderer`                  | Camera input, the rigid star sphere and its shader, retained celestial layers, atmosphere, particles, scheduling and resource ownership                                                                  |
+| `src/components`, `src/App.tsx` | Accessible exploration controls and presentation; App wires state to components                                                                                                                          |
+| `src/dev`, `tests`, `scripts`   | Development fixtures, qualification checks and asset tooling                                                                                                                                             |
 
 ## Scope and sources
 

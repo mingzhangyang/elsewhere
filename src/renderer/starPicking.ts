@@ -7,7 +7,7 @@ import {
   type PerspectiveCamera,
   type Points,
 } from 'three';
-import { magnitudeVisibility, starIntensity } from '../lib/starVisibility';
+import { magnitudeVisibility, starIntensity } from '../domain/starVisibility';
 import type { Star } from '../types';
 
 /** Screen radius, in CSS pixels, within which a tap selects a star at any zoom. */

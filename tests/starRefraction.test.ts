@@ -1,7 +1,7 @@
 import * as Astronomy from 'astronomy-engine';
 import { expect, it } from 'vitest';
-import { calculateSky } from '../src/lib/astronomy';
-import { STAR_CATALOG } from '../src/lib/stars';
+import { calculateSky } from '../src/domain/astronomy';
+import { STAR_CATALOG } from '../src/domain/stars';
 import { NEW_YORK, SYDNEY, TROMSO } from './fixtures/locations';
 
 // Compare low stars with astronomy-engine's own apparent, refracted positions for the same catalog

@@ -1,5 +1,7 @@
 import type { SkyState, Star, WeatherValues } from '../types';
-import type { Preferences } from './persistence';
+
+/** Illustrative light-pollution setting chosen by the visitor. */
+export type SkyBrightness = 'dark' | 'suburban' | 'city';
 
 /**
  * One star-visibility model shared by the renderer (what is drawn) and the exploration text (what
@@ -29,7 +31,7 @@ export function twilightVisibility(sunAltitude: number): number {
 
 /** Faintest magnitude visible overhead for the chosen light pollution, reduced by a high bright Moon. */
 export function limitingMagnitude(
-  skyBrightness: Preferences['skyBrightness'],
+  skyBrightness: SkyBrightness,
   moon: Pick<SkyState['moon'], 'altitude' | 'illumination'>,
 ): number {
   const base = skyBrightness === 'city' ? 3 : skyBrightness === 'suburban' ? 4.5 : 6;
@@ -93,7 +95,7 @@ export function starVisibilityFactors(
   star: Pick<Star, 'altitude' | 'magnitude'>,
   sky: Pick<SkyState, 'sunAltitude' | 'moon'>,
   weather: Pick<WeatherValues, 'visibilityKm' | 'haze'>,
-  skyBrightness: Preferences['skyBrightness'],
+  skyBrightness: SkyBrightness,
 ): StarVisibilityFactors {
   const twilight = twilightVisibility(sky.sunAltitude);
   const magnitude = magnitudeVisibility(star, limitingMagnitude(skyBrightness, sky.moon));

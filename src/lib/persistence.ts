@@ -1,7 +1,8 @@
 import type { LocationInfo, WeatherValues } from '../types';
+import type { SkyBrightness } from '../domain/starVisibility';
 import { validateObserver } from '../domain/observer';
-import { validateInstant } from './time';
-import { defaultWeatherValues } from './weather';
+import { validateInstant } from '../domain/time';
+import { defaultWeatherValues } from '../domain/weather';
 import { normalizeLocation } from './locations';
 
 export interface LayerSettings {
@@ -29,7 +30,7 @@ export interface Preferences {
   reducedMotion: boolean;
   quality: 'auto' | 'low' | 'high';
   horizon: 'flat' | 'ridge';
-  skyBrightness: 'dark' | 'suburban' | 'city';
+  skyBrightness: SkyBrightness;
 }
 export interface Exploration {
   version: 1;

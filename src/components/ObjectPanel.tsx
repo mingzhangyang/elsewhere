@@ -3,7 +3,7 @@ import { ArrowLeft, Crosshair, Moon, Star, Sun } from 'lucide-react';
 import type { SkyState, WeatherValues } from '../types';
 import type { Preferences } from '../lib/persistence';
 import { aboveHorizon, objectVisibility, skyObjects, type SkyObject } from '../lib/exploration';
-import { formatTime } from '../lib/time';
+import { formatTime } from '../domain/time';
 import MoonPhase from './MoonPhase';
 
 export default function ObjectPanel({

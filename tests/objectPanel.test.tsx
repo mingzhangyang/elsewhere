@@ -1,10 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { expect, it } from 'vitest';
 import ObjectPanel from '../src/components/ObjectPanel';
-import { calculateSky } from '../src/lib/astronomy';
+import { calculateSky } from '../src/domain/astronomy';
 import { aboveHorizon, skyObjects } from '../src/lib/exploration';
 import type { Preferences } from '../src/lib/persistence';
-import { defaultWeatherValues } from '../src/lib/weather';
+import { defaultWeatherValues } from '../src/domain/weather';
 import { NEW_YORK } from './fixtures/locations';
 
 const preferences: Preferences = {

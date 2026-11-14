@@ -9,7 +9,7 @@ import {
   MIN_INSTANT,
   shiftLocalDate,
   wallTimeCandidates,
-} from '../lib/time';
+} from '../domain/time';
 import type { SkyEvents } from '../types';
 
 export default function TimeConsole({

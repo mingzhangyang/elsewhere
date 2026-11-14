@@ -3,7 +3,8 @@ import { createFrameLoop } from '../src/renderer/frameLoop';
 import { adaptiveRatio } from '../src/renderer/performance';
 import { WeatherRepository } from '../src/services/weatherRepository';
 import { NEW_YORK } from './fixtures/locations';
-import { defaultWeatherValues, selectWeather, weatherKey, weatherSourceLabel } from '../src/lib/weather';
+import { defaultWeatherValues, selectWeather, weatherKey } from '../src/domain/weather';
+import { weatherSourceLabel } from '../src/lib/weatherText';
 import type { WeatherResult } from '../src/types';
 
 it('coalesces static renders, suspends hidden frames, and cancels all work on disposal', () => {

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { STAR_MODEL } from '../lib/starVisibility';
+import { STAR_MODEL } from '../domain/starVisibility';
 
 const glsl = (value: number) => (Number.isInteger(value) ? value.toFixed(1) : String(value));
 

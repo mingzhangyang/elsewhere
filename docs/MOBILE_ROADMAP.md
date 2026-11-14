@@ -116,15 +116,15 @@ Separate hosted-web rollback from native recovery. Preserve complete web artifac
 
 ## Shared architecture
 
-| Existing area                                 | Planned change                                                                                                          |
-| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `src/lib/astronomy.ts`, `stars.ts`, `time.ts` | Keep platform-independent calculations and reference fixtures                                                           |
-| `src/hooks/useSimulation.ts`                  | Preserve clock semantics; make transitions between live pointing and simulated exploration explicit                     |
-| `src/renderer/cameraControls.ts`              | Separate manual camera input from a sensor attitude adapter with explicit input ownership                               |
-| `src/renderer/createSkyRenderer.ts`           | Reuse retained rendering and quality controls; measure device-specific bottlenecks before changing rendering technology |
-| `src/lib/persistence.ts`                      | Retain schema validation; separate serialization from web/native storage and canonical share-link construction          |
-| `src/main.tsx`, `scripts/offline-plugin.ts`   | Keep hosted-web caching distinct from native bundled startup                                                            |
-| Proposed `src/platform` modules               | Define small interfaces for location, orientation, lifecycle, storage, sharing, and incoming links                      |
+| Existing area                                            | Planned change                                                                                                          |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `src/domain` (astronomy, stars, time, weather selection) | Keep platform-independent calculations and reference fixtures                                                           |
+| `src/hooks/useSimulation.ts`                             | Preserve clock semantics; make transitions between live pointing and simulated exploration explicit                     |
+| `src/renderer/cameraControls.ts`                         | Separate manual camera input from a sensor attitude adapter with explicit input ownership                               |
+| `src/renderer/createSkyRenderer.ts`                      | Reuse retained rendering and quality controls; measure device-specific bottlenecks before changing rendering technology |
+| `src/lib/persistence.ts`                                 | Retain schema validation; separate serialization from web/native storage and canonical share-link construction          |
+| `src/main.tsx`, `scripts/offline-plugin.ts`              | Keep hosted-web caching distinct from native bundled startup                                                            |
+| Proposed `src/platform` modules                          | Define small interfaces for location, orientation, lifecycle, storage, sharing, and incoming links                      |
 
 Add adapters only as their first platform use is implemented. Avoid a broad framework migration. Reconsider a separate native renderer only when profiles establish a limitation that targeted changes cannot meet within the agreed device budget.
 

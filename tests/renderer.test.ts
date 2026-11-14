@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { expect, it, vi } from 'vitest';
 import { createCelestialLayers } from '../src/renderer/celestialLayers';
-import { calculateSky } from '../src/lib/astronomy';
+import { calculateSky } from '../src/domain/astronomy';
 import { NEW_YORK } from './fixtures/locations';
 import {
   pickStarAt,

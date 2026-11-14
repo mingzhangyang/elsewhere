@@ -2,11 +2,11 @@ import { expect, it, vi } from 'vitest';
 import {
   customConditions,
   defaultWeatherValues,
-  fetchWeatherForDate,
   renderingWeather,
   selectWeather,
   weatherKey,
-} from '../src/lib/weather';
+} from '../src/domain/weather';
+import { fetchWeatherForDate } from '../src/services/openMeteo';
 import { NEW_YORK } from './fixtures/locations';
 import { weatherPayload } from './fixtures/weather';
 

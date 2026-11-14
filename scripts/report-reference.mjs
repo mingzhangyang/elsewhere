@@ -3,8 +3,8 @@ import { createServer } from 'vite';
 
 const server = await createServer({ server: { middlewareMode: true } });
 try {
-  const { calculateSky, calculateDailyEvents } = await server.ssrLoadModule('/src/lib/astronomy.ts');
-  const { civilDayStart, wallTimeCandidates } = await server.ssrLoadModule('/src/lib/time.ts');
+  const { calculateSky, calculateDailyEvents } = await server.ssrLoadModule('/src/domain/astronomy.ts');
+  const { civilDayStart, wallTimeCandidates } = await server.ssrLoadModule('/src/domain/time.ts');
   const references = JSON.parse(await readFile('tests/fixtures/horizons/provenance.json', 'utf8'));
   const maxima = {
     azimuthDegrees: 0,

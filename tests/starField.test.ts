@@ -1,8 +1,13 @@
 import * as THREE from 'three';
 import * as Astronomy from 'astronomy-engine';
 import { expect, it } from 'vitest';
-import { apparentStarVectors, calculateStarField, equatorialToScene, STAR_CATALOG } from '../src/lib/stars';
-import { calculateSky } from '../src/lib/astronomy';
+import {
+  apparentStarVectors,
+  calculateStarField,
+  equatorialToScene,
+  STAR_CATALOG,
+} from '../src/domain/stars';
+import { calculateSky } from '../src/domain/astronomy';
 import { diurnalTurn, setRotationMatrix } from '../src/renderer/starMaterial';
 import { directionVector } from '../src/renderer/resources';
 import { NEW_YORK, SYDNEY } from './fixtures/locations';

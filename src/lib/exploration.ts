@@ -1,6 +1,6 @@
 import type { SkyState, Star, WeatherValues } from '../types';
 import { MIN_FOV, type Preferences } from './persistence';
-import { STAR_VISIBLE_THRESHOLD, starVisibilityFactors, twilightVisibility } from './starVisibility';
+import { STAR_VISIBLE_THRESHOLD, starVisibilityFactors, twilightVisibility } from '../domain/starVisibility';
 
 export type SkyObject =
   | (SkyState['sun'] & { id: 'sun'; name: string; kind: 'sun' })

@@ -7,7 +7,7 @@ import {
   type Exploration,
 } from '../src/lib/persistence';
 import { isDeviceLocation, normalizeLocation, PRESETS } from '../src/lib/locations';
-import { customConditions, defaultWeatherValues } from '../src/lib/weather';
+import { customConditions, defaultWeatherValues } from '../src/domain/weather';
 
 const exploration: Exploration = {
   version: 1,
