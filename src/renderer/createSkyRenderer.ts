@@ -877,9 +877,19 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
       ...api,
       /** Redraw on the next frame, e.g. after interface panels over the sky moved. */
       redraw: () => invalidate(),
-      resetView: controls.resetView,
-      focus: controls.focus,
-      zoom: controls.zoom,
+      // The view buttons and centering stop a turn in progress, like the visitor's own look.
+      resetView: () => {
+        interrupt();
+        controls.resetView();
+      },
+      focus: (altitude: number, azimuth: number, fov?: number) => {
+        interrupt();
+        controls.focus(altitude, azimuth, fov);
+      },
+      zoom: (factor: number) => {
+        interrupt();
+        controls.zoom(factor);
+      },
       simulateContextLoss: () => {
         if (import.meta.env.DEV) renderer.forceContextLoss();
       },

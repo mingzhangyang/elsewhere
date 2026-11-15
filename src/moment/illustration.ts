@@ -1,7 +1,12 @@
 import type { MomentSnapshot } from '../lib/moment';
 import type { SkyObject } from '../lib/exploration';
 import { CONSTELLATIONS, type PatternId } from '../domain/stars';
-import { planetVisibilityFactors, starVisibilityFactors } from '../domain/starVisibility';
+import {
+  planetVisibilityFactors,
+  starVisibilityFactors,
+  twilightVisibility,
+  weatherVisibility,
+} from '../domain/starVisibility';
 import { seededRandom } from '../lib/random';
 import { HORIZON_STEP, horizonAltitude, type HorizonVariant } from './scenery';
 
@@ -184,15 +189,17 @@ export function drawIllustration(
         ctx.arc(p.x, p.y, r * 0.6, 0, Math.PI * 2);
         ctx.fill();
       }
-      if (star.magnitude < 1.3 && star.name)
+      if (layers.labels && star.magnitude < 1.3 && star.name)
         named.push({ name: text.object({ ...star, kind: 'star' }), ...p });
     }
   }
 
   // Line patterns, dashed, between stars above the horizon.
-  if (layers.lines) {
+  // Shown and faded as the renderer does (celestialLayers): by twilight and weather together.
+  const linesShare = twilightVisibility(sky.sunAltitude) * weatherVisibility(weather);
+  if (layers.lines && linesShare > 0.01) {
     const byId = new Map(sky.stars.map((s) => [s.id, s]));
-    ctx.strokeStyle = day > 0.5 ? 'rgba(255,255,255,.55)' : 'rgba(170,200,255,.6)';
+    ctx.strokeStyle = `rgba(170,200,255,${(0.6 * linesShare).toFixed(3)})`;
     ctx.lineWidth = 2.2 * unit;
     ctx.setLineDash([9 * unit, 7 * unit]);
     for (const pattern of CONSTELLATIONS) {

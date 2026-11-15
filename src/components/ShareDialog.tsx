@@ -47,7 +47,9 @@ const ShareDialog = forwardRef<ShareDialogHandle, Props>(function ShareDialog(
   // Codes and objects, not text, so everything follows a language change while the dialog is open.
   const [request, setRequest] = useState<ShareRequest | null>(null);
   const [precise, setPrecise] = useState(false);
-  const [copied, setCopied] = useState(false);
+  // The link last written to the clipboard: "Copied" shows only while it is the link on screen, so
+  // unticking "exact location" after copying never leaves a precise link looking like the rounded one.
+  const [copiedLink, setCopiedLink] = useState<string | null>(null);
   const [imageShown, setImageShown] = useState(false);
   useImperativeHandle(
     ref,
@@ -55,7 +57,7 @@ const ShareDialog = forwardRef<ShareDialogHandle, Props>(function ShareDialog(
       open: (next) => {
         setRequest(next);
         setPrecise(false);
-        setCopied(false);
+        setCopiedLink(null);
         setImageShown(false);
         dialog.current?.showModal();
       },
@@ -81,10 +83,12 @@ const ShareDialog = forwardRef<ShareDialogHandle, Props>(function ShareDialog(
       : subject
         ? m.patterns[subject.id]
         : undefined;
+  const copied = !!link && copiedLink === link;
   const copy = async () => {
+    const text = link;
     try {
-      await navigator.clipboard.writeText(link);
-      setCopied(true);
+      await navigator.clipboard.writeText(text);
+      setCopiedLink(text);
     } catch {
       input.current?.select();
       onNotice({ code: 'copy-manually' });

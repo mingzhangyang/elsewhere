@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { createProjection } from '../src/moment/projection';
 import { HORIZON_VARIANTS, horizonAltitude } from '../src/moment/scenery';
 import { wrap } from '../src/moment/postcard';
+import { drawIllustration } from '../src/moment/illustration';
+import { defaultWeatherValues } from '../src/domain/weather';
 import { ridgeAltitude, ridgeHeight, RIDGE_RADIUS } from '../src/renderer/ridge';
 import { directionVector } from '../src/renderer/resources';
 import {
@@ -164,5 +166,78 @@ describe('image text', () => {
     expect(lines.join('').replace(/\s/g, '')).toBe('位置由AstronomyEngine计算；地平线和云的形状为示意。');
     for (const line of lines) expect(line.length).toBeLessThanOrEqual(12);
     expect(lines.some((line) => line.includes('Astronomy'))).toBe(true);
+  });
+});
+
+describe('the illustrated sky follows the layers and visibility', () => {
+  /** A 2D context that records what is drawn: dashed strokes (pattern lines) and text. */
+  const recorder = () => {
+    const calls = { dashedStrokes: 0, text: [] as string[] };
+    let dashed = false;
+    const ctx = new Proxy(
+      {},
+      {
+        get: (_target, key) => {
+          if (key === 'setLineDash') return (dash: number[]) => (dashed = dash.length > 0);
+          if (key === 'stroke') return () => dashed && calls.dashedStrokes++;
+          if (key === 'fillText') return (text: string) => calls.text.push(text);
+          if (key === 'createLinearGradient' || key === 'createRadialGradient')
+            return () => ({ addColorStop: () => {} });
+          return () => {};
+        },
+        set: () => true,
+      },
+    ) as CanvasRenderingContext2D;
+    return { ctx, calls };
+  };
+  const draw = (
+    instant: string,
+    view: { heading: number; altitude: number; fov: number },
+    labels: boolean,
+  ) => {
+    const sky = calculateSky(NEW_YORK, new Date(instant));
+    const { ctx, calls } = recorder();
+    const project = createProjection(view, 1.5);
+    drawIllustration(
+      ctx,
+      1200,
+      800,
+      {
+        sky,
+        weather: { ...defaultWeatherValues(), cloudCover: 0, haze: 0, visibilityKm: 40 },
+        view,
+        aspect: 1.5,
+        layers: { stars: true, lines: true, labels },
+        location: NEW_YORK,
+        instant: new Date(instant),
+        skyBrightness: 'dark',
+        provenance: { kind: 'none' },
+      },
+      (alt, az) => {
+        const p = project(alt, az);
+        return { x: (p.x + 1) * 600, y: (1 - p.y) * 400, front: p.front };
+      },
+      'ridge',
+      { object: (object) => object.name, pattern: (id) => id },
+      'sans-serif',
+    );
+    return calls;
+  };
+  // Orion and Sirius in the south at midnight in January.
+  const night = '2026-01-10T05:00:00Z';
+  const south = { heading: 190, altitude: 30, fov: 70 };
+  it('draws pattern lines and names at night with labels on', () => {
+    const calls = draw(night, south, true);
+    expect(calls.dashedStrokes).toBeGreaterThan(0);
+    expect(calls.text).toContain('Sirius');
+  });
+  it('prints no names at all with the Labels layer off', () => {
+    expect(draw(night, south, false).text).toEqual([]);
+  });
+  it('draws no pattern lines in daylight, as the renderer hides them', () => {
+    // The Big Dipper, circumpolar from New York: up both at midnight and at noon in June.
+    const north = { heading: 0, altitude: 45, fov: 92 };
+    expect(draw('2026-06-15T04:00:00Z', north, true).dashedStrokes).toBeGreaterThan(0);
+    expect(draw('2026-06-15T16:00:00Z', north, true).dashedStrokes).toBe(0);
   });
 });

@@ -123,6 +123,13 @@ test('a link with a subject turns to it on opening; the visitor’s own look sto
   await sky.press('ArrowLeft');
   await page.waitForTimeout(3500);
   await expect(compass(page)).not.toHaveAccessibleName(/180 degrees/);
+  // So does a view button: Zoom in during the turn keeps its zoom and stops the turn short.
+  await page.goto('about:blank');
+  await page.goto(jupiterMoment('jupiter'));
+  await expect(page.getByRole('img', { name: /^Sky view\./ })).toBeVisible();
+  await page.getByRole('button', { name: 'Zoom in' }).click();
+  await page.waitForTimeout(3500);
+  await expect(compass(page)).not.toHaveAccessibleName(/180 degrees/);
   // Older links, without a subject, open where they were left.
   await page.goto('about:blank');
   await page.goto(jupiterMoment());

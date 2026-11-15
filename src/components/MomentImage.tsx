@@ -8,6 +8,7 @@ import { isDeviceLocation } from '../lib/locations';
 import { labelFontReady } from '../renderer/labelFont';
 import { drawPostcard, FONT, MOMENT_STYLES, type MomentStyle } from '../moment/postcard';
 import { HORIZON_VARIANTS, type HorizonVariant } from '../moment/scenery';
+import { getZonedParts } from '../domain/time';
 
 /**
  * The keepsake image in the share dialog (ROADMAP phase 3 prototype), loaded only when asked for.
@@ -37,6 +38,11 @@ export default function MomentImage({
     // Only the latest request is shown; a slower earlier one is discarded.
     const ticket = ++request.current;
     setFailed(false);
+    // The previous image goes at once: it no longer matches the choices shown, and must not be saved
+    // or sent as if it did.
+    if (shown.current) URL.revokeObjectURL(shown.current);
+    shown.current = null;
+    setImage(null);
     const place = isDeviceLocation(snapshot.location)
       ? m.moment.devicePlace
       : placeLabel(snapshot.location, i18n).name;
@@ -61,7 +67,6 @@ export default function MomentImage({
           if (ticket !== request.current) return;
           if (!blob) return setFailed(true);
           const url = URL.createObjectURL(blob);
-          if (shown.current) URL.revokeObjectURL(shown.current);
           shown.current = url;
           setImage({ url, blob });
         },
@@ -70,13 +75,16 @@ export default function MomentImage({
   }, [snapshot, style, horizon, i18n, m]);
   useEffect(
     () => () => {
+      // Work still pending when the dialog closes is discarded before it allocates a URL.
+      request.current++;
       if (shown.current) URL.revokeObjectURL(shown.current);
       shown.current = null;
     },
     [],
   );
 
-  const date = snapshot.instant.toISOString().slice(0, 10);
+  // The moment's own civil date, as printed on the image, not the UTC one.
+  const date = getZonedParts(snapshot.instant, snapshot.location.timezone).date;
   const file = image && new File([image.blob], `elsewhere-sky-${date}.png`, { type: 'image/png' });
   const canSend = !!file && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] });
   const place = isDeviceLocation(snapshot.location)
