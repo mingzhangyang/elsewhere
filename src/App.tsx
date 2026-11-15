@@ -51,7 +51,7 @@ import {
   type Preferences,
 } from './lib/persistence';
 import type { RenderStats } from './renderer/performance';
-import { resolveLocale, setLanguage, useI18n, type LanguageSetting } from './i18n';
+import { currentLanguage, resolveLocale, setLanguage, useI18n, type LanguageSetting } from './i18n';
 import { objectName, placeLabel } from './i18n/names';
 
 export interface AppProps {
@@ -167,10 +167,14 @@ export default function App({
     window.addEventListener('elsewhere-offline-unavailable', unavailable);
     return () => window.removeEventListener('elsewhere-offline-unavailable', unavailable);
   }, []);
-  // Following the browser, a change of its language applies at once.
+  // Following the browser, a change of its language applies at once. It takes its turn in the same
+  // sequence as choices made in Settings, so it supersedes one still loading (see chooseLanguage).
   useEffect(() => {
     if (preferences.language !== 'auto') return;
-    const follow = () => setLanguage(resolveLocale('auto')).catch(() => {});
+    const follow = () => {
+      ++languageChoice.current;
+      setLanguage(resolveLocale('auto')).catch(() => {});
+    };
     window.addEventListener('languagechange', follow);
     return () => window.removeEventListener('languagechange', follow);
   }, [preferences.language]);
@@ -186,13 +190,16 @@ export default function App({
   };
   /**
    * The language is saved once it has loaded; a failed download leaves the current one in place.
-   * Only the latest choice counts: one superseded while loading is neither saved nor reported.
+   * Only the latest request counts, whether a choice here or a change of the browser's language: one
+   * superseded while loading is neither saved nor reported. What is saved is always what is shown.
    */
   const chooseLanguage = (setting: LanguageSetting) => {
     const ticket = ++languageChoice.current;
-    setLanguage(resolveLocale(setting)).then(
+    const locale = resolveLocale(setting);
+    setLanguage(locale).then(
       () => {
-        if (ticket === languageChoice.current) changePreferences((p) => ({ ...p, language: setting }));
+        if (ticket === languageChoice.current && currentLanguage().locale === locale)
+          changePreferences((p) => ({ ...p, language: setting }));
       },
       () => {
         if (ticket === languageChoice.current) setNotice({ code: 'language-unavailable' });

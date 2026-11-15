@@ -56,3 +56,16 @@ it('saves only the latest of overlapping choices, whichever finishes last', asyn
   expect(currentLanguage().locale).toBe('en');
   expect(language()).toHaveValue('en');
 });
+
+it('does not save a choice that a change of the browser language superseded while it loaded', async () => {
+  render(<App {...scenarioProps('night')} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Layers' }));
+  fireEvent.change(language(), { target: { value: 'zh-Hans' } });
+  // The browser still prefers English, and says so while the Chinese catalog is downloading.
+  window.dispatchEvent(new Event('languagechange'));
+  await open('en');
+  await open('zh-Hans');
+  expect(currentLanguage().locale).toBe('en');
+  expect(loadPreferences().value.language).toBe('auto');
+  expect(language()).toHaveValue('auto');
+});
