@@ -40,7 +40,14 @@ export interface Exploration {
   layers: LayerSettings;
   custom: WeatherValues | null;
   clearSky?: boolean;
+  /**
+   * The object centered with its summary card (the Sun, the Moon, a planet or a catalog star id).
+   * Optional, so older links stay valid and older app versions ignore it.
+   */
+  focus?: string;
 }
+/** Object ids: 'sun', 'moon', planet names and HYG ids such as 'hyg-32263'. */
+const OBJECT_ID = /^[a-z0-9-]{1,40}$/;
 const KEY = 'elsewhere.preferences.v1';
 const defaults = (): Preferences => ({
   version: 1,
@@ -163,6 +170,8 @@ export function parseExploration(hash: string): { value: Exploration | null; not
     }
     if (data.clearSky !== undefined && typeof data.clearSky !== 'boolean')
       throw new Error('Invalid preview mode');
+    if (data.focus !== undefined && (typeof data.focus !== 'string' || !OBJECT_ID.test(data.focus)))
+      throw new Error('Invalid focus');
     return {
       value: {
         version: 1,
@@ -172,6 +181,7 @@ export function parseExploration(hash: string): { value: Exploration | null; not
         layers: layerValue(data.layers),
         custom,
         ...(data.clearSky === undefined ? {} : { clearSky: data.clearSky }),
+        ...(data.focus === undefined ? {} : { focus: data.focus }),
       },
       notice: '',
     };

@@ -15,7 +15,28 @@ export interface ScreenBox {
   bottom: number;
 }
 
-export function createCelestialLayers(parent: THREE.Object3D, catalog: Star[], text = makeTextSprite) {
+/** A labelled body outside the star catalog (a planet) as drawn at an instant. */
+export interface BodyLabelState {
+  altitude: number;
+  azimuth: number;
+  /** Display opacity of the drawn point, 0–1; the label shows only while the point does. */
+  opacity: number;
+}
+
+/** Below this altitude, in degrees, a planet's label would crowd the horizon. */
+const BODY_LABEL_MIN_ALTITUDE = 2;
+
+export function createCelestialLayers(
+  parent: THREE.Object3D,
+  catalog: Star[],
+  text = makeTextSprite,
+  bodies: readonly { id: string; name: string }[] = [],
+) {
+  const bodyLabels = bodies.map((body) => {
+    const sprite = text(body.name, '#f1dfb8');
+    parent.add(sprite);
+    return { id: body.id, sprite };
+  });
   const indexOf = new Map(catalog.map((star, index) => [star.id, index]));
   const labels = catalog.flatMap((star, index) => {
     if (!star.name || star.magnitude >= 1.35) return [];
@@ -48,7 +69,16 @@ export function createCelestialLayers(parent: THREE.Object3D, catalog: Star[], t
     stars: Star[],
     flags: { stars: boolean; labels: boolean; constellations: boolean },
     opacity: number,
+    bodyStates: readonly BodyLabelState[] = [],
   ) {
+    bodyLabels.forEach(({ sprite }, i) => {
+      const body = bodyStates[i];
+      // Planets are not part of the stars layer; like the Sun and Moon they are always drawn.
+      sprite.visible =
+        !!body && body.altitude > BODY_LABEL_MIN_ALTITUDE && flags.labels && body.opacity > 0.05;
+      sprite.material.opacity = Math.min(1, (body?.opacity ?? 0) * 1.4);
+      sprite.userData.eligible = sprite.visible;
+    });
     for (const entry of labels) {
       const star = starAt(stars, entry);
       const label = entry.sprite;
@@ -63,27 +93,41 @@ export function createCelestialLayers(parent: THREE.Object3D, catalog: Star[], t
       label.material.opacity = opacity;
       label.userData.patternLabel = flags.constellations && flags.labels && patternsShown;
     }
-    // At rest, each star is where its horizontal position says.
-    place((index, target) => {
-      const star = stars[index];
-      return star ? target.copy(directionVector(star.altitude, star.azimuth)) : null;
-    });
+    // At rest, each star and body is where its horizontal position says.
+    place(
+      (index, target) => {
+        const star = stars[index];
+        return star ? target.copy(directionVector(star.altitude, star.azimuth)) : null;
+      },
+      (index, target) => {
+        const body = bodyStates[index];
+        return body ? target.copy(directionVector(body.altitude, body.azimuth)) : null;
+      },
+    );
   }
+  /** Just above a point: 1.8° toward the zenith along its vertical circle. */
+  const above = (sprite: THREE.Sprite, apparent: THREE.Vector3) => {
+    const altitude = Math.asin(THREE.MathUtils.clamp(apparent.y, -1, 1));
+    const azimuth = Math.atan2(apparent.x, -apparent.z);
+    lift.copy(directionVector(THREE.MathUtils.radToDeg(altitude) + 1.8, THREE.MathUtils.radToDeg(azimuth)));
+    sprite.position.copy(lift).multiplyScalar(1740);
+  };
   const direction = new THREE.Vector3();
   const point = new THREE.Vector3();
   const lift = new THREE.Vector3();
   /**
-   * Positions labels and lines from each star's apparent direction (`null` when unknown). The
-   * renderer calls this every frame so they follow the star points through playback.
+   * Positions labels and lines from each star's (and body's) apparent direction (`null` when
+   * unknown). The renderer calls this every frame so they follow the points through playback.
    */
-  function place(apparent: (index: number, target: THREE.Vector3) => THREE.Vector3 | null) {
+  function place(
+    apparent: (index: number, target: THREE.Vector3) => THREE.Vector3 | null,
+    bodyApparent?: (index: number, target: THREE.Vector3) => THREE.Vector3 | null,
+  ) {
+    bodyLabels.forEach(({ sprite }, i) => {
+      if (bodyApparent?.(i, direction)) above(sprite, direction);
+    });
     for (const { index, sprite } of labels) {
-      if (!apparent(index, direction)) continue;
-      // Just above the star: 1.8° toward the zenith along the star's vertical circle.
-      const altitude = Math.asin(THREE.MathUtils.clamp(direction.y, -1, 1));
-      const azimuth = Math.atan2(direction.x, -direction.z);
-      lift.copy(directionVector(THREE.MathUtils.radToDeg(altitude) + 1.8, THREE.MathUtils.radToDeg(azimuth)));
-      sprite.position.copy(lift).multiplyScalar(1740);
+      if (apparent(index, direction)) above(sprite, direction);
     }
     for (const { ends, lines, label } of patterns) {
       const attribute = lines.geometry.getAttribute('position') as THREE.BufferAttribute;
@@ -106,7 +150,12 @@ export function createCelestialLayers(parent: THREE.Object3D, catalog: Star[], t
       label.userData.eligible = label.visible;
     }
   }
-  const sprites = [...labels.map((entry) => entry.sprite), ...patterns.map((p) => p.label)];
+  // Layout priority: planets, then bright stars, then pattern names.
+  const sprites = [
+    ...bodyLabels.map((entry) => entry.sprite),
+    ...labels.map((entry) => entry.sprite),
+    ...patterns.map((p) => p.label),
+  ];
   const world = new THREE.Vector3();
   const projected = new THREE.Vector3();
   /**

@@ -4,7 +4,8 @@ import type { LocationInfo } from '../types';
 import { isDeviceLocation } from '../lib/locations';
 
 export interface ShareDialogHandle {
-  open: (link: string) => void;
+  /** `focusName` names the object the link opens centered on, if any. */
+  open: (link: string, focusName?: string) => void;
 }
 
 interface Props {
@@ -20,12 +21,14 @@ const ShareDialog = forwardRef<ShareDialogHandle, Props>(function ShareDialog(
   const dialog = useRef<HTMLDialogElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const [link, setLink] = useState('');
+  const [focusName, setFocusName] = useState<string>();
   const [copied, setCopied] = useState(false);
   useImperativeHandle(
     ref,
     () => ({
-      open: (next) => {
+      open: (next, name) => {
         setLink(next);
+        setFocusName(name);
         setCopied(false);
         dialog.current?.showModal();
       },
@@ -53,7 +56,8 @@ const ShareDialog = forwardRef<ShareDialogHandle, Props>(function ShareDialog(
         </button>
       </div>
       <p>
-        This link includes the place, exact time, camera view, layers
+        This link includes the place, exact time, camera view
+        {focusName ? ` centered on ${focusName}` : ''}, layers
         {includesCustomWeather ? ', and custom weather' : ''}.
       </p>
       {isDeviceLocation(location) && (

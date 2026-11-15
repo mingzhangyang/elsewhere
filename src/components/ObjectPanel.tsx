@@ -1,8 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Crosshair, Moon, Star, Sun } from 'lucide-react';
-import type { SkyState, WeatherValues } from '../types';
+import { ArrowLeft, Crosshair, Moon, Orbit, Star, Sun } from 'lucide-react';
+import type { BodyId, Planet, SkyState, WeatherValues } from '../types';
 import type { Preferences } from '../lib/persistence';
-import { aboveHorizon, objectVisibility, skyObjects, type SkyObject } from '../lib/exploration';
+import {
+  aboveHorizon,
+  angularDiameter,
+  objectVisibility,
+  skyObjects,
+  type SkyObject,
+} from '../lib/exploration';
 import { formatTime } from '../domain/time';
 import MoonPhase from './MoonPhase';
 
@@ -30,7 +36,7 @@ export default function ObjectPanel({
   stars?: 'loading' | 'ready' | 'error';
   onSelect: (id: string | null) => void;
   onFocus: (object: SkyObject) => void;
-  onRise: (id: 'sun' | 'moon') => void;
+  onRise: (id: BodyId) => void;
   onClearSky: () => void;
   onRetryStars?: () => void;
 }) {
@@ -57,7 +63,13 @@ export default function ObjectPanel({
   if (selected) {
     const visibility = objectVisibility(selected, sky, weather, preferences);
     const isMoon = selected.kind === 'moon',
-      isSun = selected.kind === 'sun';
+      isSun = selected.kind === 'sun',
+      planet = selected.kind === 'planet' ? selected : undefined;
+    const riseSet = isSun
+      ? { rise: sky.events.sunrise, set: sky.events.sunset }
+      : isMoon
+        ? { rise: sky.events.moonrise, set: sky.events.moonset }
+        : planet && sky.events.planets[planet.id];
     return (
       <div className="object-detail">
         <button className="back-button" onClick={() => onSelect(null)}>
@@ -72,11 +84,21 @@ export default function ObjectPanel({
             />
           ) : isSun ? (
             <Sun size={32} className="gold" />
+          ) : planet && showsPhase(planet) ? (
+            <MoonPhase
+              illumination={planet.illumination}
+              angle={planet.brightLimbAngle}
+              label={`${planet.name}: ${phaseWord(planet.illumination)}, ${Math.round(planet.illumination * 100)}% illuminated`}
+            />
+          ) : planet ? (
+            <Orbit size={30} />
           ) : (
             <Star size={30} />
           )}
           <div>
-            <p className="eyebrow">{selected.kind === 'star' ? 'Star' : 'Solar system'}</p>
+            <p className="eyebrow">
+              {selected.kind === 'star' ? 'Star' : planet ? 'Planet' : 'Solar system'}
+            </p>
             <h3 ref={heading} tabIndex={-1}>
               {selected.name}
             </h3>
@@ -89,7 +111,7 @@ export default function ObjectPanel({
             <Crosshair size={16} /> Center in view
           </button>
         ) : selected.kind !== 'star' ? (
-          <button className="primary-button full" onClick={() => onRise(selected.kind as 'sun' | 'moon')}>
+          <button className="primary-button full" onClick={() => onRise(selected.id)}>
             Jump to next rise
           </button>
         ) : (
@@ -115,17 +137,24 @@ export default function ObjectPanel({
             {sky.moon.phaseName} · {Math.round(sky.moon.illumination * 100)}% illuminated
           </p>
         )}
-        {(isSun || isMoon) && (
+        {planet && (
+          <p>
+            Magnitude {planet.magnitude.toFixed(1)}
+            {showsPhase(planet) &&
+              ` · ${phaseWord(planet.illumination)}, ${Math.round(planet.illumination * 100)}% illuminated`}
+            <br />
+            {apparition(planet)}
+          </p>
+        )}
+        {riseSet && (
           <dl className="event-list">
             <div>
               <dt>Rises today</dt>
-              <dd>
-                {formatEvent(isSun ? sky.events.sunrise : sky.events.moonrise, timeZone, 'No rise today')}
-              </dd>
+              <dd>{formatEvent(riseSet.rise, timeZone, 'No rise today')}</dd>
             </div>
             <div>
               <dt>Sets today</dt>
-              <dd>{formatEvent(isSun ? sky.events.sunset : sky.events.moonset, timeZone, 'No set today')}</dd>
+              <dd>{formatEvent(riseSet.set, timeZone, 'No set today')}</dd>
             </div>
             {isSun && (
               <>
@@ -163,6 +192,16 @@ export default function ObjectPanel({
               observer.
             </p>
           )}
+          {planet && (
+            <p>
+              {planet.name} shines by reflected sunlight and drifts slowly against the stars. It is
+              approximately {formatDistance(planet.distanceKm)} from this observer; its disc is{' '}
+              {(angularDiameter(planet) * 3600).toFixed(1)}″ across, too small to see as a disc without
+              binoculars or a telescope.
+              {showsPhase(planet) &&
+                ` Like the Moon, ${planet.name} shows phases, visible in binoculars or a small telescope; now it is ${Math.round(planet.illumination * 100)}% lit (${phaseWord(planet.illumination)}).`}
+            </p>
+          )}
           {selected.kind === 'star' && (
             <p>
               Magnitude {selected.magnitude.toFixed(2)} (smaller numbers are brighter). Catalog coordinates:
@@ -189,7 +228,7 @@ export default function ObjectPanel({
           type="search"
           value={query}
           onChange={(event) => filter(event.target.value, upOnly)}
-          placeholder="Sun, Moon, or star name"
+          placeholder="Sun, Moon, planet, or star name"
         />
       </label>
       <div className="segmented object-filters">
@@ -205,7 +244,7 @@ export default function ObjectPanel({
           ? 'Search includes objects below the horizon.'
           : upOnly
             ? 'Calculated positions above the horizon, brightest stars first.'
-            : 'Explore the Sun, Moon, and stars, including those below the horizon.'}
+            : 'Explore the Sun, Moon, planets, and stars, including those below the horizon.'}
       </p>
       {(clearSky || weather.cloudCover >= 85) && (
         <div className="catalog-weather">
@@ -220,6 +259,8 @@ export default function ObjectPanel({
               <Sun size={18} />
             ) : object.kind === 'moon' ? (
               <Moon size={18} />
+            ) : object.kind === 'planet' ? (
+              <Orbit size={17} />
             ) : (
               <Star size={16} />
             )}
@@ -254,9 +295,34 @@ export default function ObjectPanel({
 function matchObjects(objects: SkyObject[], term: string, upOnly: boolean): SkyObject[] {
   return objects.filter((object) =>
     term
-      ? object.name.toLowerCase().includes(term) || object.id.toLowerCase().includes(term)
+      ? object.name.toLowerCase().includes(term) ||
+        object.id.toLowerCase().includes(term) ||
+        // "planet" or "planets" lists all five.
+        (object.kind === 'planet' && term.length >= 3 && 'planets'.startsWith(term))
       : !upOnly || aboveHorizon(object),
   );
+}
+/** Mercury and Venus, inside Earth's orbit, show the full range of phases. */
+function showsPhase(planet: Planet): boolean {
+  return planet.id === 'mercury' || planet.id === 'venus';
+}
+function phaseWord(illumination: number): string {
+  if (illumination < 0.05) return 'thin crescent';
+  if (illumination < 0.45) return 'crescent';
+  if (illumination < 0.55) return 'half lit';
+  if (illumination < 0.97) return 'gibbous';
+  return 'nearly full';
+}
+function apparition(planet: Planet): string {
+  const angle = Math.round(planet.elongation);
+  if (planet.elongation > 165) return `Opposite the Sun, ${angle}° from it: up most of the night.`;
+  return planet.apparition === 'evening'
+    ? `Evening sky: ${angle}° east of the Sun.`
+    : `Morning sky: ${angle}° west of the Sun.`;
+}
+function formatDistance(km: number): string {
+  const au = km / 149_597_870.7;
+  return `${Math.round(km / 1e6).toLocaleString()} million km (${au.toFixed(2)} AU)`;
 }
 function countLabel(count: number): string {
   return count > 40

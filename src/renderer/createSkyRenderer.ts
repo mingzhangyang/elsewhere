@@ -1,6 +1,7 @@
 import { createCameraControls } from './cameraControls';
 import * as THREE from 'three';
-import type { SkyState, Star, WeatherValues } from '../types';
+import type { BodyId, Planet, SkyState, Star, WeatherValues } from '../types';
+import { PLANETS } from '../domain/planets';
 import type { CameraView, Preferences } from '../lib/persistence';
 import { createCelestialLayers, type ScreenBox } from './celestialLayers';
 import { seededRandom } from '../lib/random';
@@ -19,10 +20,11 @@ import { advancePrecipitation, windVector } from './precipitation';
 import { createFrameLoop } from './frameLoop';
 import { adaptiveRatio, percentile, type RenderStats } from './performance';
 import { aboveHorizon, angularDiameter, findSkyObject } from '../lib/exploration';
-import { pickStarAt, starAlpha } from './starPicking';
+import { betterHit, pickPointAt, starAlpha } from './starPicking';
 import { CLOUD_DRIFT_FPS, PRECIPITATION_VISIBLE, weatherMotion } from './weatherMotion';
 import {
   limitingMagnitude,
+  planetTwilightVisibility,
   starIntensity,
   starPointSize,
   twilightVisibility,
@@ -38,6 +40,10 @@ import {
 
 /** Radius of the sphere the star points are placed on. */
 const STAR_DISTANCE = 1770;
+/** Planets are drawn just inside the star sphere, through the same point shader. */
+const PLANET_DISTANCE = 1760;
+/** Display tints, in PLANETS order: illustrative, chosen to tell the planets apart. */
+const PLANET_COLORS = ['#e6d6c6', '#fff6e2', '#ffa57a', '#ffe8c6', '#f3dca2'];
 /** World distance covering the most refraction lifts a star (about 0.6° at the horizon). */
 const REFRACTION_MARGIN = STAR_DISTANCE * Math.sin((0.6 * Math.PI) / 180);
 /** Smallest radius of the target ring (.sky-target), and its gap around a zoomed disc. */
@@ -67,7 +73,7 @@ export interface RenderCallbacks {
   onHeadingChange?: (heading: number) => void;
   onStarSelect?: (star: Star | null) => void;
   onCameraChange?: (view: CameraView) => void;
-  onBodySelect?: (body: 'sun' | 'moon') => void;
+  onBodySelect?: (body: BodyId) => void;
   onAssetError?: (message: string) => void;
   onContextChange?: (lost: boolean) => void;
   onDiagnostics?: (stats: RenderStats) => void;
@@ -268,7 +274,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
     starPoints.matrixAutoUpdate = false;
     scene.add(starPoints);
     let starIndex = new Map<string, number>();
-    let celestialLayers = createCelestialLayers(scene, []);
+    let celestialLayers = createCelestialLayers(scene, [], undefined, PLANETS);
     const buildStars = (stars: Star[], vectors: Float32Array) => {
       starCount = stars.length;
       const sizes = new Float32Array(starCount);
@@ -298,9 +304,32 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
       placeStars(vectors);
       starIndex = new Map(stars.map((star, index) => [star.id, index]));
       celestialLayers.dispose();
-      celestialLayers = createCelestialLayers(scene, stars);
+      celestialLayers = createCelestialLayers(scene, stars, undefined, PLANETS);
     };
     buildStars(sky.stars, sky.starField.vectors);
+
+    // Five planets through the star shader, so refraction, extinction and the limiting magnitude
+    // treat them exactly like stars. Their own twilight fade is folded into the intensity attribute.
+    const planetGeometry = new THREE.BufferGeometry();
+    const planetCount = PLANETS.length;
+    const planetPositions = new THREE.BufferAttribute(new Float32Array(planetCount * 3), 3);
+    const planetSizes = new THREE.BufferAttribute(new Float32Array(planetCount), 1);
+    const planetMagnitudes = new THREE.BufferAttribute(new Float32Array(planetCount), 1);
+    const planetIntensities = new THREE.BufferAttribute(new Float32Array(planetCount), 1);
+    const planetColors = new Float32Array(planetCount * 3);
+    PLANET_COLORS.forEach((color, i) => new THREE.Color(color).toArray(planetColors, i * 3));
+    planetGeometry.setAttribute('position', planetPositions);
+    planetGeometry.setAttribute('aSize', planetSizes);
+    planetGeometry.setAttribute('aMagnitude', planetMagnitudes);
+    planetGeometry.setAttribute('aIntensity', planetIntensities);
+    planetGeometry.setAttribute('color', new THREE.BufferAttribute(planetColors, 3));
+    const planetMaterial = createStarMaterial(PLANET_DISTANCE, renderer.getPixelRatio());
+    const planetPoints = new THREE.Points(planetGeometry, planetMaterial);
+    planetPoints.frustumCulled = false;
+    planetPoints.matrixAutoUpdate = false;
+    scene.add(planetPoints);
+    /** Drawn share (0–1) of each planet's point, before weather: what labels and taps follow. */
+    let planetAlphas = new Array<number>(planetCount).fill(0);
 
     // During playback the sky turns about the celestial pole between ticks. Every rising and setting
     // thing is placed the way the star shader places stars: turn the geometric direction, then
@@ -313,6 +342,9 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
       diurnalTurn(activeSky.starField.rotation, seconds, turn);
       starPoints.matrix.multiplyMatrices(turnMatrix.makeRotationFromQuaternion(turn), starBase);
       starPoints.matrixWorldNeedsUpdate = true;
+      // Planets are placed in horizontal coordinates; between ticks they turn with the sky.
+      planetPoints.matrix.copy(turnMatrix);
+      planetPoints.matrixWorldNeedsUpdate = true;
     };
     /** Apparent scene direction of catalog star `index` as drawn now. */
     const starDirection = (index: number, target: THREE.Vector3) =>
@@ -321,8 +353,11 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
           .set(starVectors[index * 3], starVectors[index * 3 + 1], starVectors[index * 3 + 2])
           .applyMatrix4(starPoints.matrix),
       );
-    /** Apparent scene direction of the Sun or Moon as drawn now. */
-    const bodyDirection = (body: SkyState['sun'], target: THREE.Vector3) =>
+    /** Apparent scene direction of the Sun, Moon or a planet as drawn now. */
+    const bodyDirection = (
+      body: Pick<SkyState['sun'], 'geometricAltitude' | 'azimuth'>,
+      target: THREE.Vector3,
+    ) =>
       apparentDirection(
         target.copy(directionVector(body.geometricAltitude, body.azimuth)).applyQuaternion(turn),
       );
@@ -347,6 +382,25 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
       }
       return boxes;
     };
+
+    /**
+     * Writes each planet's geometric direction, size and brightness, and returns its drawn share
+     * (magnitude against the limit, display intensity and its own twilight fade) for labels and taps.
+     */
+    const placePlanets = (planets: Planet[], sunAltitude: number) =>
+      planets.map((planet, i) => {
+        const direction = directionVector(planet.geometricAltitude, planet.azimuth).multiplyScalar(
+          PLANET_DISTANCE,
+        );
+        planetPositions.setXYZ(i, direction.x, direction.y, direction.z);
+        planetSizes.setX(i, starPointSize(planet.magnitude));
+        planetMagnitudes.setX(i, planet.magnitude);
+        const twilight = planetTwilightVisibility(sunAltitude, planet.magnitude);
+        planetIntensities.setX(i, starIntensity(planet.magnitude) * twilight);
+        for (const attribute of [planetPositions, planetSizes, planetMagnitudes, planetIntensities])
+          attribute.needsUpdate = true;
+        return planet.visible ? starAlpha(planet, starLimit) * twilight : 0;
+      });
 
     const rainCount = 720;
     const rainGeometry = new THREE.BufferGeometry();
@@ -407,23 +461,49 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
           callbacks.onBodySelect?.('moon');
           return;
         }
-        if (!activeShowStars || starMaterial.uniforms.uOpacity.value < 0.05) return;
-        const index = pickStarAt(
-          starPoints,
+        // Planets and stars compete on screen distance, so a star beside a planet stays selectable.
+        const planetOpacity = planetMaterial.uniforms.uOpacity.value;
+        const planetHit = pickPointAt(
+          planetPoints,
           camera,
           x,
           y,
           rect,
-          STAR_DISTANCE,
-          (i) => starAlpha(activeStars[i], starLimit) * starMaterial.uniforms.uOpacity.value,
+          PLANET_DISTANCE,
+          (i) => (activeSky.planets[i]?.visible ? planetAlphas[i] * planetOpacity : 0),
           {
             margin: REFRACTION_MARGIN,
-            // Where the star is drawn right now, playback turn and refraction included.
-            position: (i, target) => starDirection(i, target).multiplyScalar(STAR_DISTANCE),
+            position: (i, target) =>
+              bodyDirection(activeSky.planets[i], target).multiplyScalar(PLANET_DISTANCE),
           },
         );
-        const star = index === undefined ? undefined : activeStars[index];
-        onStarSelect?.(star && star.altitude > 0 ? star : null);
+        const starOpacity = starMaterial.uniforms.uOpacity.value;
+        const starHit =
+          activeShowStars && starOpacity >= 0.05
+            ? pickPointAt(
+                starPoints,
+                camera,
+                x,
+                y,
+                rect,
+                STAR_DISTANCE,
+                (i) => (activeStars[i].altitude > 0 ? starAlpha(activeStars[i], starLimit) * starOpacity : 0),
+                {
+                  margin: REFRACTION_MARGIN,
+                  // Where the star is drawn right now, playback turn and refraction included.
+                  position: (i, target) => starDirection(i, target).multiplyScalar(STAR_DISTANCE),
+                },
+              )
+            : undefined;
+        const hit = betterHit(
+          planetHit && { ...planetHit, planet: true },
+          starHit && { ...starHit, planet: false },
+        );
+        if (hit?.planet) {
+          callbacks.onBodySelect?.(activeSky.planets[hit.index].id);
+          return;
+        }
+        onStarSelect?.(hit ? activeStars[hit.index] : null);
       },
       (view) => {
         callbacks.onCameraChange?.(view);
@@ -458,6 +538,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
         );
         renderer.setSize(host.clientWidth, host.clientHeight);
         starMaterial.uniforms.uPixelRatio.value = renderer.getPixelRatio();
+        planetMaterial.uniforms.uPixelRatio.value = renderer.getPixelRatio();
         api.update(activeSky, activeWeather, activeFlags);
       },
       /** Simulated seconds per real second while playing; 0 when time is still or following now. */
@@ -521,8 +602,20 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
         starMaterial.uniforms.uLimit.value = starLimit;
         starMaterial.uniforms.uOpacity.value = nightVisibility * visibilityFactor;
         starPoints.visible = flags.stars;
+        planetAlphas = placePlanets(nextSky.planets, nextSky.sunAltitude);
+        planetMaterial.uniforms.uLimit.value = starLimit;
+        planetMaterial.uniforms.uOpacity.value = visibilityFactor;
 
-        celestialLayers.update(nextSky.stars, flags, nightVisibility * visibilityFactor);
+        celestialLayers.update(
+          nextSky.stars,
+          flags,
+          nightVisibility * visibilityFactor,
+          nextSky.planets.map((planet, i) => ({
+            altitude: planet.altitude,
+            azimuth: planet.azimuth,
+            opacity: planetAlphas[i] * visibilityFactor,
+          })),
+        );
         const snowing = [71, 73, 75, 77, 85, 86].includes(nextWeather.weatherCode);
         rainMaterial.opacity =
           nextWeather.precipitation > PRECIPITATION_VISIBLE
@@ -569,8 +662,12 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
       applyTurn(playbackTurn.seconds(now, !!reducedMotion));
       sunGroup.position.copy(bodyDirection(activeSky.sun, scratch).multiplyScalar(1650));
       moonGroup.position.copy(bodyDirection(activeSky.moon, scratch).multiplyScalar(1650));
-      celestialLayers.place((index, target) =>
-        index < starVectors.length / 3 ? starDirection(index, target) : null,
+      celestialLayers.place(
+        (index, target) => (index < starVectors.length / 3 ? starDirection(index, target) : null),
+        (index, target) => {
+          const planet = activeSky.planets[index];
+          return planet ? bodyDirection(planet, target) : null;
+        },
       );
       scene.updateMatrixWorld();
       const target = findSkyObject(activeSky, targetId);
@@ -612,6 +709,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
         if (next !== renderer.getPixelRatio()) {
           renderer.setPixelRatio(next);
           starMaterial.uniforms.uPixelRatio.value = next;
+          planetMaterial.uniforms.uPixelRatio.value = next;
         }
         adapted = now;
         frameTimes.length = 0;

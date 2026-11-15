@@ -22,12 +22,19 @@ import SettingsPanel from './components/SettingsPanel';
 import ShareDialog, { type ShareDialogHandle } from './components/ShareDialog';
 import FocusSummary from './components/FocusSummary';
 import { createCameraViewStore } from './lib/cameraViewStore';
-import type { LocationInfo } from './types';
+import type { BodyId, LocationInfo } from './types';
 import { useSimulation } from './hooks/useSimulation';
 import { useWeather } from './hooks/useWeather';
 import { formatTime, MAX_INSTANT } from './domain/time';
 import { calculateSky, nextBodyRise } from './domain/astronomy';
-import { findSkyObject, framingFov, objectVisibility, type SkyObject } from './lib/exploration';
+import {
+  aboveHorizon,
+  findSkyObject,
+  framingFov,
+  isCentered,
+  objectVisibility,
+  type SkyObject,
+} from './lib/exploration';
 import { explorationReducer, initialExploration, presentedWeather, type Panel } from './lib/explorationState';
 import { fetchWeatherForDate } from './services/openMeteo';
 import { renderingWeather } from './domain/weather';
@@ -117,6 +124,7 @@ export default function App({
       ? 'Custom simulation'
       : weatherSourceLabel(selection);
   const focused = findSkyObject(sky, focusedId);
+  const planetsUp = sky.planets.filter((planet) => planet.visible).map((planet) => planet.name);
   const focusedVisibility = focused && objectVisibility(focused, sky, weather, preferences);
   const skyMood =
     sky.sunAltitude > 6
@@ -207,7 +215,7 @@ export default function App({
     dispatch({ type: 'focus', id: object.id });
     skyRef.current?.focus(object.altitude, object.azimuth, frame ? framingFov(object) : undefined);
   };
-  const jumpToRise = (id: 'sun' | 'moon') => {
+  const jumpToRise = (id: BodyId) => {
     try {
       const rise = nextBodyRise(location, id, simTime);
       if (!rise) {
@@ -224,16 +232,21 @@ export default function App({
   };
   const share = () => {
     setPlaying(false);
+    const camera = view.get();
+    // The link opens centered on the selected object only if the view still is.
+    const subject = focused && aboveHorizon(focused) && isCentered(focused, camera) ? focused : undefined;
     shareDialog.current?.open(
       explorationUrl({
         version: 1,
         location,
         instant: simTime.toISOString(),
-        camera: view.get(),
+        camera,
         layers,
         custom: custom ? customWeather : null,
         clearSky,
+        ...(subject ? { focus: subject.id } : {}),
       }),
+      subject?.name,
     );
   };
   return (
@@ -534,7 +547,9 @@ export default function App({
       <div className="sr-only" role="region" aria-label="Sky summary">
         {location.name}. Local time {formatTime(simTime, location.timezone)}. Sun altitude{' '}
         {Math.round(sky.sunAltitude)} degrees. Moon {sky.moon.phaseName},{' '}
-        {Math.round(sky.moon.illumination * 100)} percent illuminated. {sourceText}.
+        {Math.round(sky.moon.illumination * 100)} percent illuminated.{' '}
+        {planetsUp.length ? `Planets above the horizon: ${planetsUp.join(', ')}. ` : ''}
+        {sourceText}.
       </div>
       {notice && (
         <div className="notice" data-occludes-sky role="status">

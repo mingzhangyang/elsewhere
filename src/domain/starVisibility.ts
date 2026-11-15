@@ -29,6 +29,22 @@ export function twilightVisibility(sunAltitude: number): number {
   return 1 - smoothstep(sunAltitude, TWILIGHT_DARK_ALTITUDE, TWILIGHT_BRIGHT_ALTITUDE);
 }
 
+/**
+ * Degrees of Sun altitude by which each magnitude brighter than PLANET_TWILIGHT_MAGNITUDE moves a
+ * planet's twilight fade toward day: Venus and Jupiter appear well before the first stars.
+ */
+export const PLANET_TWILIGHT_SHIFT = 1.5;
+export const PLANET_TWILIGHT_MAGNITUDE = 1;
+
+/**
+ * Twilight visibility for a planet. Stars share one fade (twilightVisibility); a planet's fade is
+ * moved toward brighter skies by its brightness, so evening Venus shows soon after sunset.
+ */
+export function planetTwilightVisibility(sunAltitude: number, magnitude: number): number {
+  const shift = PLANET_TWILIGHT_SHIFT * Math.max(0, PLANET_TWILIGHT_MAGNITUDE - magnitude);
+  return 1 - smoothstep(sunAltitude, TWILIGHT_DARK_ALTITUDE + shift, TWILIGHT_BRIGHT_ALTITUDE + shift);
+}
+
 /** Faintest magnitude visible overhead for the chosen light pollution, reduced by a high bright Moon. */
 export function limitingMagnitude(
   skyBrightness: SkyBrightness,
@@ -96,9 +112,25 @@ export function starVisibilityFactors(
   sky: Pick<SkyState, 'sunAltitude' | 'moon'>,
   weather: Pick<WeatherValues, 'visibilityKm' | 'haze'>,
   skyBrightness: SkyBrightness,
+  twilight = twilightVisibility(sky.sunAltitude),
 ): StarVisibilityFactors {
-  const twilight = twilightVisibility(sky.sunAltitude);
   const magnitude = magnitudeVisibility(star, limitingMagnitude(skyBrightness, sky.moon));
   const contrast = weatherVisibility(weather);
   return { twilight, magnitude, weather: contrast, combined: twilight * magnitude * contrast };
+}
+
+/** The star model with a planet's brighter twilight: what the renderer draws for that planet. */
+export function planetVisibilityFactors(
+  planet: Pick<Star, 'altitude' | 'magnitude'>,
+  sky: Pick<SkyState, 'sunAltitude' | 'moon'>,
+  weather: Pick<WeatherValues, 'visibilityKm' | 'haze'>,
+  skyBrightness: SkyBrightness,
+): StarVisibilityFactors {
+  return starVisibilityFactors(
+    planet,
+    sky,
+    weather,
+    skyBrightness,
+    planetTwilightVisibility(sky.sunAltitude, planet.magnitude),
+  );
 }

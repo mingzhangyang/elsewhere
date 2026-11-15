@@ -1,0 +1,437 @@
+{
+  "retrieved": "2026-11-14T23:54:14.179Z",
+  "observations": [
+    {
+      "place": {
+        "name": "new-york",
+        "longitude": -74.006,
+        "latitude": 40.7128,
+        "elevation": 0.01,
+        "timezone": "America/New_York"
+      },
+      "planet": "mercury",
+      "dates": [
+        "2026-01-10T05:00:00Z",
+        "2026-03-20T12:00:00Z",
+        "2026-06-21T12:00:00Z",
+        "2026-08-15T00:30:00Z",
+        "2026-11-24T02:00:00Z",
+        "2026-12-21T12:00:00Z"
+      ],
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27199%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27coord%40399%27&COORD_TYPE=%27GEODETIC%27&SITE_COORD=%27-74.006%2C40.7128%2C0.01%27&TLIST=%272461050.7083333335%2C2461120%2C2461213%2C2461267.5208333335%2C2461368.5833333335%2C2461396%27&TLIST_TYPE=%27JD%27&QUANTITIES=%274%2C9%2C10%2C13%2C20%2C23%27&APPARENT=%27AIRLESS%27&CSV_FORMAT=%27YES%27&ANG_FORMAT=%27DEG%27&EXTRA_PREC=%27YES%27",
+      "file": "new-york-mercury.txt"
+    },
+    {
+      "place": {
+        "name": "new-york",
+        "longitude": -74.006,
+        "latitude": 40.7128,
+        "elevation": 0.01,
+        "timezone": "America/New_York"
+      },
+      "planet": "venus",
+      "dates": [
+        "2026-01-10T05:00:00Z",
+        "2026-03-20T12:00:00Z",
+        "2026-06-21T12:00:00Z",
+        "2026-08-15T00:30:00Z",
+        "2026-11-24T02:00:00Z",
+        "2026-12-21T12:00:00Z"
+      ],
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27299%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27coord%40399%27&COORD_TYPE=%27GEODETIC%27&SITE_COORD=%27-74.006%2C40.7128%2C0.01%27&TLIST=%272461050.7083333335%2C2461120%2C2461213%2C2461267.5208333335%2C2461368.5833333335%2C2461396%27&TLIST_TYPE=%27JD%27&QUANTITIES=%274%2C9%2C10%2C13%2C20%2C23%27&APPARENT=%27AIRLESS%27&CSV_FORMAT=%27YES%27&ANG_FORMAT=%27DEG%27&EXTRA_PREC=%27YES%27",
+      "file": "new-york-venus.txt"
+    },
+    {
+      "place": {
+        "name": "new-york",
+        "longitude": -74.006,
+        "latitude": 40.7128,
+        "elevation": 0.01,
+        "timezone": "America/New_York"
+      },
+      "planet": "mars",
+      "dates": [
+        "2026-01-10T05:00:00Z",
+        "2026-03-20T12:00:00Z",
+        "2026-06-21T12:00:00Z",
+        "2026-08-15T00:30:00Z",
+        "2026-11-24T02:00:00Z",
+        "2026-12-21T12:00:00Z"
+      ],
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27499%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27coord%40399%27&COORD_TYPE=%27GEODETIC%27&SITE_COORD=%27-74.006%2C40.7128%2C0.01%27&TLIST=%272461050.7083333335%2C2461120%2C2461213%2C2461267.5208333335%2C2461368.5833333335%2C2461396%27&TLIST_TYPE=%27JD%27&QUANTITIES=%274%2C9%2C10%2C13%2C20%2C23%27&APPARENT=%27AIRLESS%27&CSV_FORMAT=%27YES%27&ANG_FORMAT=%27DEG%27&EXTRA_PREC=%27YES%27",
+      "file": "new-york-mars.txt"
+    },
+    {
+      "place": {
+        "name": "new-york",
+        "longitude": -74.006,
+        "latitude": 40.7128,
+        "elevation": 0.01,
+        "timezone": "America/New_York"
+      },
+      "planet": "jupiter",
+      "dates": [
+        "2026-01-10T05:00:00Z",
+        "2026-03-20T12:00:00Z",
+        "2026-06-21T12:00:00Z",
+        "2026-08-15T00:30:00Z",
+        "2026-11-24T02:00:00Z",
+        "2026-12-21T12:00:00Z"
+      ],
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27599%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27coord%40399%27&COORD_TYPE=%27GEODETIC%27&SITE_COORD=%27-74.006%2C40.7128%2C0.01%27&TLIST=%272461050.7083333335%2C2461120%2C2461213%2C2461267.5208333335%2C2461368.5833333335%2C2461396%27&TLIST_TYPE=%27JD%27&QUANTITIES=%274%2C9%2C10%2C13%2C20%2C23%27&APPARENT=%27AIRLESS%27&CSV_FORMAT=%27YES%27&ANG_FORMAT=%27DEG%27&EXTRA_PREC=%27YES%27",
+      "file": "new-york-jupiter.txt"
+    },
+    {
+      "place": {
+        "name": "new-york",
+        "longitude": -74.006,
+        "latitude": 40.7128,
+        "elevation": 0.01,
+        "timezone": "America/New_York"
+      },
+      "planet": "saturn",
+      "dates": [
+        "2026-01-10T05:00:00Z",
+        "2026-03-20T12:00:00Z",
+        "2026-06-21T12:00:00Z",
+        "2026-08-15T00:30:00Z",
+        "2026-11-24T02:00:00Z",
+        "2026-12-21T12:00:00Z"
+      ],
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27699%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27coord%40399%27&COORD_TYPE=%27GEODETIC%27&SITE_COORD=%27-74.006%2C40.7128%2C0.01%27&TLIST=%272461050.7083333335%2C2461120%2C2461213%2C2461267.5208333335%2C2461368.5833333335%2C2461396%27&TLIST_TYPE=%27JD%27&QUANTITIES=%274%2C9%2C10%2C13%2C20%2C23%27&APPARENT=%27AIRLESS%27&CSV_FORMAT=%27YES%27&ANG_FORMAT=%27DEG%27&EXTRA_PREC=%27YES%27",
+      "file": "new-york-saturn.txt"
+    },
+    {
+      "place": {
+        "name": "sydney",
+        "longitude": 151.2093,
+        "latitude": -33.8688,
+        "elevation": 0.058,
+        "timezone": "Australia/Sydney"
+      },
+      "planet": "mercury",
+      "dates": [
+        "2026-01-10T05:00:00Z",
+        "2026-03-20T12:00:00Z",
+        "2026-06-21T12:00:00Z",
+        "2026-08-15T00:30:00Z",
+        "2026-11-24T02:00:00Z",
+        "2026-12-21T12:00:00Z"
+      ],
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27199%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27coord%40399%27&COORD_TYPE=%27GEODETIC%27&SITE_COORD=%27151.2093%2C-33.8688%2C0.058%27&TLIST=%272461050.7083333335%2C2461120%2C2461213%2C2461267.5208333335%2C2461368.5833333335%2C2461396%27&TLIST_TYPE=%27JD%27&QUANTITIES=%274%2C9%2C10%2C13%2C20%2C23%27&APPARENT=%27AIRLESS%27&CSV_FORMAT=%27YES%27&ANG_FORMAT=%27DEG%27&EXTRA_PREC=%27YES%27",
+      "file": "sydney-mercury.txt"
+    },
+    {
+      "place": {
+        "name": "sydney",
+        "longitude": 151.2093,
+        "latitude": -33.8688,
+        "elevation": 0.058,
+        "timezone": "Australia/Sydney"
+      },
+      "planet": "venus",
+      "dates": [
+        "2026-01-10T05:00:00Z",
+        "2026-03-20T12:00:00Z",
+        "2026-06-21T12:00:00Z",
+        "2026-08-15T00:30:00Z",
+        "2026-11-24T02:00:00Z",
+        "2026-12-21T12:00:00Z"
+      ],
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27299%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27coord%40399%27&COORD_TYPE=%27GEODETIC%27&SITE_COORD=%27151.2093%2C-33.8688%2C0.058%27&TLIST=%272461050.7083333335%2C2461120%2C2461213%2C2461267.5208333335%2C2461368.5833333335%2C2461396%27&TLIST_TYPE=%27JD%27&QUANTITIES=%274%2C9%2C10%2C13%2C20%2C23%27&APPARENT=%27AIRLESS%27&CSV_FORMAT=%27YES%27&ANG_FORMAT=%27DEG%27&EXTRA_PREC=%27YES%27",
+      "file": "sydney-venus.txt"
+    },
+    {
+      "place": {
+        "name": "sydney",
+        "longitude": 151.2093,
+        "latitude": -33.8688,
+        "elevation": 0.058,
+        "timezone": "Australia/Sydney"
+      },
+      "planet": "mars",
+      "dates": [
+        "2026-01-10T05:00:00Z",
+        "2026-03-20T12:00:00Z",
+        "2026-06-21T12:00:00Z",
+        "2026-08-15T00:30:00Z",
+        "2026-11-24T02:00:00Z",
+        "2026-12-21T12:00:00Z"
+      ],
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27499%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27coord%40399%27&COORD_TYPE=%27GEODETIC%27&SITE_COORD=%27151.2093%2C-33.8688%2C0.058%27&TLIST=%272461050.7083333335%2C2461120%2C2461213%2C2461267.5208333335%2C2461368.5833333335%2C2461396%27&TLIST_TYPE=%27JD%27&QUANTITIES=%274%2C9%2C10%2C13%2C20%2C23%27&APPARENT=%27AIRLESS%27&CSV_FORMAT=%27YES%27&ANG_FORMAT=%27DEG%27&EXTRA_PREC=%27YES%27",
+      "file": "sydney-mars.txt"
+    },
+    {
+      "place": {
+        "name": "sydney",
+        "longitude": 151.2093,
+        "latitude": -33.8688,
+        "elevation": 0.058,
+        "timezone": "Australia/Sydney"
+      },
+      "planet": "jupiter",
+      "dates": [
+        "2026-01-10T05:00:00Z",
+        "2026-03-20T12:00:00Z",
+        "2026-06-21T12:00:00Z",
+        "2026-08-15T00:30:00Z",
+        "2026-11-24T02:00:00Z",
+        "2026-12-21T12:00:00Z"
+      ],
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27599%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27coord%40399%27&COORD_TYPE=%27GEODETIC%27&SITE_COORD=%27151.2093%2C-33.8688%2C0.058%27&TLIST=%272461050.7083333335%2C2461120%2C2461213%2C2461267.5208333335%2C2461368.5833333335%2C2461396%27&TLIST_TYPE=%27JD%27&QUANTITIES=%274%2C9%2C10%2C13%2C20%2C23%27&APPARENT=%27AIRLESS%27&CSV_FORMAT=%27YES%27&ANG_FORMAT=%27DEG%27&EXTRA_PREC=%27YES%27",
+      "file": "sydney-jupiter.txt"
+    },
+    {
+      "place": {
+        "name": "sydney",
+        "longitude": 151.2093,
+        "latitude": -33.8688,
+        "elevation": 0.058,
+        "timezone": "Australia/Sydney"
+      },
+      "planet": "saturn",
+      "dates": [
+        "2026-01-10T05:00:00Z",
+        "2026-03-20T12:00:00Z",
+        "2026-06-21T12:00:00Z",
+        "2026-08-15T00:30:00Z",
+        "2026-11-24T02:00:00Z",
+        "2026-12-21T12:00:00Z"
+      ],
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27699%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27coord%40399%27&COORD_TYPE=%27GEODETIC%27&SITE_COORD=%27151.2093%2C-33.8688%2C0.058%27&TLIST=%272461050.7083333335%2C2461120%2C2461213%2C2461267.5208333335%2C2461368.5833333335%2C2461396%27&TLIST_TYPE=%27JD%27&QUANTITIES=%274%2C9%2C10%2C13%2C20%2C23%27&APPARENT=%27AIRLESS%27&CSV_FORMAT=%27YES%27&ANG_FORMAT=%27DEG%27&EXTRA_PREC=%27YES%27",
+      "file": "sydney-saturn.txt"
+    },
+    {
+      "place": {
+        "name": "tromso",
+        "longitude": 18.9553,
+        "latitude": 69.6492,
+        "elevation": 0.01,
+        "timezone": "Europe/Oslo"
+      },
+      "planet": "mercury",
+      "dates": [
+        "2026-01-10T05:00:00Z",
+        "2026-03-20T12:00:00Z",
+        "2026-06-21T12:00:00Z",
+        "2026-08-15T00:30:00Z",
+        "2026-11-24T02:00:00Z",
+        "2026-12-21T12:00:00Z"
+      ],
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27199%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27coord%40399%27&COORD_TYPE=%27GEODETIC%27&SITE_COORD=%2718.9553%2C69.6492%2C0.01%27&TLIST=%272461050.7083333335%2C2461120%2C2461213%2C2461267.5208333335%2C2461368.5833333335%2C2461396%27&TLIST_TYPE=%27JD%27&QUANTITIES=%274%2C9%2C10%2C13%2C20%2C23%27&APPARENT=%27AIRLESS%27&CSV_FORMAT=%27YES%27&ANG_FORMAT=%27DEG%27&EXTRA_PREC=%27YES%27",
+      "file": "tromso-mercury.txt"
+    },
+    {
+      "place": {
+        "name": "tromso",
+        "longitude": 18.9553,
+        "latitude": 69.6492,
+        "elevation": 0.01,
+        "timezone": "Europe/Oslo"
+      },
+      "planet": "venus",
+      "dates": [
+        "2026-01-10T05:00:00Z",
+        "2026-03-20T12:00:00Z",
+        "2026-06-21T12:00:00Z",
+        "2026-08-15T00:30:00Z",
+        "2026-11-24T02:00:00Z",
+        "2026-12-21T12:00:00Z"
+      ],
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27299%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27coord%40399%27&COORD_TYPE=%27GEODETIC%27&SITE_COORD=%2718.9553%2C69.6492%2C0.01%27&TLIST=%272461050.7083333335%2C2461120%2C2461213%2C2461267.5208333335%2C2461368.5833333335%2C2461396%27&TLIST_TYPE=%27JD%27&QUANTITIES=%274%2C9%2C10%2C13%2C20%2C23%27&APPARENT=%27AIRLESS%27&CSV_FORMAT=%27YES%27&ANG_FORMAT=%27DEG%27&EXTRA_PREC=%27YES%27",
+      "file": "tromso-venus.txt"
+    },
+    {
+      "place": {
+        "name": "tromso",
+        "longitude": 18.9553,
+        "latitude": 69.6492,
+        "elevation": 0.01,
+        "timezone": "Europe/Oslo"
+      },
+      "planet": "mars",
+      "dates": [
+        "2026-01-10T05:00:00Z",
+        "2026-03-20T12:00:00Z",
+        "2026-06-21T12:00:00Z",
+        "2026-08-15T00:30:00Z",
+        "2026-11-24T02:00:00Z",
+        "2026-12-21T12:00:00Z"
+      ],
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27499%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27coord%40399%27&COORD_TYPE=%27GEODETIC%27&SITE_COORD=%2718.9553%2C69.6492%2C0.01%27&TLIST=%272461050.7083333335%2C2461120%2C2461213%2C2461267.5208333335%2C2461368.5833333335%2C2461396%27&TLIST_TYPE=%27JD%27&QUANTITIES=%274%2C9%2C10%2C13%2C20%2C23%27&APPARENT=%27AIRLESS%27&CSV_FORMAT=%27YES%27&ANG_FORMAT=%27DEG%27&EXTRA_PREC=%27YES%27",
+      "file": "tromso-mars.txt"
+    },
+    {
+      "place": {
+        "name": "tromso",
+        "longitude": 18.9553,
+        "latitude": 69.6492,
+        "elevation": 0.01,
+        "timezone": "Europe/Oslo"
+      },
+      "planet": "jupiter",
+      "dates": [
+        "2026-01-10T05:00:00Z",
+        "2026-03-20T12:00:00Z",
+        "2026-06-21T12:00:00Z",
+        "2026-08-15T00:30:00Z",
+        "2026-11-24T02:00:00Z",
+        "2026-12-21T12:00:00Z"
+      ],
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27599%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27coord%40399%27&COORD_TYPE=%27GEODETIC%27&SITE_COORD=%2718.9553%2C69.6492%2C0.01%27&TLIST=%272461050.7083333335%2C2461120%2C2461213%2C2461267.5208333335%2C2461368.5833333335%2C2461396%27&TLIST_TYPE=%27JD%27&QUANTITIES=%274%2C9%2C10%2C13%2C20%2C23%27&APPARENT=%27AIRLESS%27&CSV_FORMAT=%27YES%27&ANG_FORMAT=%27DEG%27&EXTRA_PREC=%27YES%27",
+      "file": "tromso-jupiter.txt"
+    },
+    {
+      "place": {
+        "name": "tromso",
+        "longitude": 18.9553,
+        "latitude": 69.6492,
+        "elevation": 0.01,
+        "timezone": "Europe/Oslo"
+      },
+      "planet": "saturn",
+      "dates": [
+        "2026-01-10T05:00:00Z",
+        "2026-03-20T12:00:00Z",
+        "2026-06-21T12:00:00Z",
+        "2026-08-15T00:30:00Z",
+        "2026-11-24T02:00:00Z",
+        "2026-12-21T12:00:00Z"
+      ],
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27699%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27coord%40399%27&COORD_TYPE=%27GEODETIC%27&SITE_COORD=%2718.9553%2C69.6492%2C0.01%27&TLIST=%272461050.7083333335%2C2461120%2C2461213%2C2461267.5208333335%2C2461368.5833333335%2C2461396%27&TLIST_TYPE=%27JD%27&QUANTITIES=%274%2C9%2C10%2C13%2C20%2C23%27&APPARENT=%27AIRLESS%27&CSV_FORMAT=%27YES%27&ANG_FORMAT=%27DEG%27&EXTRA_PREC=%27YES%27",
+      "file": "tromso-saturn.txt"
+    }
+  ],
+  "events": [
+    {
+      "place": {
+        "name": "new-york",
+        "longitude": -74.006,
+        "latitude": 40.7128,
+        "elevation": 0,
+        "timezone": "America/New_York"
+      },
+      "planet": "mercury",
+      "day": "2026-01-15",
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27199%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27coord%40399%27&COORD_TYPE=%27GEODETIC%27&SITE_COORD=%27-74.006%2C40.7128%2C0%27&START_TIME=%272026-01-15+00%3A00%27&STOP_TIME=%272026-01-16+10%3A00%27&STEP_SIZE=%271m%27&TIME_TYPE=%27UT%27&QUANTITIES=%274%27&R_T_S_ONLY=%27TVH%27&APPARENT=%27REFRACTED%27&CSV_FORMAT=%27YES%27&ANG_FORMAT=%27DEG%27",
+      "file": "new-york-mercury-rise-set.txt"
+    },
+    {
+      "place": {
+        "name": "new-york",
+        "longitude": -74.006,
+        "latitude": 40.7128,
+        "elevation": 0,
+        "timezone": "America/New_York"
+      },
+      "planet": "venus",
+      "day": "2026-01-15",
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27299%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27coord%40399%27&COORD_TYPE=%27GEODETIC%27&SITE_COORD=%27-74.006%2C40.7128%2C0%27&START_TIME=%272026-01-15+00%3A00%27&STOP_TIME=%272026-01-16+10%3A00%27&STEP_SIZE=%271m%27&TIME_TYPE=%27UT%27&QUANTITIES=%274%27&R_T_S_ONLY=%27TVH%27&APPARENT=%27REFRACTED%27&CSV_FORMAT=%27YES%27&ANG_FORMAT=%27DEG%27",
+      "file": "new-york-venus-rise-set.txt"
+    },
+    {
+      "place": {
+        "name": "new-york",
+        "longitude": -74.006,
+        "latitude": 40.7128,
+        "elevation": 0,
+        "timezone": "America/New_York"
+      },
+      "planet": "mars",
+      "day": "2026-01-15",
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27499%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27coord%40399%27&COORD_TYPE=%27GEODETIC%27&SITE_COORD=%27-74.006%2C40.7128%2C0%27&START_TIME=%272026-01-15+00%3A00%27&STOP_TIME=%272026-01-16+10%3A00%27&STEP_SIZE=%271m%27&TIME_TYPE=%27UT%27&QUANTITIES=%274%27&R_T_S_ONLY=%27TVH%27&APPARENT=%27REFRACTED%27&CSV_FORMAT=%27YES%27&ANG_FORMAT=%27DEG%27",
+      "file": "new-york-mars-rise-set.txt"
+    },
+    {
+      "place": {
+        "name": "new-york",
+        "longitude": -74.006,
+        "latitude": 40.7128,
+        "elevation": 0,
+        "timezone": "America/New_York"
+      },
+      "planet": "jupiter",
+      "day": "2026-01-15",
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27599%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27coord%40399%27&COORD_TYPE=%27GEODETIC%27&SITE_COORD=%27-74.006%2C40.7128%2C0%27&START_TIME=%272026-01-15+00%3A00%27&STOP_TIME=%272026-01-16+10%3A00%27&STEP_SIZE=%271m%27&TIME_TYPE=%27UT%27&QUANTITIES=%274%27&R_T_S_ONLY=%27TVH%27&APPARENT=%27REFRACTED%27&CSV_FORMAT=%27YES%27&ANG_FORMAT=%27DEG%27",
+      "file": "new-york-jupiter-rise-set.txt"
+    },
+    {
+      "place": {
+        "name": "new-york",
+        "longitude": -74.006,
+        "latitude": 40.7128,
+        "elevation": 0,
+        "timezone": "America/New_York"
+      },
+      "planet": "saturn",
+      "day": "2026-01-15",
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27699%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27coord%40399%27&COORD_TYPE=%27GEODETIC%27&SITE_COORD=%27-74.006%2C40.7128%2C0%27&START_TIME=%272026-01-15+00%3A00%27&STOP_TIME=%272026-01-16+10%3A00%27&STEP_SIZE=%271m%27&TIME_TYPE=%27UT%27&QUANTITIES=%274%27&R_T_S_ONLY=%27TVH%27&APPARENT=%27REFRACTED%27&CSV_FORMAT=%27YES%27&ANG_FORMAT=%27DEG%27",
+      "file": "new-york-saturn-rise-set.txt"
+    },
+    {
+      "place": {
+        "name": "sydney",
+        "longitude": 151.2093,
+        "latitude": -33.8688,
+        "elevation": 0,
+        "timezone": "Australia/Sydney"
+      },
+      "planet": "mercury",
+      "day": "2026-01-15",
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27199%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27coord%40399%27&COORD_TYPE=%27GEODETIC%27&SITE_COORD=%27151.2093%2C-33.8688%2C0%27&START_TIME=%272026-01-14+08%3A00%27&STOP_TIME=%272026-01-15+18%3A00%27&STEP_SIZE=%271m%27&TIME_TYPE=%27UT%27&QUANTITIES=%274%27&R_T_S_ONLY=%27TVH%27&APPARENT=%27REFRACTED%27&CSV_FORMAT=%27YES%27&ANG_FORMAT=%27DEG%27",
+      "file": "sydney-mercury-rise-set.txt"
+    },
+    {
+      "place": {
+        "name": "sydney",
+        "longitude": 151.2093,
+        "latitude": -33.8688,
+        "elevation": 0,
+        "timezone": "Australia/Sydney"
+      },
+      "planet": "venus",
+      "day": "2026-01-15",
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27299%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27coord%40399%27&COORD_TYPE=%27GEODETIC%27&SITE_COORD=%27151.2093%2C-33.8688%2C0%27&START_TIME=%272026-01-14+08%3A00%27&STOP_TIME=%272026-01-15+18%3A00%27&STEP_SIZE=%271m%27&TIME_TYPE=%27UT%27&QUANTITIES=%274%27&R_T_S_ONLY=%27TVH%27&APPARENT=%27REFRACTED%27&CSV_FORMAT=%27YES%27&ANG_FORMAT=%27DEG%27",
+      "file": "sydney-venus-rise-set.txt"
+    },
+    {
+      "place": {
+        "name": "sydney",
+        "longitude": 151.2093,
+        "latitude": -33.8688,
+        "elevation": 0,
+        "timezone": "Australia/Sydney"
+      },
+      "planet": "mars",
+      "day": "2026-01-15",
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27499%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27coord%40399%27&COORD_TYPE=%27GEODETIC%27&SITE_COORD=%27151.2093%2C-33.8688%2C0%27&START_TIME=%272026-01-14+08%3A00%27&STOP_TIME=%272026-01-15+18%3A00%27&STEP_SIZE=%271m%27&TIME_TYPE=%27UT%27&QUANTITIES=%274%27&R_T_S_ONLY=%27TVH%27&APPARENT=%27REFRACTED%27&CSV_FORMAT=%27YES%27&ANG_FORMAT=%27DEG%27",
+      "file": "sydney-mars-rise-set.txt"
+    },
+    {
+      "place": {
+        "name": "sydney",
+        "longitude": 151.2093,
+        "latitude": -33.8688,
+        "elevation": 0,
+        "timezone": "Australia/Sydney"
+      },
+      "planet": "jupiter",
+      "day": "2026-01-15",
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27599%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27coord%40399%27&COORD_TYPE=%27GEODETIC%27&SITE_COORD=%27151.2093%2C-33.8688%2C0%27&START_TIME=%272026-01-14+08%3A00%27&STOP_TIME=%272026-01-15+18%3A00%27&STEP_SIZE=%271m%27&TIME_TYPE=%27UT%27&QUANTITIES=%274%27&R_T_S_ONLY=%27TVH%27&APPARENT=%27REFRACTED%27&CSV_FORMAT=%27YES%27&ANG_FORMAT=%27DEG%27",
+      "file": "sydney-jupiter-rise-set.txt"
+    },
+    {
+      "place": {
+        "name": "sydney",
+        "longitude": 151.2093,
+        "latitude": -33.8688,
+        "elevation": 0,
+        "timezone": "Australia/Sydney"
+      },
+      "planet": "saturn",
+      "day": "2026-01-15",
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27699%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27coord%40399%27&COORD_TYPE=%27GEODETIC%27&SITE_COORD=%27151.2093%2C-33.8688%2C0%27&START_TIME=%272026-01-14+08%3A00%27&STOP_TIME=%272026-01-15+18%3A00%27&STEP_SIZE=%271m%27&TIME_TYPE=%27UT%27&QUANTITIES=%274%27&R_T_S_ONLY=%27TVH%27&APPARENT=%27REFRACTED%27&CSV_FORMAT=%27YES%27&ANG_FORMAT=%27DEG%27",
+      "file": "sydney-saturn-rise-set.txt"
+    }
+  ]
+}

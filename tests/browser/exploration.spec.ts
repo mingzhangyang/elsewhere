@@ -36,6 +36,129 @@ test('clicking centered Mizar selects Mizar instead of Alcor', async ({ page }) 
   await expect(page.getByRole('heading', { name: 'Mizar', exact: true })).toBeVisible();
 });
 
+// "What is that bright point?": tapping it names the planet, for an evening Venus and a midnight Jupiter.
+for (const { scenario, planet } of [
+  { scenario: 'venus', planet: 'Venus' },
+  { scenario: 'jupiter', planet: 'Jupiter' },
+]) {
+  test(`tapping the bright point of ${planet} names it`, async ({ page }) => {
+    await page.goto(`/?scenario=${scenario}`);
+    await page.getByRole('button', { name: 'Objects', exact: true }).click();
+    // Above the horizon, planets are listed right after the Sun and Moon, before any star.
+    const list = page.getByRole('group', { name: 'Celestial objects' });
+    await expect(
+      list
+        .getByRole('button')
+        .filter({ hasNotText: /^(Sun|Moon)/ })
+        .first(),
+    ).toContainText(planet);
+    await list.getByRole('button', { name: new RegExp(planet) }).click();
+    await expect(page.getByText('Above the horizon', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Center in view' }).click();
+    const canvas = page.getByRole('img', { name: /^Sky view\./ });
+    const box = (await canvas.boundingBox())!;
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await expect(page.getByRole('heading', { name: planet, exact: true })).toBeVisible();
+    await expect(page.getByText('Planet', { exact: true })).toBeVisible();
+  });
+}
+
+test('a shared link opens centered on the planet it was focused on', async ({ page, browser }) => {
+  await page.goto('/?scenario=jupiter');
+  await page.getByRole('button', { name: 'Objects', exact: true }).click();
+  await page.getByRole('searchbox', { name: 'Find an object' }).fill('Jupiter');
+  await page
+    .getByRole('group', { name: 'Celestial objects' })
+    .getByRole('button', { name: /Jupiter/ })
+    .click();
+  await page.getByRole('button', { name: 'Center in view' }).click();
+  await page.getByRole('button', { name: 'Share this sky', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Share this sky' })).toContainText('centered on Jupiter');
+  const link = await page.getByRole('textbox', { name: 'Sky link' }).inputValue();
+  const reopened = await browser.newPage();
+  await reopened.goto(link);
+  await expect(reopened.getByRole('region', { name: 'Selected object' })).toContainText('Jupiter');
+  await expect(reopened.locator('.sky-target')).toBeVisible();
+  await reopened.close();
+});
+
+const NEW_YORK = {
+  id: 'new-york',
+  name: 'New York',
+  country: 'United States',
+  latitude: 40.7128,
+  longitude: -74.006,
+  elevation: 10,
+  timezone: 'America/New_York',
+};
+/** A shared-link URL for New York at `instant`, centered on `focus` once Recenter is pressed. */
+const skyLink = (instant: string, focus: string, fov: number) =>
+  '/#sky=' +
+  encodeURIComponent(
+    JSON.stringify({
+      version: 1,
+      location: NEW_YORK,
+      instant,
+      camera: { heading: 180, altitude: 60, fov },
+      layers: { stars: true, lines: false, labels: false },
+      custom: null,
+      clearSky: true,
+      focus,
+    }),
+  );
+
+// On January 19, 2026, Jupiter passes 0.46° from Wasat (δ Geminorum, magnitude 3.5). The view is
+// zoomed so the two are about 10 px apart, inside each other's 20 px tap radius.
+test('a star beside a planet stays selectable: the nearer point wins the tap', async ({ page }) => {
+  await page.goto('/?scenario=night');
+  const canvas = page.getByRole('img', { name: /^Sky view\./ });
+  const height = (await canvas.boundingBox())!.height;
+  // At the center of a perspective view, 1° spans (height / 2) / tan(fov / 2) · π / 180 pixels.
+  const fov = (2 * Math.atan(((height / 2) * 0.46 * (Math.PI / 180)) / 10) * 180) / Math.PI;
+  for (const [focus, name] of [
+    ['hyg-35453', 'Wasat'],
+    ['jupiter', 'Jupiter'],
+  ]) {
+    // A link differing only after '#' would not reload the app.
+    await page.goto('about:blank');
+    await page.goto(skyLink('2026-01-19T04:00:00.000Z', focus, fov));
+    const card = page.getByRole('region', { name: 'Selected object' });
+    await expect(card).toContainText(name);
+    // The card can show before the 3D sky has loaded; recenter only once it has.
+    await expect(canvas).toBeVisible();
+    await card.getByRole('button', { name: 'Recenter' }).click();
+    await expect(page.locator('.sky-target')).toBeVisible();
+    const box = (await canvas.boundingBox())!;
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
+  }
+});
+
+test('a link shared after panning away does not claim the planet is centered', async ({ page, browser }) => {
+  await page.goto('/?scenario=jupiter');
+  await page.getByRole('button', { name: 'Objects', exact: true }).click();
+  await page.getByRole('searchbox', { name: 'Find an object' }).fill('Jupiter');
+  await page
+    .getByRole('group', { name: 'Celestial objects' })
+    .getByRole('button', { name: /Jupiter/ })
+    .click();
+  await page.getByRole('button', { name: 'Center in view' }).click();
+  const canvas = page.getByRole('img', { name: /^Sky view\./ });
+  await canvas.focus();
+  for (let step = 0; step < 4; step++) await page.keyboard.press('Shift+ArrowLeft');
+  await page.getByRole('button', { name: 'Share this sky', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Share this sky' });
+  await expect(dialog).toContainText('camera view, layers');
+  await expect(dialog).not.toContainText('centered on');
+  const link = await page.getByRole('textbox', { name: 'Sky link' }).inputValue();
+  expect(decodeURIComponent(link)).not.toContain('"focus"');
+  const reopened = await browser.newPage();
+  await reopened.goto(link);
+  await expect(reopened.getByRole('img', { name: /^Sky view\./ })).toBeVisible();
+  await expect(reopened.getByRole('region', { name: 'Selected object' })).toHaveCount(0);
+  await reopened.close();
+});
+
 test('the first screen does not wait for the star catalog', async ({ page }) => {
   let release = () => {};
   const held = new Promise<void>((resolve) => (release = resolve));
