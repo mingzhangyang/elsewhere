@@ -38,8 +38,8 @@ Made by the project owner on November 14, 2026:
 - The sky has the Sun, the Moon and 5,070 stars (347 with proper names). There are no planets.
 - Weather comes from Open-Meteo: forecast up to 15 days ahead, recent days, and historical reanalysis back to 1940. The astronomy covers 1900–2100.
 - The interface is English only. The horizon is either flat or a procedural ridge.
-- Deployment is configured (`wrangler.jsonc`, `public/_headers`) and checked against Wrangler's local runtime, including an offline reload in Chromium. The Cloudflare dashboard setup and the first deployment remain.
-- **Not yet done:** the first deployment, physical phones, screen readers, the 30-minute GPU soak, unfamiliar-user sessions and broader scientific review. See [RELEASE.md](docs/RELEASE.md).
+- The app is live at `https://elsewhere.orangely.xyz`, deployed by Cloudflare on every push to `main`. Headers, precached files and an offline reload in Chromium pass there. Cloudflare's bot-detection script stays on and is disclosed in the privacy notes.
+- **Not yet done:** physical phones, screen readers, the 30-minute GPU soak, unfamiliar-user sessions and broader scientific review. See [RELEASE.md](docs/RELEASE.md).
 - Shared links keep their state after `#` (`src/App.tsx`), which browsers never send to a server. That keeps them private, and it also means a server cannot read them to build a preview.
 
 ## Why this direction

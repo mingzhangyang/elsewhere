@@ -111,3 +111,13 @@ Checked with Wrangler 4.156.0's local runtime serving `dist/` with `wrangler.jso
 - **Headers.** `/` and `/sw.js` return `Cache-Control: no-cache`; hashed files under `/assets/`, including the now-bundled Moon map, return `public, max-age=31536000, immutable`; other files keep Cloudflare's revalidating default. `/_headers` returns 404.
 - **Redirects.** Cloudflare answers `/index.html` and `/credits.html` with 307 redirects to `/` and `/credits`. With the previous service worker, every offline navigation in Chromium failed (`net::ERR_FAILED`): it cached the redirected responses, and a navigation cannot be answered with one. The service worker now stores plain copies; offline, `/`, a shared-link URL, `/credits.html` and `/credits` all open, and the sky renders with no page errors. `scripts/check-build.mjs` simulates the redirects and asserts this.
 - **Smoke check.** `npm run check:deployment` passed against the local runtime. It has not yet run against the production origin.
+
+### Production (November 15)
+
+`https://elsewhere.orangely.xyz`, deployed by Cloudflare's Git integration from `main` at `fd79931`.
+
+- **Same build.** The live service worker's cache is `elsewhere-2079230adcf3`, the name computed from every file of the build tested locally, so the deployed files match it.
+- **Deployment check.** Cache headers, all 14 precached files and the hidden `_headers` pass. Of about 400 further requests from this environment, one failed to connect; the agent proxy's log attributes it to its own egress gateway, as it does two 503 responses during the first minute.
+- **Browser.** Chromium loaded the app, the service worker took control, and with the network off `/`, `/credits.html` and `/credits` opened and the sky rendered as it did online.
+- **Injected script.** Cloudflare adds its JavaScript detections script (bot detection, `/cdn-cgi/challenge-platform/scripts/jsd/main.js`, in a hidden iframe) to every HTML response, and the browser sends a report to `/cdn-cgi/rum`. It is not visitor analytics. The owner chose to keep it, so `public/credits.html` now discloses Cloudflare's role and the script, and the deployment check allows only this script: any other `/cdn-cgi/` script or Cloudflare's analytics beacon fails it. Offline, the script fails to load without affecting the app.
+- **Weather.** Open-Meteo answered 429 from this environment, whose outbound address is shared; the app showed "Weather unavailable · neutral sky" as designed. Weather in production still needs a check from an ordinary connection.
