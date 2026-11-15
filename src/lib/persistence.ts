@@ -4,7 +4,7 @@ import type { SkyBrightness } from '../domain/starVisibility';
 import { validateObserver } from '../domain/observer';
 import { validateInstant } from '../domain/time';
 import { defaultWeatherValues } from '../domain/weather';
-import { normalizeLocation } from './locations';
+import { isDeviceLocation, normalizeLocation } from './locations';
 
 export interface LayerSettings {
   stars: boolean;
@@ -51,9 +51,18 @@ export interface Exploration {
    * Optional, so older links stay valid and older app versions ignore it.
    */
   focus?: string;
+  /**
+   * What the link is about (ROADMAP phase 3 prototype): an object id as in `focus`, or a line
+   * pattern as `pattern:<id>`. A link with a subject opens with the camera turning to it. Optional
+   * and still version 1: older links have none, and older app versions ignore it and open on the
+   * camera view, which already faces the subject. Whether it stays in this form is an open decision
+   * for phase 4 (see ROADMAP.md).
+   */
+  subject?: string;
 }
 /** Object ids: 'sun', 'moon', planet names and HYG ids such as 'hyg-32263'. */
 const OBJECT_ID = /^[a-z0-9-]{1,40}$/;
+const SUBJECT = /^(pattern:)?[a-z0-9-]{1,40}$/;
 const KEY = 'elsewhere.preferences.v1';
 const defaults = (): Preferences => ({
   version: 1,
@@ -184,6 +193,8 @@ export function parseExploration(hash: string): { value: Exploration | null; not
       throw new Error('Invalid preview mode');
     if (data.focus !== undefined && (typeof data.focus !== 'string' || !OBJECT_ID.test(data.focus)))
       throw new Error('Invalid focus');
+    if (data.subject !== undefined && (typeof data.subject !== 'string' || !SUBJECT.test(data.subject)))
+      throw new Error('Invalid subject');
     return {
       value: {
         version: 1,
@@ -194,12 +205,27 @@ export function parseExploration(hash: string): { value: Exploration | null; not
         custom,
         ...(data.clearSky === undefined ? {} : { clearSky: data.clearSky }),
         ...(data.focus === undefined ? {} : { focus: data.focus }),
+        ...(data.subject === undefined ? {} : { subject: data.subject }),
       },
       notice: null,
     };
   } catch {
     return { value: null, notice: { code: 'invalid-link' } };
   }
+}
+/**
+ * Device coordinates rounded to city level (0.1°, about 11 km) for sharing, unless the person chooses
+ * to share them exactly (ROADMAP principle 4). Other places are named places and are kept as they are.
+ */
+export function cityLevel(location: LocationInfo): LocationInfo {
+  if (!isDeviceLocation(location)) return location;
+  const round = (value: number) => Math.round(value * 10) / 10;
+  return normalizeLocation({
+    ...location,
+    latitude: round(location.latitude),
+    longitude: round(location.longitude),
+    elevation: Math.round(location.elevation),
+  });
 }
 export function explorationUrl(exploration: Exploration): string {
   const url = new URL(window.location.href);

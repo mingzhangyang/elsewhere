@@ -599,9 +599,58 @@ const zh: Messages = {
       `此链接包含地点、精确时间、${focus ? `以${focus}为中心的` : ''}视角、图层${customWeather ? '和自定义天气' : ''}。`,
     device: ({ latitude, longitude }) =>
       `它包含你设备的精确坐标：${f.number(latitude, 5)}, ${f.number(longitude, 5)}。只有在你愿意让对方看到这个位置时才分享。`,
+    deviceRounded: ({ latitude, longitude }) =>
+      `此链接中的位置已粗略到约 10 公里（${f.number(latitude, 1)}, ${f.number(longitude, 1)}）。`,
+    precise: '分享我的精确位置',
+    arrival: ({ subject }) => `打开时，视角会转向${subject}。`,
     field: '星空链接',
     copied: '已复制',
     copy: '复制链接',
+  },
+  moment: {
+    section: '纪念图片',
+    note: '原型：一张这一刻的图片，可以和链接一起发出。',
+    make: '生成图片',
+    drawing: '正在绘制图片…',
+    failed: '图片无法绘制。请换一种风格再试。',
+    style: '风格',
+    styles: { realistic: '写实', illustrated: '插画' },
+    horizon: '地平线',
+    horizons: { ridge: '山脊', mountains: '群山', sea: '海面', city: '城市' },
+    alt: ({ place }) => `${place}上空的纪念图片`,
+    save: '保存图片',
+    send: '发送图片',
+    devicePlace: '我所在的地方',
+    illustration: '插画',
+    when: ({ date, time, zone }) => `${date} · ${time} · ${zone}`,
+    subject: ({ name, direction, degrees }) => `望向${name}，朝${direction} ${f.number(degrees)}°`,
+    facing: ({ direction, degrees }) => `朝${direction} ${f.number(degrees)}°`,
+    moon: ({ phase, illumination, up }) =>
+      `月亮：${phase}，亮面 ${f.number(illumination)}%${up ? '' : '，在地平线以下'}`,
+    conditions: ({ condition, cloud }) => `${condition}，云量 ${f.number(cloud)}%`,
+    noWeather: '这一刻没有天气数据',
+    provenance: (provenance) => {
+      switch (provenance.kind) {
+        case 'source':
+          return {
+            current: '云来自该地区的当前模型估算。',
+            forecast: '云来自该地区的天气预报。',
+            recent: '云来自该地区的近期天气模型。',
+            historical: '云来自该地区的再分析数据。',
+          }[provenance.source];
+        case 'custom':
+          return '天气由发送者设定，并非实测。';
+        case 'clear':
+          return '晴空预览：发送者去掉了云。';
+        case 'none':
+          return '没有天气数据：显示的是中性天空。';
+      }
+    },
+    method: ({ illustrated }) =>
+      '位置由 Astronomy Engine 计算；地平线和云的形状为示意。' +
+      (illustrated ? '以插画方式绘制，月亮和行星有所放大。' : ''),
+    attribution: '天气：Open-Meteo（CC BY 4.0）· 星表：HYG（CC BY-SA 4.0）',
+    sentences: (parts) => parts.join(''),
   },
   recovery: {
     title: '星空需要重新开始',

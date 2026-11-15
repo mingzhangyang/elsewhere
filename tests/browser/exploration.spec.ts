@@ -82,6 +82,112 @@ test('a shared link opens centered on the planet it was focused on', async ({ pa
   await reopened.close();
 });
 
+// Phase 3 prototype: a link with a subject opens turned away from it and turns to it.
+const jupiterMoment = (subject?: string) =>
+  '/#sky=' +
+  encodeURIComponent(
+    JSON.stringify({
+      version: 1,
+      location: {
+        id: 'new-york',
+        name: 'New York',
+        country: 'United States',
+        latitude: 40.7128,
+        longitude: -74.006,
+        elevation: 10,
+        timezone: 'America/New_York',
+      },
+      instant: '2026-01-10T05:00:00.000Z',
+      camera: { heading: 180, altitude: 40, fov: 50 },
+      layers: { stars: true, lines: false, labels: true },
+      custom: null,
+      ...(subject ? { focus: subject, subject } : {}),
+    }),
+  );
+const compass = (page: import('@playwright/test').Page) => page.getByRole('img', { name: /^Facing / });
+
+test('a link with a subject turns to it on opening; the visitor’s own look stops the turn', async ({
+  page,
+}) => {
+  await page.goto(jupiterMoment('jupiter'));
+  await expect(page.getByRole('img', { name: /^Sky view\./ })).toBeVisible();
+  // It starts 70° to the left (heading 110°) and ends facing the link's view.
+  await expect(compass(page)).not.toHaveAccessibleName(/180 degrees/);
+  await expect(compass(page)).toHaveAccessibleName(/Facing S, 180 degrees/, { timeout: 8000 });
+  await expect(page.getByRole('region', { name: 'Selected object' })).toContainText('Jupiter');
+  // A key press of the visitor's own during the turn leaves the view where they put it.
+  await page.goto('about:blank');
+  await page.goto(jupiterMoment('jupiter'));
+  const sky = page.getByRole('img', { name: /^Sky view\./ });
+  await expect(sky).toBeVisible();
+  await sky.press('ArrowLeft');
+  await page.waitForTimeout(3500);
+  await expect(compass(page)).not.toHaveAccessibleName(/180 degrees/);
+  // Older links, without a subject, open where they were left.
+  await page.goto('about:blank');
+  await page.goto(jupiterMoment());
+  await expect(page.getByRole('img', { name: /^Sky view\./ })).toBeVisible();
+  await expect(compass(page)).toHaveAccessibleName(/Facing S, 180 degrees/);
+});
+
+test('with reduced motion, a link with a subject opens on it without turning', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto(jupiterMoment('jupiter'));
+  await expect(page.getByRole('img', { name: /^Sky view\./ })).toBeVisible();
+  await expect(compass(page)).toHaveAccessibleName(/Facing S, 180 degrees/);
+});
+
+test('the share dialog draws a keepsake image in each style and horizon', async ({ page }) => {
+  await page.goto('/?scenario=jupiter');
+  await page.getByRole('button', { name: 'Objects', exact: true }).click();
+  await page
+    .getByRole('group', { name: 'Celestial objects' })
+    .getByRole('button', { name: /Jupiter/ })
+    .click();
+  await page.getByRole('button', { name: 'Center in view' }).click();
+  await page.getByRole('button', { name: 'Share this sky', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Share this sky' });
+  await expect(dialog).toContainText('When opened, the view turns to Jupiter.');
+  expect(decodeURIComponent(await dialog.getByRole('textbox', { name: 'Sky link' }).inputValue())).toContain(
+    '"subject":"jupiter"',
+  );
+  await dialog.getByRole('button', { name: 'Make an image' }).click();
+  const image = dialog.getByRole('img', { name: 'Keepsake image of the sky over New York' });
+  /** The image's size and the share of its sky area that is not plain black. */
+  const inspect = () =>
+    image.evaluate(async (img: HTMLImageElement) => {
+      await img.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0);
+      const data = ctx.getImageData(0, 0, canvas.width, 600).data;
+      let lit = 0;
+      for (let i = 0; i < data.length; i += 4) if (data[i] + data[i + 1] + data[i + 2] > 60) lit++;
+      return {
+        width: img.naturalWidth,
+        height: img.naturalHeight,
+        lit: lit / (data.length / 4),
+        src: img.src,
+      };
+    });
+  await expect(image).toBeVisible();
+  const realistic = await inspect();
+  expect(realistic.width).toBe(1200);
+  expect(realistic.lit).toBeGreaterThan(0.001); // stars and labels, captured from the renderer
+  await dialog.getByRole('button', { name: 'Illustrated', exact: true }).click();
+  await expect.poll(async () => (await inspect()).src).not.toBe(realistic.src);
+  const illustrated = await inspect();
+  expect(illustrated.lit).toBeGreaterThan(0.5); // a painted sky
+  await dialog.getByRole('button', { name: 'Sea', exact: true }).click();
+  await expect.poll(async () => (await inspect()).src).not.toBe(illustrated.src);
+  await expect(dialog.getByRole('link', { name: 'Save image' })).toHaveAttribute(
+    'download',
+    'elsewhere-sky-2026-01-10.png',
+  );
+});
+
 const NEW_YORK = {
   id: 'new-york',
   name: 'New York',

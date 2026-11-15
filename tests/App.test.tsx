@@ -6,7 +6,7 @@ import { loadPreferences } from '../src/lib/persistence';
 it('saves two device positions independently and keeps their sharing disclosure', async () => {
   const positions = [
     { latitude: 40.7, longitude: -74 },
-    { latitude: 35.7, longitude: 139.7 },
+    { latitude: 35.71234, longitude: 139.71234 },
   ];
   vi.stubGlobal('navigator', {
     geolocation: {
@@ -28,7 +28,14 @@ it('saves two device positions independently and keeps their sharing disclosure'
     fireEvent.click(screen.getByRole('button', { name: 'Close locations' }));
   }
   fireEvent.click(screen.getByRole('button', { name: 'Share this sky' }));
-  expect(screen.getByText(/exact device coordinates: 35.70000, 139.70000/)).toBeVisible();
+  // Shared at city level by default (principle 4); exact only when the person chooses it.
+  const link = () => (screen.getByRole('textbox', { name: 'Sky link' }) as HTMLInputElement).value;
+  expect(screen.getByText(/rounded to about 10 km in this link \(35.7, 139.7\)/)).toBeVisible();
+  expect(link()).toContain('%22latitude%22%3A35.7%2C%22longitude%22%3A139.7%2C');
+  expect(link()).not.toContain('35.71234');
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Share my exact location' }));
+  expect(screen.getByText(/exact device coordinates: 35.71234, 139.71234/)).toBeVisible();
+  expect(link()).toContain('35.71234');
   fireEvent.click(screen.getByRole('button', { name: 'Close sharing' }));
   fireEvent.click(screen.getByRole('button', { name: /Change location/ }));
   fireEvent.click(screen.getByRole('button', { name: 'Remove saved place' }));
