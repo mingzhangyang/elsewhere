@@ -4,6 +4,12 @@ import type { LocationInfo } from '../types';
 import { normalizeLocation, PRESETS } from '../lib/locations';
 import { searchLocations } from '../services/placeSearch';
 import { classifyNetworkFailure } from '../lib/networkErrors';
+import type { NetworkFailure } from '../types';
+
+/** Kept as a code and worded at render, so a language change rewords an error already showing. */
+type PlaceError =
+  | { kind: 'search'; failure: NetworkFailure }
+  | { kind: 'unavailable' | 'denied' | 'timedOut' | 'noTimeZone' };
 import { useI18n } from '../i18n';
 import { placeLabel } from '../i18n/names';
 
@@ -30,7 +36,7 @@ export default function LocationPicker({
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<LocationInfo[]>([]);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<PlaceError | null>(null);
   const [active, setActive] = useState(-1);
   const [locating, setLocating] = useState(false);
   useEffect(
@@ -52,7 +58,7 @@ export default function LocationPicker({
     }
     const controller = new AbortController();
     setBusy(true);
-    setError('');
+    setError(null);
     setResults([]);
     setActive(-1);
     const timer = setTimeout(() => {
@@ -61,7 +67,8 @@ export default function LocationPicker({
           if (!controller.signal.aborted) setResults(items);
         })
         .catch((reason) => {
-          if (!controller.signal.aborted) setError(m.network(classifyNetworkFailure(reason), 'search'));
+          if (!controller.signal.aborted)
+            setError({ kind: 'search', failure: classifyNetworkFailure(reason) });
         })
         .finally(() => {
           if (!controller.signal.aborted) setBusy(false);
@@ -72,7 +79,6 @@ export default function LocationPicker({
       controller.abort();
     };
     // Results are named in the interface language, so a language change searches again.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trimmed, t.searchLanguage]);
   const cancelLocation = () => {
     locationRequest.current += 1;
@@ -87,16 +93,16 @@ export default function LocationPicker({
     onSelect(place);
     close();
     setQuery('');
-    setError('');
+    setError(null);
     setActive(-1);
   };
   const locate = () => {
     if (!navigator.geolocation) {
-      setError(t.unavailable);
+      setError({ kind: 'unavailable' });
       return;
     }
     setLocating(true);
-    setError('');
+    setError(null);
     const request = ++locationRequest.current;
     navigator.geolocation.getCurrentPosition(
       async ({ coords }) => {
@@ -116,7 +122,7 @@ export default function LocationPicker({
             }),
           );
         } catch {
-          if (request === locationRequest.current) setError(t.noTimeZone);
+          if (request === locationRequest.current) setError({ kind: 'noTimeZone' });
         } finally {
           if (request === locationRequest.current) setLocating(false);
         }
@@ -124,7 +130,7 @@ export default function LocationPicker({
       (reason) => {
         if (request !== locationRequest.current) return;
         setLocating(false);
-        setError(reason.code === 1 ? t.denied : reason.code === 3 ? t.timedOut : t.unavailable);
+        setError({ kind: reason.code === 1 ? 'denied' : reason.code === 3 ? 'timedOut' : 'unavailable' });
       },
       { timeout: 10000, enableHighAccuracy: false },
     );
@@ -217,7 +223,8 @@ export default function LocationPicker({
         </div>
         <p className="eyebrow">{trimmed.length >= 2 ? t.results : t.suggestions}</p>
         <div role="status" className="form-status">
-          {error || (busy ? t.searching : trimmed.length >= 2 && !options.length ? t.noMatches : '')}
+          {(error && (error.kind === 'search' ? m.network(error.failure, 'search') : t[error.kind])) ||
+            (busy ? t.searching : trimmed.length >= 2 && !options.length ? t.noMatches : '')}
         </div>
         <div id="place-options" role="listbox" aria-label={t.options} className="place-options">
           {options.map((place, index) => {

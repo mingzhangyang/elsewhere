@@ -74,6 +74,8 @@ export default function App({
       initialTime || initialLocation ? { value: null, notice: null } : parseExploration(window.location.hash),
   }));
   const [preferences, setPreferences] = useState<Preferences>(() => launch.preferences.value);
+  const latestPreferences = useRef(preferences);
+  const languageChoice = useRef(0);
   const [state, dispatch] = useReducer(explorationReducer, undefined, () =>
     initialExploration(launch.shared.value, launch.shared.notice || launch.preferences.notice),
   );
@@ -172,16 +174,29 @@ export default function App({
     window.addEventListener('languagechange', follow);
     return () => window.removeEventListener('languagechange', follow);
   }, [preferences.language]);
+  /**
+   * Changes apply to the latest preferences, not the render that scheduled them: a language choice
+   * completes after its catalog downloads, and must not write back settings changed meanwhile.
+   */
   const changePreferences = (change: (value: Preferences) => Preferences) => {
-    const next = change(preferences);
+    const next = change(latestPreferences.current);
+    latestPreferences.current = next;
     setPreferences(next);
     if (!savePreferences(next)) setNotice({ code: 'preferences-not-saved' });
   };
-  /** The language is saved once it has loaded; a failed download leaves the current one in place. */
+  /**
+   * The language is saved once it has loaded; a failed download leaves the current one in place.
+   * Only the latest choice counts: one superseded while loading is neither saved nor reported.
+   */
   const chooseLanguage = (setting: LanguageSetting) => {
+    const ticket = ++languageChoice.current;
     setLanguage(resolveLocale(setting)).then(
-      () => changePreferences((p) => ({ ...p, language: setting })),
-      () => setNotice({ code: 'language-unavailable' }),
+      () => {
+        if (ticket === languageChoice.current) changePreferences((p) => ({ ...p, language: setting }));
+      },
+      () => {
+        if (ticket === languageChoice.current) setNotice({ code: 'language-unavailable' });
+      },
     );
   };
   const setLayer = (key: keyof LayerSettings, value: boolean) => {

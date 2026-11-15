@@ -192,6 +192,37 @@ describe('choosing a language', () => {
     }
   });
 
+  it('rewords a time-editor or place error already shown when the language changes', async () => {
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      geolocation: {
+        getCurrentPosition: (_: PositionCallback, failure: PositionErrorCallback) =>
+          failure({ code: 1 } as GeolocationPositionError),
+      },
+    });
+    render(<App {...scenarioProps('night')} />);
+    // A wall time skipped by the March clock change in New York.
+    fireEvent.click(screen.getByRole('button', { name: 'Change date and time' }));
+    fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-03-08' } });
+    fireEvent.change(screen.getByLabelText('Local time'), { target: { value: '02:30' } });
+    expect(screen.getByRole('alert')).toHaveTextContent('This time does not exist');
+    fireEvent.click(screen.getByRole('button', { name: 'Close time editor' }));
+    fireEvent.click(screen.getByRole('button', { name: /Change location/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use my location' }));
+    expect(
+      screen.getByText('Location permission was denied. Search for a place instead.'),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Close locations' }));
+
+    await act(() => setLanguage('zh-Hans'));
+    fireEvent.click(screen.getByRole('button', { name: '更改日期和时间' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('时钟在此拨快，这个时间并不存在。请选择其他时间。');
+    fireEvent.click(screen.getByRole('button', { name: '关闭时间编辑器' }));
+    fireEvent.click(screen.getByRole('button', { name: /更改地点/ }));
+    expect(screen.getByText('定位权限被拒绝。请改为搜索地点。')).toBeInTheDocument();
+    expect(residualEnglish()).toEqual([]);
+  });
+
   it('keeps preferences saved before the language setting existed, and rejects unknown languages', () => {
     const old = {
       version: 1,

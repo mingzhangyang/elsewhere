@@ -42,37 +42,38 @@ export default function TimeConsole({
   const editor = useRef<HTMLDialogElement>(null);
   const editorTrigger = useRef<HTMLButtonElement>(null);
   const [editing, setEditing] = useState(false);
-  const [error, setError] = useState('');
+  // A code, worded at render, so a language change rewords an error already showing.
+  const [error, setError] = useState<'gap' | 'fold' | 'invalidDate' | 'outOfRange' | null>(null);
   const [choices, setChoices] = useState<Date[]>([]);
   const status = following ? t.following : playing ? t.playing({ speed }) : t.paused;
   const shortDate = m.f.shortDate(instant, timeZone);
   const minute = Math.floor((instant.getTime() - bounds.start.getTime()) / 60000);
   const jump = (time: Date) => {
     onPlaying(false);
-    setError('');
+    setError(null);
     setChoices([]);
     onTime(new Date(Math.max(MIN_INSTANT, Math.min(MAX_INSTANT, time.getTime()))));
   };
   const edit = (day: string, time: string) => {
     onPlaying(false);
-    setError('');
+    setError(null);
     setChoices([]);
     try {
       const candidates = wallTimeCandidates(day, time, timeZone);
-      if (!candidates.length) setError(t.gap);
+      if (!candidates.length) setError('gap');
       else if (candidates.length === 2) {
         setChoices(candidates);
-        setError(t.fold);
+        setError('fold');
       } else jump(candidates[0]);
     } catch {
-      setError(t.invalidDate);
+      setError('invalidDate');
     }
   };
   const shift = (days: number) => {
     try {
       jump(shiftLocalDate(instant, timeZone, days));
     } catch {
-      setError(t.outOfRange);
+      setError('outOfRange');
     }
   };
   return (
@@ -105,7 +106,7 @@ export default function TimeConsole({
           className="now-button"
           aria-pressed={following}
           onClick={() => {
-            setError('');
+            setError(null);
             setChoices([]);
             onNow();
           }}
@@ -166,7 +167,7 @@ export default function TimeConsole({
         </div>
         {error && (
           <div className="time-error" role="alert">
-            {error}
+            {t[error]}
             {choices.map((candidate) => (
               <button key={candidate.getTime()} onClick={() => jump(candidate)}>
                 {m.f.time(candidate, timeZone)} {formatOffset(candidate, timeZone)}

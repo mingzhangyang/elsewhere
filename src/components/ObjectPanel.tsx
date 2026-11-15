@@ -51,7 +51,8 @@ export default function ObjectPanel({
   const [upOnly, setUpOnly] = useState(true);
   // Announced only when the reader changes the search or filter. Playback changes the count as stars
   // rise and set; a live region bound to it would interrupt the reader on every tick.
-  const [announcement, setAnnouncement] = useState('');
+  // The count, not its sentence, so the announcement is worded in the current language.
+  const [announcement, setAnnouncement] = useState<number | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const search = useRef<HTMLInputElement>(null);
   const previousSelection = useRef(selectedId);
@@ -64,7 +65,7 @@ export default function ObjectPanel({
     if (content) content.scrollTop = 0;
     previousSelection.current = selectedId;
     // The list's status region remounts on return; a stale count there must not be re-announced.
-    setAnnouncement('');
+    setAnnouncement(null);
   }, [selectedId]);
 
   const name = (object: SkyObject) => objectName(object, i18n);
@@ -229,7 +230,7 @@ export default function ObjectPanel({
   const filter = (nextQuery: string, nextUpOnly: boolean) => {
     setQuery(nextQuery);
     setUpOnly(nextUpOnly);
-    setAnnouncement(count(matchObjects(objects, nextQuery.trim().toLowerCase(), nextUpOnly, i18n).length));
+    setAnnouncement(matchObjects(objects, nextQuery.trim().toLowerCase(), nextUpOnly, i18n).length);
   };
   return (
     <>
@@ -295,7 +296,7 @@ export default function ObjectPanel({
         </div>
       )}
       <p className="sr-only" role="status">
-        {announcement}
+        {announcement !== null && count(announcement)}
       </p>
     </>
   );
