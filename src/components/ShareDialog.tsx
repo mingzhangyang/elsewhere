@@ -10,11 +10,13 @@ export interface ShareDialogHandle {
 interface Props {
   location: LocationInfo;
   includesCustomWeather: boolean;
+  /** Name of the centered object the link opens on, if any. */
+  focusName?: string;
   onNotice: (message: string) => void;
 }
 
 const ShareDialog = forwardRef<ShareDialogHandle, Props>(function ShareDialog(
-  { location, includesCustomWeather, onNotice },
+  { location, includesCustomWeather, focusName, onNotice },
   ref,
 ) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -53,7 +55,8 @@ const ShareDialog = forwardRef<ShareDialogHandle, Props>(function ShareDialog(
         </button>
       </div>
       <p>
-        This link includes the place, exact time, camera view, layers
+        This link includes the place, exact time, camera view
+        {focusName ? ` centered on ${focusName}` : ''}, layers
         {includesCustomWeather ? ', and custom weather' : ''}.
       </p>
       {isDeviceLocation(location) && (

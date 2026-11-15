@@ -13,8 +13,8 @@ import type { Star } from '../types';
 /** Screen radius, in CSS pixels, within which a tap selects a star at any zoom. */
 export const STAR_PICK_RADIUS_PX = 20;
 
-/** Used by both the point shader's alpha attribute and hit eligibility. */
-export function starAlpha(star: Star, limit: number): number {
+/** Used by both the point shader's alpha attribute and hit eligibility, for stars and planets. */
+export function starAlpha(star: Pick<Star, 'altitude' | 'magnitude'>, limit: number): number {
   return magnitudeVisibility(star, limit) * starIntensity(star.magnitude);
 }
 

@@ -35,7 +35,7 @@ Made by the project owner on November 14, 2026:
 - The refactor in the [archived refactor roadmap](docs/archive/refactor-roadmap.md) is implemented through phase 5. Every finding in the [code evaluation](docs/archive/code-evaluation.md) is fixed.
 - GitHub Actions passes on `main`: validation, formatting and audit on Linux and Windows with Node 22 and 24, and the Playwright browser suite on Linux (Chromium, Firefox, WebKit, mobile emulation, production offline).
 - Startup loads about 100 kB of JavaScript (gzip); the star catalog arrives afterwards.
-- The sky has the Sun, the Moon and 5,070 stars (347 with proper names). There are no planets.
+- The sky has the Sun, the Moon, the five naked-eye planets and 5,070 stars (347 with proper names). Phase 1 (planets) is implemented; see [below](#1-planets-m).
 - Weather comes from Open-Meteo: forecast up to 15 days ahead, recent days, and historical reanalysis back to 1940. The astronomy covers 1900–2100.
 - The interface is English only. The horizon is either flat or a procedural ridge.
 - The app is live at `https://elsewhere.orangely.xyz`, deployed by Cloudflare on every push to `main`. Headers, precached files and an offline reload in Chromium pass there. Cloudflare's bot-detection script stays on and is disclosed in the privacy notes.
@@ -89,6 +89,8 @@ Planets can be built in parallel.
 **Done when:** the public URL serves the qualified build with the cache headers from RELEASE.md; share links and offline reload work there; a rollback has been rehearsed; device and screen-reader findings are recorded with the build identifier.
 
 ### 1. Planets (M)
+
+**Status:** implemented November 15, 2026. Reference fixtures and tolerances are in [SCIENCE.md](docs/SCIENCE.md#independent-regression-fixtures); browser cases tap an evening Venus and a midnight Jupiter, and reopen a shared link centered on Jupiter. Physical-device checks follow phase 0.
 
 Add Mercury, Venus, Mars, Jupiter and Saturn. Astronomy Engine already computes them. Reuse body rendering, the Objects panel, search, focus framing, rise and set, and visibility explanations. Draw them at their calculated magnitude; Venus's phase belongs in the object details.
 

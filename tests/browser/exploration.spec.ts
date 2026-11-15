@@ -36,6 +36,52 @@ test('clicking centered Mizar selects Mizar instead of Alcor', async ({ page }) 
   await expect(page.getByRole('heading', { name: 'Mizar', exact: true })).toBeVisible();
 });
 
+// "What is that bright point?": tapping it names the planet, for an evening Venus and a midnight Jupiter.
+for (const { scenario, planet } of [
+  { scenario: 'venus', planet: 'Venus' },
+  { scenario: 'jupiter', planet: 'Jupiter' },
+]) {
+  test(`tapping the bright point of ${planet} names it`, async ({ page }) => {
+    await page.goto(`/?scenario=${scenario}`);
+    await page.getByRole('button', { name: 'Objects', exact: true }).click();
+    // Above the horizon, planets are listed right after the Sun and Moon, before any star.
+    const list = page.getByRole('group', { name: 'Celestial objects' });
+    await expect(
+      list
+        .getByRole('button')
+        .filter({ hasNotText: /^(Sun|Moon)/ })
+        .first(),
+    ).toContainText(planet);
+    await list.getByRole('button', { name: new RegExp(planet) }).click();
+    await expect(page.getByText('Above the horizon', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Center in view' }).click();
+    const canvas = page.getByRole('img', { name: /^Sky view\./ });
+    const box = (await canvas.boundingBox())!;
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await expect(page.getByRole('heading', { name: planet, exact: true })).toBeVisible();
+    await expect(page.getByText('Planet', { exact: true })).toBeVisible();
+  });
+}
+
+test('a shared link opens centered on the planet it was focused on', async ({ page, browser }) => {
+  await page.goto('/?scenario=jupiter');
+  await page.getByRole('button', { name: 'Objects', exact: true }).click();
+  await page.getByRole('searchbox', { name: 'Find an object' }).fill('Jupiter');
+  await page
+    .getByRole('group', { name: 'Celestial objects' })
+    .getByRole('button', { name: /Jupiter/ })
+    .click();
+  await page.getByRole('button', { name: 'Center in view' }).click();
+  await page.getByRole('button', { name: 'Share this sky', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Share this sky' })).toContainText('centered on Jupiter');
+  const link = await page.getByRole('textbox', { name: 'Sky link' }).inputValue();
+  const reopened = await browser.newPage();
+  await reopened.goto(link);
+  await expect(reopened.getByRole('region', { name: 'Selected object' })).toContainText('Jupiter');
+  await expect(reopened.locator('.sky-target')).toBeVisible();
+  await reopened.close();
+});
+
 test('the first screen does not wait for the star catalog', async ({ page }) => {
   let release = () => {};
   const held = new Promise<void>((resolve) => (release = resolve));

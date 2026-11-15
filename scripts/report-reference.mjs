@@ -97,7 +97,68 @@ try {
       );
     }
   }
-  console.log(JSON.stringify(maxima, null, 2));
+  // Planets: JPL Horizons observer tables (airless, topocentric) and refracted rise/set tables.
+  const { angularDiameter } = await server.ssrLoadModule('/src/lib/exploration.ts');
+  const { localDayBounds } = await server.ssrLoadModule('/src/domain/time.ts');
+  const planetReferences = JSON.parse(await readFile('tests/fixtures/planets/provenance.json', 'utf8'));
+  const tableRows = async (file) =>
+    (await readFile('tests/fixtures/planets/' + file, 'utf8'))
+      .split('$$SOE')[1]
+      .split('$$EOE')[0]
+      .trim()
+      .split('\n')
+      .map((line) => line.split(',').map((field) => field.trim()));
+  const planets = {
+    azimuthDegrees: 0,
+    geometricAltitudeDegrees: 0,
+    magnitude: 0,
+    illuminationPercentagePoints: 0,
+    rangeKm: 0,
+    angularDiameterArcsec: 0,
+    elongationDegrees: 0,
+    eventSeconds: 0,
+  };
+  for (const entry of planetReferences.observations) {
+    const rows = await tableRows(entry.file);
+    for (const [index, date] of entry.dates.entries()) {
+      const place = {
+        ...entry.place,
+        id: entry.place.name,
+        country: 'Reference',
+        elevation: entry.place.elevation * 1000,
+      };
+      const planet = calculateSky(place, new Date(date)).planets.find((p) => p.id === entry.planet);
+      const [azimuth, altitude, magnitude, , illumination, diameter, range, , elongation] = rows[index]
+        .slice(3)
+        .map(Number);
+      const update = (key, value) => (planets[key] = Math.max(planets[key], Math.abs(value)));
+      update('azimuthDegrees', ((planet.azimuth - azimuth + 540) % 360) - 180);
+      update('geometricAltitudeDegrees', planet.geometricAltitude - altitude);
+      update('magnitude', planet.magnitude - magnitude);
+      update('illuminationPercentagePoints', planet.illumination * 100 - illumination);
+      update('rangeKm', planet.distanceKm - range * 149597870.7);
+      update('angularDiameterArcsec', angularDiameter({ ...planet, kind: 'planet' }) * 3600 - diameter);
+      update('elongationDegrees', planet.elongation - elongation);
+    }
+  }
+  for (const entry of planetReferences.events) {
+    const place = { ...entry.place, id: entry.place.name, country: 'Reference', elevation: 0 };
+    const start = civilDayStart(entry.day, place.timezone);
+    const { end } = localDayBounds(start, place.timezone);
+    const events = calculateDailyEvents(place, start).planets[entry.planet];
+    const rows = await tableRows(entry.file);
+    for (const [key, flag] of [
+      ['rise', 'r'],
+      ['set', 's'],
+    ]) {
+      const expected = rows
+        .filter((row) => row[2] === flag)
+        .map((row) => Date.parse(row[0] + ' UTC'))
+        .find((time) => time >= start.getTime() && time < end.getTime());
+      planets.eventSeconds = Math.max(planets.eventSeconds, Math.abs(events[key] - expected) / 1000);
+    }
+  }
+  console.log(JSON.stringify({ ...maxima, planets }, null, 2));
 } finally {
   await server.close();
 }

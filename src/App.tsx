@@ -22,7 +22,7 @@ import SettingsPanel from './components/SettingsPanel';
 import ShareDialog, { type ShareDialogHandle } from './components/ShareDialog';
 import FocusSummary from './components/FocusSummary';
 import { createCameraViewStore } from './lib/cameraViewStore';
-import type { LocationInfo } from './types';
+import type { BodyId, LocationInfo } from './types';
 import { useSimulation } from './hooks/useSimulation';
 import { useWeather } from './hooks/useWeather';
 import { formatTime, MAX_INSTANT } from './domain/time';
@@ -117,6 +117,7 @@ export default function App({
       ? 'Custom simulation'
       : weatherSourceLabel(selection);
   const focused = findSkyObject(sky, focusedId);
+  const planetsUp = sky.planets.filter((planet) => planet.visible).map((planet) => planet.name);
   const focusedVisibility = focused && objectVisibility(focused, sky, weather, preferences);
   const skyMood =
     sky.sunAltitude > 6
@@ -207,7 +208,7 @@ export default function App({
     dispatch({ type: 'focus', id: object.id });
     skyRef.current?.focus(object.altitude, object.azimuth, frame ? framingFov(object) : undefined);
   };
-  const jumpToRise = (id: 'sun' | 'moon') => {
+  const jumpToRise = (id: BodyId) => {
     try {
       const rise = nextBodyRise(location, id, simTime);
       if (!rise) {
@@ -233,6 +234,7 @@ export default function App({
         layers,
         custom: custom ? customWeather : null,
         clearSky,
+        ...(focusedId ? { focus: focusedId } : {}),
       }),
     );
   };
@@ -534,7 +536,9 @@ export default function App({
       <div className="sr-only" role="region" aria-label="Sky summary">
         {location.name}. Local time {formatTime(simTime, location.timezone)}. Sun altitude{' '}
         {Math.round(sky.sunAltitude)} degrees. Moon {sky.moon.phaseName},{' '}
-        {Math.round(sky.moon.illumination * 100)} percent illuminated. {sourceText}.
+        {Math.round(sky.moon.illumination * 100)} percent illuminated.{' '}
+        {planetsUp.length ? `Planets above the horizon: ${planetsUp.join(', ')}. ` : ''}
+        {sourceText}.
       </div>
       {notice && (
         <div className="notice" data-occludes-sky role="status">
@@ -548,6 +552,7 @@ export default function App({
         ref={shareDialog}
         location={location}
         includesCustomWeather={custom}
+        focusName={focused?.name}
         onNotice={setNotice}
       />
     </div>

@@ -1,10 +1,10 @@
 # Elsewhere — Interactive Sky Simulator
 
-Explore a calculated sky from any place and time. Elsewhere combines a quiet, responsive interface with Sun/Moon ephemerides, a 5,070-star catalog, and a weather-driven illustrative atmosphere.
+Explore a calculated sky from any place and time. Elsewhere combines a quiet, responsive interface with Sun, Moon and planet ephemerides, a 5,070-star catalog, and a weather-driven illustrative atmosphere.
 
 The planned refactor is complete, and CI passes on GitHub Actions. The remaining release gates, such as deployment, physical devices and screen readers, are in [docs/RELEASE.md](docs/RELEASE.md).
 
-The [roadmap](ROADMAP.md) sets out what comes next: planets, Chinese and English, shareable sky moments, horizon scenery and a viewing planner. Earlier plans and reviews are in the [archive](docs/archive/README.md).
+The [roadmap](ROADMAP.md) sets out what comes next: Chinese and English, shareable sky moments, horizon scenery and a viewing planner. Earlier plans and reviews are in the [archive](docs/archive/README.md).
 
 ## Run locally
 
@@ -62,11 +62,11 @@ The responsive shell keeps a separate time dock and one inspector. The renderer 
 
 ## Scope and sources
 
-Supported instants span 1900–2100 UTC. This is educational visualization: the generic landscape, clouds, brightness, and precipitation are illustrative. It does not include planets, measured terrain, a Milky Way layer, eclipse timing, or a complete constellation atlas. Device location uses a disclosed sea-level elevation assumption. Displayed altitudes of the Sun, Moon, and stars include standard atmospheric refraction. Stellar parallax, nutation, and variable brightness are omitted.
+Supported instants span 1900–2100 UTC. This is educational visualization: the generic landscape, clouds, brightness, and precipitation are illustrative. It does not include planetary discs or moons, measured terrain, a Milky Way layer, eclipse timing, or a complete constellation atlas. Device location uses a disclosed sea-level elevation assumption. Displayed altitudes of the Sun, Moon, planets, and stars include standard atmospheric refraction. Stellar parallax, nutation, and variable brightness are omitted.
 
 [Scientific conventions and independent reference results](docs/SCIENCE.md) explain the accuracy budget and its limits. [Asset provenance](docs/ASSETS.md) records catalog/map licenses, source URLs, hashes, and transformations. The app also exposes [sources, privacy, and limitations](public/credits.html).
 
-- [Astronomy Engine](https://github.com/cosinekitty/astronomy): Sun, Moon, orientation, and events; MIT.
+- [Astronomy Engine](https://github.com/cosinekitty/astronomy): Sun, Moon, planets, orientation, and events; MIT.
 - [HYG v4.1](https://github.com/astronexus/HYG-Database): magnitude-limited star derivative; CC BY-SA 4.0.
 - [NASA CGI Moon Kit](https://svs.gsfc.nasa.gov/4720/): lunar surface imagery; provenance and mirror caveat are recorded in the asset notes.
 - [Open-Meteo](https://open-meteo.com/): weather models and geocoding, with GeoNames place data. Weather data attribution and API usage terms are distinct. No API key is required for the configured public endpoints; confirm intended deployment usage against the provider's terms.

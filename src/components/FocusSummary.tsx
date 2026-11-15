@@ -1,5 +1,6 @@
 import { X } from 'lucide-react';
 import type { objectVisibility, SkyObject } from '../lib/exploration';
+import type { BodyId } from '../types';
 
 interface Props {
   object: SkyObject;
@@ -9,7 +10,7 @@ interface Props {
   onRecenter: () => void;
   onToggleClearSky: () => void;
   onEnableStars: () => void;
-  onJumpToRise: (body: 'sun' | 'moon') => void;
+  onJumpToRise: (body: BodyId) => void;
 }
 
 /** The card for the centered object: why it is or isn't visible, and the one action that helps. */
@@ -43,7 +44,7 @@ export default function FocusSummary({
         )}
         {visibility.reason === 'layer' && <button onClick={onEnableStars}>Enable stars</button>}
         {visibility.reason === 'horizon' && object.kind !== 'star' && (
-          <button onClick={() => onJumpToRise(object.kind)}>Jump to next rise</button>
+          <button onClick={() => onJumpToRise(object.id)}>Jump to next rise</button>
         )}
       </div>
     </section>

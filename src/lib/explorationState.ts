@@ -46,7 +46,8 @@ export function initialExploration(shared: Exploration | null, notice = ''): Exp
   return {
     panel: null,
     selectedId: null,
-    focusedId: null,
+    // A shared link can center an object; its camera view already faces it.
+    focusedId: shared?.focus ?? null,
     custom: !!shared?.custom,
     customWeather: shared?.custom ?? defaultWeatherValues(),
     clearSky: shared?.clearSky ?? false,

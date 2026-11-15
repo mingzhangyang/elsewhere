@@ -29,6 +29,36 @@ export interface Star extends HorizontalPosition {
   dec: number;
 }
 
+export type PlanetId = 'mercury' | 'venus' | 'mars' | 'jupiter' | 'saturn';
+/** Bodies with rise and set times: the Sun, the Moon and the planets. */
+export type BodyId = 'sun' | 'moon' | PlanetId;
+
+export interface Planet extends CelestialBody {
+  id: PlanetId;
+  name: string;
+  /** Apparent visual magnitude (smaller is brighter). */
+  magnitude: number;
+  /** Illuminated fraction of the disc, 0–1. */
+  illumination: number;
+  /** Sun–planet–Earth angle, in degrees. */
+  phaseAngle: number;
+  /** Apparent distance from the observer. */
+  distanceKm: number;
+  /** Equatorial radius, for apparent size. */
+  radiusKm: number;
+  /** Angular distance from the Sun, in degrees. */
+  elongation: number;
+  /** East of the Sun (evening sky) or west of it (morning sky). */
+  apparition: 'morning' | 'evening';
+  /** Bright-limb direction, degrees clockwise from the top of the view. */
+  brightLimbAngle: number;
+}
+
+export interface RiseSet {
+  rise: Date | null;
+  set: Date | null;
+}
+
 export interface SkyEvents {
   sunrise: Date | null;
   sunset: Date | null;
@@ -39,6 +69,8 @@ export interface SkyEvents {
   daylightStatus: 'normal' | 'polar-day' | 'polar-night' | 'partial';
   twilightDawn: Date | null;
   twilightDusk: Date | null;
+  /** First rise and set of each planet within the local civil day. */
+  planets: Record<PlanetId, RiseSet>;
 }
 
 export interface SkyState {
@@ -53,6 +85,8 @@ export interface SkyState {
     north: [number, number, number];
     prime: [number, number, number];
   };
+  /** Mercury, Venus, Mars, Jupiter and Saturn, innermost first. */
+  planets: Planet[];
   stars: Star[];
   /** The rigid star sphere the renderer draws; `stars` are its positions in horizontal coordinates. */
   starField: StarField;

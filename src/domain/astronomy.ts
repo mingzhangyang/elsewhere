@@ -1,8 +1,9 @@
 import { validateObserver } from './observer';
 import * as Astronomy from 'astronomy-engine';
-import type { LocationInfo, SkyEvents, SkyState } from '../types';
+import type { BodyId, LocationInfo, PlanetId, RiseSet, SkyEvents, SkyState } from '../types';
 import { localDayBounds, validateInstant, MIN_INSTANT, MAX_INSTANT } from './time';
 import { calculateStarField, calculateStarPositions } from './stars';
+import { brightLimbAngle, calculatePlanets, PLANETS } from './planets';
 
 const AU_KM = 149_597_870.7;
 const DEG = Math.PI / 180;
@@ -21,15 +22,23 @@ export function getPhaseName(angle: number): string {
   return names[Math.round((((angle % 360) + 360) % 360) / 45) % 8];
 }
 
-/** Every event is constrained to [local midnight, next local midnight). */
-export function nextBodyRise(location: LocationInfo, body: 'sun' | 'moon', date: Date): Date | null {
+const BODIES: Record<BodyId, Astronomy.Body> = {
+  sun: Astronomy.Body.Sun,
+  moon: Astronomy.Body.Moon,
+  ...(Object.fromEntries(PLANETS.map((planet) => [planet.id, planet.body])) as Record<
+    PlanetId,
+    Astronomy.Body
+  >),
+};
+
+export function nextBodyRise(location: LocationInfo, body: BodyId, date: Date): Date | null {
   validateObserver(location);
   validateInstant(date);
   const days = Math.min(370, (MAX_INSTANT - date.getTime()) / 86400000);
   if (days <= 0) return null;
   return (
     Astronomy.SearchRiseSet(
-      body === 'sun' ? Astronomy.Body.Sun : Astronomy.Body.Moon,
+      BODIES[body],
       new Astronomy.Observer(location.latitude, location.longitude, location.elevation),
       1,
       date,
@@ -38,6 +47,7 @@ export function nextBodyRise(location: LocationInfo, body: 'sun' | 'moon', date:
   );
 }
 
+/** Every event is constrained to [local midnight, next local midnight). */
 export function calculateDailyEvents(location: LocationInfo, date: Date): SkyEvents {
   validateObserver(location);
   if (!Number.isFinite(date.getTime())) validateInstant(date);
@@ -111,6 +121,12 @@ export function calculateDailyEvents(location: LocationInfo, date: Date): SkyEve
         : 'partial',
     twilightDawn: twilight(1),
     twilightDusk: twilight(-1),
+    planets: Object.fromEntries(
+      PLANETS.map(({ id, body }) => [
+        id,
+        { rise: search(body, 1)[0] ?? null, set: search(body, -1)[0] ?? null },
+      ]),
+    ) as Record<PlanetId, RiseSet>,
   };
 }
 
@@ -137,11 +153,6 @@ export function calculateSky(
       (light.x * m.x + light.y * m.y + light.z * m.z) /
         (Math.hypot(light.x, light.y, light.z) * moonEq.dist)) /
     2;
-  const sa = sun.altitude * DEG,
-    ma = moon.altitude * DEG,
-    az = (sun.azimuth - moon.azimuth) * DEG;
-  const lightRight = Math.cos(sa) * Math.sin(az);
-  const lightUp = Math.sin(sa) * Math.cos(ma) - Math.cos(sa) * Math.sin(ma) * Math.cos(az);
   const axis = Astronomy.RotationAxis(Astronomy.Body.Moon, date);
   const a = axis.ra * 15 * DEG,
     d = axis.dec * DEG,
@@ -181,10 +192,11 @@ export function calculateSky(
       phaseName: getPhaseName(phaseAngle),
       distanceKm: moonEq.dist * AU_KM,
       waxing: phaseAngle < 180,
-      brightLimbAngle: Math.atan2(lightRight, lightUp) / DEG,
+      brightLimbAngle: brightLimbAngle(sun, moon),
       north: localVector(axis.north),
       prime: localVector(prime),
     },
+    planets: calculatePlanets(observer, date, sun),
     stars: calculateStarPositions(starField),
     starField,
     events,

@@ -18,6 +18,10 @@ export function scenarioProps(name: string | null): AppProps {
       south: { time: '2026-06-21T12:00:00Z', cloudCover: 0, precipitation: 0, code: 0 },
       polar: { time: '2026-12-21T12:00:00Z', cloudCover: 15, precipitation: 0, code: 1 },
       unavailable: { time: '2026-11-12T17:00:00Z', cloudCover: 0, precipitation: 0, code: 0 },
+      // Evening Venus, near greatest eastern elongation, at civil dusk in New York.
+      venus: { time: '2026-08-15T00:30:00Z', cloudCover: 0, precipitation: 0, code: 0 },
+      // Local midnight in New York at Jupiter's opposition, the planet high in the south.
+      jupiter: { time: '2026-01-10T05:00:00Z', cloudCover: 0, precipitation: 0, code: 0 },
     };
   const scene = name ? scenarios[name] : undefined;
   if (!scene) return {};
