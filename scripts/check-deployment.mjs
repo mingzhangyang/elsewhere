@@ -19,6 +19,14 @@ async function check() {
   assert.equal(home.response.status, 200, '/ status');
   assert.match(home.cache, /no-cache/, '/ must revalidate');
   const html = await home.response.text();
+  // Cloudflare's Bot Fight Mode, JavaScript detections and Web Analytics add scripts to HTML at the edge.
+  // public/credits.html promises no analytics and no background tracking, so nothing may be injected.
+  const injected = [...new Set(html.match(/\/cdn-cgi\/[\w./-]+|static\.cloudflareinsights\.com/g) ?? [])];
+  assert.deepEqual(
+    injected,
+    [],
+    'Cloudflare injected scripts into the page; see docs/RELEASE.md, one-time setup',
+  );
   const script = html.match(/\/assets\/[\w.-]+\.js/)?.[0];
   assert(script, 'index.html references no hashed script');
 
