@@ -8,6 +8,7 @@ import { weatherDescription } from '../lib/weatherText';
 import { createProjection } from './projection';
 import { drawIllustration, type ToCanvas } from './illustration';
 import { HORIZON_STEP, horizonAltitude, type HorizonVariant } from './scenery';
+import { seededRandom } from '../lib/random';
 
 /**
  * The keepsake image of a sky moment (ROADMAP phase 3 prototype), composed on a 2D canvas: the sky
@@ -207,6 +208,8 @@ export function drawPostcard({
       { object: (object) => objectName(object, i18n), pattern: (id) => m.patterns[id] },
       FONT,
     );
+  const painted = style === 'illustrated' || !capture;
+  if (painted) paintFinish(ctx, 0, 0, width, skyH, Math.round(instant.getTime() / 3600000));
 
   // The target ring, as the screen draws it over the subject.
   if (subject?.kind === 'object') {
@@ -222,10 +225,31 @@ export function drawPostcard({
       const p = toCanvas(object.altitude, object.azimuth);
       const disc = ((angularDiameter(object) / view.fov) * coverH) / 2;
       const drawn =
-        style === 'illustrated' ? (object.kind === 'moon' ? 30 : object.kind === 'sun' ? 34 : 12) * unit : 0;
+        style === 'illustrated' ? (object.kind === 'moon' ? 42 : object.kind === 'sun' ? 34 : 12) * unit : 0;
       if (p.front) ring = { x: p.x, y: p.y, r: Math.max(26 * unit, disc + 10 * unit, drawn + 12 * unit) };
     }
-    if (ring) {
+    if (ring && painted) {
+      // Drawn by hand: two loose, slightly offset loops of soft chalk.
+      ctx.strokeStyle = 'rgba(255,236,190,.85)';
+      ctx.lineCap = 'round';
+      for (const [dx, dy, grow, w] of [
+        [0, 0, 1, 3.2],
+        [1.5, -1, 1.08, 1.6],
+      ]) {
+        ctx.lineWidth = w * unit;
+        ctx.beginPath();
+        ctx.ellipse(
+          ring.x + dx * unit,
+          ring.y + dy * unit,
+          ring.r * grow,
+          ring.r * grow * 0.94,
+          0.3,
+          0.15,
+          Math.PI * 2 + 0.45,
+        );
+        ctx.stroke();
+      }
+    } else if (ring) {
       ctx.strokeStyle = 'rgba(255,214,140,.95)';
       ctx.lineWidth = 3 * unit;
       ctx.beginPath();
@@ -237,14 +261,14 @@ export function drawPostcard({
   // The compass, as on screen.
   const cx = width - 74,
     cy = 74;
-  ctx.fillStyle = 'rgba(8,15,28,.72)';
+  ctx.fillStyle = painted ? 'rgba(255,248,232,.88)' : 'rgba(8,15,28,.72)';
   ctx.beginPath();
   ctx.arc(cx, cy, 46, 0, Math.PI * 2);
   ctx.fill();
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate((-heading * Math.PI) / 180);
-  ctx.fillStyle = '#ff9f7a';
+  ctx.fillStyle = painted ? '#e0664a' : '#ff9f7a';
   ctx.beginPath();
   ctx.moveTo(0, -45);
   ctx.lineTo(7, -35);
@@ -252,7 +276,7 @@ export function drawPostcard({
   ctx.closePath();
   ctx.fill();
   ctx.restore();
-  ctx.fillStyle = '#eef5fc';
+  ctx.fillStyle = painted ? '#24305a' : '#eef5fc';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.font = `700 22px ${FONT}`;
@@ -261,9 +285,18 @@ export function drawPostcard({
   ctx.fillText(`${heading}°`, cx, cy + 18);
   ctx.restore();
 
-  // The panel.
+  // The panel; under a painted sky, a sheet of paper with a softly deckled top edge.
   ctx.fillStyle = '#f6f1e7';
-  ctx.fillRect(0, skyH, width, canvas.height - skyH);
+  if (painted) {
+    ctx.beginPath();
+    ctx.moveTo(0, canvas.height);
+    for (let x = 0; x <= width; x += 6)
+      ctx.lineTo(x, skyH - 3 + Math.sin(x * 0.045) * 1.6 + Math.sin(x * 0.17 + 1) * 1.1);
+    ctx.lineTo(width, canvas.height);
+    ctx.closePath();
+    ctx.fill();
+    paintFinish(ctx, 0, skyH - 6, width, canvas.height - skyH + 6, 7, false);
+  } else ctx.fillRect(0, skyH, width, canvas.height - skyH);
   let y = skyH + PAD;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
@@ -308,4 +341,92 @@ function drawSilhouette(
   ctx.lineTo(edge[edge.length - 1].x, height + 10);
   ctx.closePath();
   ctx.fill();
+}
+
+let grainTile: HTMLCanvasElement | null = null;
+/** A tile of paper grain: fine speckle and a few longer fibres, mid-grey around 128. */
+function paperGrain(): HTMLCanvasElement {
+  if (grainTile) return grainTile;
+  const size = 384;
+  const tile = document.createElement('canvas');
+  tile.width = tile.height = size;
+  const ctx = tile.getContext('2d')!;
+  const image = ctx.createImageData(size, size);
+  const random = seededRandom(1234);
+  for (let i = 0; i < size * size; i++) {
+    const v = 128 + (random() - 0.5) * 70;
+    image.data[i * 4] = image.data[i * 4 + 1] = image.data[i * 4 + 2] = v;
+    image.data[i * 4 + 3] = 255;
+  }
+  ctx.putImageData(image, 0, 0);
+  ctx.lineCap = 'round';
+  for (let i = 0; i < 260; i++) {
+    const x = random() * size,
+      y = random() * size,
+      a = random() * Math.PI,
+      l = 4 + random() * 14;
+    ctx.strokeStyle = random() < 0.5 ? 'rgba(255,255,255,.18)' : 'rgba(0,0,0,.12)';
+    ctx.lineWidth = 0.6 + random() * 0.8;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l);
+    ctx.stroke();
+  }
+  grainTile = tile;
+  return tile;
+}
+
+/**
+ * The finish that makes a painting of the illustrated sky: uneven watercolour blooms, a soft
+ * vignette and paper grain. `sky` false gives the paper only, for the text panel.
+ */
+function paintFinish(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  seed: number,
+  sky = true,
+) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
+  if (sky) {
+    const random = seededRandom(seed);
+    ctx.globalCompositeOperation = 'soft-light';
+    for (let i = 0; i < 9; i++) {
+      const bx = x + random() * w,
+        by = y + random() * h,
+        r = (0.15 + random() * 0.3) * Math.max(w, h);
+      const g = ctx.createRadialGradient(bx, by, 0, bx, by, r);
+      const warm = random() < 0.5;
+      g.addColorStop(0, warm ? 'rgba(255,214,170,.22)' : 'rgba(120,150,230,.22)');
+      g.addColorStop(1, 'rgba(128,128,128,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(x, y, w, h);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    const v = ctx.createRadialGradient(
+      x + w / 2,
+      y + h * 0.45,
+      Math.min(w, h) * 0.35,
+      x + w / 2,
+      y + h / 2,
+      Math.max(w, h) * 0.78,
+    );
+    v.addColorStop(0, 'rgba(20,16,40,0)');
+    v.addColorStop(1, 'rgba(20,16,40,.32)');
+    ctx.fillStyle = v;
+    ctx.fillRect(x, y, w, h);
+  }
+  const pattern = ctx.createPattern(paperGrain(), 'repeat');
+  if (pattern) {
+    ctx.globalCompositeOperation = 'overlay';
+    ctx.globalAlpha = sky ? 0.22 : 0.3;
+    ctx.fillStyle = pattern;
+    ctx.fillRect(x, y, w, h);
+  }
+  ctx.restore();
 }
