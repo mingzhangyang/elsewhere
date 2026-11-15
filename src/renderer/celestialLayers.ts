@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { Star } from '../types';
-import { CONSTELLATIONS } from '../domain/stars';
+import { CONSTELLATIONS, type PatternId } from '../domain/stars';
 import { directionVector, makeTextSprite } from './resources';
 
 /**
@@ -26,11 +26,23 @@ export interface BodyLabelState {
 /** Below this altitude, in degrees, a planet's label would crowd the horizon. */
 const BODY_LABEL_MIN_ALTITUDE = 2;
 
+/** How labels name stars and line patterns, in the interface language. */
+export interface LabelNames {
+  star: (star: Star) => string;
+  pattern: (id: PatternId) => string;
+}
+const CATALOG_NAMES: LabelNames = { star: (star) => star.name, pattern: (id) => id };
+
+/**
+ * Builds the labels and line patterns. `bodies` are the labelled planets, already named. Names are
+ * drawn into textures here, so a language change builds a new layer (and disposes this one).
+ */
 export function createCelestialLayers(
   parent: THREE.Object3D,
   catalog: Star[],
   text = makeTextSprite,
   bodies: readonly { id: string; name: string }[] = [],
+  names: LabelNames = CATALOG_NAMES,
 ) {
   const bodyLabels = bodies.map((body) => {
     const sprite = text(body.name, '#f1dfb8');
@@ -40,7 +52,7 @@ export function createCelestialLayers(
   const indexOf = new Map(catalog.map((star, index) => [star.id, index]));
   const labels = catalog.flatMap((star, index) => {
     if (!star.name || star.magnitude >= 1.35) return [];
-    const sprite = text(star.name, '#cbd7e9');
+    const sprite = text(names.star(star), '#cbd7e9');
     parent.add(sprite);
     return [{ id: star.id, index, sprite }];
   });
@@ -53,7 +65,7 @@ export function createCelestialLayers(
     const material = new THREE.LineBasicMaterial({ color: 0x7da8d8, transparent: true, depthWrite: false });
     const lines = new THREE.LineSegments(geometry, material);
     lines.frustumCulled = false;
-    const label = text(definition.name, '#93afd2');
+    const label = text(names.pattern(definition.id), '#93afd2');
     label.scale.set(150, 30, 1);
     parent.add(lines, label);
     const ends = definition.lines.flat().map((id) => ({ id, index: indexOf.get(id) ?? -1 }));

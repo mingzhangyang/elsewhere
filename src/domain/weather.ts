@@ -39,11 +39,11 @@ export function selectWeather(
   instant: Date,
 ): WeatherSelection {
   if (!result || result.key !== weatherKey(location, instant))
-    return { status: 'loading', values: null, message: 'Loading weather for this place and day…' };
-  if (result.status !== 'ready') return { status: result.status, values: null, message: result.message };
+    return { status: 'loading', values: null, issue: { code: 'loading' } };
+  if (result.status !== 'ready') return { status: result.status, values: null, issue: result.issue };
   const target = instant.getTime();
   if (target < result.start || target >= result.end)
-    return { status: 'unavailable', values: null, message: 'No weather coverage for this instant.' };
+    return { status: 'unavailable', values: null, issue: { code: 'no-coverage' } };
   const current =
     result.current && Math.abs(target - result.current.time) <= 15 * 60000 ? result.current : undefined;
   let values: WeatherMeasurements;
@@ -60,7 +60,7 @@ export function selectWeather(
     const after = result.hourly.find((row) => row.time > target);
     const nearest = before ?? after;
     if (!nearest || Math.abs(nearest.time - target) > 3600000)
-      return { status: 'unavailable', values: null, message: 'No weather sample close to this instant.' };
+      return { status: 'unavailable', values: null, issue: { code: 'no-sample' } };
     sampledAt = nearest.time;
     values = { ...nearest.values };
     // Hourly precipitation (and the weather code derived from it) covers the hour ending at its timestamp.
@@ -91,7 +91,7 @@ export function selectWeather(
     sampledAt,
     fetchedAt: result.fetchedAt,
     cacheState: result.cacheState,
-    message: result.notice,
+    issue: result.issue,
   };
 }
 

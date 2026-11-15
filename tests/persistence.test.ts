@@ -38,7 +38,7 @@ describe('portable exploration state', () => {
   it('preserves the repeated-hour instant, camera and custom conditions', () => {
     expect(parseExploration(new URL(explorationUrl(exploration)).hash)).toEqual({
       value: exploration,
-      notice: '',
+      notice: null,
     });
   });
   it.each([
@@ -53,7 +53,7 @@ describe('portable exploration state', () => {
   ])('rejects unsupported or invalid state', (state) => {
     const result = parseExploration('#sky=' + encodeURIComponent(JSON.stringify(state)));
     expect(result.value).toBeNull();
-    expect(result.notice).toMatch(/invalid or unsupported/);
+    expect(result.notice).toEqual({ code: 'invalid-link' });
   });
   it('accepts the deepest Sun and Moon zoom in a shared view', () => {
     const zoomed = { ...exploration, camera: { ...exploration.camera, fov: 2 } };
@@ -62,7 +62,7 @@ describe('portable exploration state', () => {
   it('recovers from corrupt preferences without silently overwriting them', () => {
     localStorage.setItem('elsewhere.preferences.v1', '{broken');
     const result = loadPreferences();
-    expect(result.notice).toMatch(/could not be read/);
+    expect(result.notice).toEqual({ code: 'preferences-unreadable' });
     expect(localStorage.getItem('elsewhere.preferences.v1')).toBe('{broken');
     expect(savePreferences({ ...result.value, saved: [PRESETS[1]], hintDismissed: true })).toBe(true);
     expect(loadPreferences().value.saved).toEqual([PRESETS[1]]);

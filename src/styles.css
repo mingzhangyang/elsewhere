@@ -30,6 +30,12 @@
   --text-sm: 13px;
   --text-md: 14px;
 }
+/* Chinese text uses Simplified Chinese faces (not Japanese or Traditional forms) after the Latin face. */
+:root:lang(zh) {
+  font-family:
+    'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC',
+    'Source Han Sans SC', ui-sans-serif, system-ui, sans-serif;
+}
 * {
   box-sizing: border-box;
 }

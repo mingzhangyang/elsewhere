@@ -1,4 +1,5 @@
 import { Component, type ReactNode } from 'react';
+import { currentLanguage } from '../i18n';
 
 export default class RecoveryBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
@@ -7,17 +8,15 @@ export default class RecoveryBoundary extends Component<{ children: ReactNode },
   }
   render() {
     if (!this.state.failed) return this.props.children;
+    const { recovery } = currentLanguage().m;
     return (
       <main className="recovery-page">
-        <h1>The sky needs a fresh start</h1>
-        <p>
-          Something interrupted this exploration. Reload to try again, or open a fresh view. Your saved places
-          remain in this browser.
-        </p>
+        <h1>{recovery.title}</h1>
+        <p>{recovery.body}</p>
         <button className="primary-button" onClick={() => window.location.reload()}>
-          Reload app
+          {recovery.reload}
         </button>
-        <a href={import.meta.env.BASE_URL}>Open a fresh view</a>
+        <a href={import.meta.env.BASE_URL}>{recovery.fresh}</a>
       </main>
     );
   }

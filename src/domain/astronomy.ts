@@ -1,6 +1,6 @@
 import { validateObserver } from './observer';
 import * as Astronomy from 'astronomy-engine';
-import type { BodyId, LocationInfo, PlanetId, RiseSet, SkyEvents, SkyState } from '../types';
+import type { BodyId, LocationInfo, MoonPhaseKey, PlanetId, RiseSet, SkyEvents, SkyState } from '../types';
 import { localDayBounds, validateInstant, MIN_INSTANT, MAX_INSTANT } from './time';
 import { calculateStarField, calculateStarPositions } from './stars';
 import { brightLimbAngle, calculatePlanets, PLANETS } from './planets';
@@ -8,18 +8,19 @@ import { brightLimbAngle, calculatePlanets, PLANETS } from './planets';
 const AU_KM = 149_597_870.7;
 const DEG = Math.PI / 180;
 
-export function getPhaseName(angle: number): string {
-  const names = [
-    'New Moon',
-    'Waxing Crescent',
-    'First Quarter',
-    'Waxing Gibbous',
-    'Full Moon',
-    'Waning Gibbous',
-    'Last Quarter',
-    'Waning Crescent',
+/** The Moon's phase for an elongation angle, as a key the interface names in its language. */
+export function getPhase(angle: number): MoonPhaseKey {
+  const phases: MoonPhaseKey[] = [
+    'new',
+    'waxing-crescent',
+    'first-quarter',
+    'waxing-gibbous',
+    'full',
+    'waning-gibbous',
+    'last-quarter',
+    'waning-crescent',
   ];
-  return names[Math.round((((angle % 360) + 360) % 360) / 45) % 8];
+  return phases[Math.round((((angle % 360) + 360) % 360) / 45) % 8];
 }
 
 const BODIES: Record<BodyId, Astronomy.Body> = {
@@ -189,7 +190,7 @@ export function calculateSky(
       visible: moon.altitude > -Math.asin(1737.4 / (moonEq.dist * AU_KM)) / DEG,
       phaseAngle,
       illumination: Math.max(0, Math.min(1, illumination)),
-      phaseName: getPhaseName(phaseAngle),
+      phase: getPhase(phaseAngle),
       distanceKm: moonEq.dist * AU_KM,
       waxing: phaseAngle < 180,
       brightLimbAngle: brightLimbAngle(sun, moon),

@@ -23,7 +23,12 @@ export default defineConfig({
     { name: 'chromium', use: { ...devices['Desktop Chrome'] }, testIgnore: '**/offline.spec.ts' },
     { name: 'firefox', use: { ...devices['Desktop Firefox'] }, testIgnore: '**/offline.spec.ts' },
     { name: 'webkit', use: { ...devices['Desktop Safari'] }, testIgnore: '**/offline.spec.ts' },
-    { name: 'mobile-chromium', use: { ...devices['Pixel 7'] }, testIgnore: '**/offline.spec.ts' },
+    // Language cases set their own phone size; running them again under mobile emulation adds nothing.
+    {
+      name: 'mobile-chromium',
+      use: { ...devices['Pixel 7'] },
+      testIgnore: ['**/offline.spec.ts', '**/language.spec.ts'],
+    },
     {
       name: 'offline-chromium',
       use: { ...devices['Desktop Chrome'], baseURL: 'http://127.0.0.1:4173' },

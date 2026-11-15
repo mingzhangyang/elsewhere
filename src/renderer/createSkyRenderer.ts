@@ -1,6 +1,7 @@
 import { createCameraControls } from './cameraControls';
 import * as THREE from 'three';
-import type { BodyId, Planet, SkyState, Star, WeatherValues } from '../types';
+import type { BodyId, Planet, PlanetId, SkyState, Star, WeatherValues } from '../types';
+import type { PatternId } from '../domain/stars';
 import { PLANETS } from '../domain/planets';
 import type { CameraView, Preferences } from '../lib/persistence';
 import { createCelestialLayers, type ScreenBox } from './celestialLayers';
@@ -19,7 +20,7 @@ import { directionVector, makeGlowTexture, setAtDirection } from './resources';
 import { advancePrecipitation, windVector } from './precipitation';
 import { createFrameLoop } from './frameLoop';
 import { adaptiveRatio, percentile, type RenderStats } from './performance';
-import { aboveHorizon, angularDiameter, findSkyObject } from '../lib/exploration';
+import { aboveHorizon, angularDiameter, findSkyObject, type SkyObject } from '../lib/exploration';
 import { betterHit, pickPointAt, starAlpha } from './starPicking';
 import { CLOUD_DRIFT_FPS, PRECIPITATION_VISIBLE, weatherMotion } from './weatherMotion';
 import {
@@ -58,8 +59,19 @@ export interface RenderSettings {
   horizon?: Preferences['horizon'];
   skyBrightness?: Preferences['skyBrightness'];
 }
+/** Text the renderer shows, in the interface language. */
+export interface SkyLabels {
+  /** The canvas's accessible name. */
+  canvas: string;
+  planet: (id: PlanetId) => string;
+  star: (star: Star) => string;
+  pattern: (id: PatternId) => string;
+  /** Beside the target marker, e.g. "Jupiter · position". */
+  target: (object: SkyObject) => string;
+}
 export interface RenderInput extends RenderSettings {
   sky: SkyState;
+  labels: SkyLabels;
   weather: WeatherValues;
   showStars: boolean;
   showConstellations: boolean;
@@ -74,7 +86,7 @@ export interface RenderCallbacks {
   onStarSelect?: (star: Star | null) => void;
   onCameraChange?: (view: CameraView) => void;
   onBodySelect?: (body: BodyId) => void;
-  onAssetError?: (message: string) => void;
+  onAssetError?: (asset: 'moon-map') => void;
   onContextChange?: (lost: boolean) => void;
   onDiagnostics?: (stats: RenderStats) => void;
 }
@@ -233,10 +245,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
       },
       undefined,
       () => {
-        if (!disposed)
-          callbacks.onAssetError?.(
-            'The Moon surface map could not load. Positions and phase remain available.',
-          );
+        if (!disposed) callbacks.onAssetError?.('moon-map');
       },
     );
     moonTexture.colorSpace = THREE.SRGBColorSpace;
@@ -274,7 +283,17 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
     starPoints.matrixAutoUpdate = false;
     scene.add(starPoints);
     let starIndex = new Map<string, number>();
-    let celestialLayers = createCelestialLayers(scene, [], undefined, PLANETS);
+    let labels = input.labels;
+    const layersFor = (stars: Star[]) =>
+      createCelestialLayers(
+        scene,
+        stars,
+        undefined,
+        PLANETS.map((planet) => ({ id: planet.id, name: labels.planet(planet.id) })),
+        labels,
+      );
+    let celestialLayers = layersFor([]);
+    let labelledStars: Star[] = [];
     const buildStars = (stars: Star[], vectors: Float32Array) => {
       starCount = stars.length;
       const sizes = new Float32Array(starCount);
@@ -304,7 +323,8 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
       placeStars(vectors);
       starIndex = new Map(stars.map((star, index) => [star.id, index]));
       celestialLayers.dispose();
-      celestialLayers = createCelestialLayers(scene, stars, undefined, PLANETS);
+      labelledStars = stars;
+      celestialLayers = layersFor(stars);
     };
     buildStars(sky.stars, sky.starField.vectors);
 
@@ -510,6 +530,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
         invalidate();
       },
       input.initialView,
+      input.labels.canvas,
     );
 
     releases.push(() => controls.dispose());
@@ -524,6 +545,17 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
     releases.push(() => resizeObserver.disconnect());
 
     const api = {
+      /**
+       * New label text (a language change): the label textures are drawn again and the old ones
+       * released. Callers wait for the label font first (labelFontReady).
+       */
+      labels: (next: SkyLabels) => {
+        labels = next;
+        renderer.domElement.setAttribute('aria-label', next.canvas);
+        celestialLayers.dispose();
+        celestialLayers = layersFor(labelledStars);
+        api.update(activeSky, activeWeather, activeFlags);
+      },
       target: (id: string | null) => {
         targetId = id;
         invalidate();
@@ -693,7 +725,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
           );
           targetMarker.style.left = `${(projected.x + 1) * 50}%`;
           targetMarker.style.top = `${(1 - projected.y) * 50}%`;
-          targetLabel.textContent = `${target.name} · position`;
+          targetLabel.textContent = labels.target(target);
         }
       }
       celestialLayers.layout(camera, host.clientWidth, host.clientHeight, blocked);

@@ -1,4 +1,5 @@
-import type { LocationInfo, WeatherValues } from '../types';
+import type { AppNotice, LocationInfo, WeatherValues } from '../types';
+import { isLanguageSetting, type LanguageSetting } from '../i18n/locale';
 import type { SkyBrightness } from '../domain/starVisibility';
 import { validateObserver } from '../domain/observer';
 import { validateInstant } from '../domain/time';
@@ -31,6 +32,11 @@ export interface Preferences {
   quality: 'auto' | 'low' | 'high';
   horizon: 'flat' | 'ridge';
   skyBrightness: SkyBrightness;
+  /**
+   * Interface language: 'auto' follows the browser. Added within version 1: preferences saved
+   * before it existed have no value and read as 'auto'.
+   */
+  language: LanguageSetting;
 }
 export interface Exploration {
   version: 1;
@@ -59,6 +65,7 @@ const defaults = (): Preferences => ({
   quality: 'auto',
   horizon: 'ridge',
   skyBrightness: 'dark',
+  language: 'auto',
 });
 function isObject(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
@@ -88,10 +95,10 @@ function layerValue(value: unknown): LayerSettings {
     throw new Error('Invalid layers');
   return { stars: Boolean(value.stars), lines: Boolean(value.lines), labels: Boolean(value.labels) };
 }
-export function loadPreferences(): { value: Preferences; notice: string } {
+export function loadPreferences(): { value: Preferences; notice: AppNotice } {
   try {
     const raw = localStorage.getItem(KEY);
-    if (!raw) return { value: defaults(), notice: '' };
+    if (!raw) return { value: defaults(), notice: null };
     const data: unknown = JSON.parse(raw);
     if (!isObject(data) || data.version !== 1 || !Array.isArray(data.saved) || !Array.isArray(data.recent))
       throw new Error('Invalid preferences');
@@ -107,11 +114,12 @@ export function loadPreferences(): { value: Preferences; notice: string } {
         skyBrightness:
           data.skyBrightness === 'city' || data.skyBrightness === 'suburban' ? data.skyBrightness : 'dark',
         quality: data.quality === 'low' || data.quality === 'high' ? data.quality : 'auto',
+        language: isLanguageSetting(data.language) ? data.language : 'auto',
       },
-      notice: '',
+      notice: null,
     };
   } catch {
-    return { value: defaults(), notice: 'Saved settings could not be read. Default settings are active.' };
+    return { value: defaults(), notice: { code: 'preferences-unreadable' } };
   }
 }
 export function savePreferences(value: Preferences): boolean {
@@ -122,8 +130,12 @@ export function savePreferences(value: Preferences): boolean {
     return false;
   }
 }
-export function parseExploration(hash: string): { value: Exploration | null; notice: string } {
-  if (!hash.startsWith('#sky=')) return { value: null, notice: '' };
+/**
+ * Shared links carry no language: whoever opens one reads it in their own. A language field from
+ * anywhere else is ignored, like any unknown field.
+ */
+export function parseExploration(hash: string): { value: Exploration | null; notice: AppNotice } {
+  if (!hash.startsWith('#sky=')) return { value: null, notice: null };
   try {
     if (hash.length > 6000) throw new Error('Oversized link');
     const data: unknown = JSON.parse(decodeURIComponent(hash.slice(5)));
@@ -183,10 +195,10 @@ export function parseExploration(hash: string): { value: Exploration | null; not
         ...(data.clearSky === undefined ? {} : { clearSky: data.clearSky }),
         ...(data.focus === undefined ? {} : { focus: data.focus }),
       },
-      notice: '',
+      notice: null,
     };
   } catch {
-    return { value: null, notice: 'This sky link is invalid or unsupported. A fresh exploration is open.' };
+    return { value: null, notice: { code: 'invalid-link' } };
   }
 }
 export function explorationUrl(exploration: Exploration): string {

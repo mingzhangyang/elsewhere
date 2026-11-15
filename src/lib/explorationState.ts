@@ -1,4 +1,4 @@
-import type { WeatherValues } from '../types';
+import type { AppNotice, WeatherValues } from '../types';
 import type { Exploration, LayerSettings } from './persistence';
 import { customConditions, defaultWeatherValues } from '../domain/weather';
 
@@ -22,7 +22,7 @@ export interface ExplorationState {
   /** A shared link's layers apply to this visit only; they never become saved defaults. */
   sharedLayers: LayerSettings | null;
   immersive: boolean;
-  notice: string;
+  notice: AppNotice;
 }
 
 export type ExplorationAction =
@@ -38,11 +38,11 @@ export type ExplorationAction =
   | { type: 'clear-sky'; value: boolean }
   | { type: 'layer'; key: keyof LayerSettings; value: boolean }
   | { type: 'immersive'; value: boolean }
-  | { type: 'notice'; message: string }
-  /** Clears the notice only if it still says `message`, so an unrelated notice survives. */
-  | { type: 'dismiss-notice'; message: string };
+  | { type: 'notice'; notice: AppNotice }
+  /** Clears the notice only if it is still `code`, so an unrelated notice survives. */
+  | { type: 'dismiss-notice'; code: NonNullable<AppNotice>['code'] };
 
-export function initialExploration(shared: Exploration | null, notice = ''): ExplorationState {
+export function initialExploration(shared: Exploration | null, notice: AppNotice = null): ExplorationState {
   return {
     panel: null,
     selectedId: null,
@@ -100,9 +100,9 @@ export function explorationReducer(state: ExplorationState, action: ExplorationA
     case 'immersive':
       return { ...state, immersive: action.value, panel: null };
     case 'notice':
-      return { ...state, notice: action.message };
+      return { ...state, notice: action.notice };
     case 'dismiss-notice':
-      return state.notice === action.message ? { ...state, notice: '' } : state;
+      return state.notice?.code === action.code ? { ...state, notice: null } : state;
   }
 }
 

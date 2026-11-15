@@ -1,10 +1,8 @@
 import { Cloud, Eye, RotateCcw, Thermometer, Wind } from 'lucide-react';
 import type { WeatherSelection, WeatherValues } from '../types';
-import { formatDate, formatTime } from '../domain/time';
-import { weatherDescription, weatherSourceLabel } from '../lib/weatherText';
+import { weatherDescription, weatherIssueText, weatherSourceLabel } from '../lib/weatherText';
+import { useI18n } from '../i18n';
 
-const metric = (value: number | null | undefined, digits = 0) =>
-  value === null || value === undefined ? '—' : value.toFixed(digits);
 export default function WeatherPanel({
   selection,
   custom,
@@ -22,31 +20,31 @@ export default function WeatherPanel({
   onField: (field: keyof WeatherValues, value: number) => void;
   onRefresh: () => void;
 }) {
+  const { m } = useI18n();
+  const metric = (value: number | null | undefined, digits = 0) =>
+    value === null || value === undefined ? '—' : m.f.number(value, digits, false);
+  const w = m.weather;
   const source = custom ? values : selection.values;
   return (
     <>
       <div className="segmented">
         <button aria-pressed={!custom} onClick={() => onMode(false)}>
-          Weather data
+          {w.sourceData}
         </button>
         <button aria-pressed={custom} onClick={() => onMode(true)}>
-          Custom simulation
+          {m.atmosphere.custom}
         </button>
       </div>
       <div className="source-detail">
         <span className={`status-dot ${custom || !source ? 'amber' : ''}`} />
-        {custom ? 'Custom simulation' : weatherSourceLabel(selection)}
+        {custom ? m.atmosphere.custom : weatherSourceLabel(selection, m)}
       </div>
-      {!custom && selection.message && (
+      {!custom && selection.issue && (
         <p className="form-status" role="status">
-          {selection.message}
+          {weatherIssueText(selection.issue, m)}
         </p>
       )}
-      {!custom && selection.status === 'partial' && (
-        <p className="form-status">
-          Some fields are unavailable. Missing fields use neutral atmosphere assumptions in the view.
-        </p>
-      )}
+      {!custom && selection.status === 'partial' && <p className="form-status">{w.partial}</p>}
       <div className="weather-grid">
         <div>
           <Thermometer size={17} />
@@ -54,7 +52,7 @@ export default function WeatherPanel({
             {metric(source?.temperature)}
             <small>°C</small>
           </strong>
-          <span>Temperature</span>
+          <span>{w.temperature}</span>
         </div>
         <div>
           <Wind size={17} />
@@ -62,7 +60,7 @@ export default function WeatherPanel({
             {metric(source?.windSpeed)}
             <small>km/h</small>
           </strong>
-          <span>Wind</span>
+          <span>{w.wind}</span>
         </div>
         <div>
           <Cloud size={17} />
@@ -70,7 +68,7 @@ export default function WeatherPanel({
             {metric(source?.cloudCover)}
             <small>%</small>
           </strong>
-          <span>Cloud cover</span>
+          <span>{w.cloudCover}</span>
         </div>
         <div>
           <Eye size={17} />
@@ -78,13 +76,13 @@ export default function WeatherPanel({
             {metric(source?.visibilityKm)}
             <small>km</small>
           </strong>
-          <span>Visibility</span>
+          <span>{w.visibility}</span>
         </div>
       </div>
       {custom ? (
         <div className="weather-sliders">
           <WeatherSlider
-            label="Cloud cover"
+            label={w.cloudCover}
             field="cloudCover"
             value={values.cloudCover}
             max={100}
@@ -92,7 +90,7 @@ export default function WeatherPanel({
             onChange={onField}
           />
           <WeatherSlider
-            label="Visibility"
+            label={w.visibility}
             field="visibilityKm"
             value={values.visibilityKm}
             min={1}
@@ -101,7 +99,7 @@ export default function WeatherPanel({
             onChange={onField}
           />
           <WeatherSlider
-            label="Atmospheric haze"
+            label={w.haze}
             field="haze"
             value={values.haze}
             max={100}
@@ -109,7 +107,7 @@ export default function WeatherPanel({
             onChange={onField}
           />
           <WeatherSlider
-            label="Wind speed"
+            label={w.windSpeed}
             field="windSpeed"
             value={values.windSpeed}
             max={80}
@@ -117,7 +115,7 @@ export default function WeatherPanel({
             onChange={onField}
           />
           <WeatherSlider
-            label="Wind direction"
+            label={w.windDirection}
             field="windDirection"
             value={values.windDirection}
             max={359}
@@ -125,7 +123,7 @@ export default function WeatherPanel({
             onChange={onField}
           />
           <WeatherSlider
-            label="Precipitation"
+            label={w.precipitation}
             field="precipitation"
             value={values.precipitation}
             max={20}
@@ -134,7 +132,7 @@ export default function WeatherPanel({
             onChange={onField}
           />
           <WeatherSlider
-            label="Temperature"
+            label={w.temperature}
             field="temperature"
             value={values.temperature}
             min={-30}
@@ -146,24 +144,25 @@ export default function WeatherPanel({
       ) : (
         <button className="secondary-button full" onClick={onRefresh}>
           <RotateCcw size={15} />
-          Refresh weather
+          {w.refresh}
         </button>
       )}
-      <p className="weather-description">{weatherDescription(source?.weatherCode ?? null)}</p>
+      <p className="weather-description">{weatherDescription(source?.weatherCode ?? null, m)}</p>
       <p className="muted">
-        {metric(source?.humidity)}% humidity · {metric(source?.pressure)} hPa
+        {w.humidityPressure({ humidity: metric(source?.humidity), pressure: metric(source?.pressure) })}
       </p>
       {!custom && selection.sampledAt !== undefined && (
         <p className="muted">
-          Sample {formatTime(new Date(selection.sampledAt), timeZone)} · fetched{' '}
-          {formatDate(new Date(selection.fetchedAt!), timeZone)} at{' '}
-          {formatTime(new Date(selection.fetchedAt!), timeZone)}. Weather is a model estimate; the cloud
-          pattern is simulated.
+          {w.sample({
+            sampled: m.f.time(new Date(selection.sampledAt), timeZone),
+            fetchedDate: m.f.date(new Date(selection.fetchedAt!), timeZone),
+            fetchedTime: m.f.time(new Date(selection.fetchedAt!), timeZone),
+          })}
         </p>
       )}
       {custom && (
         <button className="text-button" onClick={() => onMode(false)}>
-          Return to weather data
+          {w.returnToData}
         </button>
       )}
     </>
@@ -188,17 +187,19 @@ function WeatherSlider({
   unit: string;
   onChange: (field: keyof WeatherValues, value: number) => void;
 }) {
+  const { m } = useI18n();
+  const shown = m.f.number(value, step < 1 ? 1 : 0, false);
   return (
     <label className="weather-slider">
       <span>
         {label}
         <b>
-          {metric(value, step < 1 ? 1 : 0)} {unit}
+          {shown} {unit}
         </b>
       </span>
       <input
         aria-label={label}
-        aria-valuetext={`${metric(value, step < 1 ? 1 : 0)} ${unit}`}
+        aria-valuetext={`${shown} ${unit}`}
         type="range"
         min={min}
         max={max}

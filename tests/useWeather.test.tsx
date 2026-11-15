@@ -26,17 +26,17 @@ it('cancels superseded requests and ignores late responses', async () => {
       key: requests[1].key,
       fetchedAt: Date.now(),
       status: 'unavailable',
-      message: 'Sydney unavailable',
+      issue: { code: 'text', text: 'Sydney unavailable' },
     });
   });
-  expect(result.current.selection.message).toBe('Sydney unavailable');
+  expect(result.current.selection.issue).toEqual({ code: 'text', text: 'Sydney unavailable' });
   await act(async () => {
     requests[0].resolve({
       key: requests[0].key,
       fetchedAt: Date.now(),
       status: 'error',
-      message: 'Old New York response',
+      issue: { code: 'text', text: 'Old New York response' },
     });
   });
-  expect(result.current.selection.message).toBe('Sydney unavailable');
+  expect(result.current.selection.issue).toEqual({ code: 'text', text: 'Sydney unavailable' });
 });

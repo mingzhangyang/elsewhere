@@ -24,6 +24,7 @@ const preferences: Preferences = {
   quality: 'auto',
   horizon: 'flat',
   skyBrightness: 'dark',
+  language: 'auto',
 };
 const base = calculateSky(NEW_YORK, new Date('2026-11-12T17:00Z'));
 const clear = { ...defaultWeatherValues(), cloudCover: 0, haze: 0, visibilityKm: 60 };

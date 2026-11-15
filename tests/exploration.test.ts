@@ -22,6 +22,7 @@ const preferences: Preferences = {
   quality: 'auto',
   horizon: 'flat',
   skyBrightness: 'dark',
+  language: 'auto',
 };
 const date = new Date('2026-11-12T17:00Z');
 const sky = calculateSky(NEW_YORK, date);

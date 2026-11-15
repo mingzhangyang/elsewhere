@@ -22,10 +22,10 @@ import SettingsPanel from './components/SettingsPanel';
 import ShareDialog, { type ShareDialogHandle } from './components/ShareDialog';
 import FocusSummary from './components/FocusSummary';
 import { createCameraViewStore } from './lib/cameraViewStore';
-import type { BodyId, LocationInfo } from './types';
+import type { AppNotice, BodyId, LocationInfo } from './types';
 import { useSimulation } from './hooks/useSimulation';
 import { useWeather } from './hooks/useWeather';
-import { formatTime, MAX_INSTANT } from './domain/time';
+import { MAX_INSTANT } from './domain/time';
 import { calculateSky, nextBodyRise } from './domain/astronomy';
 import {
   aboveHorizon,
@@ -51,9 +51,8 @@ import {
   type Preferences,
 } from './lib/persistence';
 import type { RenderStats } from './renderer/performance';
-
-const STARS_UNAVAILABLE =
-  'The star catalog could not load. The Sun and Moon remain available; try again from Objects.';
+import { resolveLocale, setLanguage, useI18n, type LanguageSetting } from './i18n';
+import { objectName, placeLabel } from './i18n/names';
 
 export interface AppProps {
   initialLocation?: LocationInfo;
@@ -67,10 +66,12 @@ export default function App({
   weatherLoader = fetchWeatherForDate,
   diagnostics = false,
 }: AppProps) {
+  const i18n = useI18n();
+  const { m } = i18n;
   const [launch] = useState(() => ({
     preferences: loadPreferences(),
     shared:
-      initialTime || initialLocation ? { value: null, notice: '' } : parseExploration(window.location.hash),
+      initialTime || initialLocation ? { value: null, notice: null } : parseExploration(window.location.hash),
   }));
   const [preferences, setPreferences] = useState<Preferences>(() => launch.preferences.value);
   const [state, dispatch] = useReducer(explorationReducer, undefined, () =>
@@ -116,24 +117,27 @@ export default function App({
   const panelTrigger = useRef<HTMLElement | null>(null);
   const objectsTrigger = useRef<HTMLButtonElement>(null);
   const layers = state.sharedLayers ?? preferences.layers;
-  const setNotice = (message: string) => dispatch({ type: 'notice', message });
+  const setNotice = (notice: AppNotice) => dispatch({ type: 'notice', notice });
   const setClearSky = (value: boolean) => dispatch({ type: 'clear-sky', value });
   const sourceText = clearSky
-    ? 'Clear-sky preview'
+    ? m.atmosphere.clearPreview
     : custom
-      ? 'Custom simulation'
-      : weatherSourceLabel(selection);
+      ? m.atmosphere.custom
+      : weatherSourceLabel(selection, m);
   const focused = findSkyObject(sky, focusedId);
-  const planetsUp = sky.planets.filter((planet) => planet.visible).map((planet) => planet.name);
+  const planetsUp = sky.planets
+    .filter((planet) => planet.visible)
+    .map((planet) => objectName({ ...planet, kind: 'planet' }, i18n));
   const focusedVisibility = focused && objectVisibility(focused, sky, weather, preferences);
+  const place = placeLabel(location, i18n);
   const skyMood =
     sky.sunAltitude > 6
-      ? 'A moment under the Sun'
+      ? m.sky.mood.day
       : sky.sunAltitude > -0.8
-        ? 'The light is changing'
+        ? m.sky.mood.changing
         : sky.sunAltitude > -18
-          ? 'Between day and night'
-          : 'A sky full of possibility';
+          ? m.sky.mood.twilight
+          : m.sky.mood.night;
   useEffect(() => {
     const media = window.matchMedia?.('(prefers-reduced-motion: reduce)');
     const update = () => setSystemMotion(media?.matches ?? false);
@@ -152,23 +156,33 @@ export default function App({
     (usable ? trigger : objectsTrigger.current)?.focus();
   }, [panel]);
   useEffect(() => {
-    if (stars === 'error') setNotice(STARS_UNAVAILABLE);
+    if (stars === 'error') setNotice({ code: 'stars-unavailable' });
     // Once a retry succeeds, withdraw the failure notice (but never someone else's).
-    else if (stars === 'ready') dispatch({ type: 'dismiss-notice', message: STARS_UNAVAILABLE });
+    else if (stars === 'ready') dispatch({ type: 'dismiss-notice', code: 'stars-unavailable' });
   }, [stars]);
   useEffect(() => {
-    const unavailable = () =>
-      setNotice(
-        'Offline caching could not be enabled. This open sky remains usable; reloading offline may require a connection.',
-      );
+    const unavailable = () => setNotice({ code: 'offline-unavailable' });
     window.addEventListener('elsewhere-offline-unavailable', unavailable);
     return () => window.removeEventListener('elsewhere-offline-unavailable', unavailable);
   }, []);
+  // Following the browser, a change of its language applies at once.
+  useEffect(() => {
+    if (preferences.language !== 'auto') return;
+    const follow = () => setLanguage(resolveLocale('auto')).catch(() => {});
+    window.addEventListener('languagechange', follow);
+    return () => window.removeEventListener('languagechange', follow);
+  }, [preferences.language]);
   const changePreferences = (change: (value: Preferences) => Preferences) => {
     const next = change(preferences);
     setPreferences(next);
-    if (!savePreferences(next))
-      setNotice('Changes are active, but this browser could not save your preferences.');
+    if (!savePreferences(next)) setNotice({ code: 'preferences-not-saved' });
+  };
+  /** The language is saved once it has loaded; a failed download leaves the current one in place. */
+  const chooseLanguage = (setting: LanguageSetting) => {
+    setLanguage(resolveLocale(setting)).then(
+      () => changePreferences((p) => ({ ...p, language: setting })),
+      () => setNotice({ code: 'language-unavailable' }),
+    );
   };
   const setLayer = (key: keyof LayerSettings, value: boolean) => {
     dispatch({ type: 'layer', key, value });
@@ -219,7 +233,7 @@ export default function App({
     try {
       const rise = nextBodyRise(location, id, simTime);
       if (!rise) {
-        setNotice('No rise was found within the supported dates. Try another place or date.');
+        setNotice({ code: 'no-rise' });
         return;
       }
       const time = new Date(Math.min(MAX_INSTANT, rise.getTime() + 15 * 60000));
@@ -227,7 +241,7 @@ export default function App({
       setSimTime(time);
       focusObject(findSkyObject(calculateSky(location, time), id)!, false);
     } catch {
-      setNotice('This rise could not be calculated. Choose another date or place.');
+      setNotice({ code: 'rise-failed' });
     }
   };
   const share = () => {
@@ -246,7 +260,7 @@ export default function App({
         clearSky,
         ...(subject ? { focus: subject.id } : {}),
       }),
-      subject?.name,
+      subject,
     );
   };
   return (
@@ -255,7 +269,7 @@ export default function App({
         <a
           className="brand-lockup"
           href="#"
-          aria-label="Elsewhere home"
+          aria-label={m.brand.home}
           onClick={(event) => {
             event.preventDefault();
             closePanel();
@@ -267,7 +281,7 @@ export default function App({
           </span>
           <span className="brand-name">
             elsewhere<span>.</span>
-            <small>A LITTLE PERSPECTIVE</small>
+            <small>{m.brand.tagline}</small>
           </span>
         </a>
         <LocationPicker
@@ -278,14 +292,14 @@ export default function App({
           onSave={saveLocation}
         />
         <div className="header-actions">
-          <button className="icon-button" aria-label="Share this sky" onClick={share}>
+          <button className="icon-button" aria-label={m.controls.share} onClick={share}>
             <Share2 size={19} />
           </button>
         </div>
       </header>
       <main
         className={`stage ${focused ? 'has-target' : ''} ${panel ? 'panel-open' : ''}`}
-        aria-label="Sky exploration"
+        aria-label={m.sky.exploration}
       >
         <SkyScene
           ref={skyRef}
@@ -301,7 +315,7 @@ export default function App({
           skyBrightness={preferences.skyBrightness}
           targetId={immersive ? null : focusedId}
           playbackRate={playing && simTime.getTime() < MAX_INSTANT ? speed : 0}
-          onAssetError={setNotice}
+          onAssetError={() => setNotice({ code: 'moon-map-unavailable' })}
           onCameraChange={view.set}
           onDiagnostics={import.meta.env.DEV && diagnostics ? setStats : undefined}
           onStarSelect={(star) => {
@@ -334,21 +348,21 @@ export default function App({
         )}
         <div className="sky-context" data-occludes-sky>
           <p className="eyebrow">{skyMood}</p>
-          <h1>{location.name}</h1>
+          <h1>{place.name}</h1>
           {/* The clock lives in the time dock; here, only where that clock is set. */}
           <p className="context-place">
-            {[location.country, location.timezone.replaceAll('_', ' ')].filter(Boolean).join(' · ')}
+            {[place.country, m.f.zone(location.timezone, simTime)].filter(Boolean).join(' · ')}
           </p>
           <button className="source-pill" onClick={(event) => openPanel('weather', event.currentTarget)}>
             <span className={`status-dot ${clearSky || custom || !selection.values ? 'amber' : ''}`} />
             {sourceText}
-            {!clearSky && !custom && !selection.values ? ' · neutral sky' : ''}
+            {!clearSky && !custom && !selection.values ? m.atmosphere.neutral : ''}
             <ArrowUpRight size={13} />
           </button>
           {/* Only when no panel or object card already offers its own Restore button. */}
           {clearSky && !panel && !focusedVisibility && (
             <button className="restore-atmosphere" onClick={() => setClearSky(false)}>
-              Restore {custom ? 'custom atmosphere' : 'weather atmosphere'}
+              {custom ? m.atmosphere.restoreCustom : m.atmosphere.restoreWeather}
             </button>
           )}
         </div>
@@ -356,25 +370,29 @@ export default function App({
         <div className="view-controls" data-occludes-sky>
           <button
             className="icon-button"
-            aria-label="Zoom in"
+            aria-label={m.controls.zoomIn}
             onClick={() => skyRef.current?.zoom(ZOOM_STEP)}
           >
             <Plus size={19} />
           </button>
           <button
             className="icon-button"
-            aria-label="Zoom out"
+            aria-label={m.controls.zoomOut}
             onClick={() => skyRef.current?.zoom(1 / ZOOM_STEP)}
           >
             <Minus size={19} />
           </button>
           <span />
-          <button className="icon-button" aria-label="Reset view" onClick={() => skyRef.current?.resetView()}>
+          <button
+            className="icon-button"
+            aria-label={m.controls.resetView}
+            onClick={() => skyRef.current?.resetView()}
+          >
             <Crosshair size={19} />
           </button>
           <button
             className="icon-button"
-            aria-label={immersive ? 'Show controls' : 'Hide controls'}
+            aria-label={immersive ? m.controls.showControls : m.controls.hideControls}
             aria-pressed={immersive}
             onClick={() => dispatch({ type: 'immersive', value: !immersive })}
           >
@@ -384,15 +402,15 @@ export default function App({
         {!preferences.hintDismissed && !focused && !panel && (
           <div className="scene-hint" data-occludes-sky>
             <div>
-              <strong>Where will you look?</strong>
-              <small>Drag to explore · arrows to look · pinch or + / − to zoom</small>
+              <strong>{m.hint.title}</strong>
+              <small>{m.hint.gestures}</small>
             </div>
             <button className="hint-action" onClick={(event) => inspect('moon', event.currentTarget)}>
-              Find the Moon
+              {m.hint.findMoon}
             </button>
             <button
               className="icon-button"
-              aria-label="Dismiss viewing hint"
+              aria-label={m.hint.dismiss}
               onClick={() => changePreferences((p) => ({ ...p, hintDismissed: true }))}
             >
               <X size={14} />
@@ -414,35 +432,35 @@ export default function App({
             onJumpToRise={jumpToRise}
           />
         )}
-        <nav className="explore-toolbar" data-occludes-sky aria-label="Explore controls">
+        <nav className="explore-toolbar" data-occludes-sky aria-label={m.controls.explore}>
           <button
             ref={objectsTrigger}
             aria-expanded={panel === 'objects'}
             onClick={(event) => openPanel('objects', event.currentTarget)}
           >
             <Sparkles size={17} />
-            Objects
+            {m.controls.objects}
           </button>
           <button
             aria-expanded={panel === 'weather'}
             onClick={(event) => openPanel('weather', event.currentTarget)}
           >
             <Cloud size={17} />
-            Weather
+            {m.controls.weather}
           </button>
           <button
             aria-expanded={panel === 'settings'}
             onClick={(event) => openPanel('settings', event.currentTarget)}
           >
             <Layers size={17} />
-            Layers
+            {m.controls.layers}
           </button>
         </nav>
         {panel && (
           <section
             className="inspector"
             data-occludes-sky
-            aria-label={`${panel} inspector`}
+            aria-label={m.inspector.region[panel]}
             onKeyDown={(event) => {
               if (event.key === 'Escape') {
                 event.stopPropagation();
@@ -453,14 +471,10 @@ export default function App({
             <div className="inspector-heading">
               <div>
                 <h2 ref={panelTitle} tabIndex={-1}>
-                  {panel === 'objects'
-                    ? 'Explore the sky'
-                    : panel === 'weather'
-                      ? 'Weather & atmosphere'
-                      : 'Make it your view'}
+                  {m.inspector.title[panel]}
                 </h2>
               </div>
-              <button className="icon-button" aria-label="Close inspector" onClick={closePanel}>
+              <button className="icon-button" aria-label={m.inspector.close} onClick={closePanel}>
                 <X size={20} />
               </button>
             </div>
@@ -485,11 +499,9 @@ export default function App({
                 <>
                   {clearSky && (
                     <div className="preview-notice">
-                      <p>
-                        The sky is temporarily clear for exploration. Original weather values are shown below.
-                      </p>
+                      <p>{m.atmosphere.previewNotice}</p>
                       <button className="secondary-button" onClick={() => setClearSky(false)}>
-                        Restore atmosphere
+                        {m.atmosphere.restore}
                       </button>
                     </div>
                   )}
@@ -513,6 +525,7 @@ export default function App({
                   onLayer={setLayer}
                   onPreferences={changePreferences}
                   onToggleSaved={() => saveLocation(location)}
+                  onLanguage={chooseLanguage}
                 />
               )}
             </div>
@@ -536,25 +549,33 @@ export default function App({
         />
       </div>
       <footer className="bottom-bar">
-        <span>THE SKY, FROM HERE</span>
+        <span>{m.brand.footer}</span>
         <span>
-          Sun {sky.sunAltitude.toFixed(1)}° · Moon {Math.round(sky.moon.illumination * 100)}% lit
+          {m.sky.footerReadout({ sunAltitude: sky.sunAltitude, illumination: sky.moon.illumination * 100 })}
         </span>
         <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">
-          Weather by Open-Meteo
+          {m.sky.weatherCredit}
         </a>
       </footer>
-      <div className="sr-only" role="region" aria-label="Sky summary">
-        {location.name}. Local time {formatTime(simTime, location.timezone)}. Sun altitude{' '}
-        {Math.round(sky.sunAltitude)} degrees. Moon {sky.moon.phaseName},{' '}
-        {Math.round(sky.moon.illumination * 100)} percent illuminated.{' '}
-        {planetsUp.length ? `Planets above the horizon: ${planetsUp.join(', ')}. ` : ''}
-        {sourceText}.
+      <div className="sr-only" role="region" aria-label={m.sky.summaryRegion}>
+        {m.sky.summary({
+          place: place.name,
+          time: m.f.time(simTime, location.timezone),
+          sunAltitude: sky.sunAltitude,
+          phase: m.phases[sky.moon.phase],
+          illumination: sky.moon.illumination * 100,
+          planets: planetsUp,
+          source: sourceText,
+        })}
       </div>
       {notice && (
         <div className="notice" data-occludes-sky role="status">
-          <span>{notice}</span>
-          <button className="icon-button" aria-label="Dismiss notice" onClick={() => setNotice('')}>
+          <span>{m.notices[notice.code]}</span>
+          <button
+            className="icon-button"
+            aria-label={m.controls.dismissNotice}
+            onClick={() => setNotice(null)}
+          >
             <X size={16} />
           </button>
         </div>

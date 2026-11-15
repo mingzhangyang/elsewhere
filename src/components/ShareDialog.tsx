@@ -1,34 +1,40 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { Check, Share2, X } from 'lucide-react';
-import type { LocationInfo } from '../types';
+import type { AppNotice, LocationInfo } from '../types';
+import type { SkyObject } from '../lib/exploration';
 import { isDeviceLocation } from '../lib/locations';
+import { useI18n } from '../i18n';
+import { objectName } from '../i18n/names';
 
 export interface ShareDialogHandle {
-  /** `focusName` names the object the link opens centered on, if any. */
-  open: (link: string, focusName?: string) => void;
+  /** `focus` is the object the link opens centered on, if any. */
+  open: (link: string, focus?: SkyObject) => void;
 }
 
 interface Props {
   location: LocationInfo;
   includesCustomWeather: boolean;
-  onNotice: (message: string) => void;
+  onNotice: (notice: AppNotice) => void;
 }
 
 const ShareDialog = forwardRef<ShareDialogHandle, Props>(function ShareDialog(
   { location, includesCustomWeather, onNotice },
   ref,
 ) {
+  const i18n = useI18n();
+  const { m } = i18n;
   const dialog = useRef<HTMLDialogElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const [link, setLink] = useState('');
-  const [focusName, setFocusName] = useState<string>();
+  // The object, not its name, so the sentence follows a language change while the dialog is open.
+  const [focus, setFocus] = useState<SkyObject>();
   const [copied, setCopied] = useState(false);
   useImperativeHandle(
     ref,
     () => ({
-      open: (next, name) => {
+      open: (next, object) => {
         setLink(next);
-        setFocusName(name);
+        setFocus(object);
         setCopied(false);
         dialog.current?.showModal();
       },
@@ -41,38 +47,38 @@ const ShareDialog = forwardRef<ShareDialogHandle, Props>(function ShareDialog(
       setCopied(true);
     } catch {
       input.current?.select();
-      onNotice('Select the link and copy it with your keyboard.');
+      onNotice({ code: 'copy-manually' });
     }
   };
   return (
     <dialog ref={dialog} className="share-dialog" aria-labelledby="share-title">
       <div className="dialog-heading">
         <div>
-          <p className="eyebrow">Keep a moment</p>
-          <h2 id="share-title">Share this sky</h2>
+          <p className="eyebrow">{m.share.eyebrow}</p>
+          <h2 id="share-title">{m.share.title}</h2>
         </div>
-        <button className="icon-button" aria-label="Close sharing" onClick={() => dialog.current?.close()}>
+        <button className="icon-button" aria-label={m.share.close} onClick={() => dialog.current?.close()}>
           <X />
         </button>
       </div>
       <p>
-        This link includes the place, exact time, camera view
-        {focusName ? ` centered on ${focusName}` : ''}, layers
-        {includesCustomWeather ? ', and custom weather' : ''}.
+        {m.share.includes({
+          focus: focus && objectName(focus, i18n),
+          customWeather: includesCustomWeather,
+        })}
       </p>
       {isDeviceLocation(location) && (
         <p className="privacy-note">
-          It includes your exact device coordinates: {location.latitude.toFixed(5)},{' '}
-          {location.longitude.toFixed(5)}. Share only if you want the recipient to see this location.
+          {m.share.device({ latitude: location.latitude, longitude: location.longitude })}
         </p>
       )}
       <label className="share-field">
-        Sky link
+        {m.share.field}
         <input ref={input} readOnly value={link} onFocus={(e) => e.target.select()} />
       </label>
       <button className="primary-button full" onClick={copy}>
         {copied ? <Check size={17} /> : <Share2 size={17} />}
-        {copied ? 'Copied' : 'Copy link'}
+        {copied ? m.share.copied : m.share.copy}
       </button>
     </dialog>
   );

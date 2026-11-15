@@ -1,9 +1,7 @@
 import { useRef, useState } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight, Pause, Play, Sunrise, Sunset, X } from 'lucide-react';
 import {
-  formatDate,
   formatOffset,
-  formatTime,
   getZonedParts,
   MAX_INSTANT,
   MIN_INSTANT,
@@ -11,6 +9,7 @@ import {
   wallTimeCandidates,
 } from '../domain/time';
 import type { SkyEvents } from '../types';
+import { useI18n } from '../i18n';
 
 export default function TimeConsole({
   instant,
@@ -37,19 +36,16 @@ export default function TimeConsole({
   onSpeed: (speed: number) => void;
   onNow: () => void;
 }) {
+  const { m } = useI18n();
+  const t = m.time;
   const local = getZonedParts(instant, timeZone);
   const editor = useRef<HTMLDialogElement>(null);
   const editorTrigger = useRef<HTMLButtonElement>(null);
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState('');
   const [choices, setChoices] = useState<Date[]>([]);
-  const status = following ? 'Following real time' : playing ? `Playing at ${speed}×` : 'Paused';
-  const shortDate = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(instant);
+  const status = following ? t.following : playing ? t.playing({ speed }) : t.paused;
+  const shortDate = m.f.shortDate(instant, timeZone);
   const minute = Math.floor((instant.getTime() - bounds.start.getTime()) / 60000);
   const jump = (time: Date) => {
     onPlaying(false);
@@ -63,30 +59,29 @@ export default function TimeConsole({
     setChoices([]);
     try {
       const candidates = wallTimeCandidates(day, time, timeZone);
-      if (!candidates.length)
-        setError('This time does not exist because the clock moves forward. Choose another time.');
+      if (!candidates.length) setError(t.gap);
       else if (candidates.length === 2) {
         setChoices(candidates);
-        setError('This time occurs twice. Choose the offset you want.');
+        setError(t.fold);
       } else jump(candidates[0]);
     } catch {
-      setError('Choose a valid date from 1900 through 2100.');
+      setError(t.invalidDate);
     }
   };
   const shift = (days: number) => {
     try {
       jump(shiftLocalDate(instant, timeZone, days));
     } catch {
-      setError('Choose a date from 1900 through 2100.');
+      setError(t.outOfRange);
     }
   };
   return (
-    <section className="time-console" aria-label="Time controls">
+    <section className="time-console" aria-label={t.region}>
       <div className="time-topline">
         <button
           className="time-readout"
           ref={editorTrigger}
-          aria-label="Change date and time"
+          aria-label={t.change}
           aria-describedby="selected-time"
           aria-expanded={editing}
           aria-haspopup="dialog"
@@ -115,15 +110,15 @@ export default function TimeConsole({
             onNow();
           }}
         >
-          Now
+          {t.now}
         </button>
         <button
           className="tonight-button"
           disabled={!events.twilightDusk}
-          title={events.twilightDusk ? 'Explore one hour after civil dusk' : 'No civil dusk on this date'}
+          title={events.twilightDusk ? t.tonightTitle : t.noDusk}
           onClick={() => events.twilightDusk && jump(new Date(events.twilightDusk.getTime() + 3600000))}
         >
-          Tonight
+          {t.tonight}
         </button>
       </div>
       <dialog
@@ -136,30 +131,26 @@ export default function TimeConsole({
         }}
       >
         <div className="dialog-heading">
-          <h2 id="time-editor-title">Choose a moment</h2>
-          <button
-            className="icon-button"
-            aria-label="Close time editor"
-            onClick={() => editor.current?.close()}
-          >
+          <h2 id="time-editor-title">{t.editor}</h2>
+          <button className="icon-button" aria-label={t.closeEditor} onClick={() => editor.current?.close()}>
             <X size={20} />
           </button>
         </div>
         <p className="time-zone-note">
-          {timeZone.replaceAll('_', ' ')} · {formatOffset(instant, timeZone)}
+          {m.f.zone(timeZone, instant)} · {formatOffset(instant, timeZone)}
         </p>
         <div className="day-navigation">
-          <button className="icon-button" aria-label="Previous day" onClick={() => shift(-1)}>
+          <button className="icon-button" aria-label={t.previousDay} onClick={() => shift(-1)}>
             <ChevronLeft size={18} />
           </button>
-          <span>{formatDate(instant, timeZone)}</span>
-          <button className="icon-button" aria-label="Next day" onClick={() => shift(1)}>
+          <span>{m.f.date(instant, timeZone)}</span>
+          <button className="icon-button" aria-label={t.nextDay} onClick={() => shift(1)}>
             <ChevronRight size={18} />
           </button>
         </div>
         <div className="time-inputs">
           <label>
-            <span>Date</span>
+            <span>{t.date}</span>
             <input
               type="date"
               min="1900-01-01"
@@ -169,7 +160,7 @@ export default function TimeConsole({
             />
           </label>
           <label>
-            <span>Local time</span>
+            <span>{t.localTime}</span>
             <input type="time" value={local.time} onChange={(e) => edit(local.date, e.target.value)} />
           </label>
         </div>
@@ -178,28 +169,28 @@ export default function TimeConsole({
             {error}
             {choices.map((candidate) => (
               <button key={candidate.getTime()} onClick={() => jump(candidate)}>
-                {formatTime(candidate, timeZone)} {formatOffset(candidate, timeZone)}
+                {m.f.time(candidate, timeZone)} {formatOffset(candidate, timeZone)}
               </button>
             ))}
           </div>
         )}
         <div className="event-jumps">
           <button disabled={!events.sunrise} onClick={() => events.sunrise && jump(events.sunrise)}>
-            Sunrise
+            {t.sunrise}
           </button>
           <button disabled={!events.sunset} onClick={() => events.sunset && jump(events.sunset)}>
-            Sunset
+            {t.sunset}
           </button>
         </div>
         <button className="primary-button full" onClick={() => editor.current?.close()}>
-          Done
+          {t.done}
         </button>
       </dialog>
       <div className="timeline-row">
         <button
           className="play-button"
           onClick={() => onPlaying(!(playing || following))}
-          aria-label={playing || following ? 'Pause time' : 'Play time'}
+          aria-label={playing || following ? t.pause : t.play}
         >
           {playing || following ? (
             <Pause size={17} fill="currentColor" />
@@ -224,7 +215,7 @@ export default function TimeConsole({
             )}
           </div>
           <input
-            aria-label="Time of day"
+            aria-label={t.slider}
             type="range"
             min={0}
             max={bounds.minutes - 1}
@@ -236,7 +227,7 @@ export default function TimeConsole({
           <div className="timeline-ticks">
             {[0, 0.25, 0.5, 0.75, 1].map((part) => (
               <span key={part}>
-                {formatTime(
+                {m.f.time(
                   new Date(
                     bounds.start.getTime() +
                       Math.min(bounds.minutes - 1, Math.round(bounds.minutes * part)) * 60000,
@@ -248,10 +239,10 @@ export default function TimeConsole({
             ))}
           </div>
         </div>
-        <select aria-label="Playback speed" value={speed} onChange={(e) => onSpeed(Number(e.target.value))}>
+        <select aria-label={t.speed} value={speed} onChange={(e) => onSpeed(Number(e.target.value))}>
           {[1, 10, 60, 600].map((value) => (
             <option key={value} value={value}>
-              {value}×
+              {t.speedOption({ speed: value })}
             </option>
           ))}
         </select>

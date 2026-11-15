@@ -4,7 +4,7 @@ Explore a calculated sky from any place and time. Elsewhere combines a quiet, re
 
 The planned refactor is complete, and CI passes on GitHub Actions. The remaining release gates, such as deployment, physical devices and screen readers, are in [docs/RELEASE.md](docs/RELEASE.md).
 
-The [roadmap](ROADMAP.md) sets out what comes next: Chinese and English, shareable sky moments, horizon scenery and a viewing planner. Earlier plans and reviews are in the [archive](docs/archive/README.md).
+The interface is in English and Simplified Chinese. The [roadmap](ROADMAP.md) sets out what comes next: shareable sky moments, horizon scenery and a viewing planner. Earlier plans and reviews are in the [archive](docs/archive/README.md).
 
 ## Run locally
 
@@ -44,6 +44,7 @@ Click the compact date/time readout for exact editing, previous/next day, and su
 - Drag the sky, pinch or scroll to zoom, or use arrows, +/−, and Home. Visible zoom/reset controls and a textual sky summary provide alternatives. Select objects in the scene or searchable Objects panel and center them in view; centering the Sun or Moon zooms in (down to a 2° field) so the lunar surface map is visible, and the target ring circles the disc.
 - Inspect Sun/Moon events, observer-relative lunar illumination, approximate lunar distance, and star coordinates. Toggle independent star, label, and line layers. Choose dark/suburban/city brightness, an unobstructed or illustrative horizon, reduced motion, and rendering quality.
 - Use model-backed weather with explicit current/forecast/recent/historical source, timestamps, missing values, and stale-cache labels. Custom weather is a separate simulation. Neither mode changes calculated astronomical positions.
+- Read the app in English or Simplified Chinese. The language follows the browser (any Chinese variant, including zh-TW and zh-HK, gets Simplified Chinese; anything else gets English) and can be set in **Layers → Language**, which is remembered. Dates, times and numbers follow the language; bright stars take their common Chinese names, and search finds an object by its Chinese or English name. Shared links carry no language: the recipient reads them in their own.
 - Save preferences/places locally and copy a versioned link containing the chosen place, instant, camera, layers, and custom conditions. Exact coordinates are disclosed before sharing. No accounts or analytics are included.
 
 The responsive shell keeps a separate time dock and one inspector. The renderer retains geometry/textures, schedules static scenes on demand, animates clouds only when their drift is visible (capped at 30 fps; rain and snow run at the display rate), suspends hidden-tab animation, adapts resolution, and recovers from graphics loss without resetting the exploration. After a successful production load and asset-cache installation, the local shell and catalog can reopen offline; remote search/weather still require a network connection. Weather caching is memory-only.
@@ -54,7 +55,8 @@ The responsive shell keeps a separate time dock and one inspector. The renderer 
 | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/domain`                    | Platform-independent calculations: astronomy, stars, time zones, star visibility, weather sample selection. Imports nothing from the app, network or renderer (enforced by `tests/architecture.test.ts`) |
 | `src/services`                  | Open-Meteo weather and place-search clients, response validation, cancellation, cache and provenance                                                                                                     |
-| `src/lib`                       | Application state and wording: exploration reducer, visibility explanations, preferences and share links, locations, network messages                                                                    |
+| `src/lib`                       | Application state: exploration reducer, visibility reasons, preferences and share links, locations, network failure classification                                                                       |
+| `src/i18n`                      | Typed message catalogs (`en.ts` is the source, `zh-Hans.ts` matches its shape), each its own chunk; locale detection, Intl formatters, display names for objects and places                              |
 | `src/hooks`                     | Simulation clock and data subscriptions                                                                                                                                                                  |
 | `src/renderer`                  | Camera input, the rigid star sphere and its shader, retained celestial layers, atmosphere, particles, scheduling and resource ownership                                                                  |
 | `src/components`, `src/App.tsx` | Accessible exploration controls and presentation; App wires state to components                                                                                                                          |
@@ -64,7 +66,7 @@ The responsive shell keeps a separate time dock and one inspector. The renderer 
 
 Supported instants span 1900–2100 UTC. This is educational visualization: the generic landscape, clouds, brightness, and precipitation are illustrative. It does not include planetary discs or moons, measured terrain, a Milky Way layer, eclipse timing, or a complete constellation atlas. Device location uses a disclosed sea-level elevation assumption. Displayed altitudes of the Sun, Moon, planets, and stars include standard atmospheric refraction. Stellar parallax, nutation, and variable brightness are omitted.
 
-[Scientific conventions and independent reference results](docs/SCIENCE.md) explain the accuracy budget and its limits. [Asset provenance](docs/ASSETS.md) records catalog/map licenses, source URLs, hashes, and transformations. The app also exposes [sources, privacy, and limitations](public/credits.html).
+[Scientific conventions and independent reference results](docs/SCIENCE.md) explain the accuracy budget and its limits. [Asset provenance](docs/ASSETS.md) records catalog/map licenses, source URLs, hashes, and transformations. The app also exposes [sources, privacy, and limitations](public/credits.html) ([简体中文](public/credits.zh-Hans.html)).
 
 - [Astronomy Engine](https://github.com/cosinekitty/astronomy): Sun, Moon, planets, orientation, and events; MIT.
 - [HYG v4.1](https://github.com/astronexus/HYG-Database): magnitude-limited star derivative; CC BY-SA 4.0.

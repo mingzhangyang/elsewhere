@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { LABEL_FONT } from './labelFont';
 
 export function directionVector(altitude: number, azimuth: number): THREE.Vector3 {
   const alt = THREE.MathUtils.degToRad(altitude);
@@ -23,10 +24,12 @@ export function makeGlowTexture(): THREE.CanvasTexture {
 export function makeTextSprite(text: string, color = '#e8edf7'): THREE.Sprite {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d')!;
-  ctx.font = '500 32px Arial';
+  ctx.font = LABEL_FONT;
+  // The texture, and so the layout box (userData.aspect), is as wide as the text measures in this
+  // font, whatever the script: CJK names are narrower in characters but wider per glyph.
   canvas.width = Math.ceil(ctx.measureText(text).width) + 32;
   canvas.height = 56;
-  ctx.font = '500 32px Arial';
+  ctx.font = LABEL_FONT;
   ctx.fillStyle = color;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';

@@ -1,6 +1,9 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import type { RenderInput, RenderCallbacks, SkyRenderer } from '../renderer/createSkyRenderer';
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import type { RenderInput, RenderCallbacks, SkyLabels, SkyRenderer } from '../renderer/createSkyRenderer';
 import type { CameraView } from '../lib/persistence';
+import { currentLanguage, useI18n, type I18n } from '../i18n';
+import { objectName } from '../i18n/names';
+import { labelFontReady } from '../renderer/labelFont';
 
 export interface SkySceneHandle {
   resetView: () => void;
@@ -11,15 +14,33 @@ export interface SkySceneHandle {
   simulateContextLoss: () => void;
 }
 
-type Props = RenderInput & RenderCallbacks;
+type Props = Omit<RenderInput, 'labels'> & RenderCallbacks;
+
+function skyLabels(i18n: I18n): SkyLabels {
+  const { m } = i18n;
+  return {
+    canvas: m.sky.canvas,
+    planet: (id) => m.bodies[id],
+    star: (star) => objectName({ kind: 'star', id: star.id, name: star.name }, i18n),
+    pattern: (id) => m.patterns[id],
+    target: (object) => m.sky.targetLabel({ name: objectName(object, i18n) }),
+  };
+}
+/** Characters to have the label font ready for: every name that can be drawn in the sky's labels. */
+function labelSample({ m }: I18n): string {
+  return [...Object.values(m.bodies), ...Object.values(m.patterns), ...Object.values(m.starNames)].join('');
+}
 
 const SkyScene = forwardRef<SkySceneHandle, Props>(function SkyScene(props, ref) {
   const hostRef = useRef<HTMLDivElement>(null);
   const runtime = useRef<SkyRenderer | null>(null);
   const view = useRef<CameraView | undefined>(props.initialView);
-  const latest = useRef(props);
-  latest.current = props;
-  const [error, setError] = useState('');
+  const i18n = useI18n();
+  const { m } = i18n;
+  const labels = useMemo(() => skyLabels(i18n), [i18n]);
+  const latest = useRef({ ...props, labels });
+  latest.current = { ...props, labels };
+  const [error, setError] = useState<'start' | 'load' | 'context' | null>(null);
   const [revision, retry] = useState(0);
   useImperativeHandle(
     ref,
@@ -34,6 +55,20 @@ const SkyScene = forwardRef<SkySceneHandle, Props>(function SkyScene(props, ref)
   useEffect(() => {
     runtime.current?.target(props.targetId ?? null);
   }, [props.targetId]);
+  // A language change redraws the label textures once the new script's font can draw them.
+  const drawn = useRef(labels);
+  useEffect(() => {
+    if (drawn.current === labels) return;
+    let current = true;
+    labelFontReady(labelSample(i18n)).then(() => {
+      if (!current || !runtime.current) return;
+      drawn.current = labels;
+      runtime.current.labels(labels);
+    });
+    return () => {
+      current = false;
+    };
+  }, [labels, i18n]);
   // Panels and cards over the sky change with app renders; labels are laid out around them on the
   // next frame. Frames are coalesced, so this costs at most one draw per display refresh.
   useEffect(() => {
@@ -45,10 +80,11 @@ const SkyScene = forwardRef<SkySceneHandle, Props>(function SkyScene(props, ref)
   useEffect(() => {
     let disposed = false;
     let instance: SkyRenderer | null = null;
-    import('../renderer/createSkyRenderer')
-      .then(({ createSkyRenderer }) => {
+    Promise.all([import('../renderer/createSkyRenderer'), labelFontReady(labelSample(currentLanguage()))])
+      .then(([{ createSkyRenderer }]) => {
         if (disposed || !hostRef.current) return;
         try {
+          drawn.current = latest.current.labels;
           instance = createSkyRenderer(
             hostRef.current,
             { ...latest.current, initialView: view.current },
@@ -61,23 +97,18 @@ const SkyScene = forwardRef<SkySceneHandle, Props>(function SkyScene(props, ref)
                 latest.current.onCameraChange?.(next);
               },
               onAssetError: (message) => latest.current.onAssetError?.(message),
-              onContextChange: (lost) =>
-                setError(
-                  lost
-                    ? 'The graphics connection was interrupted. Retry the sky; your place, time, and view are preserved.'
-                    : '',
-                ),
+              onContextChange: (lost) => setError(lost ? 'context' : null),
               onDiagnostics: (stats) => latest.current.onDiagnostics?.(stats),
             },
           );
           runtime.current = instance;
-          setError('');
+          setError(null);
         } catch {
-          setError('The 3D sky could not start. Your sky calculations remain available below.');
+          setError('start');
         }
       })
       .catch(() => {
-        if (!disposed) setError('The 3D sky could not load. Check your connection and retry.');
+        if (!disposed) setError('load');
       });
     return () => {
       disposed = true;
@@ -102,11 +133,17 @@ const SkyScene = forwardRef<SkySceneHandle, Props>(function SkyScene(props, ref)
   }, [props.reducedMotion, props.quality, props.horizon, props.skyBrightness]);
   return (
     <>
-      <div className="sky-scene" ref={hostRef} role="group" aria-label="Interactive three-dimensional sky" />
+      <div className="sky-scene" ref={hostRef} role="group" aria-label={m.sky.scene} />
       {error && (
         <div className="scene-error" role="alert">
-          <p>{error}</p>
-          <button onClick={() => retry((n) => n + 1)}>Retry sky</button>
+          <p>
+            {error === 'context'
+              ? m.sky.contextLost
+              : error === 'start'
+                ? m.sky.startFailed
+                : m.sky.loadFailed}
+          </p>
+          <button onClick={() => retry((n) => n + 1)}>{m.sky.retry}</button>
         </div>
       )}
     </>

@@ -1,6 +1,7 @@
 import type { ChangeEvent } from 'react';
 import { Bookmark, HelpCircle } from 'lucide-react';
 import type { LayerSettings, Preferences } from '../lib/persistence';
+import { LOCALES, useI18n, type LanguageSetting, type Locale } from '../i18n';
 
 interface Props {
   layers: LayerSettings;
@@ -11,13 +12,12 @@ interface Props {
   onLayer: (key: keyof LayerSettings, value: boolean) => void;
   onPreferences: (change: (value: Preferences) => Preferences) => void;
   onToggleSaved: () => void;
+  onLanguage: (setting: LanguageSetting) => void;
 }
 
-const LAYER_NAMES: Record<keyof LayerSettings, string> = {
-  stars: 'Stars',
-  lines: 'Constellation lines',
-  labels: 'Object labels',
-};
+const LAYERS: (keyof LayerSettings)[] = ['stars', 'lines', 'labels'];
+/** Each language is offered under its own name, whatever the interface language. */
+const LANGUAGE_NAMES: Record<Locale, string> = { en: 'English', 'zh-Hans': '简体中文' };
 
 export default function SettingsPanel({
   layers,
@@ -27,89 +27,103 @@ export default function SettingsPanel({
   onLayer,
   onPreferences,
   onToggleSaved,
+  onLanguage,
 }: Props) {
+  const { m } = useI18n();
+  const t = m.settings;
   const choose =
     <K extends 'quality' | 'skyBrightness' | 'horizon'>(key: K) =>
     (event: ChangeEvent<HTMLSelectElement>) =>
       onPreferences((p) => ({ ...p, [key]: event.target.value as Preferences[K] }));
   return (
     <>
-      <p className="panel-intro">A clear view, with just the details you want.</p>
+      <p className="panel-intro">{t.intro}</p>
       <div className="setting-group">
-        <h3>Sky layers</h3>
-        {(Object.keys(LAYER_NAMES) as (keyof LayerSettings)[]).map((key) => (
+        <h3>{t.layers}</h3>
+        {LAYERS.map((key) => (
           <button
             className="setting-toggle"
             key={key}
             aria-pressed={layers[key]}
             onClick={() => onLayer(key, !layers[key])}
           >
-            <span>{LAYER_NAMES[key]}</span>
+            <span>{t.layerNames[key]}</span>
             <span className="switch" />
           </button>
         ))}
       </div>
       <div className="setting-group">
-        <h3>Comfort & performance</h3>
+        <h3>{t.comfort}</h3>
         <button
           className="setting-toggle"
           aria-pressed={preferences.reducedMotion || systemMotion}
           disabled={systemMotion}
           onClick={() => onPreferences((p) => ({ ...p, reducedMotion: !p.reducedMotion }))}
         >
-          <span>Reduce atmosphere motion</span>
+          <span>{t.reduceMotion}</span>
           <span className="switch" />
         </button>
-        {systemMotion && <p className="muted">Following your system’s reduced-motion preference.</p>}
+        {systemMotion && <p className="muted">{t.systemMotion}</p>}
         <label className="quality-setting">
-          Rendering quality
+          {t.quality}
           <select value={preferences.quality} onChange={choose('quality')}>
-            <option value="auto">Automatic</option>
-            <option value="low">Battery saver</option>
-            <option value="high">High</option>
+            <option value="auto">{t.qualityOptions.auto}</option>
+            <option value="low">{t.qualityOptions.low}</option>
+            <option value="high">{t.qualityOptions.high}</option>
           </select>
         </label>
       </div>
       <div className="setting-group">
-        <h3>Sky appearance</h3>
+        <h3>{t.appearance}</h3>
         <label className="quality-setting">
-          Light pollution
+          {t.lightPollution}
           <select value={preferences.skyBrightness} onChange={choose('skyBrightness')}>
-            <option value="dark">Dark sky</option>
-            <option value="suburban">Suburban sky</option>
-            <option value="city">City sky</option>
+            <option value="dark">{t.brightnessOptions.dark}</option>
+            <option value="suburban">{t.brightnessOptions.suburban}</option>
+            <option value="city">{t.brightnessOptions.city}</option>
           </select>
         </label>
         <label className="quality-setting">
-          Horizon
+          {t.horizon}
           <select value={preferences.horizon} onChange={choose('horizon')}>
-            <option value="flat">Unobstructed</option>
-            <option value="ridge">Illustrative ridge</option>
+            <option value="flat">{t.horizonOptions.flat}</option>
+            <option value="ridge">{t.horizonOptions.ridge}</option>
           </select>
         </label>
-        <p className="muted">
-          Appearance settings are illustrative. They do not measure local light pollution or terrain. Patterns
-          include the Big Dipper and Summer Triangle asterisms.
-        </p>
+        <p className="muted">{t.appearanceNote}</p>
       </div>
       <div className="setting-group">
-        <h3>Your places</h3>
+        <h3>{t.language}</h3>
+        <label className="quality-setting">
+          {t.languageLabel}
+          <select
+            value={preferences.language}
+            onChange={(event) => onLanguage(event.target.value as LanguageSetting)}
+          >
+            <option value="auto">{t.languageAuto}</option>
+            {LOCALES.map((locale) => (
+              <option key={locale} value={locale} lang={locale}>
+                {LANGUAGE_NAMES[locale]}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <div className="setting-group">
+        <h3>{t.places}</h3>
         <button className="secondary-button full" onClick={onToggleSaved}>
           <Bookmark size={16} />
-          {placeSaved ? 'Remove saved place' : 'Save this place'}
+          {placeSaved ? t.removeSaved : t.savePlace}
         </button>
       </div>
       <div className="about-note">
         <HelpCircle size={19} />
         <div>
-          <h3>A calculated sky</h3>
+          <h3>{t.aboutTitle}</h3>
+          <p>{t.about}</p>
           <p>
-            Positions use Astronomy Engine. The landscape and clouds are illustrative; local obstructions and
-            actual cloud shapes can differ. Explore dates from 1900 through 2100.
-          </p>
-          <p>
-            <a href={import.meta.env.BASE_URL + 'credits.html'} target="_blank" rel="noreferrer">
-              Sources, privacy & limitations
+            <a href={import.meta.env.BASE_URL + t.creditsPage} target="_blank" rel="noreferrer">
+              {t.credits}
             </a>
           </p>
           <p>
