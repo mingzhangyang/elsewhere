@@ -82,6 +82,9 @@ test.describe('in Chinese', () => {
       await page.getByRole('button', { name: '关闭地点选择' }).click();
       await page.getByRole('button', { name: '分享这片天空', exact: true }).click();
       await check('share');
+      await page.getByRole('button', { name: '生成图片' }).click();
+      await expect(page.getByRole('img', { name: '纽约上空的纪念图片' })).toBeVisible();
+      await check('keepsake-image');
     });
 
   for (const scenario of ['night', 'day'])

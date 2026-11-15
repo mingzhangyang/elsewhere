@@ -1,4 +1,5 @@
 import type { BodyId, MoonPhaseKey, NetworkFailure, WeatherSource } from '../types';
+import type { MomentProvenance } from '../lib/moment';
 import type { PatternId } from '../domain/stars';
 import type { Visibility } from '../lib/exploration';
 import type { NetworkService } from '../lib/networkErrors';
@@ -532,9 +533,66 @@ const en = {
       `This link includes the place, exact time, camera view${focus ? ` centered on ${focus}` : ''}, layers${customWeather ? ', and custom weather' : ''}.`,
     device: ({ latitude, longitude }: { latitude: number; longitude: number }) =>
       `It includes your exact device coordinates: ${f.number(latitude, 5)}, ${f.number(longitude, 5)}. Share only if you want the recipient to see this location.`,
+    /** Device locations are shared rounded unless the person chooses otherwise. */
+    deviceRounded: ({ latitude, longitude }: { latitude: number; longitude: number }) =>
+      `Your location is rounded to about 10 km in this link (${f.number(latitude, 1)}, ${f.number(longitude, 1)}).`,
+    precise: 'Share my exact location',
+    arrival: ({ subject }: { subject: string }) => `When opened, the view turns to ${subject}.`,
     field: 'Sky link',
     copied: 'Copied',
     copy: 'Copy link',
+  },
+  /** The keepsake image of a moment (ROADMAP phase 3 prototype). */
+  moment: {
+    section: 'Keepsake image',
+    note: 'A prototype: a picture of this moment to send with the link.',
+    make: 'Make an image',
+    drawing: 'Drawing the image…',
+    failed: 'The image could not be drawn. Try another style.',
+    style: 'Style',
+    styles: { realistic: 'Realistic', illustrated: 'Illustrated' },
+    horizon: 'Horizon',
+    horizons: { ridge: 'Ridge', mountains: 'Mountains', sea: 'Sea', city: 'City' },
+    alt: ({ place }: { place: string }) => `Keepsake image of the sky over ${place}`,
+    save: 'Save image',
+    send: 'Send image',
+    // On the image itself, in the sender's language.
+    devicePlace: 'My location',
+    illustration: 'Illustration',
+    when: ({ date, time, zone }: { date: string; time: string; zone: string }) =>
+      `${date} · ${time} · ${zone}`,
+    subject: ({ name, direction, degrees }: { name: string; direction: string; degrees: number }) =>
+      `Looking at ${name}, facing ${direction} ${f.number(degrees)}°`,
+    facing: ({ direction, degrees }: { direction: string; degrees: number }) =>
+      `Facing ${direction} ${f.number(degrees)}°`,
+    moon: ({ phase, illumination, up }: { phase: string; illumination: number; up: boolean }) =>
+      `Moon: ${phase}, ${f.number(illumination)}% lit${up ? '' : ', below the horizon'}`,
+    conditions: ({ condition, cloud }: { condition: string; cloud: number }) =>
+      `${condition}, ${f.number(cloud)}% cloud cover`,
+    noWeather: 'No weather data for this moment',
+    provenance: (provenance: MomentProvenance) => {
+      switch (provenance.kind) {
+        case 'source':
+          return {
+            current: 'Clouds based on the current model estimate for this area.',
+            forecast: 'Clouds based on the forecast for this area.',
+            recent: 'Clouds based on a recent weather model for this area.',
+            historical: 'Clouds based on reanalysis for this area.',
+          }[provenance.source];
+        case 'custom':
+          return 'Weather chosen by the sender, not measured.';
+        case 'clear':
+          return 'Clear-sky preview: the sender removed the clouds.';
+        case 'none':
+          return 'No weather data: a neutral sky.';
+      }
+    },
+    method: ({ illustrated }: { illustrated: boolean }) =>
+      'Positions calculated with Astronomy Engine; the horizon and cloud shapes are illustrative.' +
+      (illustrated ? ' Drawn as an illustration, with the Moon and planets enlarged.' : ''),
+    attribution: 'Weather: Open-Meteo (CC BY 4.0) · Star catalog: HYG (CC BY-SA 4.0)',
+    /** Joins whole sentences into one paragraph. */
+    sentences: (parts: string[]) => parts.join(' '),
   },
   recovery: {
     title: 'The sky needs a fresh start',

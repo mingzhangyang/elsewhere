@@ -34,13 +34,14 @@ Made by the project owner on November 14, 2026:
 
 - The refactor in the [archived refactor roadmap](docs/archive/refactor-roadmap.md) is implemented through phase 5. Every finding in the [code evaluation](docs/archive/code-evaluation.md) is fixed.
 - GitHub Actions passes on `main`: validation, formatting and audit on Linux and Windows with Node 22 and 24, and the Playwright browser suite on Linux (Chromium, Firefox, WebKit, mobile emulation, production offline).
-- Startup loads about 108 kB of JavaScript (gzip) in English and 111 kB in Chinese, the app, Astronomy Engine and one language catalog; the build enforces a 115 kB startup budget. The star catalog arrives afterwards.
+- Startup loads about 111 kB of JavaScript (gzip) in English and 114 kB in Chinese, the app, Astronomy Engine and one language catalog; the build enforces a 115 kB startup budget, which now has little room left. The star catalog arrives afterwards; the keepsake image's code loads only when asked for.
 - The sky has the Sun, the Moon, the five naked-eye planets and 5,070 stars (347 with proper names). Phase 1 (planets) is implemented; see [below](#1-planets-m).
 - Weather comes from Open-Meteo: forecast up to 15 days ahead, recent days, and historical reanalysis back to 1940. The astronomy covers 1900–2100.
 - The interface is in English and Simplified Chinese (phase 2, see [below](#2-chinese-and-english-m)). The horizon is either flat or a procedural ridge.
+- A sky-moment prototype is ready for user testing (phase 3, see [below](#3-prototype-and-test-a-sky-moment-s)): a keepsake image in two styles and four horizons, and share links that turn to their subject. The sessions themselves have not been run.
 - The app is live at `https://elsewhere.orangely.xyz`, deployed by Cloudflare on every push to `main`. Headers, precached files and an offline reload in Chromium pass there. Cloudflare's bot-detection script stays on and is disclosed in the privacy notes.
 - **Not yet done:** physical phones, screen readers, the 30-minute GPU soak, unfamiliar-user sessions and broader scientific review. See [RELEASE.md](docs/RELEASE.md).
-- Shared links keep their state after `#` (`src/App.tsx`), which browsers never send to a server. That keeps them private, and it also means a server cannot read them to build a preview.
+- Shared links keep their state after `#` (`src/lib/persistence.ts`), which browsers never send to a server. That keeps them private, and it also means a server cannot read them to build a preview.
 
 ## Why this direction
 
@@ -118,6 +119,14 @@ Every phase after this one adds sentences, so the cost of translating grows the 
 Build the cheapest convincing version: a static image of a chosen moment and a share link that turns to its subject. Show it to five or six people new to the app (this also covers the unfamiliar-user gate in [RELEASE.md](docs/RELEASE.md)). Observe whether they want to send it, and to whom. Try the realistic image against an illustrated (cartoon-style) one, and the ridge against horizon scenery (phase 5), as variants. A hand-made illustration is enough for the test; the illustrated renderer comes in phase 4.
 
 **Decision:** if the response is strong, build phase 4; if it is weak, build the planner (phase 6) first.
+
+**Status:** prototype built November 15, 2026; user sessions not yet run. The session script, variant order and observation sheet are in [SKY-MOMENT-TEST.md](docs/SKY-MOMENT-TEST.md); evidence for the build is in [VALIDATION.md](docs/VALIDATION.md#sky-moment-prototype-november-15).
+
+- **Image.** Share dialog → **Make an image** draws a postcard on a 2D canvas in the browser, in the sender's language: the sky, place name, local time, the subject and facing, Moon phase, conditions, the provenance line and the Open-Meteo and HYG credits. The realistic sky is copied from the renderer in the same frame it is drawn; the target ring and compass are drawn onto it. The code is its own chunk, loaded only when asked for.
+- **Illustrated variant.** A small 2D canvas drawing module (`src/moment/illustration.ts`) rather than hand-drawn artwork, because test participants choose their own moments and no fixed drawing could show them. It draws from the same snapshot through the same projection as the renderer (checked against three.js), and uses the app's visibility model to choose which stars and planets appear. It is painted in a Japanese picture-book manner (original artwork, no studio's characters or scenes): watercolour skies keyed to the Sun's altitude with washes and mist, sculpted soft clouds from the low, mid and high cover, pastel stars with halos, a glowing Moon in its true phase, layered hills with gouache texture, a house with a lit window and a framing tree, all on paper grain. Anything taller than 2° stands on ground below the horizon line. Procedural painting has a ceiling; a phase 4 style at the level of hand-painted film backgrounds would need commissioned painted layers composited on the same calculated positions.
+- **Horizon variants.** The ridge against three phase 5 silhouettes (mountains, sea, city), all under 2°, drawn on the image only; the live view is unchanged.
+- **Link.** A new optional `subject` field (an object id or `pattern:<id>`) makes a link open turned 70° away and turn to its subject; reduced motion opens on it directly. The link stays `version: 1`: older links open as before and older app versions ignore the field. Device coordinates are rounded to about 10 km unless the sender chooses otherwise (principle 4).
+- **Not in the prototype:** link previews in chat apps, the one-sentence arrival, high-resolution or off-screen export, physical-phone checks of capture and memory, and reverse geocoding (a device location is printed as "My location").
 
 ### 4. Sky moments (L)
 
@@ -217,7 +226,9 @@ The app collects no analytics, and the privacy principle above limits what it ma
 For the project owner:
 
 1. The moment-link format for previews (phase 4): what a server may read, against the privacy of `#` links.
-2. Languages after Chinese and English.
-3. How success is measured (see above).
+1. The share-link subject (phase 3 prototype): keep the optional `subject` field as it is in version 1, or fold it into the phase 4 moment-link format with a version bump. Either is open: links shared so far keep working if the field is dropped, they just stop turning.
+1. Rounding device coordinates in shared links to about 10 km by default (phase 3 prototype, after principle 4): confirm the precision and that existing behaviour (exact, with a warning) should not return.
+1. Languages after Chinese and English.
+1. How success is measured (see above).
 
 Constraint to revisit: the Open-Meteo free tier rules out commercial use. Choose a paid plan or another provider before adding any income.

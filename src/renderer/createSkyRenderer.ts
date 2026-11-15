@@ -17,6 +17,7 @@ import {
   GROUND_FRAGMENT,
 } from './shaders';
 import { directionVector, makeGlowTexture, setAtDirection } from './resources';
+import { RIDGE_RADIUS, ridgeHeight } from './ridge';
 import { advancePrecipitation, windVector } from './precipitation';
 import { createFrameLoop } from './frameLoop';
 import { adaptiveRatio, percentile, type RenderStats } from './performance';
@@ -80,6 +81,16 @@ export interface RenderInput extends RenderSettings {
   targetId?: string | null;
   /** Simulated seconds per real second while time plays; 0 or omitted when it is still. */
   playbackRate?: number;
+}
+/** One frame of the sky, captured for a sky-moment image. */
+export interface SkyCapture {
+  /** The sky as drawn, at the canvas's pixel size, labels included. */
+  image: HTMLCanvasElement;
+  /**
+   * The target marker (HTML over the canvas, so not in `image`): its center as fractions of the
+   * width and height, its ring radius as a fraction of the height, and its label.
+   */
+  target: { x: number; y: number; radius: number; label: string } | null;
 }
 export interface RenderCallbacks {
   onHeadingChange?: (heading: number) => void;
@@ -202,9 +213,8 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
     const ridgeSegments = 180;
     for (let i = 0; i <= ridgeSegments; i += 1) {
       const angle = (i / ridgeSegments) * Math.PI * 2;
-      const wave = Math.sin(angle * 5.0) * 10 + Math.sin(angle * 11.0) * 4 + Math.cos(angle * 17.0) * 2;
-      const radius = 1435;
-      const topY = Math.max(4, Math.min(38, wave + 18));
+      const radius = RIDGE_RADIUS;
+      const topY = ridgeHeight(angle);
       ridgeVertices.push(Math.sin(angle) * radius, topY, -Math.cos(angle) * radius);
       ridgeVertices.push(Math.sin(angle) * radius, -220, -Math.cos(angle) * radius);
       if (i < ridgeSegments) {
@@ -452,11 +462,13 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
     let quality = input.quality ?? 'auto';
     let contextLost = false;
     let starLimit = 6;
+    /** A shared link's camera turn toward its subject, in progress (see `turnTo`). */
+    let arrival: { from: CameraView; to: CameraView; start: number; duration: number } | null = null;
     const updateAnimation = () => {
       const motion = weatherMotion(activeWeather, !!reducedMotion);
-      const animated = motion !== 'none' || (playbackTurn.playing() && !reducedMotion);
-      // Playback and drift read as smooth at a capped rate; falling particles keep every frame.
-      loop.setAnimated(animated, motion === 'precipitation' ? undefined : CLOUD_DRIFT_FPS);
+      const animated = motion !== 'none' || (playbackTurn.playing() && !reducedMotion) || !!arrival;
+      // Playback and drift read as smooth at a capped rate; falling particles and the turn keep every frame.
+      loop.setAnimated(animated, motion === 'precipitation' || arrival ? undefined : CLOUD_DRIFT_FPS);
     };
     const controls = createCameraControls(
       renderer.domElement,
@@ -534,6 +546,44 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
     );
 
     releases.push(() => controls.dispose());
+    // Any look, zoom or key press of the visitor's own ends a turn in progress.
+    const interrupt = () => {
+      if (!arrival) return;
+      arrival = null;
+      updateAnimation();
+    };
+    for (const type of ['pointerdown', 'wheel', 'keydown'])
+      renderer.domElement.addEventListener(type, interrupt, { capture: true });
+    releases.push(() => {
+      for (const type of ['pointerdown', 'wheel', 'keydown'])
+        renderer.domElement.removeEventListener(type, interrupt, { capture: true });
+    });
+    /** The camera's view as the controls set it. */
+    const currentView = (): CameraView => ({
+      heading: ((((-camera.rotation.y * 180) / Math.PI) % 360) + 360) % 360,
+      altitude: THREE.MathUtils.radToDeg(camera.rotation.x),
+      fov: camera.fov,
+    });
+    /** Eases the camera from the turn's start to its end; true while it is still turning. */
+    const stepArrival = (now: number) => {
+      if (!arrival) return false;
+      const { from, to, start, duration } = arrival;
+      const t = THREE.MathUtils.clamp((now - start) / duration, 0, 1);
+      const e = t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
+      // The shorter way round.
+      const dHeading = ((((to.heading - from.heading) % 360) + 540) % 360) - 180;
+      controls.focus(
+        from.altitude + (to.altitude - from.altitude) * e,
+        (((from.heading + dHeading * e) % 360) + 360) % 360,
+        from.fov + (to.fov - from.fov) * e,
+      );
+      if (t >= 1) {
+        arrival = null;
+        updateAnimation();
+      }
+      return true;
+    };
+    let lastTarget: SkyCapture['target'] = null;
     const resizeObserver = new ResizeObserver(() => {
       if (!host.clientWidth || !host.clientHeight) return;
       camera.aspect = host.clientWidth / host.clientHeight;
@@ -555,6 +605,34 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
         celestialLayers.dispose();
         celestialLayers = layersFor(labelledStars);
         api.update(activeSky, activeWeather, activeFlags);
+      },
+      /**
+       * Turns the camera from where it is to `view` over `duration` ms; a shared link opening on its
+       * subject. The visitor's own look, zoom or key press stops it.
+       */
+      turnTo: (view: CameraView, duration: number) => {
+        arrival = { from: currentView(), to: view, start: performance.now(), duration };
+        updateAnimation();
+      },
+      /**
+       * Draws one frame now and copies it before the browser clears the drawing buffer (the renderer
+       * does not keep it). Labels are laid out ignoring the interface over the sky, which the image
+       * does not show. `ridge` draws the illustrative ridge for this frame whatever the setting.
+       */
+      capture: ({ ridge: withRidge }: { ridge: boolean }): SkyCapture => {
+        const shown = ridge.visible;
+        ridge.visible = withRidge;
+        try {
+          drawFrame(performance.now(), 0, false, true);
+          const image = document.createElement('canvas');
+          image.width = renderer.domElement.width;
+          image.height = renderer.domElement.height;
+          image.getContext('2d')!.drawImage(renderer.domElement, 0, 0);
+          return { image, target: lastTarget };
+        } finally {
+          ridge.visible = shown;
+          invalidate();
+        }
       },
       target: (id: string | null) => {
         targetId = id;
@@ -668,8 +746,9 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
       adapted = 0;
     const frameTimes: number[] = [],
       drawTimes: number[] = [];
-    const loop = createFrameLoop((now, elapsed, continuous) => {
+    const drawFrame = (now: number, elapsed: number, continuous: boolean, capturing = false) => {
       const start = performance.now();
+      stepArrival(now);
       const delta = reducedMotion ? 0 : elapsed;
       if (continuous && previous) {
         frameTimes.push(now - previous);
@@ -689,7 +768,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
           [71, 73, 75, 77, 85, 86].includes(activeWeather.weatherCode),
         );
       }
-      const blocked = occluders();
+      const blocked = capturing ? [] : occluders();
       // Recomputed every frame, so a pause or reduced motion can never leave the sky turned.
       applyTurn(playbackTurn.seconds(now, !!reducedMotion));
       sunGroup.position.copy(bodyDirection(activeSky.sun, scratch).multiplyScalar(1650));
@@ -704,6 +783,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
       scene.updateMatrixWorld();
       const target = findSkyObject(activeSky, targetId);
       targetMarker.hidden = true;
+      lastTarget = null;
       if (target && aboveHorizon(target)) {
         const direction =
           target.kind === 'star'
@@ -726,6 +806,12 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
           targetMarker.style.left = `${(projected.x + 1) * 50}%`;
           targetMarker.style.top = `${(1 - projected.y) * 50}%`;
           targetLabel.textContent = labels.target(target);
+          lastTarget = {
+            x: (projected.x + 1) / 2,
+            y: (1 - projected.y) / 2,
+            radius: Math.max(MARKER_RADIUS_PX, discPx + MARKER_GAP_PX) / host.clientHeight,
+            label: targetLabel.textContent,
+          };
         }
       }
       celestialLayers.layout(camera, host.clientWidth, host.clientHeight, blocked);
@@ -758,7 +844,8 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
         });
         reported = now;
       }
-    });
+    };
+    const loop = createFrameLoop(drawFrame);
     releases.push(() => loop.dispose());
     invalidate = loop.invalidate;
     const visibility = () => loop.setSuspended(document.hidden || contextLost);
@@ -790,9 +877,19 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
       ...api,
       /** Redraw on the next frame, e.g. after interface panels over the sky moved. */
       redraw: () => invalidate(),
-      resetView: controls.resetView,
-      focus: controls.focus,
-      zoom: controls.zoom,
+      // The view buttons and centering stop a turn in progress, like the visitor's own look.
+      resetView: () => {
+        interrupt();
+        controls.resetView();
+      },
+      focus: (altitude: number, azimuth: number, fov?: number) => {
+        interrupt();
+        controls.focus(altitude, azimuth, fov);
+      },
+      zoom: (factor: number) => {
+        interrupt();
+        controls.zoom(factor);
+      },
       simulateContextLoss: () => {
         if (import.meta.env.DEV) renderer.forceContextLoss();
       },

@@ -1,5 +1,11 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import type { RenderInput, RenderCallbacks, SkyLabels, SkyRenderer } from '../renderer/createSkyRenderer';
+import type {
+  RenderInput,
+  RenderCallbacks,
+  SkyCapture,
+  SkyLabels,
+  SkyRenderer,
+} from '../renderer/createSkyRenderer';
 import type { CameraView } from '../lib/persistence';
 import { currentLanguage, useI18n, type I18n } from '../i18n';
 import { objectName } from '../i18n/names';
@@ -12,9 +18,23 @@ export interface SkySceneHandle {
   /** Multiplies the field of view: below 1 zooms in. */
   zoom: (factor: number) => void;
   simulateContextLoss: () => void;
+  /** The sky as drawn now, for a sky-moment image; null until the renderer has started. */
+  capture: (options: { ridge: boolean }) => SkyCapture | null;
+  /** The sky view's size in CSS pixels. */
+  size: () => { width: number; height: number } | null;
 }
 
-type Props = Omit<RenderInput, 'labels'> & RenderCallbacks;
+type Props = Omit<RenderInput, 'labels'> &
+  RenderCallbacks & {
+    /**
+     * A shared link's view of its subject: once the renderer starts at `initialView`, the camera
+     * turns to this one (ROADMAP phase 3: a link that turns to its subject).
+     */
+    arriveAt?: CameraView;
+  };
+
+/** How long a shared link's camera takes to turn to its subject, in ms. */
+const ARRIVAL_MS = 2600;
 
 function skyLabels(i18n: I18n): SkyLabels {
   const { m } = i18n;
@@ -42,6 +62,7 @@ const SkyScene = forwardRef<SkySceneHandle, Props>(function SkyScene(props, ref)
   latest.current = { ...props, labels };
   const [error, setError] = useState<'start' | 'load' | 'context' | null>(null);
   const [revision, retry] = useState(0);
+  const arrived = useRef(false);
   useImperativeHandle(
     ref,
     () => ({
@@ -49,6 +70,9 @@ const SkyScene = forwardRef<SkySceneHandle, Props>(function SkyScene(props, ref)
       focus: (altitude, azimuth, fov) => runtime.current?.focus(altitude, azimuth, fov),
       zoom: (factor) => runtime.current?.zoom(factor),
       simulateContextLoss: () => runtime.current?.simulateContextLoss(),
+      capture: (options) => runtime.current?.capture(options) ?? null,
+      size: () =>
+        hostRef.current ? { width: hostRef.current.clientWidth, height: hostRef.current.clientHeight } : null,
     }),
     [],
   );
@@ -102,6 +126,10 @@ const SkyScene = forwardRef<SkySceneHandle, Props>(function SkyScene(props, ref)
             },
           );
           runtime.current = instance;
+          // Only on the first start: a retry after a failure resumes the view as it was.
+          const arrival = latest.current.arriveAt;
+          if (arrival && !arrived.current) instance.turnTo(arrival, ARRIVAL_MS);
+          arrived.current = true;
           setError(null);
         } catch {
           setError('start');

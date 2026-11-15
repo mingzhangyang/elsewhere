@@ -41,8 +41,14 @@ import { renderingWeather } from './domain/weather';
 import { weatherSourceLabel } from './lib/weatherText';
 import { isDeviceLocation, PRESETS } from './lib/locations';
 import {
+  arrivalStart,
+  centeredPattern,
+  momentProvenance,
+  subjectField,
+  type MomentSubject,
+} from './lib/moment';
+import {
   DEFAULT_FOV,
-  explorationUrl,
   loadPreferences,
   parseExploration,
   savePreferences,
@@ -107,6 +113,14 @@ export default function App({
   const [view] = useState(() =>
     createCameraViewStore(launch.shared.value?.camera ?? { heading: 0, altitude: 18, fov: DEFAULT_FOV }),
   );
+  // A shared link with a subject opens turned away from it and turns to it, unless motion is reduced.
+  const [arrival] = useState(() => {
+    const shared = launch.shared.value;
+    const still =
+      launch.preferences.value.reducedMotion ||
+      (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
+    return shared?.subject && !still ? { from: arrivalStart(shared.camera), to: shared.camera } : undefined;
+  });
   const [stats, setStats] = useState<RenderStats | null>(null);
   const [audit, setAudit] = useState('');
   const [systemMotion, setSystemMotion] = useState(
@@ -269,10 +283,19 @@ export default function App({
   const share = () => {
     setPlaying(false);
     const camera = view.get();
-    // The link opens centered on the selected object only if the view still is.
-    const subject = focused && aboveHorizon(focused) && isCentered(focused, camera) ? focused : undefined;
-    shareDialog.current?.open(
-      explorationUrl({
+    // The link opens centered on the selected object only if the view still is; otherwise its
+    // subject may be a line pattern the view is turned to.
+    const centered = focused && aboveHorizon(focused) && isCentered(focused, camera) ? focused : undefined;
+    const pattern = centered ? undefined : centeredPattern(sky, camera, layers);
+    const subject: MomentSubject | undefined = centered
+      ? { kind: 'object', object: centered }
+      : pattern
+        ? { kind: 'pattern', id: pattern }
+        : undefined;
+    const subjectId = subjectField(subject);
+    const host = skyRef.current?.size();
+    shareDialog.current?.open({
+      exploration: {
         version: 1,
         location,
         instant: simTime.toISOString(),
@@ -280,10 +303,22 @@ export default function App({
         layers,
         custom: custom ? customWeather : null,
         clearSky,
-        ...(subject ? { focus: subject.id } : {}),
-      }),
-      subject,
-    );
+        ...(centered ? { focus: centered.id } : {}),
+        ...(subjectId ? { subject: subjectId } : {}),
+      },
+      snapshot: {
+        sky,
+        weather,
+        view: camera,
+        aspect: host && host.height ? host.width / host.height : 16 / 10,
+        layers,
+        location,
+        instant: simTime,
+        skyBrightness: preferences.skyBrightness,
+        provenance: momentProvenance(selection, custom, clearSky),
+        subject,
+      },
+    });
   };
   return (
     <div className={`app-shell ${immersive ? 'immersive' : ''}`}>
@@ -330,7 +365,8 @@ export default function App({
           showStars={layers.stars}
           showConstellations={layers.lines}
           showLabels={layers.labels}
-          initialView={launch.shared.value?.camera}
+          initialView={arrival?.from ?? launch.shared.value?.camera}
+          arriveAt={arrival?.to}
           reducedMotion={preferences.reducedMotion || systemMotion}
           quality={preferences.quality}
           horizon={preferences.horizon}
@@ -604,9 +640,9 @@ export default function App({
       )}
       <ShareDialog
         ref={shareDialog}
-        location={location}
         includesCustomWeather={custom}
         onNotice={setNotice}
+        capture={(options) => skyRef.current?.capture(options) ?? null}
       />
     </div>
   );
