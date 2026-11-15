@@ -10,9 +10,11 @@ import {
   aboveHorizon,
   findSkyObject,
   framingFov,
+  isCentered,
   objectVisibility,
   skyObjects,
 } from '../src/lib/exploration';
+import { betterHit } from '../src/renderer/starPicking';
 import { initialExploration } from '../src/lib/explorationState';
 import { explorationUrl, parseExploration, type Exploration, type Preferences } from '../src/lib/persistence';
 import { PRESETS } from '../src/lib/locations';
@@ -83,7 +85,7 @@ describe('what is that bright point?', () => {
 });
 
 describe('planet visibility', () => {
-  it('says why a planet cannot be seen: horizon, daylight or the Sun’s glare, cloud', () => {
+  it('says why a planet cannot be seen: horizon, daylight, the Sun, cloud', () => {
     const sky = calculateSky(NEW_YORK, MIDNIGHT_JUPITER);
     const venus = findSkyObject(sky, 'venus')!;
     expect(objectVisibility(venus, sky, clear, preferences).reason).toBe('horizon');
@@ -99,13 +101,36 @@ describe('planet visibility', () => {
     const noon = calculateSky(NEW_YORK, new Date('2026-08-14T17:00Z'));
     const day = objectVisibility(findSkyObject(noon, 'venus')!, noon, clear, preferences);
     expect(day.reason).toBe('daylight');
-    const glare = objectVisibility(
-      { ...findSkyObject(noon, 'venus')!, elongation: 8 } as never,
-      noon,
-      clear,
-      preferences,
+    const nearNoon = { ...findSkyObject(noon, 'venus')!, elongation: 8 } as never;
+    expect(objectVisibility(nearNoon, noon, clear, preferences).reason).toBe('near-sun');
+    // Just after sunset the Sun is down; a planet still hidden beside it is lost in its glare.
+    const dusk = calculateSky(NEW_YORK, new Date('2026-08-15T00:05Z'));
+    expect(dusk.sun.visible).toBe(false);
+    const mars = { ...findSkyObject(dusk, 'mars')!, altitude: 5, visible: true, elongation: 10 } as never;
+    const glare = objectVisibility(mars, dusk, clear, preferences);
+    expect(glare.reason).toBe('daylight');
+    expect(glare.detail).toContain('lost in its glare');
+  });
+
+  it('warns against searching near a risen Sun even while the planet is faintly drawn', () => {
+    // Just before sunset on the Venus evening, the Sun is about 1° up and Venus is already drawn.
+    const sky = calculateSky(NEW_YORK, new Date('2026-08-14T23:45Z'));
+    expect(sky.sun.visible).toBe(true);
+    const venus = findSkyObject(sky, 'venus')!;
+    if (venus.kind !== 'planet') throw new Error('not a planet');
+    expect(planetTwilightVisibility(sky.sunAltitude, venus.magnitude)).toBeGreaterThan(0);
+    const near = { ...venus, elongation: 12 };
+    for (const weather of [clear, { ...clear, cloudCover: 95 }, { ...clear, haze: 80 }]) {
+      const visibility = objectVisibility(near, sky, weather, preferences);
+      expect(visibility.reason).toBe('near-sun');
+      expect(visibility.detail).toContain('Never look toward the Sun');
+    }
+    // At its true 46° from the Sun, Venus gets its ordinary twilight explanation.
+    expect(objectVisibility(venus, sky, clear, preferences).reason).toBe('twilight');
+    // Earth still comes first: a set planet is below the horizon, not a hazard.
+    expect(objectVisibility({ ...near, altitude: -5, visible: false }, sky, clear, preferences).reason).toBe(
+      'horizon',
     );
-    expect(glare.detail).toContain('Never search near the Sun');
   });
 
   it('lets brighter planets show through brighter twilight, never dimmer than a star', () => {
@@ -130,6 +155,35 @@ describe('planet visibility', () => {
     expect(rise.getTime() - MIDNIGHT_JUPITER.getTime()).toBeGreaterThan(0);
     expect(rise.getTime() - MIDNIGHT_JUPITER.getTime()).toBeLessThan(86400000);
     expect(calculateSky(NEW_YORK, new Date(rise.getTime() + 15 * 60000)).planets[1].visible).toBe(true);
+  });
+});
+
+describe('centering', () => {
+  it('counts an object as centered only while the view still faces it', () => {
+    const sky = calculateSky(NEW_YORK, MIDNIGHT_JUPITER);
+    const jupiter = findSkyObject(sky, 'jupiter')!;
+    const view = { heading: jupiter.azimuth, altitude: jupiter.altitude, fov: 40 };
+    expect(isCentered(jupiter, view)).toBe(true);
+    expect(isCentered(jupiter, { ...view, altitude: view.altitude - 1.5 })).toBe(true);
+    // Panned away by a tenth of the view.
+    expect(isCentered(jupiter, { ...view, altitude: view.altitude - 4 })).toBe(false);
+    // Half an hour later the sky has turned Jupiter out of the middle of the same view.
+    const later = calculateSky(NEW_YORK, new Date(MIDNIGHT_JUPITER.getTime() + 30 * 60000));
+    expect(isCentered(findSkyObject(later, 'jupiter')!, view)).toBe(false);
+  });
+});
+
+describe('tapping where a planet and a star are both in reach', () => {
+  const planet = { index: 0, distance: 12, brightness: 1, planet: true };
+  const star = { index: 7, distance: 1, brightness: 0.2, planet: false };
+  it('chooses the nearer point, whichever kind it is', () => {
+    expect(betterHit(planet, star)).toBe(star);
+    expect(betterHit({ ...planet, distance: 1 }, { ...star, distance: 12 })?.planet).toBe(true);
+    expect(betterHit(undefined, star)).toBe(star);
+    expect(betterHit(planet, undefined)).toBe(planet);
+  });
+  it('gives points that look like one to the brighter', () => {
+    expect(betterHit({ ...planet, distance: 2.5 }, star)).toMatchObject({ planet: true });
   });
 });
 

@@ -1,5 +1,5 @@
-import type { Planet, SkyState, Star, WeatherValues } from '../types';
-import { MIN_FOV, type Preferences } from './persistence';
+import type { HorizontalPosition, Planet, SkyState, Star, WeatherValues } from '../types';
+import { MIN_FOV, type CameraView, type Preferences } from './persistence';
 import {
   planetVisibilityFactors,
   STAR_VISIBLE_THRESHOLD,
@@ -59,10 +59,31 @@ export function framingFov(object: SkyObject): number | undefined {
   return Math.max(MIN_FOV, angularDiameter(object) * 4);
 }
 
+/** An object within this share of the field of view from the view's center counts as centered. */
+export const CENTERED_FRACTION = 0.05;
+
+/**
+ * Whether the camera still faces an object: after panning, or as time moves it across the sky, a
+ * once-centered object no longer is, and a shared link must not claim it.
+ */
+export function isCentered(object: HorizontalPosition, view: CameraView): boolean {
+  const rad = Math.PI / 180;
+  const cos =
+    Math.sin(object.altitude * rad) * Math.sin(view.altitude * rad) +
+    Math.cos(object.altitude * rad) *
+      Math.cos(view.altitude * rad) *
+      Math.cos((object.azimuth - view.heading) * rad);
+  const separation = Math.acos(Math.min(1, Math.max(-1, cos))) / rad;
+  return separation <= view.fov * CENTERED_FRACTION;
+}
+
 /** Sirius, the brightest star in the night sky. */
 const BRIGHTEST_STAR_MAGNITUDE = -1.46;
-/** Within this many degrees of the Sun, a planet hidden by daylight is described as in its glare. */
-const SUN_GLARE_ELONGATION = 15;
+/**
+ * Within this many degrees of the Sun, a planet carries an eye-safety warning while the Sun is up,
+ * and one hidden by daylight is described as lost in its glare.
+ */
+export const SUN_GLARE_ELONGATION = 15;
 
 const HAZE = {
   reason: 'haze',
@@ -82,6 +103,13 @@ export function objectVisibility(
       reason: 'horizon',
       label: 'Below the horizon',
       detail: 'Earth blocks this direction. Choose another time to bring it into view.',
+    };
+  // Safety first: whatever else limits the view, never send anyone searching beside a risen Sun.
+  if (object.kind === 'planet' && sky.sun.visible && object.elongation < SUN_GLARE_ELONGATION)
+    return {
+      reason: 'near-sun',
+      label: 'Close to the Sun',
+      detail: `${object.name} is only ${Math.round(object.elongation)}° from the Sun. Never look toward the Sun, and never point binoculars or a telescope near it.`,
     };
   if (object.kind === 'star' && !preferences.layers.stars)
     return {

@@ -27,7 +27,14 @@ import { useSimulation } from './hooks/useSimulation';
 import { useWeather } from './hooks/useWeather';
 import { formatTime, MAX_INSTANT } from './domain/time';
 import { calculateSky, nextBodyRise } from './domain/astronomy';
-import { findSkyObject, framingFov, objectVisibility, type SkyObject } from './lib/exploration';
+import {
+  aboveHorizon,
+  findSkyObject,
+  framingFov,
+  isCentered,
+  objectVisibility,
+  type SkyObject,
+} from './lib/exploration';
 import { explorationReducer, initialExploration, presentedWeather, type Panel } from './lib/explorationState';
 import { fetchWeatherForDate } from './services/openMeteo';
 import { renderingWeather } from './domain/weather';
@@ -225,17 +232,21 @@ export default function App({
   };
   const share = () => {
     setPlaying(false);
+    const camera = view.get();
+    // The link opens centered on the selected object only if the view still is.
+    const subject = focused && aboveHorizon(focused) && isCentered(focused, camera) ? focused : undefined;
     shareDialog.current?.open(
       explorationUrl({
         version: 1,
         location,
         instant: simTime.toISOString(),
-        camera: view.get(),
+        camera,
         layers,
         custom: custom ? customWeather : null,
         clearSky,
-        ...(focusedId ? { focus: focusedId } : {}),
+        ...(subject ? { focus: subject.id } : {}),
       }),
+      subject?.name,
     );
   };
   return (
@@ -552,7 +563,6 @@ export default function App({
         ref={shareDialog}
         location={location}
         includesCustomWeather={custom}
-        focusName={focused?.name}
         onNotice={setNotice}
       />
     </div>

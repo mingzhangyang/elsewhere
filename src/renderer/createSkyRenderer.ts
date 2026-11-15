@@ -20,7 +20,7 @@ import { advancePrecipitation, windVector } from './precipitation';
 import { createFrameLoop } from './frameLoop';
 import { adaptiveRatio, percentile, type RenderStats } from './performance';
 import { aboveHorizon, angularDiameter, findSkyObject } from '../lib/exploration';
-import { pickStarAt, starAlpha } from './starPicking';
+import { betterHit, pickPointAt, starAlpha } from './starPicking';
 import { CLOUD_DRIFT_FPS, PRECIPITATION_VISIBLE, weatherMotion } from './weatherMotion';
 import {
   limitingMagnitude,
@@ -461,42 +461,49 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
           callbacks.onBodySelect?.('moon');
           return;
         }
+        // Planets and stars compete on screen distance, so a star beside a planet stays selectable.
         const planetOpacity = planetMaterial.uniforms.uOpacity.value;
-        const planet = pickStarAt(
+        const planetHit = pickPointAt(
           planetPoints,
           camera,
           x,
           y,
           rect,
           PLANET_DISTANCE,
-          (i) => planetAlphas[i] * planetOpacity,
+          (i) => (activeSky.planets[i]?.visible ? planetAlphas[i] * planetOpacity : 0),
           {
             margin: REFRACTION_MARGIN,
             position: (i, target) =>
               bodyDirection(activeSky.planets[i], target).multiplyScalar(PLANET_DISTANCE),
           },
         );
-        if (planet !== undefined && activeSky.planets[planet]?.visible) {
-          callbacks.onBodySelect?.(activeSky.planets[planet].id);
+        const starOpacity = starMaterial.uniforms.uOpacity.value;
+        const starHit =
+          activeShowStars && starOpacity >= 0.05
+            ? pickPointAt(
+                starPoints,
+                camera,
+                x,
+                y,
+                rect,
+                STAR_DISTANCE,
+                (i) => (activeStars[i].altitude > 0 ? starAlpha(activeStars[i], starLimit) * starOpacity : 0),
+                {
+                  margin: REFRACTION_MARGIN,
+                  // Where the star is drawn right now, playback turn and refraction included.
+                  position: (i, target) => starDirection(i, target).multiplyScalar(STAR_DISTANCE),
+                },
+              )
+            : undefined;
+        const hit = betterHit(
+          planetHit && { ...planetHit, planet: true },
+          starHit && { ...starHit, planet: false },
+        );
+        if (hit?.planet) {
+          callbacks.onBodySelect?.(activeSky.planets[hit.index].id);
           return;
         }
-        if (!activeShowStars || starMaterial.uniforms.uOpacity.value < 0.05) return;
-        const index = pickStarAt(
-          starPoints,
-          camera,
-          x,
-          y,
-          rect,
-          STAR_DISTANCE,
-          (i) => starAlpha(activeStars[i], starLimit) * starMaterial.uniforms.uOpacity.value,
-          {
-            margin: REFRACTION_MARGIN,
-            // Where the star is drawn right now, playback turn and refraction included.
-            position: (i, target) => starDirection(i, target).multiplyScalar(STAR_DISTANCE),
-          },
-        );
-        const star = index === undefined ? undefined : activeStars[index];
-        onStarSelect?.(star && star.altitude > 0 ? star : null);
+        onStarSelect?.(hit ? activeStars[hit.index] : null);
       },
       (view) => {
         callbacks.onCameraChange?.(view);
