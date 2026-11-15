@@ -19,13 +19,15 @@ async function check() {
   assert.equal(home.response.status, 200, '/ status');
   assert.match(home.cache, /no-cache/, '/ must revalidate');
   const html = await home.response.text();
-  // Cloudflare's Bot Fight Mode, JavaScript detections and Web Analytics add scripts to HTML at the edge.
-  // public/credits.html promises no analytics and no background tracking, so nothing may be injected.
+  // Cloudflare features can add scripts to HTML at the edge. Only its JavaScript detections script (bot
+  // detection) is allowed, because public/credits.html discloses it; anything else, such as the Web
+  // Analytics beacon, would contradict the privacy notes.
   const injected = [...new Set(html.match(/\/cdn-cgi\/[\w./-]+|static\.cloudflareinsights\.com/g) ?? [])];
+  const disclosed = (path) => path.startsWith('/cdn-cgi/challenge-platform/');
   assert.deepEqual(
-    injected,
+    injected.filter((path) => !disclosed(path)),
     [],
-    'Cloudflare injected scripts into the page; see docs/RELEASE.md, one-time setup',
+    'Cloudflare injected an undisclosed script; see docs/RELEASE.md, one-time setup',
   );
   const script = html.match(/\/assets\/[\w.-]+\.js/)?.[0];
   assert(script, 'index.html references no hashed script');
