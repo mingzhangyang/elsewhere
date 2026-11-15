@@ -17,6 +17,7 @@ const preferences: Preferences = {
   quality: 'auto',
   horizon: 'flat',
   skyBrightness: 'dark',
+  language: 'auto',
 };
 const panel = (sky: ReturnType<typeof calculateSky>) => (
   <ObjectPanel

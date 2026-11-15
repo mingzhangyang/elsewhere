@@ -19,6 +19,7 @@ import { initialExploration } from '../src/lib/explorationState';
 import { explorationUrl, parseExploration, type Exploration, type Preferences } from '../src/lib/persistence';
 import { PRESETS } from '../src/lib/locations';
 import { createCelestialLayers } from '../src/renderer/celestialLayers';
+import en from '../src/i18n/en';
 import { NEW_YORK } from './fixtures/locations';
 
 const preferences: Preferences = {
@@ -31,6 +32,7 @@ const preferences: Preferences = {
   quality: 'auto',
   horizon: 'ridge',
   skyBrightness: 'suburban',
+  language: 'auto',
 };
 const clear = { ...defaultWeatherValues(), cloudCover: 0, haze: 0, visibilityKm: 60 };
 // Civil dusk in New York near Venus's greatest eastern elongation (the dev scenario "venus").
@@ -53,7 +55,7 @@ describe('what is that bright point?', () => {
     expect(brightestPoint(sky).name).toBe('Venus');
     const visibility = objectVisibility(venus, sky, clear, preferences);
     expect(visibility.reason).toBe('clear');
-    expect(visibility.detail).toContain('brighter than any star');
+    expect(en.visibility(visibility, 'Venus').detail).toContain('brighter than any star');
     // The same sky still hides Arcturus, the brightest star up: planets emerge first.
     const arcturus = skyObjects(sky).find((o) => o.name === 'Arcturus')!;
     expect(objectVisibility(arcturus, sky, clear, preferences).reason).toBe('twilight');
@@ -109,7 +111,7 @@ describe('planet visibility', () => {
     const mars = { ...findSkyObject(dusk, 'mars')!, altitude: 5, visible: true, elongation: 10 } as never;
     const glare = objectVisibility(mars, dusk, clear, preferences);
     expect(glare.reason).toBe('daylight');
-    expect(glare.detail).toContain('lost in its glare');
+    expect(en.visibility(glare, 'Mars').detail).toContain('lost in its glare');
   });
 
   it('warns against searching near a risen Sun even while the planet is faintly drawn', () => {
@@ -123,7 +125,7 @@ describe('planet visibility', () => {
     for (const weather of [clear, { ...clear, cloudCover: 95 }, { ...clear, haze: 80 }]) {
       const visibility = objectVisibility(near, sky, weather, preferences);
       expect(visibility.reason).toBe('near-sun');
-      expect(visibility.detail).toContain('Never look toward the Sun');
+      expect(en.visibility(visibility, 'Venus').detail).toContain('Never look toward the Sun');
     }
     // At its true 46° from the Sun, Venus gets its ordinary twilight explanation.
     expect(objectVisibility(venus, sky, clear, preferences).reason).toBe('twilight');
@@ -199,7 +201,7 @@ describe('sharing a planet', () => {
   };
   it('restores the centered planet from a link, and older links without one', () => {
     const parsed = parseExploration(new URL(explorationUrl(link)).hash);
-    expect(parsed).toEqual({ value: link, notice: '' });
+    expect(parsed).toEqual({ value: link, notice: null });
     expect(initialExploration(parsed.value).focusedId).toBe('jupiter');
     const older = { ...link, focus: undefined };
     expect(initialExploration(parseExploration(new URL(explorationUrl(older)).hash).value).focusedId).toBe(

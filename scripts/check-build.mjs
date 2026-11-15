@@ -20,6 +20,48 @@ for (const path of paths.filter((p) => p.endsWith('.js') || p.endsWith('.json'))
 }
 assert(gzip < 500000, `Total JS and data gzip ${gzip} exceeds 500 kB`);
 assert(largest < 500000, `Largest JS chunk ${largest} exceeds 500 kB`);
+
+// Startup: the entry chunk, what it imports statically, and one language catalog with its imports.
+// Everything else (renderer, three.js, star catalog, time-zone lookup, the other language) loads later.
+const STARTUP_BUDGET = 115000;
+const LANGUAGE_BUDGET = 15000;
+const html = await readFile('dist/index.html', 'utf8');
+const entry = html.match(/src="\/assets\/(index-[\w-]+\.js)"/)?.[1];
+assert(entry, 'Entry chunk not found in index.html');
+const sizes = new Map();
+const gzipOf = async (path) => {
+  if (!sizes.has(path)) sizes.set(path, gzipSync(await readFile('dist/assets/' + path)).length);
+  return sizes.get(path);
+};
+/** A chunk and its static imports, recursively (dynamic `import()` calls are not followed). */
+const staticGraph = async (path, seen = new Set()) => {
+  if (seen.has(path)) return seen;
+  seen.add(path);
+  const code = await readFile('dist/assets/' + path, 'utf8');
+  for (const [, dep] of code.matchAll(/(?:from|import)\s*"\.\/([\w.-]+\.js)"/g)) await staticGraph(dep, seen);
+  return seen;
+};
+const startupChunks = await staticGraph(entry);
+const entryCode = await readFile('dist/assets/' + entry, 'utf8');
+assert(!/from\s*"\.\/three-/.test(entryCode), 'three.js must not load at startup');
+const languages = paths.filter((p) => /^(en|zh-Hans)-[\w-]{8}\.js$/.test(p));
+assert.equal(languages.length, 2, 'Each language must be its own chunk');
+let startup = 0;
+for (const chunk of startupChunks) startup += await gzipOf(chunk);
+let languageStartup = 0;
+for (const language of languages) {
+  const own = await gzipOf(language);
+  assert(own < LANGUAGE_BUDGET, `${language} is ${own} bytes gzip, over ${LANGUAGE_BUDGET}`);
+  let extra = 0;
+  for (const chunk of await staticGraph(language))
+    if (!startupChunks.has(chunk)) extra += await gzipOf(chunk);
+  languageStartup = Math.max(languageStartup, extra);
+}
+for (const chunk of startupChunks)
+  for (const text of ['Below the horizon', '天狼星'])
+    assert(!(await readFile('dist/assets/' + chunk, 'utf8')).includes(text), `Catalog text in ${chunk}`);
+startup += languageStartup;
+assert(startup < STARTUP_BUDGET, `Startup JavaScript ${startup} bytes gzip exceeds ${STARTUP_BUDGET}`);
 const moonMap = paths.find((p) => /^moon-lroc-[\w-]{8}\.jpg$/.test(p));
 assert(moonMap, 'Moon map missing or not content-hashed');
 assert((await readFile('dist/assets/' + moonMap)).length < 600000, 'Moon asset exceeds 600 kB');
@@ -155,5 +197,5 @@ for (const request of [
   assert.equal(reply, undefined, `Service worker must not intercept ${request.method} ${request.url}`);
 }
 console.log(
-  `Build budgets: JS and data ${Math.round(gzip / 1000)} kB gzip; largest chunk ${Math.round(largest / 1000)} kB. Offline assets with Vary: Origin, navigation fallback, and API exclusion passed.`,
+  `Build budgets: JS and data ${Math.round(gzip / 1000)} kB gzip; startup ${Math.round(startup / 1000)} kB gzip with the larger language; largest chunk ${Math.round(largest / 1000)} kB. Offline assets with Vary: Origin, navigation fallback, and API exclusion passed.`,
 );

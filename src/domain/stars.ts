@@ -18,8 +18,11 @@ export interface CatalogStar {
 /** One HYG row as stored in src/data/stars.json. */
 export type CatalogRow = (string | number | null)[];
 
+/** The line patterns drawn on the sky; the interface names them in its language. */
+export type PatternId = 'big-dipper' | 'orion' | 'crux' | 'summer-triangle';
+
 export interface Constellation {
-  name: string;
+  id: PatternId;
   /** Pairs of catalog star IDs. */
   lines: string[][];
 }
@@ -76,9 +79,9 @@ function installCatalog(rows: CatalogRow[]) {
 }
 
 // Original, deliberately simplified teaching patterns; these are not IAU boundaries.
-const PATTERNS = [
+const PATTERNS: Constellation[] = [
   {
-    name: 'Big Dipper · asterism',
+    id: 'big-dipper',
     lines: [
       ['dubhe', 'merak'],
       ['merak', 'phecda'],
@@ -90,7 +93,7 @@ const PATTERNS = [
     ],
   },
   {
-    name: 'Orion',
+    id: 'orion',
     lines: [
       ['betelgeuse', 'bellatrix'],
       ['bellatrix', 'mintaka'],
@@ -103,14 +106,14 @@ const PATTERNS = [
     ],
   },
   {
-    name: 'Crux',
+    id: 'crux',
     lines: [
       ['acrux', 'gacrux'],
       ['mimosa', 'imai'],
     ],
   },
   {
-    name: 'Summer Triangle · asterism',
+    id: 'summer-triangle',
     lines: [
       ['deneb', 'vega'],
       ['deneb', 'altair'],

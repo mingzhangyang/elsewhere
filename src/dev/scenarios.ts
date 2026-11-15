@@ -39,7 +39,11 @@ export function scenarioProps(name: string | null): AppProps {
     weatherLoader: async (location, date) => {
       const base = { key: weatherKey(location, date), fetchedAt: Date.now() };
       if (name === 'unavailable')
-        return { ...base, status: 'unavailable', message: 'Deterministic unavailable-weather scenario.' };
+        return {
+          ...base,
+          status: 'unavailable',
+          issue: { code: 'text', text: 'Deterministic unavailable-weather scenario.' },
+        };
       const { start, end } = localDayBounds(date, location.timezone);
       return {
         ...base,

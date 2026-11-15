@@ -9,8 +9,13 @@ import {
   skyObjects,
   type SkyObject,
 } from '../lib/exploration';
-import { formatTime } from '../domain/time';
+import { useI18n, type I18n } from '../i18n';
+import type { PlanetShape } from '../i18n/en';
+import { objectName, objectNameLang, searchNames } from '../i18n/names';
 import MoonPhase from './MoonPhase';
+
+/** At most this many objects are listed; search finds the rest. */
+const LIST_LIMIT = 40;
 
 export default function ObjectPanel({
   sky,
@@ -40,11 +45,14 @@ export default function ObjectPanel({
   onClearSky: () => void;
   onRetryStars?: () => void;
 }) {
+  const i18n = useI18n();
+  const { m } = i18n;
   const [query, setQuery] = useState('');
   const [upOnly, setUpOnly] = useState(true);
   // Announced only when the reader changes the search or filter. Playback changes the count as stars
   // rise and set; a live region bound to it would interrupt the reader on every tick.
-  const [announcement, setAnnouncement] = useState('');
+  // The count, not its sentence, so the announcement is worded in the current language.
+  const [announcement, setAnnouncement] = useState<number | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const search = useRef<HTMLInputElement>(null);
   const previousSelection = useRef(selectedId);
@@ -57,11 +65,16 @@ export default function ObjectPanel({
     if (content) content.scrollTop = 0;
     previousSelection.current = selectedId;
     // The list's status region remounts on return; a stale count there must not be re-announced.
-    setAnnouncement('');
+    setAnnouncement(null);
   }, [selectedId]);
 
+  const name = (object: SkyObject) => objectName(object, i18n);
+  const moonPhase = m.phases[sky.moon.phase];
   if (selected) {
     const visibility = objectVisibility(selected, sky, weather, preferences);
+    const text = m.visibility(visibility, name(selected));
+    const phase = planetPhase(selected);
+    const formatEvent = (date: Date | null, absent: string) => (date ? m.f.time(date, timeZone) : absent);
     const isMoon = selected.kind === 'moon',
       isSun = selected.kind === 'sun',
       planet = selected.kind === 'planet' ? selected : undefined;
@@ -73,22 +86,22 @@ export default function ObjectPanel({
     return (
       <div className="object-detail">
         <button className="back-button" onClick={() => onSelect(null)}>
-          <ArrowLeft size={16} /> All objects
+          <ArrowLeft size={16} /> {m.objects.back}
         </button>
         <div className="object-detail-heading">
           {isMoon ? (
             <MoonPhase
               illumination={sky.moon.illumination}
               angle={sky.moon.brightLimbAngle}
-              label={sky.moon.phaseName}
+              label={moonPhase}
             />
           ) : isSun ? (
             <Sun size={32} className="gold" />
-          ) : planet && showsPhase(planet) ? (
+          ) : planet && phase ? (
             <MoonPhase
               illumination={planet.illumination}
               angle={planet.brightLimbAngle}
-              label={`${planet.name}: ${phaseWord(planet.illumination)}, ${Math.round(planet.illumination * 100)}% illuminated`}
+              label={m.objects.planetPhaseLabel({ name: name(planet), ...phase })}
             />
           ) : planet ? (
             <Orbit size={30} />
@@ -97,74 +110,80 @@ export default function ObjectPanel({
           )}
           <div>
             <p className="eyebrow">
-              {selected.kind === 'star' ? 'Star' : planet ? 'Planet' : 'Solar system'}
+              {selected.kind === 'star'
+                ? m.objects.kind.star
+                : planet
+                  ? m.objects.kind.planet
+                  : m.objects.kind.solar}
             </p>
-            <h3 ref={heading} tabIndex={-1}>
-              {selected.name}
+            <h3 ref={heading} tabIndex={-1} lang={objectNameLang(selected, i18n)}>
+              {name(selected)}
             </h3>
           </div>
         </div>
-        <p className="visibility-label">{visibility.label}</p>
-        <p className="visibility-explanation">{visibility.detail}</p>
+        <p className="visibility-label">{text.label}</p>
+        <p className="visibility-explanation">{text.detail}</p>
         {aboveHorizon(selected) ? (
           <button className="primary-button full" onClick={() => onFocus(selected)}>
-            <Crosshair size={16} /> Center in view
+            <Crosshair size={16} /> {m.objects.center}
           </button>
         ) : selected.kind !== 'star' ? (
           <button className="primary-button full" onClick={() => onRise(selected.id)}>
-            Jump to next rise
+            {m.focus.jumpToRise}
           </button>
         ) : (
-          <p className="muted">Use the timeline to explore when this star is above the horizon.</p>
+          <p className="muted">{m.objects.starTimeline}</p>
         )}
         {(clearSky || ['cloud', 'haze', 'partial-cloud'].includes(visibility.reason)) && (
           <button className="text-button" onClick={onClearSky}>
-            {clearSky ? 'Restore atmosphere' : 'Preview a clear sky'}
+            {clearSky ? m.atmosphere.restore : m.atmosphere.previewClear}
           </button>
         )}
         <div className="coordinate-grid">
           <div>
-            <strong>{selected.altitude.toFixed(1)}°</strong>
-            <span>Altitude</span>
+            <strong>{m.f.number(selected.altitude, 1)}°</strong>
+            <span>{m.objects.altitude}</span>
           </div>
           <div>
-            <strong>{selected.azimuth.toFixed(1)}°</strong>
-            <span>Azimuth</span>
+            <strong>{m.f.number(selected.azimuth, 1)}°</strong>
+            <span>{m.objects.azimuth}</span>
           </div>
         </div>
         {isMoon && (
-          <p>
-            {sky.moon.phaseName} · {Math.round(sky.moon.illumination * 100)}% illuminated
-          </p>
+          <p>{m.objects.moonPhase({ phase: moonPhase, illumination: sky.moon.illumination * 100 })}</p>
         )}
         {planet && (
           <p>
-            Magnitude {planet.magnitude.toFixed(1)}
-            {showsPhase(planet) &&
-              ` · ${phaseWord(planet.illumination)}, ${Math.round(planet.illumination * 100)}% illuminated`}
+            {m.objects.planetBrightness({ magnitude: planet.magnitude, phase })}
             <br />
-            {apparition(planet)}
+            {m.objects.apparition({
+              apparition: planet.elongation > 165 ? 'opposition' : planet.apparition,
+              elongation: planet.elongation,
+            })}
           </p>
         )}
         {riseSet && (
           <dl className="event-list">
             <div>
-              <dt>Rises today</dt>
-              <dd>{formatEvent(riseSet.rise, timeZone, 'No rise today')}</dd>
+              <dt>{m.objects.rises}</dt>
+              <dd>{formatEvent(riseSet.rise, m.objects.noRise)}</dd>
             </div>
             <div>
-              <dt>Sets today</dt>
-              <dd>{formatEvent(riseSet.set, timeZone, 'No set today')}</dd>
+              <dt>{m.objects.sets}</dt>
+              <dd>{formatEvent(riseSet.set, m.objects.noSet)}</dd>
             </div>
             {isSun && (
               <>
                 <div>
-                  <dt>Solar noon</dt>
-                  <dd>{formatEvent(sky.events.solarNoon, timeZone, 'No transit today')}</dd>
+                  <dt>{m.objects.solarNoon}</dt>
+                  <dd>{formatEvent(sky.events.solarNoon, m.objects.noTransit)}</dd>
                 </div>
                 <div>
-                  <dt>Daylight</dt>
-                  <dd>{sky.events.daylightHours?.toFixed(1)} hours</dd>
+                  <dt>{m.objects.daylight}</dt>
+                  <dd>
+                    {sky.events.daylightHours !== null &&
+                      m.objects.daylightHours({ hours: sky.events.daylightHours })}
+                  </dd>
                 </div>
               </>
             )}
@@ -173,39 +192,32 @@ export default function ObjectPanel({
         {isSun && sky.events.daylightStatus !== 'normal' && (
           <p className="muted">
             {sky.events.daylightStatus === 'polar-day'
-              ? 'The Sun stays above the horizon today.'
+              ? m.objects.polarDay
               : sky.events.daylightStatus === 'polar-night'
-                ? 'The Sun stays below the horizon today.'
-                : 'Today begins or ends during daylight.'}
+                ? m.objects.polarNight
+                : m.objects.partialDay}
           </p>
         )}
         <details className="object-facts">
-          <summary>About this object & coordinates</summary>
-          <p>
-            Altitude is height above the mathematical horizon. Azimuth is the direction clockwise from north:
-            east is 90°, south 180°, west 270°.
-          </p>
+          <summary>{m.objects.facts}</summary>
+          <p>{m.objects.coordinatesExplained}</p>
           {isMoon && (
-            <p>
-              The Moon reflects sunlight. Its phase depends on which part of the sunlit half we see. It is
-              approximately {(Math.round(sky.moon.distanceKm / 100) * 100).toLocaleString()} km from this
-              observer.
-            </p>
+            <p>{m.objects.moonFacts({ distanceKm: Math.round(sky.moon.distanceKm / 100) * 100 })}</p>
           )}
           {planet && (
             <p>
-              {planet.name} shines by reflected sunlight and drifts slowly against the stars. It is
-              approximately {formatDistance(planet.distanceKm)} from this observer; its disc is{' '}
-              {(angularDiameter(planet) * 3600).toFixed(1)}″ across, too small to see as a disc without
-              binoculars or a telescope.
-              {showsPhase(planet) &&
-                ` Like the Moon, ${planet.name} shows phases, visible in binoculars or a small telescope; now it is ${Math.round(planet.illumination * 100)}% lit (${phaseWord(planet.illumination)}).`}
+              {m.objects.planetFacts({
+                name: name(planet),
+                distanceKm: planet.distanceKm,
+                distanceAu: planet.distanceKm / AU_KM,
+                diameterArcsec: angularDiameter(planet) * 3600,
+                phase,
+              })}
             </p>
           )}
           {selected.kind === 'star' && (
             <p>
-              Magnitude {selected.magnitude.toFixed(2)} (smaller numbers are brighter). Catalog coordinates:
-              J2000 RA {selected.ra.toFixed(3)}h, Dec {selected.dec.toFixed(2)}°.
+              {m.objects.starFacts({ magnitude: selected.magnitude, ra: selected.ra, dec: selected.dec })}
             </p>
           )}
         </details>
@@ -213,47 +225,44 @@ export default function ObjectPanel({
     );
   }
   const term = query.trim().toLowerCase();
-  const matches = matchObjects(objects, term, upOnly);
+  const matches = matchObjects(objects, term, upOnly, i18n);
+  const count = (total: number) => m.objects.count({ count: total, shown: LIST_LIMIT });
   const filter = (nextQuery: string, nextUpOnly: boolean) => {
     setQuery(nextQuery);
     setUpOnly(nextUpOnly);
-    setAnnouncement(countLabel(matchObjects(objects, nextQuery.trim().toLowerCase(), nextUpOnly).length));
+    setAnnouncement(matchObjects(objects, nextQuery.trim().toLowerCase(), nextUpOnly, i18n).length);
   };
   return (
     <>
       <label className="object-search">
-        <span>Find an object</span>
+        <span>{m.objects.find}</span>
         <input
           ref={search}
           type="search"
           value={query}
           onChange={(event) => filter(event.target.value, upOnly)}
-          placeholder="Sun, Moon, planet, or star name"
+          placeholder={m.objects.searchPlaceholder}
         />
       </label>
       <div className="segmented object-filters">
         <button aria-pressed={upOnly && !term} onClick={() => filter('', true)}>
-          Above horizon
+          {m.objects.aboveHorizon}
         </button>
         <button aria-pressed={!upOnly && !term} onClick={() => filter('', false)}>
-          All objects
+          {m.objects.all}
         </button>
       </div>
       <p className="catalog-note">
-        {term
-          ? 'Search includes objects below the horizon.'
-          : upOnly
-            ? 'Calculated positions above the horizon, brightest stars first.'
-            : 'Explore the Sun, Moon, planets, and stars, including those below the horizon.'}
+        {term ? m.objects.noteSearch : upOnly ? m.objects.noteUp : m.objects.noteAll}
       </p>
       {(clearSky || weather.cloudCover >= 85) && (
         <div className="catalog-weather">
-          <span>{clearSky ? 'Clear-sky preview is active.' : 'Heavy clouds may obscure this view.'}</span>
-          <button onClick={onClearSky}>{clearSky ? 'Restore atmosphere' : 'Preview a clear sky'}</button>
+          <span>{clearSky ? m.objects.clearPreviewActive : m.objects.heavyClouds}</span>
+          <button onClick={onClearSky}>{clearSky ? m.atmosphere.restore : m.atmosphere.previewClear}</button>
         </div>
       )}
-      <div className="object-list" role="group" aria-label="Celestial objects">
-        {matches.slice(0, 40).map((object) => (
+      <div className="object-list" role="group" aria-label={m.objects.list}>
+        {matches.slice(0, LIST_LIMIT).map((object) => (
           <button key={object.id} onClick={() => onSelect(object.id)}>
             {object.kind === 'sun' ? (
               <Sun size={18} />
@@ -265,40 +274,46 @@ export default function ObjectPanel({
               <Star size={16} />
             )}
             <span>
-              {object.name}
+              <span lang={objectNameLang(object, i18n)}>{name(object)}</span>
               <small>
                 {object.kind === 'moon'
-                  ? sky.moon.phaseName
+                  ? moonPhase
                   : object.kind === 'sun'
-                    ? 'Our nearest star'
-                    : objectVisibility(object, sky, weather, preferences).label}
+                    ? m.objects.nearestStar
+                    : m.visibility(objectVisibility(object, sky, weather, preferences), name(object)).label}
               </small>
             </span>
-            <b>{aboveHorizon(object) ? `${Math.round(object.altitude)}°` : 'Below'}</b>
+            <b>{aboveHorizon(object) ? `${m.f.number(object.altitude)}°` : m.objects.below}</b>
           </button>
         ))}
       </div>
-      <p className="catalog-note">{countLabel(matches.length)}</p>
-      {stars === 'loading' && <p className="catalog-note">Stars are still loading…</p>}
+      <p className="catalog-note">{count(matches.length)}</p>
+      {stars === 'loading' && <p className="catalog-note">{m.objects.starsLoading}</p>}
       {stars === 'error' && (
         <div className="catalog-weather">
-          <span>The star catalog could not load. The Sun and Moon remain available.</span>
-          <button onClick={onRetryStars}>Try again</button>
+          <span>{m.objects.starsFailed}</span>
+          <button onClick={onRetryStars}>{m.objects.tryAgain}</button>
         </div>
       )}
       <p className="sr-only" role="status">
-        {announcement}
+        {announcement !== null && count(announcement)}
       </p>
     </>
   );
 }
-function matchObjects(objects: SkyObject[], term: string, upOnly: boolean): SkyObject[] {
+const AU_KM = 149_597_870.7;
+
+/** Matches a search in any of an object's names, so 天狼 and Sirius find the same star. */
+function matchObjects(objects: SkyObject[], term: string, upOnly: boolean, i18n: I18n): SkyObject[] {
+  // A word for "planets" (in this language or English) lists all five, from its first three letters
+  // ("pla") or its whole length if shorter ("行星").
+  const planets = i18n.m.objects.planetSearchWords.some(
+    (word) => term.length >= Math.min(3, word.length) && word.startsWith(term),
+  );
   return objects.filter((object) =>
     term
-      ? object.name.toLowerCase().includes(term) ||
-        object.id.toLowerCase().includes(term) ||
-        // "planet" or "planets" lists all five.
-        (object.kind === 'planet' && term.length >= 3 && 'planets'.startsWith(term))
+      ? searchNames(object, i18n).some((name) => name.toLowerCase().includes(term)) ||
+        (object.kind === 'planet' && planets)
       : !upOnly || aboveHorizon(object),
   );
 }
@@ -306,29 +321,15 @@ function matchObjects(objects: SkyObject[], term: string, upOnly: boolean): SkyO
 function showsPhase(planet: Planet): boolean {
   return planet.id === 'mercury' || planet.id === 'venus';
 }
-function phaseWord(illumination: number): string {
-  if (illumination < 0.05) return 'thin crescent';
+/** The phase details shown for Mercury and Venus; undefined for other objects. */
+function planetPhase(object: SkyObject): { shape: PlanetShape; illumination: number } | undefined {
+  if (object.kind !== 'planet' || !showsPhase(object)) return undefined;
+  return { shape: phaseShape(object.illumination), illumination: object.illumination * 100 };
+}
+function phaseShape(illumination: number): PlanetShape {
+  if (illumination < 0.05) return 'thin-crescent';
   if (illumination < 0.45) return 'crescent';
-  if (illumination < 0.55) return 'half lit';
+  if (illumination < 0.55) return 'half';
   if (illumination < 0.97) return 'gibbous';
-  return 'nearly full';
-}
-function apparition(planet: Planet): string {
-  const angle = Math.round(planet.elongation);
-  if (planet.elongation > 165) return `Opposite the Sun, ${angle}° from it: up most of the night.`;
-  return planet.apparition === 'evening'
-    ? `Evening sky: ${angle}° east of the Sun.`
-    : `Morning sky: ${angle}° west of the Sun.`;
-}
-function formatDistance(km: number): string {
-  const au = km / 149_597_870.7;
-  return `${Math.round(km / 1e6).toLocaleString()} million km (${au.toFixed(2)} AU)`;
-}
-function countLabel(count: number): string {
-  return count > 40
-    ? `Showing 40 of ${count}. Search by name or HYG ID for more.`
-    : `${count} matching ${count === 1 ? 'object' : 'objects'}.`;
-}
-function formatEvent(date: Date | null, zone: string, absent: string): string {
-  return date ? formatTime(date, zone) : absent;
+  return 'full';
 }

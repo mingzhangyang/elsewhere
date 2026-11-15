@@ -3,7 +3,7 @@ import { getZonedParts, localDayBounds } from '../domain/time';
 import { validateObserver } from '../domain/observer';
 import { weatherKey } from '../domain/weather';
 import { isDeviceLocation } from '../lib/locations';
-import { describeNetworkFailure, ReadableError } from '../lib/networkErrors';
+import { ReadableError, weatherFailure } from '../lib/networkErrors';
 import { finiteNumber as number, record } from './providerJson';
 
 /** Open-Meteo forecast and archive client: request shape, response validation, provenance. */
@@ -77,7 +77,7 @@ export async function fetchWeatherForDate(
     return {
       ...base,
       status: 'unavailable',
-      message: 'Weather data does not cover this date. Choose custom weather to explore this sky.',
+      issue: { code: 'date-unsupported' },
     };
   const archive = days < -5;
   const params = new URLSearchParams({
@@ -108,7 +108,7 @@ export async function fetchWeatherForDate(
     return {
       ...base,
       status: 'unavailable',
-      message: 'This local day falls beyond the weather provider’s UTC coverage.',
+      issue: { code: 'beyond-coverage' },
     };
   params.set('start_date', startDay);
   params.set('end_date', endDay);
@@ -123,25 +123,24 @@ export async function fetchWeatherForDate(
     const payload: unknown = await response.json();
     const data = record(payload);
     if (!response.ok) {
-      const reason = typeof data.reason === 'string' ? data.reason : `HTTP ${response.status}`;
       throw new ReadableError(
         response.status === 429
-          ? 'Weather service is busy. Try refreshing in a moment.'
-          : `Weather service: ${reason}`,
+          ? { code: 'busy' }
+          : typeof data.reason === 'string'
+            ? { code: 'provider', reason: data.reason }
+            : { code: 'network', failure: { kind: 'http', status: response.status } },
       );
     }
     const hourlyData = record(data.hourly);
-    if (!Array.isArray(hourlyData.time))
-      throw new ReadableError('Weather service returned no hourly timeline.');
+    if (!Array.isArray(hourlyData.time)) throw new ReadableError({ code: 'no-timeline' });
     const hourly = hourlyData.time.map((value, i): WeatherPoint => {
       const seconds = number(value);
-      if (seconds === null) throw new ReadableError('Weather service returned an invalid timestamp.');
+      if (seconds === null) throw new ReadableError({ code: 'bad-timestamp' });
       return { time: seconds * 1000, values: measurements(hourlyData, i) };
     });
-    if (!hourly.length)
-      return { ...base, status: 'unavailable', message: 'No weather samples are available for this date.' };
+    if (!hourly.length) return { ...base, status: 'unavailable', issue: { code: 'no-samples' } };
     if (hourly.some((row, i) => i > 0 && row.time <= hourly[i - 1].time))
-      throw new ReadableError('Weather timeline is not ordered.');
+      throw new ReadableError({ code: 'unordered' });
     let current: WeatherPoint | undefined;
     if (data.current && typeof data.current === 'object') {
       const c = record(data.current);
@@ -171,7 +170,7 @@ export async function fetchWeatherForDate(
     return {
       ...base,
       status: 'error',
-      message: describeNetworkFailure(error, 'weather'),
+      issue: weatherFailure(error),
     };
   }
 }

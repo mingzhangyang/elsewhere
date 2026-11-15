@@ -1,4 +1,6 @@
 import { expect, it, vi } from 'vitest';
+import en from '../src/i18n/en';
+import { weatherIssueText } from '../src/lib/weatherText';
 import {
   customConditions,
   defaultWeatherValues,
@@ -101,7 +103,9 @@ it('reports the provider error and has no fabricated values', async () => {
   );
   const instant = new Date('2026-11-12T12:00Z');
   const result = await fetchWeatherForDate(NEW_YORK, instant, { now: instant });
-  expect(result).toMatchObject({ status: 'error', message: 'Weather service: Invalid range' });
+  expect(result).toMatchObject({ status: 'error', issue: { code: 'provider', reason: 'Invalid range' } });
+  if (result.status === 'error')
+    expect(weatherIssueText(result.issue, en)).toBe('Weather service: Invalid range');
   expect(selectWeather(result, NEW_YORK, instant).values).toBeNull();
 });
 

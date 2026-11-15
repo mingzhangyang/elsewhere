@@ -72,12 +72,12 @@ describe('exploration flows without rendering', () => {
   });
 
   it('withdraws a notice only while it still says the same thing', () => {
-    const failed = run(fresh(), { type: 'notice', message: 'Stars could not load.' });
-    expect(run(failed, { type: 'dismiss-notice', message: 'Stars could not load.' }).notice).toBe('');
-    const replaced = run(failed, { type: 'notice', message: 'Preferences could not be saved.' });
-    expect(run(replaced, { type: 'dismiss-notice', message: 'Stars could not load.' }).notice).toBe(
-      'Preferences could not be saved.',
-    );
+    const failed = run(fresh(), { type: 'notice', notice: { code: 'stars-unavailable' } });
+    expect(run(failed, { type: 'dismiss-notice', code: 'stars-unavailable' }).notice).toBeNull();
+    const replaced = run(failed, { type: 'notice', notice: { code: 'preferences-not-saved' } });
+    expect(run(replaced, { type: 'dismiss-notice', code: 'stars-unavailable' }).notice).toEqual({
+      code: 'preferences-not-saved',
+    });
   });
 
   it('previews a clear sky without touching the underlying conditions', () => {

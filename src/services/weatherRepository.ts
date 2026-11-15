@@ -1,7 +1,7 @@
 import { fetchWeatherForDate } from './openMeteo';
 import { weatherKey } from '../domain/weather';
 import type { LocationInfo, WeatherResult } from '../types';
-import { describeNetworkFailure } from '../lib/networkErrors';
+import { weatherFailure } from '../lib/networkErrors';
 
 /** In-memory only: choosing device coordinates never persists them implicitly. */
 export class WeatherRepository {
@@ -40,7 +40,7 @@ export class WeatherRepository {
             key,
             fetchedAt: this.now(),
             status: 'error',
-            message: describeNetworkFailure(error, 'weather'),
+            issue: weatherFailure(error),
           }),
         )
         .then((data): WeatherResult => {
@@ -54,7 +54,7 @@ export class WeatherRepository {
             return {
               ...cached,
               cacheState: 'stale',
-              notice: 'Refresh failed. Showing cached weather; its fetch time is shown below.',
+              issue: { code: 'refresh-failed' },
             };
           return data;
         })

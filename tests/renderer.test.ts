@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import zh from '../src/i18n/zh-Hans';
 import { createCelestialLayers } from '../src/renderer/celestialLayers';
 import { calculateSky } from '../src/domain/astronomy';
 import { NEW_YORK } from './fixtures/locations';
@@ -170,4 +171,70 @@ it('keeps labels out from under interface panels drawn over the sky', () => {
   expect(shown()).toBeLessThan(free);
   layers.layout(camera, 1280, 560, [{ left: 0, right: 1280, top: 0, bottom: 560 }]);
   expect(shown()).toBe(0);
+});
+
+describe('labels in another language', () => {
+  const zhNames = {
+    star: (star: { name: string }) => zh.starNames[star.name] ?? star.name,
+    pattern: (id: keyof typeof zh.patterns) => zh.patterns[id],
+  };
+  /** A label sprite as wide as its text: CJK glyphs take a full em, Latin about half. */
+  const measured = (name: string) => {
+    const em = [...name].reduce((width, char) => width + (/[\u3000-\u9fff]/.test(char) ? 1 : 0.55), 0);
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.Texture() }));
+    sprite.name = name;
+    sprite.userData.aspect = (em * 32 + 32) / 56;
+    return sprite;
+  };
+
+  it('draws Chinese star and pattern names, and frees every texture when replaced', () => {
+    const scene = new THREE.Scene();
+    const sky = calculateSky(NEW_YORK, new Date('2026-11-13T04:00Z'));
+    const layers = createCelestialLayers(
+      scene,
+      sky.stars,
+      measured,
+      [{ id: 'jupiter', name: '木星' }],
+      zhNames,
+    );
+    const names = scene.children.filter((o) => o instanceof THREE.Sprite).map((o) => o.name);
+    expect(names).toEqual(expect.arrayContaining(['木星', '天狼星', '织女星', '猎户座', '北斗七星 · 星群']));
+    expect(names.some((name) => /[A-Za-z]{2,}/.test(name))).toBe(false);
+    const textures = scene.children.flatMap((o) => (o instanceof THREE.Sprite ? [o.material.map!] : []));
+    const freed = textures.map((texture) => vi.spyOn(texture, 'dispose'));
+    layers.dispose();
+    expect(freed.every((spy) => spy.mock.calls.length === 1)).toBe(true);
+    expect(scene.children).toHaveLength(0);
+  });
+
+  it.each([
+    ['English', undefined],
+    ['Chinese', zhNames],
+  ])('never overlaps %s labels on screen', (_, names) => {
+    const scene = new THREE.Scene();
+    const sky = calculateSky(NEW_YORK, new Date('2026-11-13T04:00Z'));
+    const layers = createCelestialLayers(scene, sky.stars, measured, [], names);
+    layers.update(sky.stars, { stars: true, labels: true, constellations: true }, 1);
+    let shown = 0;
+    for (const azimuth of [0, 90, 180, 270]) {
+      const camera = new THREE.PerspectiveCamera(92, 390 / 700, 0.1, 5000);
+      camera.rotation.set(THREE.MathUtils.degToRad(35), -THREE.MathUtils.degToRad(azimuth), 0, 'YXZ');
+      camera.updateMatrixWorld();
+      layers.layout(camera, 390, 700);
+      const boxes = scene.children
+        .filter((o): o is THREE.Sprite => o instanceof THREE.Sprite && o.visible)
+        .map((sprite) => {
+          const p = sprite.getWorldPosition(new THREE.Vector3()).project(camera);
+          const x = ((p.x + 1) * 390) / 2,
+            y = ((1 - p.y) * 700) / 2,
+            w = 22 * sprite.userData.aspect;
+          return { left: x - w / 2, right: x + w / 2, top: y - 11, bottom: y + 11 };
+        });
+      shown += boxes.length;
+      for (const [i, a] of boxes.entries())
+        for (const b of boxes.slice(i + 1))
+          expect(a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top).toBe(false);
+    }
+    expect(shown).toBeGreaterThan(5);
+  });
 });

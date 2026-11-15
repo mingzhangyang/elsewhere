@@ -3,7 +3,15 @@ import { Bookmark, Check, ChevronDown, LocateFixed, MapPin, Search, X } from 'lu
 import type { LocationInfo } from '../types';
 import { normalizeLocation, PRESETS } from '../lib/locations';
 import { searchLocations } from '../services/placeSearch';
-import { describeNetworkFailure } from '../lib/networkErrors';
+import { classifyNetworkFailure } from '../lib/networkErrors';
+import type { NetworkFailure } from '../types';
+
+/** Kept as a code and worded at render, so a language change rewords an error already showing. */
+type PlaceError =
+  | { kind: 'search'; failure: NetworkFailure }
+  | { kind: 'unavailable' | 'denied' | 'timedOut' | 'noTimeZone' };
+import { useI18n } from '../i18n';
+import { placeLabel } from '../i18n/names';
 
 export default function LocationPicker({
   location,
@@ -18,6 +26,9 @@ export default function LocationPicker({
   onSelect: (place: LocationInfo) => void;
   onSave: (place: LocationInfo) => void;
 }) {
+  const i18n = useI18n();
+  const { m } = i18n;
+  const t = m.location;
   const dialog = useRef<HTMLDialogElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -25,7 +36,7 @@ export default function LocationPicker({
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<LocationInfo[]>([]);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<PlaceError | null>(null);
   const [active, setActive] = useState(-1);
   const [locating, setLocating] = useState(false);
   useEffect(
@@ -47,16 +58,17 @@ export default function LocationPicker({
     }
     const controller = new AbortController();
     setBusy(true);
-    setError('');
+    setError(null);
     setResults([]);
     setActive(-1);
     const timer = setTimeout(() => {
-      searchLocations(trimmed, controller.signal)
+      searchLocations(trimmed, t.searchLanguage, controller.signal)
         .then((items) => {
           if (!controller.signal.aborted) setResults(items);
         })
         .catch((reason) => {
-          if (!controller.signal.aborted) setError(describeNetworkFailure(reason, 'search'));
+          if (!controller.signal.aborted)
+            setError({ kind: 'search', failure: classifyNetworkFailure(reason) });
         })
         .finally(() => {
           if (!controller.signal.aborted) setBusy(false);
@@ -66,7 +78,8 @@ export default function LocationPicker({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [trimmed]);
+    // Results are named in the interface language, so a language change searches again.
+  }, [trimmed, t.searchLanguage]);
   const cancelLocation = () => {
     locationRequest.current += 1;
     setLocating(false);
@@ -80,16 +93,16 @@ export default function LocationPicker({
     onSelect(place);
     close();
     setQuery('');
-    setError('');
+    setError(null);
     setActive(-1);
   };
   const locate = () => {
     if (!navigator.geolocation) {
-      setError('Location is unavailable. Search for a place instead.');
+      setError({ kind: 'unavailable' });
       return;
     }
     setLocating(true);
-    setError('');
+    setError(null);
     const request = ++locationRequest.current;
     navigator.geolocation.getCurrentPosition(
       async ({ coords }) => {
@@ -99,6 +112,7 @@ export default function LocationPicker({
           select(
             normalizeLocation({
               id: 'device-location',
+              // Stored in English like other place data; the interface names it with placeLabel.
               name: 'Your location',
               country: 'Device coordinates · sea-level estimate',
               latitude: coords.latitude,
@@ -108,8 +122,7 @@ export default function LocationPicker({
             }),
           );
         } catch {
-          if (request === locationRequest.current)
-            setError('Could not resolve the time zone. Search for a nearby place.');
+          if (request === locationRequest.current) setError({ kind: 'noTimeZone' });
         } finally {
           if (request === locationRequest.current) setLocating(false);
         }
@@ -117,17 +130,12 @@ export default function LocationPicker({
       (reason) => {
         if (request !== locationRequest.current) return;
         setLocating(false);
-        setError(
-          reason.code === 1
-            ? 'Location permission was denied. Search for a place instead.'
-            : reason.code === 3
-              ? 'Location lookup timed out. Try again or search.'
-              : 'Location is unavailable. Search for a place instead.',
-        );
+        setError({ kind: reason.code === 1 ? 'denied' : reason.code === 3 ? 'timedOut' : 'unavailable' });
       },
       { timeout: 10000, enableHighAccuracy: false },
     );
   };
+  const current = placeLabel(location, i18n);
   return (
     <>
       <button
@@ -138,15 +146,15 @@ export default function LocationPicker({
           input.current?.focus();
         }}
         aria-haspopup="dialog"
-        aria-label={`Change location, ${location.name}`}
+        aria-label={t.trigger({ name: current.name })}
       >
         <MapPin size={18} />
         {/* Wide screens name the place in the sky title, so the trigger only offers the change. */}
         <span className="location-current">
-          <strong>{location.name}</strong>
-          <small>{location.country}</small>
+          <strong>{current.name}</strong>
+          <small>{current.country}</small>
         </span>
-        <span className="location-change">Change place</span>
+        <span className="location-change">{t.change}</span>
         <ChevronDown size={16} />
       </button>
       <dialog
@@ -160,10 +168,10 @@ export default function LocationPicker({
       >
         <div className="dialog-heading">
           <div>
-            <p className="eyebrow">A different perspective</p>
-            <h2 id="place-title">Choose your place</h2>
+            <p className="eyebrow">{t.eyebrow}</p>
+            <h2 id="place-title">{t.title}</h2>
           </div>
-          <button className="icon-button" aria-label="Close locations" onClick={close}>
+          <button className="icon-button" aria-label={t.close} onClick={close}>
             <X />
           </button>
         </div>
@@ -176,8 +184,8 @@ export default function LocationPicker({
             aria-controls="place-options"
             aria-autocomplete="list"
             aria-activedescendant={active >= 0 ? `place-${active}` : undefined}
-            aria-label="Search for a location"
-            placeholder="City, town, or a place you love"
+            aria-label={t.search}
+            placeholder={t.placeholder}
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);
@@ -206,47 +214,44 @@ export default function LocationPicker({
         <div className="place-actions">
           <button onClick={locate} disabled={locating}>
             <LocateFixed size={16} />
-            {locating ? 'Finding your location…' : 'Use my location'}
+            {locating ? t.locating : t.useMine}
           </button>
           <button onClick={() => onSave(location)}>
             <Bookmark size={16} />
-            {saved.some((p) => p.id === location.id) ? 'Remove saved place' : 'Save current place'}
+            {saved.some((p) => p.id === location.id) ? t.removeSaved : t.saveCurrent}
           </button>
         </div>
-        <p className="eyebrow">{trimmed.length >= 2 ? 'Search results' : 'Saved, recent & suggested'}</p>
+        <p className="eyebrow">{trimmed.length >= 2 ? t.results : t.suggestions}</p>
         <div role="status" className="form-status">
-          {error ||
-            (busy
-              ? 'Searching…'
-              : trimmed.length >= 2 && !options.length
-                ? 'No matching places. Try a nearby city.'
-                : '')}
+          {(error && (error.kind === 'search' ? m.network(error.failure, 'search') : t[error.kind])) ||
+            (busy ? t.searching : trimmed.length >= 2 && !options.length ? t.noMatches : '')}
         </div>
-        <div id="place-options" role="listbox" aria-label="Locations" className="place-options">
-          {options.map((place, index) => (
-            <button
-              role="option"
-              tabIndex={-1}
-              aria-selected={active === index}
-              id={`place-${index}`}
-              key={place.id}
-              onClick={() => select(place)}
-              className={active === index ? 'active' : ''}
-            >
-              <MapPin size={17} />
-              <span>
-                <strong>{place.name}</strong>
-                <small>
-                  {place.country} · {place.timezone.replaceAll('_', ' ')}
-                </small>
-              </span>
-              {place.id === location.id ? (
-                <Check size={16} />
-              ) : saved.some((p) => p.id === place.id) ? (
-                <Bookmark size={14} />
-              ) : null}
-            </button>
-          ))}
+        <div id="place-options" role="listbox" aria-label={t.options} className="place-options">
+          {options.map((place, index) => {
+            const label = placeLabel(place, i18n);
+            return (
+              <button
+                role="option"
+                tabIndex={-1}
+                aria-selected={active === index}
+                id={`place-${index}`}
+                key={place.id}
+                onClick={() => select(place)}
+                className={active === index ? 'active' : ''}
+              >
+                <MapPin size={17} />
+                <span>
+                  <strong>{label.name}</strong>
+                  <small>{[label.country, m.f.zone(place.timezone)].filter(Boolean).join(' · ')}</small>
+                </span>
+                {place.id === location.id ? (
+                  <Check size={16} />
+                ) : saved.some((p) => p.id === place.id) ? (
+                  <Bookmark size={14} />
+                ) : null}
+              </button>
+            );
+          })}
         </div>
       </dialog>
     </>

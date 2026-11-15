@@ -103,13 +103,18 @@ export function formatOffset(date: Date, timeZone: string): string {
   return `UTC${Temporal.Instant.fromEpochMilliseconds(date.getTime()).toZonedDateTimeISO(timeZone).offset}`;
 }
 
+/**
+ * Display formatting takes the locale as a BCP 47 tag ("en-US", "zh-Hans"): the domain has no notion
+ * of the interface language, only of how to format for one.
+ */
 export function formatTime(
   date: Date | null,
   timeZone: string,
+  locale: string,
   options?: Intl.DateTimeFormatOptions,
 ): string {
   if (!date) return '—';
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat(locale, {
     timeZone,
     hour: 'numeric',
     minute: '2-digit',
@@ -117,28 +122,35 @@ export function formatTime(
   }).format(date);
 }
 
-export function formatDate(date: Date, timeZone: string): string {
-  return new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(date);
+export function formatDate(
+  date: Date,
+  timeZone: string,
+  locale: string,
+  options: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' },
+): string {
+  return new Intl.DateTimeFormat(locale, { timeZone, ...options }).format(date);
 }
 
-export function formatTimeZoneLabel(timeZone: string, date: Date = new Date()): string {
+/**
+ * A time zone's name for display: the IANA identifier ("America/New York") or, with `generic`, the
+ * locale's own name for it ("北美东部时间"), falling back to the identifier where the browser has none.
+ */
+export function formatTimeZoneName(
+  timeZone: string,
+  locale: string,
+  style: 'id' | 'generic',
+  date: Date = new Date(),
+): string {
+  const id = timeZone.replaceAll('_', ' ');
+  if (style === 'id') return id;
   try {
-    const part = new Intl.DateTimeFormat('en-US', {
-      timeZone,
-      timeZoneName: 'short',
-      hour: 'numeric',
-    })
-      .formatToParts(date)
-      .find((p) => p.type === 'timeZoneName')?.value;
-    return part ? `${timeZone.replaceAll('_', ' ')} · ${part}` : timeZone;
+    return (
+      new Intl.DateTimeFormat(locale, { timeZone, timeZoneName: 'longGeneric' })
+        .formatToParts(date)
+        .find((part) => part.type === 'timeZoneName')?.value ?? id
+    );
   } catch {
-    return timeZone;
+    return id;
   }
 }
 

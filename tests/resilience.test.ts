@@ -5,6 +5,7 @@ import { WeatherRepository } from '../src/services/weatherRepository';
 import { NEW_YORK } from './fixtures/locations';
 import { defaultWeatherValues, selectWeather, weatherKey } from '../src/domain/weather';
 import { weatherSourceLabel } from '../src/lib/weatherText';
+import en from '../src/i18n/en';
 import type { WeatherResult } from '../src/types';
 
 it('coalesces static renders, suspends hidden frames, and cancels all work on disposal', () => {
@@ -58,7 +59,12 @@ it('deduplicates weather leases and retains explicitly stale data on failed refr
   const loader = vi
     .fn()
     .mockResolvedValueOnce(data)
-    .mockResolvedValue({ key: data.key, fetchedAt: now, status: 'error', message: 'Offline' });
+    .mockResolvedValue({
+      key: data.key,
+      fetchedAt: now,
+      status: 'error',
+      issue: { code: 'network', failure: { kind: 'offline' } },
+    });
   const repository = new WeatherRepository(loader, () => now);
   const first = repository.acquire(NEW_YORK, date),
     second = repository.acquire(NEW_YORK, date);
@@ -74,5 +80,5 @@ it('deduplicates weather leases and retains explicitly stale data on failed refr
   retry.release();
   expect(result.cacheState).toBe('stale');
   expect(result.fetchedAt).toBe(+date);
-  expect(weatherSourceLabel(selectWeather(result, NEW_YORK, date))).toBe('Stale cached · Forecast');
+  expect(weatherSourceLabel(selectWeather(result, NEW_YORK, date), en)).toBe('Stale cached · Forecast');
 });

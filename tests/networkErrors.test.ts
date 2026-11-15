@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fetchWeatherForDate } from '../src/services/openMeteo';
 import { searchLocations } from '../src/services/placeSearch';
-import { describeNetworkFailure } from '../src/lib/networkErrors';
+import { classifyNetworkFailure } from '../src/lib/networkErrors';
+import { weatherIssueText } from '../src/lib/weatherText';
+import en from '../src/i18n/en';
 import type { LocationInfo } from '../src/types';
 import { NEW_YORK } from './fixtures/locations';
 
@@ -9,7 +11,7 @@ const instant = new Date('2026-11-13T12:00Z');
 const weatherMessage = async (response: () => Promise<Response>) => {
   vi.stubGlobal('fetch', vi.fn(response));
   const result = await fetchWeatherForDate(NEW_YORK, instant, { now: instant });
-  return result.status === 'error' ? result.message : `unexpected ${result.status}`;
+  return result.status === 'error' ? weatherIssueText(result.issue, en) : `unexpected ${result.status}`;
 };
 afterEach(() => vi.unstubAllGlobals());
 
@@ -34,7 +36,7 @@ describe('readable network failures', () => {
 
   it('says when the device is offline', () => {
     vi.stubGlobal('navigator', { onLine: false });
-    expect(describeNetworkFailure(new TypeError('Load failed'), 'search')).toBe(
+    expect(en.network(classifyNetworkFailure(new TypeError('Load failed')), 'search')).toBe(
       'You appear to be offline. Reconnect, then try again.',
     );
   });
@@ -44,8 +46,8 @@ describe('readable network failures', () => {
       'fetch',
       vi.fn().mockRejectedValue(new TypeError('NetworkError when attempting to fetch resource.')),
     );
-    const failure = await searchLocations('Paris').catch((error: unknown) => error);
-    expect(describeNetworkFailure(failure, 'search')).toBe(
+    const failure = await searchLocations('Paris', 'en').catch((error: unknown) => error);
+    expect(en.network(classifyNetworkFailure(failure), 'search')).toBe(
       'Couldn’t reach place search. Check your connection. Try again.',
     );
   });

@@ -54,6 +54,16 @@ export interface Planet extends CelestialBody {
   brightLimbAngle: number;
 }
 
+export type MoonPhaseKey =
+  | 'new'
+  | 'waxing-crescent'
+  | 'first-quarter'
+  | 'waxing-gibbous'
+  | 'full'
+  | 'waning-gibbous'
+  | 'last-quarter'
+  | 'waning-crescent';
+
 export interface RiseSet {
   rise: Date | null;
   set: Date | null;
@@ -78,7 +88,8 @@ export interface SkyState {
   moon: CelestialBody & {
     phaseAngle: number;
     illumination: number;
-    phaseName: string;
+    /** Phase as a stable key; the interface names it in the active language. */
+    phase: MoonPhaseKey;
     distanceKm: number;
     waxing: boolean;
     brightLimbAngle: number;
@@ -120,11 +131,44 @@ export interface WeatherPoint {
   values: WeatherMeasurements;
 }
 export type WeatherSource = 'current' | 'forecast' | 'recent' | 'historical';
+
+/**
+ * A failed request, classified so the interface can word it in the active language. `http` is a
+ * response with an error status the provider gave no reason for; `invalid`, a response of the wrong
+ * shape; `unreadable`, one that was not JSON at all.
+ */
+export type NetworkFailure =
+  | { kind: 'timeout' | 'offline' | 'unreachable' | 'unreadable' | 'invalid' | 'failed' }
+  | { kind: 'http'; status: number };
+
+/** Why weather is missing, partial or out of date. Codes, not sentences: the interface words them. */
+export type WeatherIssue =
+  | {
+      code:
+        | 'loading'
+        | 'no-coverage'
+        | 'no-sample'
+        | 'date-unsupported'
+        | 'beyond-coverage'
+        | 'no-samples'
+        | 'busy'
+        | 'no-timeline'
+        | 'bad-timestamp'
+        | 'unordered'
+        | 'refresh-failed';
+    }
+  /** The provider's own reason, in its own words (Open-Meteo answers in English). */
+  | { code: 'provider'; reason: string }
+  | { code: 'network'; failure: NetworkFailure }
+  /** Literal text, for development scenarios only. */
+  | { code: 'text'; text: string };
+
 export type WeatherResult = {
   key: string;
   fetchedAt: number;
   cacheState?: 'cached' | 'stale';
-  notice?: string;
+  /** A cached result shown because a refresh failed. */
+  issue?: WeatherIssue;
 } & (
   | {
       status: 'ready';
@@ -134,7 +178,7 @@ export type WeatherResult = {
       hourly: WeatherPoint[];
       current?: WeatherPoint;
     }
-  | { status: 'unavailable' | 'error'; message: string }
+  | { status: 'unavailable' | 'error'; issue: WeatherIssue }
 );
 
 export interface WeatherSelection {
@@ -143,6 +187,21 @@ export interface WeatherSelection {
   source?: WeatherSource;
   sampledAt?: number;
   fetchedAt?: number;
-  message?: string;
+  issue?: WeatherIssue;
   cacheState?: 'cached' | 'stale';
 }
+
+/** A transient message over the sky. Codes, so a language switch rewords one already showing. */
+export type AppNotice = {
+  code:
+    | 'stars-unavailable'
+    | 'offline-unavailable'
+    | 'preferences-not-saved'
+    | 'preferences-unreadable'
+    | 'invalid-link'
+    | 'no-rise'
+    | 'rise-failed'
+    | 'copy-manually'
+    | 'moon-map-unavailable'
+    | 'language-unavailable';
+} | null;

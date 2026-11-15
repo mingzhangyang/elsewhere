@@ -8,6 +8,8 @@ export function createCameraControls(
   onPick: (x: number, y: number) => void,
   onChange?: (view: CameraView) => void,
   initial?: CameraView,
+  /** The canvas's accessible name, in the interface language. */
+  label = 'Sky view',
 ) {
   let yaw = 0;
   let pitch = THREE.MathUtils.degToRad(18);
@@ -45,10 +47,7 @@ export function createCameraControls(
   };
   canvas.tabIndex = 0;
   canvas.setAttribute('role', 'img');
-  canvas.setAttribute(
-    'aria-label',
-    'Sky view. Arrow keys look around, plus and minus zoom, Home resets the view. Use the object list to select objects.',
-  );
+  canvas.setAttribute('aria-label', label);
   canvas.addEventListener(
     'pointerdown',
     (event) => {

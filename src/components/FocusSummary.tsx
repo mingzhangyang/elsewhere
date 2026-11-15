@@ -1,10 +1,12 @@
 import { X } from 'lucide-react';
-import type { objectVisibility, SkyObject } from '../lib/exploration';
+import type { SkyObject, Visibility } from '../lib/exploration';
 import type { BodyId } from '../types';
+import { useI18n } from '../i18n';
+import { objectName, objectNameLang } from '../i18n/names';
 
 interface Props {
   object: SkyObject;
-  visibility: ReturnType<typeof objectVisibility>;
+  visibility: Visibility;
   clearSky: boolean;
   onClear: () => void;
   onRecenter: () => void;
@@ -24,27 +26,31 @@ export default function FocusSummary({
   onEnableStars,
   onJumpToRise,
 }: Props) {
+  const i18n = useI18n();
+  const { m } = i18n;
+  const name = objectName(object, i18n);
+  const text = m.visibility(visibility, name);
   const obscured = ['cloud', 'haze', 'partial-cloud'].includes(visibility.reason);
   return (
-    <section className="focus-summary" data-occludes-sky aria-label="Selected object">
+    <section className="focus-summary" data-occludes-sky aria-label={m.focus.region}>
       <div>
-        <strong>{object.name}</strong>
-        <span>{visibility.label}</span>
-        <button className="icon-button" aria-label="Clear object selection" onClick={onClear}>
+        <strong lang={objectNameLang(object, i18n)}>{name}</strong>
+        <span>{text.label}</span>
+        <button className="icon-button" aria-label={m.focus.clear} onClick={onClear}>
           <X size={16} />
         </button>
       </div>
-      <p>{visibility.detail}</p>
+      <p>{text.detail}</p>
       <div className="focus-actions">
-        <button onClick={onRecenter}>Recenter</button>
+        <button onClick={onRecenter}>{m.focus.recenter}</button>
         {(clearSky || obscured) && (
           <button onClick={onToggleClearSky}>
-            {clearSky ? 'Restore atmosphere' : 'Preview a clear sky'}
+            {clearSky ? m.atmosphere.restore : m.atmosphere.previewClear}
           </button>
         )}
-        {visibility.reason === 'layer' && <button onClick={onEnableStars}>Enable stars</button>}
+        {visibility.reason === 'layer' && <button onClick={onEnableStars}>{m.focus.enableStars}</button>}
         {visibility.reason === 'horizon' && object.kind !== 'star' && (
-          <button onClick={() => onJumpToRise(object.id)}>Jump to next rise</button>
+          <button onClick={() => onJumpToRise(object.id)}>{m.focus.jumpToRise}</button>
         )}
       </div>
     </section>

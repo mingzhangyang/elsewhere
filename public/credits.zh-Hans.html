@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="zh-Hans">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Elsewhere · 数据来源与局限</title>
+    <style>
+      body {
+        font:
+          16px/1.8 system-ui,
+          'PingFang SC',
+          'Hiragino Sans GB',
+          'Microsoft YaHei',
+          'Noto Sans CJK SC',
+          sans-serif;
+        background: #0a111c;
+        color: #e8eef6;
+        max-width: 780px;
+        margin: auto;
+        padding: 32px 24px;
+      }
+      a {
+        color: #b6dafa;
+      }
+      h1,
+      h2 {
+        line-height: 1.2;
+      }
+      h2 {
+        margin-top: 36px;
+      }
+      code {
+        overflow-wrap: anywhere;
+      }
+      small {
+        color: #adbacb;
+      }
+    </style>
+  </head>
+  <body>
+    <a href="./">← 返回 Elsewhere</a> ·
+    <a href="credits.html" lang="en" hreflang="en">English</a>
+    <h1>数据来源与局限</h1>
+    <p>
+      Elsewhere
+      是一个用于学习的星空探索工具。天体位置是计算出来的；天气是模型估算值。云、天空亮度和通用地景都是示意图，并不是对户外实景的测量。
+    </p>
+    <p>
+      <small>本页译自英文版；许可条款的措辞以<a href="credits.html" hreflang="en">英文版</a>为准。</small>
+    </p>
+    <h2>天文</h2>
+    <p>
+      太阳、月亮和行星的位置，行星的亮度和相位，月球朝向，以及升落时刻，均由
+      <a href="https://github.com/cosinekitty/astronomy">Astronomy Engine</a>（MIT
+      许可）计算。高度角采用它的标准大气折射模型。方位角从正北顺时针量起。天体大小按与观测者的距离计算。月面贴图按
+      IAU
+      自转轴和本初子午线定向，并计入月球自转。行星按计算出的亮度画成光点；它们的颜色以及在暮光中出现的早晚是显示上的近似。未模拟地形、实际大气折射、月食和掩星时刻。支持的日期：1900–2100
+      年。
+    </p>
+    <h2>恒星</h2>
+    <p>
+      5,070 颗亮于 6 等的恒星，来自
+      <a href="https://github.com/astronexus/HYG-Database">HYG v4.1</a>（David Nash /
+      Astronexus），由依巴谷星表、耶鲁亮星星表和格利泽星表汇编而成。这份筛选后的衍生数据按
+      <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a> 分发；
+      <a href="licenses/HYG.txt">原始许可</a>。改动：选取部分字段、限定星等并按星等排序。历元和春分点为
+      J2000；已计入自行和岁差。恒星高度角与太阳、月亮采用相同的标准大气折射。未计入周年视差、章动、视向运动和亮度变化。颜色和按星等的可见度是显示上的近似；所选的光污染程度不会根据地点推断。
+    </p>
+    <p>
+      亮星的中文名采用通行叫法，多为中国传统星名（如参宿四、轩辕十四）；没有通行中文名的恒星保留星表中的名称。
+    </p>
+    <p>
+      四个连线图案是原创的简化教学示意图。北斗七星和夏季大三角是星群；猎户座和南十字座是星座图形的一部分。它们不是
+      IAU 星座边界，也不是一套完整的星空文化；中国传统星官是另一套体系，不与之对应。
+    </p>
+    <h2>月面</h2>
+    <p>
+      <a href="https://svs.gsfc.nasa.gov/4720/">NASA 科学可视化工作室（SVS）CGI Moon Kit</a>——Ernie
+      Wright（USRA）、Noah Petro（NASA/GSFC），使用 LRO/LROC 影像和 LOLA 极区反照率数据。这幅 2048 × 1024
+      的贴图为观感优化，不用于月面科学研究。NASA SVS 的影像
+      <a href="https://svs.gsfc.nasa.gov/help/">除另有说明外属于公有领域</a>。不代表 NASA 的认可。
+    </p>
+    <h2>天气与地点</h2>
+    <p>
+      天气和地点搜索：<a href="https://open-meteo.com/">Open-Meteo</a>，地点数据来自
+      <a href="https://www.geonames.org/">GeoNames</a>。天气数据按
+      <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a> 许可。API
+      使用条款与数据许可是分开的。历史数据可能缺少能见度。缺失的数值保持为不可用；需要时以中性大气渲染。自定义天气明确标注为模拟。
+    </p>
+    <h2>隐私与操作</h2>
+    <p>
+      Elsewhere 不做任何统计分析，也不需要账号。地点搜索和天气请求会把所选地点或坐标发送给
+      Open-Meteo；设备位置的天气请求使用约 1
+      公里精度的近似坐标。只有在你选择时才会请求设备定位；海拔按海平面处理，因为浏览器给出的高度采用不同的基准。只有当你明确收藏该地点时，才会保存设备的精确坐标。收藏的地点和偏好设置只保存在此浏览器中。分享链接包含坐标和所选时间；复制前会显示设备的精确坐标。分享链接不包含界面语言，对方会以自己的语言打开。云和降水按真实流逝的时间播放动画，与播放速度无关。只有在云量和风速足够大、动画看得出来时，云才会飘动。“减少大气动画”会冻结这些动画。
+    </p>
+    <p>
+      正式版本在安装后会缓存本地应用和资源，供离线使用。搜索和天气需要网络连接。天气缓存只保存在内存中。Elsewhere
+      不做任何后台追踪。
+    </p>
+    <p>
+      网站托管在 Cloudflare 上，它会收到每个请求（包括你的 IP
+      地址），并在每个页面加入一个小的机器人检测脚本。参见
+      <a href="https://www.cloudflare.com/privacypolicy/">Cloudflare 隐私政策</a>。
+      <a href="licenses/THIRD-PARTY.txt">运行时依赖的许可</a>。
+    </p>
+    <p>
+      在天空上用方向键环顾四周，用 + / − 缩放，按 Home
+      键复位。所有天体也可以在“天体”面板中找到。“现在”会跟随当前时钟；编辑时间会暂停跟随。
+    </p>
+  </body>
+</html>
