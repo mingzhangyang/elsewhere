@@ -46,3 +46,11 @@ export function horizonAltitude(variant: HorizonVariant, azimuth: number): numbe
 
 /** Azimuth step for drawing a variant's edge: fine enough for the city's square corners. */
 export const HORIZON_STEP: Record<HorizonVariant, number> = { ridge: 1, mountains: 0.5, sea: 5, city: 0.25 };
+
+/**
+ * Tops, in degrees of altitude, of what the illustrated image adds on the horizon line beyond the
+ * silhouettes above: the town's roofs and towers, far islands and a boat's mast. Under 2° like them.
+ */
+export const TOWN_TOP = 1.95;
+export const ISLAND_TOP = 1.2;
+export const MAST_TOP = 0.9;
