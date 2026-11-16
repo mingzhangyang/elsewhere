@@ -777,7 +777,7 @@ function paintSea(scene: LandScene, haze: Rgb) {
     ctx.lineTo(b.x - s * 0.5, b.y + s * 0.06);
     ctx.closePath();
     ctx.fill();
-    ctx.fillStyle = css(mix(palette.cloudLight, palette.landFar, 0.35 + 0.4 * night));
+    ctx.fillStyle = css(mix(hex('#d8704a'), deepen(palette.landFar, 0.2), 0.15 + 0.6 * (1 - day)));
     ctx.beginPath();
     ctx.moveTo(b.x - s * 0.05, b.y - s * 0.14);
     ctx.lineTo(b.x - s * 0.05, b.y - s);

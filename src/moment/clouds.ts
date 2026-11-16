@@ -38,7 +38,6 @@ export function cumulus(
   palette: Palette,
   light: CloudLight,
   random: () => number,
-  alpha: number,
   tiers = 1,
 ) {
   const masses: Billow[] = [];
@@ -112,7 +111,6 @@ export function cumulus(
   const lit = mix(palette.cloudLight, palette.glow, 0.35 * light.backlit);
   const shade = mix(palette.cloudBody, palette.cloudShadow, 0.6);
   ctx.save();
-  ctx.globalAlpha = alpha;
   // A flat base, as cumulus has, with a slight bow.
   ctx.beginPath();
   ctx.moveTo(x - half * 2.2, top - size);
@@ -184,7 +182,6 @@ export function cumulus(
   ctx.restore();
   // Loose brush marks trailing from the base and a shred or two drifting off: a painted edge.
   ctx.save();
-  ctx.globalAlpha = alpha;
   ctx.fillStyle = css(
     light.under > 0.02 ? mix(palette.cloudShadow, light.underColour, 0.5 * light.under) : shade,
     0.55,
@@ -247,11 +244,13 @@ export function stratus(
     mark(ctx, bx + l * 0.2, by + t * 0.5, l * 0.5, t * 0.6, 0, 0);
     ctx.fill();
     // The edge that faces the light: below when the Sun is low, above otherwise.
-    ctx.fillStyle = css(mix(palette.cloudLight, palette.glow, 0.5 * light.backlit), 0.7);
+    const edge = mix(palette.cloudLight, palette.glow, 0.5 * light.backlit);
+    ctx.fillStyle = css(edge, 0.6);
     ctx.beginPath();
     const side = light.y > 0.15 ? 1 : -1;
-    mark(ctx, bx + light.x * l * 0.06, by + side * t * 0.4, l * 0.84, t * 0.34, 0, side * t * 0.12);
-    ctx.shadowBlur = t * 0.5;
+    mark(ctx, bx + light.x * l * 0.06, by + side * t * 0.34, l * 0.84, t * 0.5, 0, side * t * 0.12);
+    ctx.shadowColor = css(edge, 0.6);
+    ctx.shadowBlur = t * 0.9;
     ctx.fill();
   }
   ctx.shadowBlur = 0;

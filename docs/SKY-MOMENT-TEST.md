@@ -8,13 +8,13 @@ The same sessions can cover the unfamiliar-user gate in [RELEASE.md](RELEASE.md)
 
 - **Share dialog → Make an image.** A keepsake image of the moment on screen, in the language the app is showing: the sky, the place name, local date and time, what the view is turned to, the Moon's phase, that moment's conditions, where the conditions come from ("Clouds based on reanalysis for this area"), and the weather and star-catalog credits. Device locations are printed as "My location", never as coordinates.
 - **Variants**, chosen with the two rows of buttons above the image:
-  - Style: **Realistic** (captured from the live sky) or **Illustrated** (a simple cartoon drawing of the same calculated sky; objects stay in their places, the Moon and planets are drawn larger, and the image says "Illustration").
+  - Style: **Realistic** (captured from the live sky) or **Illustrated** (a picture-book painting of the same calculated sky, in watercolour and gouache; objects stay in their places, the Moon and planets are drawn larger, and the image says "Illustration").
   - Horizon: **Ridge** (the app's horizon today) or one of three scenery silhouettes planned for phase 5: **Mountains**, **Sea**, **City**. All are under 2° of altitude and labelled illustrative on the image.
   - The horizon only shows when the view includes it. To compare horizons, look low (a rising Moon, an evening Venus, a sunset).
 - **The link.** When the view is centered on the Moon, the Sun, a planet or a star, or turned to a line pattern with lines shown, the link opens with the view turning to it ("When opened, the view turns to Jupiter."). Device coordinates are rounded to about 10 km unless the sender ticks **Share my exact location**.
 - **Save image** downloads a PNG; **Send image** appears where the browser can share files (most phones), and sends the image with the link.
 
-What it does not do yet (phase 4): chat-app link previews, a one-sentence welcome when a link opens, high-resolution export, or a polished illustration style.
+What it does not do yet (phase 4): chat-app link previews, a one-sentence welcome when a link opens, high-resolution export, or illustration at the level of commissioned artwork.
 
 ## Before the sessions
 

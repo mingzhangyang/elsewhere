@@ -1,7 +1,14 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { createProjection } from '../src/moment/projection';
-import { HORIZON_VARIANTS, horizonAltitude } from '../src/moment/scenery';
+import {
+  HORIZON_VARIANTS,
+  ISLAND_TOP,
+  MAST_TOP,
+  TOWN_TOP,
+  horizonAltitude,
+  type HorizonVariant,
+} from '../src/moment/scenery';
 import { wrap } from '../src/moment/postcard';
 import { drawIllustration } from '../src/moment/illustration';
 import { defaultWeatherValues } from '../src/domain/weather';
@@ -66,6 +73,12 @@ describe('horizon variants', () => {
         expect(altitude).toBeGreaterThanOrEqual(0);
         expect(altitude).toBeLessThan(2);
       }
+  });
+  it('what the illustration adds on the horizon line stays below 2° too', () => {
+    for (const top of [TOWN_TOP, ISLAND_TOP, MAST_TOP]) {
+      expect(top).toBeGreaterThan(0);
+      expect(top).toBeLessThan(2);
+    }
   });
 });
 
@@ -170,19 +183,56 @@ describe('image text', () => {
 });
 
 describe('the illustrated sky follows the layers and visibility', () => {
-  /** A 2D context that records what is drawn: dashed strokes (pattern lines) and text. */
+  /**
+   * A 2D context that records what is drawn: dashed strokes (pattern lines), text and where it is
+   * put, and the rectangles drawing is clipped to.
+   */
   const recorder = () => {
-    const calls = { dashedStrokes: 0, text: [] as string[] };
+    const calls = {
+      dashedStrokes: 0,
+      text: [] as string[],
+      textAt: [] as { text: string; y: number }[],
+      clips: [] as { y: number; height: number; drawnInside: number }[],
+    };
     let dashed = false;
+    let rect: { y: number; height: number } | null = null;
+    // The clips in force, innermost last, with the save depth each was made at.
+    const clipped: { depth: number; clip: (typeof calls.clips)[number] }[] = [];
+    let depth = 0;
     const ctx = new Proxy(
       {},
       {
         get: (_target, key) => {
           if (key === 'setLineDash') return (dash: number[]) => (dashed = dash.length > 0);
-          if (key === 'stroke') return () => dashed && calls.dashedStrokes++;
-          if (key === 'fillText') return (text: string) => calls.text.push(text);
+          if (key === 'stroke')
+            return () => {
+              if (dashed) calls.dashedStrokes++;
+              for (const { clip } of clipped) clip.drawnInside++;
+            };
+          if (key === 'fill') return () => clipped.forEach(({ clip }) => clip.drawnInside++);
+          if (key === 'fillText')
+            return (text: string, _x: number, y: number) => {
+              calls.text.push(text);
+              calls.textAt.push({ text, y });
+            };
           if (key === 'createLinearGradient' || key === 'createRadialGradient')
             return () => ({ addColorStop: () => {} });
+          if (key === 'save') return () => depth++;
+          if (key === 'restore')
+            return () => {
+              depth--;
+              while (clipped.length && clipped[clipped.length - 1].depth > depth) clipped.pop();
+            };
+          if (key === 'beginPath') return () => (rect = null);
+          if (key === 'rect')
+            return (_x: number, y: number, _w: number, height: number) => (rect = { y, height });
+          if (key === 'clip')
+            return () => {
+              if (!rect) return;
+              const clip = { ...rect, drawnInside: 0 };
+              calls.clips.push(clip);
+              clipped.push({ depth, clip });
+            };
           return () => {};
         },
         set: () => true,
@@ -194,10 +244,15 @@ describe('the illustrated sky follows the layers and visibility', () => {
     instant: string,
     view: { heading: number; altitude: number; fov: number },
     labels: boolean,
+    horizon: HorizonVariant = 'ridge',
   ) => {
     const sky = calculateSky(NEW_YORK, new Date(instant));
     const { ctx, calls } = recorder();
     const project = createProjection(view, 1.5);
+    const toCanvas = (alt: number, az: number) => {
+      const p = project(alt, az);
+      return { x: (p.x + 1) * 600, y: (1 - p.y) * 400, front: p.front };
+    };
     drawIllustration(
       ctx,
       1200,
@@ -213,15 +268,12 @@ describe('the illustrated sky follows the layers and visibility', () => {
         skyBrightness: 'dark',
         provenance: { kind: 'none' },
       },
-      (alt, az) => {
-        const p = project(alt, az);
-        return { x: (p.x + 1) * 600, y: (1 - p.y) * 400, front: p.front };
-      },
-      'ridge',
+      toCanvas,
+      horizon,
       { object: (object) => object.name, pattern: (id) => id },
       'sans-serif',
     );
-    return calls;
+    return { ...calls, horizonY: toCanvas(0, view.heading).y };
   };
   // Orion and Sirius in the south at midnight in January.
   const night = '2026-01-10T05:00:00Z';
@@ -239,5 +291,27 @@ describe('the illustrated sky follows the layers and visibility', () => {
     const north = { heading: 0, altitude: 45, fov: 92 };
     expect(draw('2026-06-15T04:00:00Z', north, true).dashedStrokes).toBeGreaterThan(0);
     expect(draw('2026-06-15T16:00:00Z', north, true).dashedStrokes).toBe(0);
+  });
+  // Hills, trees, houses and people are taller than 2°, so they may only stand below the horizon line.
+  it('paints the taller scenery only inside a clip that starts under the horizon line', () => {
+    for (const horizon of HORIZON_VARIANTS) {
+      const { clips, horizonY } = draw(night, { heading: 190, altitude: 12, fov: 66 }, true, horizon);
+      const ground = clips.filter((clip) => clip.y > horizonY && clip.y < horizonY + 2);
+      expect(ground, horizon).toHaveLength(1);
+      expect(ground[0].y + ground[0].height, horizon).toBeGreaterThanOrEqual(800);
+      // The layers, trees, grass and figures (by the sea, a headland): many marks, all inside it.
+      expect(ground[0].drawnInside, horizon).toBeGreaterThan(50);
+    }
+  });
+  it('letters a name above its object when below would fall on the land', () => {
+    // Sunset in New York, facing the Sun on the horizon; Sirius, high in January, keeps its name below.
+    const sunset = draw('2026-11-12T21:35:00Z', { heading: 240, altitude: 14, fov: 66 }, true);
+    const sun = sunset.textAt.find(({ text }) => text === 'Sun')!;
+    expect(sun.y).toBeLessThan(sunset.horizonY - 40);
+    const high = draw(night, south, true);
+    const sirius = high.textAt.find(({ text }) => text === 'Sirius')!;
+    const star = calculateSky(NEW_YORK, new Date(night)).stars.find((s) => s.name === 'Sirius')!;
+    const at = createProjection(south, 1.5)(star.altitude, star.azimuth);
+    expect(sirius.y).toBeGreaterThan((1 - at.y) * 400);
   });
 });

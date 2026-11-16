@@ -322,7 +322,7 @@ export function drawIllustration(
   /** Names to letter in at the end: below their object, or above it (`top`) when that would fall on the land. */
   const named: { name: string; x: number; y: number; top?: number }[] = [];
   /** What clouds are kept off, so an illustrative cloud never covers what the app says is in view. */
-  const keepClear: { x: number; y: number; r: number }[] = [];
+  const keepClear: { x: number; y: number; r: number; star?: boolean }[] = [];
   if (layers.stars) {
     const stars: Star[] = sky.stars.filter((s) => s.altitude > 0 && s.magnitude < 5.2).slice(0, 900);
     for (const star of stars) {
@@ -332,7 +332,7 @@ export function drawIllustration(
       if (!inView(p)) continue;
       const a = Math.min(1, 0.3 + share * 0.7);
       paintStar(ctx, p.x, p.y, star.magnitude, starTint(star.colorIndex), a, unit, hashOf(star.id));
-      if (star.magnitude < 1.6) keepClear.push({ x: p.x, y: p.y, r: 26 * unit });
+      if (star.magnitude < 1.6) keepClear.push({ x: p.x, y: p.y, r: 26 * unit, star: true });
       if (layers.labels && star.magnitude < 1.3 && star.name) {
         const r = Math.max(1.05, (5.4 - star.magnitude) * 1.12) * unit;
         named.push({
@@ -528,9 +528,12 @@ export function drawIllustration(
       if (!inView(p, 300 * unit)) continue;
       // Lower clouds are farther away, so smaller.
       const scale = (0.45 + alt / 24) * unit;
+      // The amount of cloud follows the cover: when no gap among the bright stars is found, only the
+      // Sun, Moon and planets are kept clear.
       if (
         keepClear.some(
           (k) =>
+            !(k.star && attempt > 5) &&
             Math.abs(k.x - p.x) < halfWide * scale + k.r &&
             k.y > p.y - up * scale - k.r &&
             k.y < p.y + up * scale * 0.2 + k.r,
@@ -583,7 +586,6 @@ export function drawIllustration(
       cloudPalette,
       lightOn(heap.x, heap.y - heap.size * 0.5),
       random,
-      1,
       heap.tiers,
     );
 
