@@ -29,3 +29,43 @@ for (const width of [320, 390, 1280]) {
     }
   });
 }
+
+for (const viewport of [
+  { width: 390, height: 844 },
+  { width: 667, height: 375 },
+]) {
+  test(`mobile menus are bottom drawers at ${viewport.width}×${viewport.height}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.goto('/?scenario=night');
+    for (const [name, region] of [
+      ['Objects', 'objects inspector'],
+      ['Weather', 'weather inspector'],
+      ['Layers', 'settings inspector'],
+    ]) {
+      const trigger = page.getByRole('button', { name, exact: true });
+      await trigger.click();
+      const drawer = page.getByRole('region', { name: region });
+      await expect(drawer).toBeVisible();
+      await expect
+        .poll(async () => {
+          const box = (await drawer.boundingBox())!;
+          return Math.round(box.y + box.height);
+        })
+        .toBe(viewport.height);
+      const box = (await drawer.boundingBox())!;
+      expect(box.x).toBe(0);
+      expect(box.width).toBe(viewport.width);
+      expect(box.y).toBeGreaterThan(56);
+      await expect(page.getByRole('button', { name: 'Close inspector' })).toBeInViewport();
+      if (name === 'Layers') {
+        const language = drawer.getByRole('combobox', { name: 'Interface language' });
+        await language.scrollIntoViewIfNeeded();
+        await expect(language).toBeInViewport();
+        await expect(page.getByRole('button', { name: 'Close inspector' })).toBeInViewport();
+      }
+      await page.getByRole('button', { name: 'Close inspector' }).click();
+      await expect(drawer).toHaveCount(0);
+      await expect(trigger).toBeFocused();
+    }
+  });
+}
