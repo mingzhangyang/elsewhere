@@ -26,6 +26,7 @@ import { betterHit, pickPointAt, starAlpha } from './starPicking';
 import { CLOUD_DRIFT_FPS, PRECIPITATION_VISIBLE, weatherMotion } from './weatherMotion';
 import {
   limitingMagnitude,
+  milkyWayVisibility,
   planetTwilightVisibility,
   starGlow,
   starIntensity,
@@ -40,9 +41,12 @@ import {
   diurnalTurn,
   setRotationMatrix,
 } from './starMaterial';
+import { createMilkyWay } from './milkyWay';
 
 /** Radius of the sphere the star points are placed on. */
 const STAR_DISTANCE = 1770;
+/** The Milky Way's glow lies behind the stars, inside the sky dome. */
+const MILKY_WAY_DISTANCE = 2000;
 /** Planets are drawn just inside the star sphere, through the same point shader. */
 const PLANET_DISTANCE = 1760;
 /** Display tints, in PLANETS order: illustrative, chosen to tell the planets apart. */
@@ -293,6 +297,8 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
     starPoints.frustumCulled = false;
     starPoints.matrixAutoUpdate = false;
     scene.add(starPoints);
+    const milkyWay = createMilkyWay(MILKY_WAY_DISTANCE);
+    scene.add(milkyWay.mesh);
     let starIndex = new Map<string, number>();
     let labels = input.labels;
     const layersFor = (stars: Star[]) =>
@@ -378,6 +384,8 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
       diurnalTurn(activeSky.starField.rotation, seconds, turn);
       starPoints.matrix.multiplyMatrices(turnMatrix.makeRotationFromQuaternion(turn), starBase);
       starPoints.matrixWorldNeedsUpdate = true;
+      milkyWay.mesh.matrix.copy(starPoints.matrix);
+      milkyWay.mesh.matrixWorldNeedsUpdate = true;
       // Planets are placed in horizontal coordinates; between ticks they turn with the sky.
       planetPoints.matrix.copy(turnMatrix);
       planetPoints.matrixWorldNeedsUpdate = true;
@@ -473,6 +481,9 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
     let reducedMotion = input.reducedMotion;
     let skyBrightness = input.skyBrightness ?? 'dark';
     let quality = input.quality ?? 'auto';
+    /** Fewer layers of noise for the Milky Way's structure on the low quality setting. */
+    const milkyWayOctaves = () => (quality === 'low' ? 3 : 5);
+    milkyWay.material.uniforms.uOctaves.value = milkyWayOctaves();
     let contextLost = false;
     let starLimit = 6;
     /** A shared link's camera turn toward its subject, in progress (see `turnTo`). */
@@ -656,6 +667,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
         skyBrightness = settings.skyBrightness ?? 'dark';
         ridge.visible = settings.horizon !== 'flat';
         quality = settings.quality ?? 'auto';
+        milkyWay.material.uniforms.uOctaves.value = milkyWayOctaves();
         renderer.setPixelRatio(
           Math.min(window.devicePixelRatio || 1, quality === 'low' ? 1 : quality === 'auto' ? 1.5 : 2),
         );
@@ -725,6 +737,9 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
         starMaterial.uniforms.uLimit.value = starLimit;
         starMaterial.uniforms.uOpacity.value = nightVisibility * visibilityFactor;
         starPoints.visible = flags.stars;
+        const milkyWayShare = milkyWayVisibility(starLimit, nextSky.sunAltitude) * visibilityFactor;
+        milkyWay.material.uniforms.uIntensity.value = milkyWayShare;
+        milkyWay.mesh.visible = flags.stars && milkyWayShare > 0;
         planetAlphas = placePlanets(nextSky.planets, nextSky.sunAltitude);
         planetMaterial.uniforms.uLimit.value = starLimit;
         planetMaterial.uniforms.uOpacity.value = visibilityFactor;

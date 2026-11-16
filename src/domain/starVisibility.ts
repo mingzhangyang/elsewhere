@@ -117,6 +117,21 @@ export function starGlow(magnitude: number): number {
   return clamp((STAR_MODEL.glowMagnitude - magnitude) / STAR_MODEL.glowRange, 0, 1);
 }
 
+/**
+ * Limiting magnitudes between which the Milky Way fades in: gone at or below `hidden` (a city sky,
+ * or a bright Moon high up), faint in a suburban sky, full only in a dark sky with little moonlight.
+ */
+export const MILKY_WAY_LIMIT = { hidden: 4, full: 6 } as const;
+
+/**
+ * 0–1: how much of the Milky Way's glow shows, before weather. It follows the same limiting magnitude
+ * as the stars, and needs a darker sky than they do, so twilight dims it twice as hard.
+ */
+export function milkyWayVisibility(limit: number, sunAltitude: number): number {
+  const twilight = twilightVisibility(sunAltitude);
+  return smoothstep(limit, MILKY_WAY_LIMIT.hidden, MILKY_WAY_LIMIT.full) * twilight * twilight;
+}
+
 /** 0.1–1: overall contrast lost to reported haze and poor visibility. */
 export function weatherVisibility(weather: Pick<WeatherValues, 'visibilityKm' | 'haze'>): number {
   return clamp(weather.visibilityKm / 28, 0.1, 1) * (1 - clamp(weather.haze / 125, 0, 0.85));
