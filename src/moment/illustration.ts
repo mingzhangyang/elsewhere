@@ -321,7 +321,12 @@ export function drawIllustration(
   // 2. Stars, through the app's visibility model.
   /** Names to letter in at the end: below their object, or above it (`top`) when that would fall on the land. */
   const named: { name: string; x: number; y: number; top?: number }[] = [];
-  /** What clouds are kept off, so an illustrative cloud never covers what the app says is in view. */
+  /**
+   * The Sun, Moon, planets and first-magnitude stars are painted after the clouds (`overClouds`), so
+   * an illustrative cloud can never cover them, whatever its shape. Clouds are also placed to leave
+   * room around them (`keepClear`), so that they usually pass beside rather than behind.
+   */
+  const overClouds: (() => void)[] = [];
   const keepClear: { x: number; y: number; r: number; star?: boolean }[] = [];
   if (layers.stars) {
     const stars: Star[] = sky.stars.filter((s) => s.altitude > 0 && s.magnitude < 5.2).slice(0, 900);
@@ -331,8 +336,12 @@ export function drawIllustration(
       const p = toCanvas(star.altitude, star.azimuth);
       if (!inView(p)) continue;
       const a = Math.min(1, 0.3 + share * 0.7);
-      paintStar(ctx, p.x, p.y, star.magnitude, starTint(star.colorIndex), a, unit, hashOf(star.id));
-      if (star.magnitude < 1.6) keepClear.push({ x: p.x, y: p.y, r: 26 * unit, star: true });
+      const paint = () =>
+        paintStar(ctx, p.x, p.y, star.magnitude, starTint(star.colorIndex), a, unit, hashOf(star.id));
+      if (star.magnitude < 1.6) {
+        overClouds.push(paint);
+        keepClear.push({ x: p.x, y: p.y, r: 26 * unit, star: true });
+      } else paint();
       if (layers.labels && star.magnitude < 1.3 && star.name) {
         const r = Math.max(1.05, (5.4 - star.magnitude) * 1.12) * unit;
         named.push({
@@ -384,17 +393,19 @@ export function drawIllustration(
     if (inView(p, 120)) {
       const low = clamp01(1 - sky.sunAltitude / 8);
       const r = (30 + 8 * low) * unit;
-      glowAt(ctx, p.x, p.y, r * 9, hex('#fff1c2'), 0.42 * (1 - cover * 0.5));
-      glowAt(ctx, p.x, p.y, r * 4, mix(hex('#fff4cf'), hex('#ffc880'), low), 0.5);
-      glowAt(ctx, p.x, p.y, r * 1.9, hex('#fffbe8'), 0.75);
-      const disc = ctx.createRadialGradient(p.x - r * 0.25, p.y - r * 0.25, r * 0.1, p.x, p.y, r);
-      disc.addColorStop(0, '#fffdf0');
-      disc.addColorStop(0.6, css(mix(hex('#fff3b8'), hex('#ffd27a'), low)));
-      disc.addColorStop(1, css(mix(hex('#ffe38a'), hex('#ff9a58'), low)));
-      ctx.fillStyle = disc;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, r, 0, TAU);
-      ctx.fill();
+      overClouds.push(() => {
+        glowAt(ctx, p.x, p.y, r * 9, hex('#fff1c2'), 0.42 * (1 - cover * 0.5));
+        glowAt(ctx, p.x, p.y, r * 4, mix(hex('#fff4cf'), hex('#ffc880'), low), 0.5);
+        glowAt(ctx, p.x, p.y, r * 1.9, hex('#fffbe8'), 0.75);
+        const disc = ctx.createRadialGradient(p.x - r * 0.25, p.y - r * 0.25, r * 0.1, p.x, p.y, r);
+        disc.addColorStop(0, '#fffdf0');
+        disc.addColorStop(0.6, css(mix(hex('#fff3b8'), hex('#ffd27a'), low)));
+        disc.addColorStop(1, css(mix(hex('#ffe38a'), hex('#ff9a58'), low)));
+        ctx.fillStyle = disc;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, r, 0, TAU);
+        ctx.fill();
+      });
       keepClear.push({ x: p.x, y: p.y, r: r * 2.2 });
       if (layers.labels)
         named.push({
@@ -414,42 +425,44 @@ export function drawIllustration(
     const p = toCanvas(planet.altitude, planet.azimuth);
     if (!inView(p)) continue;
     const r = (planet.magnitude < -2 ? 11 : 8.5) * unit;
-    const [fill, shade] = PLANET_FILL[planet.id];
-    glowAt(ctx, p.x, p.y, r * 5.5, hex(fill), 0.36 * share);
-    if (planet.id === 'venus') {
-      ctx.fillStyle = css(hex('#ffffff'), 0.8 * share);
-      ctx.beginPath();
-      mark(ctx, p.x, p.y, r * 7.4, r * 0.34, Math.PI / 2 + 0.06);
-      mark(ctx, p.x, p.y, r * 6, r * 0.32, 0.06);
-      ctx.fill();
-    }
-    const ring = (from: number, to: number) => {
-      ctx.strokeStyle = css(hex('#f8e6b0'), 0.92);
-      ctx.lineWidth = 2.6 * unit;
-      ctx.beginPath();
-      ctx.ellipse(p.x, p.y, r * 2.1, r * 0.72, -0.35, from, to);
-      ctx.stroke();
-    };
-    if (planet.id === 'saturn') ring(Math.PI, TAU);
-    const ball = ctx.createRadialGradient(p.x - r * 0.35, p.y - r * 0.35, r * 0.1, p.x, p.y, r);
-    ball.addColorStop(0, '#fffdf4');
-    ball.addColorStop(0.5, fill);
-    ball.addColorStop(1, shade);
-    ctx.fillStyle = ball;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, r, 0, TAU);
-    ctx.fill();
-    if (planet.id === 'jupiter') {
-      ctx.save();
+    overClouds.push(() => {
+      const [fill, shade] = PLANET_FILL[planet.id];
+      glowAt(ctx, p.x, p.y, r * 5.5, hex(fill), 0.36 * share);
+      if (planet.id === 'venus') {
+        ctx.fillStyle = css(hex('#ffffff'), 0.8 * share);
+        ctx.beginPath();
+        mark(ctx, p.x, p.y, r * 7.4, r * 0.34, Math.PI / 2 + 0.06);
+        mark(ctx, p.x, p.y, r * 6, r * 0.32, 0.06);
+        ctx.fill();
+      }
+      const ring = (from: number, to: number) => {
+        ctx.strokeStyle = css(hex('#f8e6b0'), 0.92);
+        ctx.lineWidth = 2.6 * unit;
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y, r * 2.1, r * 0.72, -0.35, from, to);
+        ctx.stroke();
+      };
+      if (planet.id === 'saturn') ring(Math.PI, TAU);
+      const ball = ctx.createRadialGradient(p.x - r * 0.35, p.y - r * 0.35, r * 0.1, p.x, p.y, r);
+      ball.addColorStop(0, '#fffdf4');
+      ball.addColorStop(0.5, fill);
+      ball.addColorStop(1, shade);
+      ctx.fillStyle = ball;
       ctx.beginPath();
       ctx.arc(p.x, p.y, r, 0, TAU);
-      ctx.clip();
-      ctx.fillStyle = 'rgba(176,120,80,.45)';
-      ctx.fillRect(p.x - r, p.y - r * 0.35, r * 2, r * 0.18);
-      ctx.fillRect(p.x - r, p.y + r * 0.15, r * 2, r * 0.16);
-      ctx.restore();
-    }
-    if (planet.id === 'saturn') ring(0, Math.PI);
+      ctx.fill();
+      if (planet.id === 'jupiter') {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, r, 0, TAU);
+        ctx.clip();
+        ctx.fillStyle = 'rgba(176,120,80,.45)';
+        ctx.fillRect(p.x - r, p.y - r * 0.35, r * 2, r * 0.18);
+        ctx.fillRect(p.x - r, p.y + r * 0.15, r * 2, r * 0.16);
+        ctx.restore();
+      }
+      if (planet.id === 'saturn') ring(0, Math.PI);
+    });
     keepClear.push({ x: p.x, y: p.y, r: 30 * unit });
     if (layers.labels)
       named.push({
@@ -465,7 +478,9 @@ export function drawIllustration(
     const p = toCanvas(sky.moon.altitude, sky.moon.azimuth);
     if (inView(p, 120)) {
       const r = 42 * unit;
-      paintMoon(ctx, p.x, p.y, r, sky.moon.illumination, sky.moon.brightLimbAngle, day);
+      overClouds.push(() =>
+        paintMoon(ctx, p.x, p.y, r, sky.moon.illumination, sky.moon.brightLimbAngle, day),
+      );
       keepClear.push({ x: p.x, y: p.y, r: r * 1.5 });
       if (layers.labels)
         named.push({
@@ -512,14 +527,15 @@ export function drawIllustration(
     return { x: lx / length, y: ly / length, backlit, under, underColour };
   };
   /**
-   * A place for a cloud between two altitudes whose box (`halfWide` to each side, `up` above and a
-   * little below, in pixels at scale 1) holds none of the bodies and bright stars drawn above.
+   * A place for a cloud between two altitudes whose painted footprint (`extent`, in pixels for the
+   * cloud's scale: half its width, its reach above and below the point it is placed by) holds none of
+   * the objects kept clear. Those are painted over the clouds in any case; this only makes clouds
+   * pass beside them rather than behind.
    */
   const place = (
     minAlt: number,
     maxAlt: number,
-    halfWide: number,
-    up: number,
+    extent: (scale: number) => { half: number; up: number; down: number },
   ): (Point & { alt: number; scale: number }) | null => {
     for (let attempt = 0; attempt < 8; attempt++) {
       const az = view.heading + (random() - 0.5) * 2.2 * halfWidth;
@@ -528,15 +544,16 @@ export function drawIllustration(
       if (!inView(p, 300 * unit)) continue;
       // Lower clouds are farther away, so smaller.
       const scale = (0.45 + alt / 24) * unit;
-      // The amount of cloud follows the cover: when no gap among the bright stars is found, only the
-      // Sun, Moon and planets are kept clear.
+      const { half, up, down } = extent(scale);
+      // The amount of cloud follows the cover: when no gap among the bright stars is found, the cloud
+      // may pass behind them (they are painted over it).
       if (
         keepClear.some(
           (k) =>
             !(k.star && attempt > 5) &&
-            Math.abs(k.x - p.x) < halfWide * scale + k.r &&
-            k.y > p.y - up * scale - k.r &&
-            k.y < p.y + up * scale * 0.2 + k.r,
+            Math.abs(k.x - p.x) < half + k.r &&
+            k.y > p.y - up - k.r &&
+            k.y < p.y + down + k.r,
         )
       )
         continue;
@@ -556,23 +573,38 @@ export function drawIllustration(
       clamp01((lowShare + mid - 0.8) * 2.5),
     );
   for (let i = 0, n = Math.round(high * 7); i < n; i++) {
-    const p = place(28, 75, 0, 0);
+    // Strokes up to 1.1 lengths long, spread 0.4 lengths across and 0.14 lengths up and down.
+    const p = place(28, 75, (scale) => ({
+      half: 480 * scale * 0.8,
+      up: 480 * scale * 0.2,
+      down: 480 * scale * 0.15,
+    }));
     if (p) cirrus(ctx, p.x, p.y, 480 * p.scale, cloudPalette, lightOn(p.x, p.y), random);
   }
   for (let i = 0, n = Math.round(mid * 6); i < n; i++) {
-    const p = place(14, 40, 150, 70);
+    // Up to four rows of up to seven puffs, 1.25 sizes apart, rows 0.72 sizes apart.
+    const p = place(14, 40, (scale) => ({
+      half: 34 * scale * 6,
+      up: 34 * scale * 2.4,
+      down: 34 * scale * 2.4,
+    }));
     if (p) altocumulus(ctx, p.x, p.y, 34 * p.scale, cloudPalette, lightOn(p.x, p.y), random);
   }
   for (let i = 0, n = Math.round(lowShare * 6); i < n; i++) {
-    const p = place(1.2, 7, 0, 0);
-    if (p)
-      stratus(ctx, p.x, p.y, (260 + random() * 420) * unit, cloudPalette, lightOn(p.x, p.y), random, unit);
+    const length = (260 + random() * 420) * unit;
+    // Bars up to 1.05 lengths long, set up to a quarter length off centre, stacked about 40 units.
+    const p = place(1.2, 7, () => ({ half: length * 0.8, up: 45 * unit, down: 45 * unit }));
+    if (p) stratus(ctx, p.x, p.y, length, cloudPalette, lightOn(p.x, p.y), random, unit);
   }
   const heaps: (Point & { size: number; tiers: number; alt: number })[] = [];
   for (let i = 0, n = Math.round(lowShare * 10); i < n; i++) {
     const tiers = random() < 0.3 + lowShare * 0.4 ? 3 : random() < 0.55 ? 2 : 1;
     const grow = 0.75 + random() * 0.55;
-    const p = place(3, 24, 118 * grow * 2.3, 118 * grow * (0.7 + 0.5 * tiers));
+    // Masses up to 2.2 sizes to each side of the centre, trailing shreds to 3.2; tiers 0.42 sizes high.
+    const p = place(3, 24, (scale) => {
+      const size = 118 * grow * scale;
+      return { half: size * 3.2, up: size * (1.2 + 0.5 * tiers), down: size * 0.2 };
+    });
     if (p) heaps.push({ x: p.x, y: p.y, alt: p.alt, size: 118 * grow * p.scale, tiers });
   }
   // Farther (lower) clouds first, so nearer ones overlap them.
@@ -588,6 +620,10 @@ export function drawIllustration(
       random,
       heap.tiers,
     );
+
+  // The Sun, Moon, planets and bright stars, over the clouds: what the app reports as visible stays
+  // visible on the image.
+  for (const paint of overClouds) paint();
 
   // 8. The landscape, painted in depth under the same light.
   paintLandscape({

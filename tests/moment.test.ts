@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createProjection } from '../src/moment/projection';
 import {
   HORIZON_VARIANTS,
@@ -26,6 +26,26 @@ import { cityLevel, parseExploration, type Exploration } from '../src/lib/persis
 import { normalizeLocation, PRESETS } from '../src/lib/locations';
 import type { WeatherSelection } from '../src/types';
 import { NEW_YORK } from './fixtures/locations';
+
+/** What the illustration paints, in order: each cloud, and each filled path with its circles. */
+const painted = vi.hoisted(
+  () => [] as ({ kind: 'cloud' } | { kind: 'fill'; arcs: { x: number; y: number; r: number }[] })[],
+);
+// The cloud painters, unchanged, noting each call in `painted`.
+vi.mock('../src/moment/clouds', async (importOriginal) => {
+  const clouds = await importOriginal<Record<string, unknown>>();
+  return Object.fromEntries(
+    Object.entries(clouds).map(([name, value]) => [
+      name,
+      typeof value === 'function'
+        ? (...args: unknown[]) => {
+            painted.push({ kind: 'cloud' });
+            return (value as (...a: unknown[]) => unknown)(...args);
+          }
+        : value,
+    ]),
+  );
+});
 
 describe('the illustrated image puts objects where the renderer does', () => {
   // The renderer's camera: rotation (pitch, yaw, 0) in YXZ order, as cameraControls sets it.
@@ -199,6 +219,10 @@ describe('the illustrated sky follows the layers and visibility', () => {
     // The clips in force, innermost last, with the save depth each was made at.
     const clipped: { depth: number; clip: (typeof calls.clips)[number] }[] = [];
     let depth = 0;
+    // Circles in the current path, placed by the translation in force (the Moon is drawn translated).
+    let arcs: { x: number; y: number; r: number }[] = [];
+    const offsets = [{ x: 0, y: 0 }];
+    const offset = () => offsets[offsets.length - 1];
     const ctx = new Proxy(
       {},
       {
@@ -209,7 +233,17 @@ describe('the illustrated sky follows the layers and visibility', () => {
               if (dashed) calls.dashedStrokes++;
               for (const { clip } of clipped) clip.drawnInside++;
             };
-          if (key === 'fill') return () => clipped.forEach(({ clip }) => clip.drawnInside++);
+          if (key === 'fill')
+            return () => {
+              clipped.forEach(({ clip }) => clip.drawnInside++);
+              painted.push({ kind: 'fill', arcs });
+            };
+          if (key === 'arc')
+            return (x: number, y: number, r: number) =>
+              arcs.push({ x: x + offset().x, y: y + offset().y, r });
+          if (key === 'translate')
+            return (x: number, y: number) =>
+              (offsets[offsets.length - 1] = { x: offset().x + x, y: offset().y + y });
           if (key === 'fillText')
             return (text: string, _x: number, y: number) => {
               calls.text.push(text);
@@ -217,13 +251,22 @@ describe('the illustrated sky follows the layers and visibility', () => {
             };
           if (key === 'createLinearGradient' || key === 'createRadialGradient')
             return () => ({ addColorStop: () => {} });
-          if (key === 'save') return () => depth++;
+          if (key === 'save')
+            return () => {
+              depth++;
+              offsets.push({ ...offset() });
+            };
           if (key === 'restore')
             return () => {
               depth--;
+              offsets.pop();
               while (clipped.length && clipped[clipped.length - 1].depth > depth) clipped.pop();
             };
-          if (key === 'beginPath') return () => (rect = null);
+          if (key === 'beginPath')
+            return () => {
+              rect = null;
+              arcs = [];
+            };
           if (key === 'rect')
             return (_x: number, y: number, _w: number, height: number) => (rect = { y, height });
           if (key === 'clip')
@@ -245,8 +288,10 @@ describe('the illustrated sky follows the layers and visibility', () => {
     view: { heading: number; altitude: number; fov: number },
     labels: boolean,
     horizon: HorizonVariant = 'ridge',
+    cloud = 0,
   ) => {
     const sky = calculateSky(NEW_YORK, new Date(instant));
+    painted.length = 0;
     const { ctx, calls } = recorder();
     const project = createProjection(view, 1.5);
     const toCanvas = (alt: number, az: number) => {
@@ -259,7 +304,15 @@ describe('the illustrated sky follows the layers and visibility', () => {
       800,
       {
         sky,
-        weather: { ...defaultWeatherValues(), cloudCover: 0, haze: 0, visibilityKm: 40 },
+        weather: {
+          ...defaultWeatherValues(),
+          cloudCover: cloud,
+          cloudLow: cloud,
+          cloudMid: cloud,
+          cloudHigh: cloud,
+          haze: 0,
+          visibilityKm: 40,
+        },
         view,
         aspect: 1.5,
         layers: { stars: true, lines: true, labels },
@@ -273,7 +326,7 @@ describe('the illustrated sky follows the layers and visibility', () => {
       { object: (object) => object.name, pattern: (id) => id },
       'sans-serif',
     );
-    return { ...calls, horizonY: toCanvas(0, view.heading).y };
+    return { ...calls, horizonY: toCanvas(0, view.heading).y, sky, toCanvas };
   };
   // Orion and Sirius in the south at midnight in January.
   const night = '2026-01-10T05:00:00Z';
@@ -314,4 +367,27 @@ describe('the illustrated sky follows the layers and visibility', () => {
     const at = createProjection(south, 1.5)(star.altitude, star.azimuth);
     expect(sirius.y).toBeGreaterThan((1 - at.y) * 400);
   });
+  // Clouds are illustrative and the Sun, Moon, planets and bright stars are not: under full cover at
+  // every level, every cloud is painted before the disc of a low Sun or Moon, so none can hide it.
+  for (const [body, instant, view] of [
+    ['Sun', '2026-11-12T21:35:00Z', { heading: 240, altitude: 14, fov: 66 }],
+    ['Moon', '2026-08-15T00:30:00Z', { heading: 265, altitude: 10, fov: 66 }],
+  ] as const)
+    it(`paints every cloud before the disc of a low ${body} under full cover`, () => {
+      const { sky, toCanvas } = draw(instant, view, false, 'ridge', 100);
+      const object = body === 'Sun' ? sky.sun : sky.moon;
+      expect(object.visible).toBe(true);
+      expect(object.altitude).toBeLessThan(6);
+      const at = toCanvas(object.altitude, object.azimuth);
+      // The disc: a circle on the body's position with its drawn radius (glows are wider).
+      const disc = painted.findIndex(
+        (step) =>
+          step.kind === 'fill' &&
+          step.arcs.some((a) => Math.hypot(a.x - at.x, a.y - at.y) < 0.5 && a.r > 20 && a.r < 40),
+      );
+      expect(disc).toBeGreaterThan(0);
+      const clouds = painted.flatMap((step, i) => (step.kind === 'cloud' ? [i] : []));
+      expect(clouds.length).toBeGreaterThan(10);
+      expect(Math.max(...clouds)).toBeLessThan(disc);
+    });
 });
