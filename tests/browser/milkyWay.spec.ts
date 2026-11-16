@@ -58,8 +58,7 @@ test('the procedural Milky Way shaders compile and paint light in real WebGL', a
         const pixels = new Uint8Array(canvas.width * canvas.height * 4);
         gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
         let light = 0;
-        for (let i = 0; i < pixels.length; i += 4)
-          light += pixels[i] + pixels[i + 1] + pixels[i + 2];
+        for (let i = 0; i < pixels.length; i += 4) light += pixels[i] + pixels[i + 1] + pixels[i + 2];
         return light;
       };
       const full = draw(5, 1);
@@ -106,8 +105,7 @@ test('Milky Way stays renderable through quality, star and sky-brightness toggle
       context.drawImage(image, 0, 0, canvas.width, canvas.height);
       const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
       let total = 0;
-      for (let i = 0; i < pixels.length; i += 4)
-        total += pixels[i] + pixels[i + 1] + pixels[i + 2];
+      for (let i = 0; i < pixels.length; i += 4) total += pixels[i] + pixels[i + 1] + pixels[i + 2];
       return total / (3 * canvas.width * canvas.height);
     }, png.toString('base64'));
   };

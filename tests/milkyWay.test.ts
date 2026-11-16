@@ -65,11 +65,9 @@ describe('galactic coordinates', () => {
     }
   });
 
-  it('matches the catalog\'s UTC-noon precession epoch even just after midnight', () => {
+  it("matches the catalog's UTC-noon precession epoch even just after midnight", () => {
     const field = calculateStarField(40.7, -74, new Date('2100-01-01T00:00:01Z'), 0);
-    expect(field.precession).toEqual(
-      precessionMatrixJ2000ToDate(new Date('2100-01-01T12:00:00Z')),
-    );
+    expect(field.precession).toEqual(precessionMatrixJ2000ToDate(new Date('2100-01-01T12:00:00Z')));
   });
 });
 
