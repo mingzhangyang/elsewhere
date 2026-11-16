@@ -3,8 +3,8 @@ import { EQUATORIAL_TO_GALACTIC } from '../domain/galactic';
 
 /**
  * The Milky Way as a procedural glow on a sphere that turns with the stars. The sphere holds
- * equator-of-date directions, like the star field, and shares its object matrix; the fragment
- * shader turns each direction into galactic longitude and latitude and paints an illustrative
+ * J2000 directions. Its object matrix applies the date's precession before the same sky rotation
+ * as the stars; the fragment shader uses the unprecessed J2000 directions to paint an illustrative
  * band from them: brightest and widest toward the center in Sagittarius, faint toward the
  * anticenter, with the bulge, star clouds and the dark Great Rift from Cygnus to Ophiuchus. No
  * image is used. The shape is an impression of the band, not a survey map.

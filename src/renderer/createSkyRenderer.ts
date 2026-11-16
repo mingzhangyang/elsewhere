@@ -379,12 +379,15 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
     const turn = new THREE.Quaternion();
     const turnMatrix = new THREE.Matrix4();
     const starBase = new THREE.Matrix4();
+    const milkyWayPrecession = new THREE.Matrix4();
     const playbackTurn = createPlaybackTurn(MAX_EXTRAPOLATION);
     const applyTurn = (seconds: number) => {
       diurnalTurn(activeSky.starField.rotation, seconds, turn);
       starPoints.matrix.multiplyMatrices(turnMatrix.makeRotationFromQuaternion(turn), starBase);
       starPoints.matrixWorldNeedsUpdate = true;
-      milkyWay.mesh.matrix.copy(starPoints.matrix);
+      // The shader samples J2000 directions. Precess the sphere to the same date-frame
+      // as the catalog, then apply the same local sidereal/playback turn as the stars.
+      milkyWay.mesh.matrix.multiplyMatrices(starPoints.matrix, milkyWayPrecession);
       milkyWay.mesh.matrixWorldNeedsUpdate = true;
       // Planets are placed in horizontal coordinates; between ticks they turn with the sky.
       planetPoints.matrix.copy(turnMatrix);
@@ -728,6 +731,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
         if (nextSky.stars.length !== starCount) buildStars(nextSky.stars, nextSky.starField.vectors);
         else if (nextSky.starField.vectors !== starVectors) placeStars(nextSky.starField.vectors);
         setRotationMatrix(starBase, nextSky.starField.rotation);
+        setRotationMatrix(milkyWayPrecession, nextSky.starField.precession);
         // The new instant already includes the turn shown so far; restart from rest.
         if (ticked) playbackTurn.tick(performance.now());
         applyTurn(0);

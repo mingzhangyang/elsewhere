@@ -1,8 +1,8 @@
 /**
  * Rotation from J2000 equatorial unit vectors (x: equinox, z: celestial pole) to galactic ones
  * (x: galactic center, z: north galactic pole), row-major. Hipparcos values (ESA 1997, vol. 1, §1.5.3).
- * The Milky Way is drawn from the equator-of-date star vectors with this J2000 matrix; precession
- * moves the frame by under 0.5° in this century, far finer than the band's structure.
+ * The procedural Milky Way evaluates directions in J2000; its sphere's object transform
+ * precesses those directions to the star catalog's equator of date before placing them in the sky.
  */
 // prettier-ignore
 export const EQUATORIAL_TO_GALACTIC = [
