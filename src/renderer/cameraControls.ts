@@ -73,9 +73,10 @@ export function createCameraControls(
         const nextDistance = distance();
         if (oldDistance > 0 && nextDistance > 0) zoom(oldDistance / nextDistance);
       } else {
-        yaw -= (event.clientX - previous.x) * 0.0038 * lookScale();
+        // Grab the sky: projected objects follow the pointer on both axes.
+        yaw += (event.clientX - previous.x) * 0.0038 * lookScale();
         pitch = THREE.MathUtils.clamp(
-          pitch - (event.clientY - previous.y) * 0.0034 * lookScale(),
+          pitch + (event.clientY - previous.y) * 0.0034 * lookScale(),
           -Math.PI / 2,
           Math.PI / 2,
         );

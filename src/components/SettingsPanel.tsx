@@ -8,6 +8,8 @@ interface Props {
   preferences: Preferences;
   /** The system asks for reduced motion; the in-app switch then follows it. */
   systemMotion: boolean;
+  clearSky: boolean;
+  onClearSky: (value: boolean) => void;
   placeSaved: boolean;
   onLayer: (key: keyof LayerSettings, value: boolean) => void;
   onPreferences: (change: (value: Preferences) => Preferences) => void;
@@ -23,6 +25,8 @@ export default function SettingsPanel({
   layers,
   preferences,
   systemMotion,
+  clearSky,
+  onClearSky,
   placeSaved,
   onLayer,
   onPreferences,
@@ -40,6 +44,18 @@ export default function SettingsPanel({
       <p className="panel-intro">{t.intro}</p>
       <div className="setting-group">
         <h3>{t.layers}</h3>
+        <button
+          className="setting-toggle"
+          aria-pressed={clearSky}
+          aria-describedby="clear-sky-note"
+          onClick={() => onClearSky(!clearSky)}
+        >
+          <span>{t.clearSky}</span>
+          <span className="switch" />
+        </button>
+        <p className="muted" id="clear-sky-note">
+          {t.clearSkyNote}
+        </p>
         {LAYERS.map((key) => (
           <button
             className="setting-toggle"

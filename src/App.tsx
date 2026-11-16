@@ -579,6 +579,8 @@ export default function App({
                   layers={layers}
                   preferences={preferences}
                   systemMotion={systemMotion}
+                  clearSky={clearSky}
+                  onClearSky={setClearSky}
                   placeSaved={preferences.saved.some((p) => p.id === location.id)}
                   onLayer={setLayer}
                   onPreferences={changePreferences}

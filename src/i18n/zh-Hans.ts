@@ -543,6 +543,8 @@ const zh: Messages = {
   settings: {
     intro: '清晰的视野，只留你想要的细节。',
     layers: '天空图层',
+    clearSky: '晴空预览',
+    clearSkyNote: '隐藏云、霾和降水。仍保留当前时间、月光和光污染影响；关闭即可恢复天气。',
     layerNames: { stars: '恒星', lines: '星座连线', labels: '天体标签' },
     comfort: '舒适与性能',
     reduceMotion: '减少大气动画',

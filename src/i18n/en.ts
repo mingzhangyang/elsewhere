@@ -475,6 +475,9 @@ const en = {
   settings: {
     intro: 'A clear view, with just the details you want.',
     layers: 'Sky layers',
+    clearSky: 'Clear-sky preview',
+    clearSkyNote:
+      'Hide clouds, haze and precipitation. Time, moonlight and light pollution still apply. Turn off to restore weather.',
     layerNames: { stars: 'Stars', lines: 'Constellation lines', labels: 'Object labels' },
     comfort: 'Comfort & performance',
     reduceMotion: 'Reduce atmosphere motion',

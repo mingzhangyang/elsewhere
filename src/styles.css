@@ -822,12 +822,22 @@ input[type='range'] {
 }
 .quality-setting {
   display: flex;
+  flex-wrap: wrap;
+  min-height: 48px;
+  padding-block: 6px;
   justify-content: space-between;
   align-items: center;
   gap: 10px;
   font-size: var(--text-md);
 }
+.quality-setting + .quality-setting {
+  margin-top: 12px;
+}
 .quality-setting select {
+  flex: 0 1 150px;
+  min-width: 0;
+  min-height: 44px;
+  margin-left: auto;
   padding: 10px;
   max-width: 150px;
   font-size: var(--text-sm);
