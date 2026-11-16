@@ -353,8 +353,8 @@ test('small screens keep the inspector and time controls reachable', async ({ pa
   await page.setViewportSize({ width: 320, height: 568 });
   await page.goto('/?scenario=night');
   await page.getByRole('button', { name: 'Weather', exact: true }).click();
+  await page.getByRole('button', { name: 'Close inspector' }).click();
   for (const locator of [
-    page.getByRole('button', { name: 'Close inspector' }),
     page.getByRole('button', { name: 'Now', exact: true }),
     page.getByRole('slider', { name: 'Time of day' }),
   ]) {
@@ -493,10 +493,10 @@ test.describe('phones', () => {
     }
   });
 
-  // `sky` is the minimum sky left beside (landscape) or above (portrait) the sheet; 0 where the stage is
-  // too short and the sheet takes it over. 320×380 stands in for a keyboard-resized layout viewport.
+  // The drawer stays at the viewport bottom in both orientations.
+  // 320×380 stands in for a keyboard-resized layout viewport.
   for (const { width, height, sky } of [
-    { width: 667, height: 375, sky: 100 },
+    { width: 667, height: 375, sky: 50 },
     { width: 320, height: 568, sky: 100 },
     { width: 320, height: 430, sky: 0 },
     { width: 320, height: 380, sky: 0 },
@@ -513,8 +513,10 @@ test.describe('phones', () => {
       await slider.scrollIntoViewIfNeeded();
       await expect(slider).toBeInViewport();
       const stage = (await page.getByRole('main', { name: 'Sky exploration' }).boundingBox())!;
-      expect(sheet.y + sheet.height).toBeLessThanOrEqual(stage.y + stage.height);
-      const skyVisible = width > height ? sheet.x - stage.x : sheet.y - stage.y;
+      expect(sheet.y + sheet.height).toBeCloseTo(height, 0);
+      expect(sheet.x).toBe(0);
+      expect(sheet.width).toBe(width);
+      const skyVisible = sheet.y - stage.y;
       expect(skyVisible).toBeGreaterThanOrEqual(sky);
     });
   }

@@ -71,6 +71,8 @@ test.describe('in Chinese', () => {
       await page.getByRole('button', { name: '天气', exact: true }).click();
       await page.getByRole('button', { name: '自定义模拟', exact: true }).click();
       await check('weather');
+      // The mobile drawer blocks the toolbar until Weather is closed.
+      await page.getByRole('button', { name: '关闭面板' }).click();
       await page.getByRole('button', { name: '图层', exact: true }).click();
       await check('settings');
       await page.getByRole('button', { name: '关闭面板' }).click();

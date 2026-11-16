@@ -98,8 +98,8 @@ describe('twilight star visibility', () => {
 describe('dark-sky display scale', () => {
   it('keeps the faint stars that fill a dark sky bright enough to see on a screen', () => {
     for (const magnitude of [4, 5, 6]) {
-      expect(starIntensity(magnitude)).toBeGreaterThanOrEqual(0.3);
-      expect(starPointSize(magnitude)).toBeGreaterThanOrEqual(1.8);
+      expect(starIntensity(magnitude)).toBeGreaterThanOrEqual(0.45);
+      expect(starPointSize(magnitude)).toBeGreaterThanOrEqual(2.2);
     }
     expect(starIntensity(-1.5)).toBe(1);
     expect(starIntensity(2)).toBeGreaterThan(starIntensity(4));

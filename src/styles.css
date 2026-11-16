@@ -822,12 +822,22 @@ input[type='range'] {
 }
 .quality-setting {
   display: flex;
+  flex-wrap: wrap;
+  min-height: 48px;
+  padding-block: 6px;
   justify-content: space-between;
   align-items: center;
   gap: 10px;
   font-size: var(--text-md);
 }
+.quality-setting + .quality-setting {
+  margin-top: 12px;
+}
 .quality-setting select {
+  flex: 0 1 150px;
+  min-width: 0;
+  min-height: 44px;
+  margin-left: auto;
   padding: 10px;
   max-width: 150px;
   font-size: var(--text-sm);
@@ -1884,24 +1894,37 @@ dialog:not([open]) {
     transform: none;
   }
 }
-/* Phones: panels become a lower sheet so the sky stays visible while settings change it.
-   Placed after the short-viewport rules so it also applies to short portrait phones. */
-@media (max-width: 680px) {
+/* Mobile inspectors are viewport-bottom drawers, including touch-device landscape layouts.
+   Keep these rules after short-viewport overrides so the drawer never becomes a side panel. */
+@media (max-width: 680px), (max-width: 1000px) and (pointer: coarse) {
+  .stage.panel-open {
+    /* Lift the drawer above the time dock and header without changing the desktop stacking. */
+    z-index: 11;
+  }
   .inspector {
-    /* Prefer 38% sky above the sheet, but never shrink the sheet below 200px (short phones, Android keyboard). */
-    top: max(8px, min(38%, calc(100% - 74px - 200px)));
-    bottom: 74px;
-    left: 8px;
-    right: 8px;
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
     width: auto;
-    border-radius: 16px;
+    height: min(62dvh, 620px);
+    max-height: calc(100dvh - env(safe-area-inset-top) - 56px);
+    border-radius: 20px 20px 0 0;
+    border-bottom: 0;
+    padding-bottom: env(safe-area-inset-bottom);
+    box-shadow: 0 -12px 40px #0006;
+    animation: drawer-enter 180ms ease-out;
   }
   .inspector-heading {
-    padding: 10px 16px 6px;
+    padding: 16px max(16px, env(safe-area-inset-right)) 12px max(16px, env(safe-area-inset-left));
     align-items: center;
   }
   .inspector-heading h2 {
     font-size: 18px;
+  }
+  .inspector-content {
+    padding: 0 max(18px, env(safe-area-inset-right)) 20px max(18px, env(safe-area-inset-left));
   }
   .panel-open .sky-context,
   .panel-open .view-controls,
@@ -1914,37 +1937,12 @@ dialog:not([open]) {
     font-size: var(--text-xs);
   }
 }
-/* Very short portrait stages (split screen, Android keyboard): the 200px minimum no longer fits above the
-   toolbar, so the sheet takes the whole stage and covers the toolbar while open. */
-@media (max-width: 680px) {
-  .stage {
-    container: stage / size;
+@keyframes drawer-enter {
+  from {
+    transform: translateY(100%);
   }
-  @container stage (max-height: 290px) {
-    .inspector {
-      top: 8px;
-      bottom: 8px;
-    }
-  }
-}
-/* Short landscape phones: a full-height side sheet, with the toolbar moved left so sky stays visible beside it. */
-@media (max-width: 680px) and (max-height: 620px) and (orientation: landscape) {
-  .inspector {
-    top: 8px;
-    bottom: 8px;
-    left: auto;
-    right: 8px;
-    width: min(360px, 56%);
-  }
-  .explore-toolbar {
-    left: 8px;
-    transform: none;
-    width: calc(44% - 24px);
-    max-width: none;
-  }
-  .explore-toolbar button {
-    padding: 8px 6px;
-    gap: 5px;
+  to {
+    transform: translateY(0);
   }
 }
 /* iOS Safari zooms the page when a focused field is smaller than 16px. */
@@ -1958,6 +1956,7 @@ dialog:not([open]) {
   *,
   *:before,
   *:after {
+    animation: none !important;
     transition: none !important;
     scroll-behavior: auto !important;
   }

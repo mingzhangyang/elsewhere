@@ -49,3 +49,26 @@ it('keeps selection feedback and restores weather after a clear-sky preview', as
   fireEvent.click(screen.getByRole('button', { name: 'Restore atmosphere' }));
   expect(screen.getByRole('region', { name: 'Selected object' })).toHaveTextContent('100% cloud cover');
 });
+
+it('offers clear sky from Layers without selecting an object and shares the preview state', async () => {
+  render(<App {...scenarioProps('night')} weatherLoader={scenarioProps('overcast').weatherLoader} />);
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Forecast' })).toBeInTheDocument());
+  fireEvent.click(screen.getByRole('button', { name: 'Layers' }));
+  const panel = screen.getByRole('region', { name: 'settings inspector' });
+  const toggle = within(panel).getByRole('button', { name: 'Clear-sky preview' });
+  expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  fireEvent.click(toggle);
+  expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  fireEvent.click(screen.getByRole('button', { name: 'Close inspector' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Share this sky' }));
+  const link = (screen.getByRole('textbox', { name: 'Sky link' }) as HTMLInputElement).value;
+  expect(parseExploration(new URL(link).hash).value).toMatchObject({ clearSky: true, custom: null });
+  fireEvent.click(screen.getByRole('button', { name: 'Close sharing' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Layers' }));
+  fireEvent.click(
+    within(screen.getByRole('region', { name: 'settings inspector' })).getByRole('button', {
+      name: 'Clear-sky preview',
+    }),
+  );
+  expect(screen.getByRole('button', { name: 'Forecast' })).toBeVisible();
+});

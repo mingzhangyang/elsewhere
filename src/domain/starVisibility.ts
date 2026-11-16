@@ -71,10 +71,10 @@ export const STAR_MODEL = {
    * keeps the fourth- to sixth-magnitude stars that fill a dark sky visible on a screen; whether a
    * star shows at all is still decided by the limiting magnitude.
    */
-  intensitySlope: -0.12,
-  minIntensity: 0.3,
+  intensitySlope: -0.1,
+  minIntensity: 0.45,
   /** Smallest point, in CSS pixels: below about two pixels a faint star breaks up on the pixel grid. */
-  minPointSize: 1.8,
+  minPointSize: 2.2,
   /** Fraction of the point's radius drawn at full strength before its edge softens. */
   coreSoftStart: 0.45,
   /** Stars brighter than glowMagnitude gain a halo, reaching full strength glowRange magnitudes brighter. */
