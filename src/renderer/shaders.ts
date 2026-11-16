@@ -6,26 +6,49 @@ export const SKY_VERTEX = `
   }
 `;
 
+// Share this solar-altitude transfer function across the sky, ground, clouds and Moon.
+// An above-horizon Sun must still produce a predominantly daylight sky. Degrees are
+// kept here for a small CPU reference used by regression tests; GLSL accepts radians.
+const SKY_DAY_START_DEG = -18;
+const SKY_DAY_END_DEG = 2;
+export function skyDaylightFactor(sunAltitudeDegrees: number): number {
+  const t = Math.max(
+    0,
+    Math.min(1, (sunAltitudeDegrees - SKY_DAY_START_DEG) / (SKY_DAY_END_DEG - SKY_DAY_START_DEG)),
+  );
+  return t * t * (3 - 2 * t);
+}
+const DAYLIGHT_GLSL = `
+  float daylightFactor(float sunAltitude) {
+    return smoothstep(${((SKY_DAY_START_DEG * Math.PI) / 180).toFixed(8)}, ${((SKY_DAY_END_DEG * Math.PI) / 180).toFixed(8)}, sunAltitude);
+  }
+`;
 // The sky and lunar foreground use exactly the same display-space atmospheric radiance.
 // The unlit Moon blocks distant light, not the atmosphere between the observer and Moon.
 const ATMOSPHERE = `
   uniform float uSunAltitude, uHaze;
   uniform vec3 uSunDirection;
+  ${DAYLIGHT_GLSL}
   vec3 atmosphere(vec3 d) {
     float elevation = max(d.y, 0.0);
-    float horizon = pow(1.0 - elevation, 4.8);
-    float day = smoothstep(-0.055, 0.13, uSunAltitude);
-    float twilight = smoothstep(-0.31, -0.10, uSunAltitude) * (1.0 - smoothstep(-0.045, 0.08, uSunAltitude));
-    vec3 night = mix(vec3(0.020,0.043,0.092),vec3(0.006,0.013,0.035),pow(elevation,0.52));
-    vec3 daylight = mix(vec3(0.46,0.66,0.79),vec3(0.045,0.29,0.62),pow(elevation,0.42));
-    vec3 color = mix(night,daylight,day);
-    vec3 dusk = mix(vec3(0.74,0.28,0.12),vec3(0.13,0.12,0.23),pow(elevation,0.62));
-    color = mix(color,dusk,twilight*(0.42+horizon*0.52));
-    float solarGlow = pow(max(dot(d,normalize(uSunDirection)),0.0),11.0);
-    float broadGlow = pow(max(dot(d,normalize(uSunDirection)),0.0),2.1);
-    color += vec3(1.0,0.47,0.19)*solarGlow*(0.16+twilight*0.55);
-    color += vec3(0.28,0.22,0.20)*broadGlow*day*0.05;
-    return mix(color,mix(vec3(0.15,0.19,0.24),vec3(0.78,0.72,0.64),day),clamp(uHaze,0.0,1.0)*horizon*0.60);
+    float horizon = pow(1.0 - elevation, 4.5);
+    float skyHeight = pow(elevation, 0.60);
+    float day = daylightFactor(uSunAltitude);
+    vec3 night = mix(vec3(0.020, 0.043, 0.092), vec3(0.006, 0.013, 0.035), pow(elevation, 0.52));
+    // A low Sun still lights the whole sky. Keep the horizon pale and the zenith neutral blue.
+    vec3 daylight = mix(vec3(0.72, 0.78, 0.88), vec3(0.38, 0.49, 0.68), skyHeight);
+    vec3 color = mix(night, daylight, day);
+    float twilight = smoothstep(-0.30, -0.12, uSunAltitude) * (1.0 - smoothstep(0.04, 0.18, uSunAltitude));
+    vec3 duskBlue = mix(vec3(0.28, 0.26, 0.37), vec3(0.08, 0.12, 0.23), skyHeight);
+    color = mix(color, duskBlue, (1.0 - day) * twilight * 0.32);
+    // Sunset warmth is confined to low elevations and sightlines towards the Sun.
+    float towardSun = dot(d, normalize(uSunDirection));
+    float sunward = smoothstep(-0.25, 0.96, towardSun);
+    float warmBand = horizon * sunward * twilight;
+    color = mix(color, vec3(0.94, 0.65, 0.48), warmBand * (0.46 + 0.20 * (1.0 - day)));
+    float solarGlow = pow(max(towardSun, 0.0), 14.0);
+    color += vec3(0.18, 0.12, 0.075) * solarGlow * (0.10 + day * 0.09 + twilight * 0.35);
+    return mix(color, mix(vec3(0.15, 0.19, 0.24), vec3(0.78, 0.72, 0.64), day), clamp(uHaze, 0.0, 1.0) * horizon * 0.60);
   }
 `;
 
@@ -56,11 +79,20 @@ export const MOON_FRAGMENT = `
   ${ATMOSPHERE}
   void main() {
     vec3 d = normalize(vDirection);
-    float illumination = max(dot(normalize(vNormalWorld),normalize(uMoonSunDirection)),0.0);
-    float transmission = exp(-(0.055+uHaze*0.24)/max(0.12,d.y));
-    vec3 albedo = pow(texture2D(uMap,vMapUv).rgb,vec3(1.0/2.2));
-    vec3 reflected = albedo*(0.012+0.82*pow(illumination,0.65))*transmission;
-    gl_FragColor = vec4(atmosphere(d)+reflected,1.0);
+    float incidence = dot(normalize(vNormalWorld), normalize(uMoonSunDirection));
+    // Resolve the terminator smoothly on a small, physically sized lunar disc.
+    float sunlit = smoothstep(-0.015, 0.065, incidence);
+    // The texture is already decoded from sRGB by the GPU; do not gamma-decode it twice.
+    vec3 lunarAlbedo = texture2D(uMap, vMapUv).rgb;
+    float markings = pow(clamp(dot(lunarAlbedo, vec3(0.2126, 0.7152, 0.0722)), 0.0, 1.0), 0.35);
+    vec3 litSurface = vec3(0.95, 0.94, 0.90) * mix(0.80, 1.0, markings) * (0.75 + 0.25 * pow(max(incidence, 0.0), 0.35));
+    float transmission = exp(-(0.055 + uHaze * 0.24) / max(0.12, d.y));
+    vec3 sky = atmosphere(d);
+    vec3 foreground = sky * (1.0 - transmission);
+    // In daylight the shadowed hemisphere blends into the sky; at night it occludes stars.
+    vec3 shadow = mix(foreground + lunarAlbedo * 0.025 * transmission, sky, smoothstep(-0.16, -0.025, uSunAltitude));
+    // Preserve lunar phase, size, and surface relief while giving the lit crescent contrast.
+    gl_FragColor = vec4(mix(shadow, foreground + litSurface * transmission, sunlit), 1.0);
   }
 `;
 
@@ -70,7 +102,7 @@ export const GROUND_FRAGMENT = `
   ${ATMOSPHERE}
   void main() {
     vec3 d = normalize(vDirection);
-    float day = smoothstep(-0.15,0.12,uSunAltitude);
+    float day = daylightFactor(uSunAltitude);
     vec3 surface = mix(vec3(0.009,0.016,0.024),vec3(0.12,0.17,0.18),day);
     vec3 distanceHaze = atmosphere(normalize(vec3(d.x,0.015,d.z)))*mix(0.24,0.58,day);
     gl_FragColor = vec4(mix(distanceHaze,surface,smoothstep(0.0,0.32,-d.y)),1.0);
@@ -84,6 +116,7 @@ export const CLOUD_FRAGMENT = `
   varying vec3 vDirection;
   uniform float uSunAltitude,uCloud,uWindSpeed,uWindDirection,uTime;
   uniform vec3 uSunDirection;
+  ${DAYLIGHT_GLSL}
   float hash(vec2 p) { return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123); }
   float noise(vec2 p) {
     vec2 i=floor(p),f=fract(p); f=f*f*(3.0-2.0*f);
@@ -107,13 +140,14 @@ export const CLOUD_FRAGMENT = `
     float density=smoothstep(0.69-coverage*0.48,0.79-coverage*0.48,n);
     float alpha=mix(density,1.0,smoothstep(0.85,1.0,coverage))*smoothstep(0.0,0.12,coverage);
     alpha*=smoothstep(0.0,0.025,d.y);
-    float day=smoothstep(-0.055,0.13,uSunAltitude);
+    float day=daylightFactor(uSunAltitude);
     float edge=clamp((n-fbm(p+uSunDirection.xz*0.14))*0.5,-0.04,0.04);
     vec3 daytime=mix(vec3(0.88,0.91,0.94),vec3(0.64,0.71,0.79),density*0.7)-edge;
     daytime=mix(daytime,vec3(0.44,0.51,0.60)*(0.86+n*0.25),smoothstep(0.75,1.0,coverage));
-    float dusk=smoothstep(-0.3,-0.08,uSunAltitude)*(1.0-smoothstep(-0.04,0.1,uSunAltitude));
+    float dusk=smoothstep(-0.30,-0.12,uSunAltitude)*(1.0-smoothstep(0.04,0.18,uSunAltitude));
+    float sunward=smoothstep(-0.25,0.96,dot(d,normalize(uSunDirection)));
     vec3 color=mix(vec3(0.020,0.029,0.046)*(0.8+n*0.3),daytime,day);
-    color=mix(color,vec3(0.63,0.40,0.30),dusk*0.55);
+    color=mix(color,vec3(0.75,0.58,0.51),dusk*sunward*0.36);
     gl_FragColor=vec4(color,alpha);
   }
 `;
