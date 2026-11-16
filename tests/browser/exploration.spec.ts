@@ -397,8 +397,12 @@ test('finding the Moon ends on the Moon itself, circled rather than covered', as
 test('pausing between playback ticks leaves the sky at the displayed instant', async ({ page }) => {
   await page.goto('/?scenario=night');
   await page.getByRole('button', { name: 'Objects', exact: true }).click();
-  await page.getByRole('searchbox', { name: 'Find an object' }).fill('Vega');
-  await page.getByRole('group', { name: 'Celestial objects' }).getByRole('button', { name: /Vega/ }).click();
+  await page.getByRole('searchbox', { name: 'Find an object' }).fill('Capella');
+  await page
+    .getByRole('group', { name: 'Celestial objects' })
+    .getByRole('button', { name: /Capella/ })
+    .click();
+  // Capella remains above New York's horizon throughout the accelerated playback.
   await page.getByRole('button', { name: 'Center in view' }).click();
   // At a 2° field, the up to 0.5° the sky turns between 600× ticks is a quarter of the view.
   for (let step = 0; step < 15; step++) await page.getByRole('button', { name: 'Zoom in' }).click();
