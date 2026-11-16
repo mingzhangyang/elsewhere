@@ -23,6 +23,23 @@ const DAYLIGHT_GLSL = `
     return smoothstep(${((SKY_DAY_START_DEG * Math.PI) / 180).toFixed(8)}, ${((SKY_DAY_END_DEG * Math.PI) / 180).toFixed(8)}, sunAltitude);
   }
 `;
+// Preserve map detail while gently lifting dark lunar terrain in daylight.
+// The CPU reference and GLSL use the same constants (linear texture values).
+const MOON_ALBEDO_EXPONENT = 0.75;
+const MOON_NIGHT_FILL = 0.12;
+const MOON_DAY_FILL = 0.30;
+export function moonLitReflectance(linearLuminance: number, daylight: number): number {
+  const luminance = Math.max(0, Math.min(1, linearLuminance));
+  const day = Math.max(0, Math.min(1, daylight));
+  const fill = MOON_NIGHT_FILL + (MOON_DAY_FILL - MOON_NIGHT_FILL) * day;
+  return fill + (1 - fill) * Math.pow(luminance, MOON_ALBEDO_EXPONENT);
+}
+const MOON_REFLECTANCE_GLSL = `
+  float moonLitReflectance(float luminance, float daylight) {
+    float fill = mix(${MOON_NIGHT_FILL.toFixed(2)}, ${MOON_DAY_FILL.toFixed(2)}, clamp(daylight, 0.0, 1.0));
+    return mix(fill, 1.0, pow(clamp(luminance, 0.0, 1.0), ${MOON_ALBEDO_EXPONENT.toFixed(2)}));
+  }
+`;
 // The sky and lunar foreground use exactly the same display-space atmospheric radiance.
 // The unlit Moon blocks distant light, not the atmosphere between the observer and Moon.
 const ATMOSPHERE = `
@@ -77,6 +94,7 @@ export const MOON_FRAGMENT = `
   varying vec3 vNormalWorld, vDirection;
   varying vec2 vMapUv;
   ${ATMOSPHERE}
+  ${MOON_REFLECTANCE_GLSL}
   void main() {
     vec3 d = normalize(vDirection);
     float incidence = dot(normalize(vNormalWorld), normalize(uMoonSunDirection));
@@ -84,8 +102,9 @@ export const MOON_FRAGMENT = `
     float sunlit = smoothstep(-0.015, 0.065, incidence);
     // The texture is already decoded from sRGB by the GPU; do not gamma-decode it twice.
     vec3 lunarAlbedo = texture2D(uMap, vMapUv).rgb;
-    float markings = pow(clamp(dot(lunarAlbedo, vec3(0.2126, 0.7152, 0.0722)), 0.0, 1.0), 0.35);
-    vec3 litSurface = vec3(0.95, 0.94, 0.90) * mix(0.80, 1.0, markings) * (0.75 + 0.25 * pow(max(incidence, 0.0), 0.35));
+    float luminance = dot(lunarAlbedo, vec3(0.2126, 0.7152, 0.0722));
+    float reflectance = moonLitReflectance(luminance, daylightFactor(uSunAltitude));
+    vec3 litSurface = vec3(0.95, 0.94, 0.90) * reflectance * (0.75 + 0.25 * pow(max(incidence, 0.0), 0.35));
     float transmission = exp(-(0.055 + uHaze * 0.24) / max(0.12, d.y));
     vec3 sky = atmosphere(d);
     vec3 foreground = sky * (1.0 - transmission);

@@ -5,6 +5,7 @@ import {
   GROUND_FRAGMENT,
   MOON_FRAGMENT,
   SKY_FRAGMENT,
+  moonLitReflectance,
   skyDaylightFactor,
 } from '../src/renderer/shaders';
 
@@ -36,7 +37,27 @@ describe('daylight and twilight appearance', () => {
     expect(MOON_FRAGMENT).toContain('smoothstep(-0.015, 0.065, incidence)');
     expect(MOON_FRAGMENT).toContain('vec3 shadow = mix(');
     expect(MOON_FRAGMENT).toContain('foreground + litSurface * transmission');
+    expect(MOON_FRAGMENT).toContain('moonLitReflectance(luminance, daylightFactor(uSunAltitude))');
+    expect(MOON_FRAGMENT).not.toContain('mix(0.80, 1.0, markings)');
     expect(MOON_FRAGMENT).not.toContain('pow(texture2D(uMap,vMapUv).rgb,vec3(1.0/2.2))');
+  });
+  it('preserves moon maria and highland contrast across daylight and twilight', () => {
+    // Numeric lit-pixel reference: 33-degree Moon, 15% haze, incidence 0.6, neutral sky.
+    const transmission = Math.exp(-(0.055 + 0.15 * 0.24) / Math.sin((33 * Math.PI) / 180));
+    const incidenceLight = 0.75 + 0.25 * Math.pow(0.6, 0.35);
+    const pixel = (luminance: number, day: number) =>
+      0.7 * (1 - transmission) + 0.95 * moonLitReflectance(luminance, day) * incidenceLight * transmission;
+    for (const day of [0, 0.5, 1]) {
+      const maria = moonLitReflectance(0.1, day);
+      const highland = moonLitReflectance(0.4, day);
+      expect(highland - maria).toBeGreaterThan(0.22);
+      expect(highland / maria).toBeGreaterThan(1.5);
+      expect(pixel(0.4, day) - pixel(0.1, day)).toBeGreaterThan(0.15);
+    }
+    expect(moonLitReflectance(-1, 1)).toBeCloseTo(0.3);
+    expect(moonLitReflectance(0, 1)).toBeCloseTo(0.3);
+    expect(moonLitReflectance(2, 1)).toBe(1);
+    expect(moonLitReflectance(0.1, 1)).toBeGreaterThan(moonLitReflectance(0.1, 0));
   });
 });
 
