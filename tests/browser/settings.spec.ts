@@ -69,3 +69,85 @@ for (const viewport of [
     }
   });
 }
+
+for (const viewport of [
+  { width: 320, height: 568 },
+  { width: 390, height: 844 },
+]) {
+  for (const name of ['Layers', 'Weather']) {
+    test(`drawer contains keyboard focus and blocks covered controls: ${name} ${viewport.width}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(viewport);
+      await page.goto('/?scenario=night');
+      const trigger = page.getByRole('button', { name, exact: true });
+      await trigger.click();
+      const drawer = page.locator('.inspector');
+      const close = page.getByRole('button', { name: 'Close inspector' });
+      const stops = drawer.locator(
+        'button:enabled, a[href], input:enabled, select:enabled, textarea:enabled',
+      );
+      const last = stops.last();
+      await close.focus();
+      await page.keyboard.press('Shift+Tab');
+      await expect(last).toBeFocused();
+      await expect(last).toBeInViewport();
+      await page.keyboard.press('Tab');
+      await expect(close).toBeFocused();
+      await expect(close).toBeInViewport();
+      await close.click({ trial: true });
+      // Go through every stop; focused controls must be onscreen and win pointer hit testing.
+      for (let i = 0; i < (await stops.count()); i++) {
+        await page.keyboard.press('Tab');
+        await expect
+          .poll(() =>
+            page.evaluate(() => {
+              const active = document.activeElement as HTMLElement;
+              const box = active.getBoundingClientRect();
+              const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+              return !!active.closest('.inspector') && (hit === active || active.contains(hit));
+            }),
+          )
+          .toBe(true);
+      }
+      const now = page.locator('.bottom-dock button').filter({ hasText: /^Now$/ });
+      const slider = page.locator('.bottom-dock input[type="range"]');
+      for (const covered of [now, slider]) {
+        expect(await covered.evaluate((element) => !!element.closest('[inert]'))).toBe(true);
+        await covered.evaluate((element) => (element as HTMLElement).focus());
+        await expect(covered).not.toBeFocused();
+        const box = (await covered.boundingBox())!;
+        expect(
+          await covered.evaluate(
+            (element, point) => {
+              const hit = document.elementFromPoint(point.x, point.y);
+              return hit === element || element.contains(hit);
+            },
+            { x: box.x + box.width / 2, y: box.y + box.height / 2 },
+          ),
+        ).toBe(false);
+      }
+      await close.focus();
+      await page.keyboard.press('Escape');
+      await expect(drawer).toHaveCount(0);
+      await expect(trigger).toBeFocused();
+      await now.click({ trial: true });
+      await slider.click({ trial: true });
+      expect(await page.locator('[inert]').count()).toBe(0);
+    });
+  }
+}
+
+test('resizing an open drawer restores desktop background interaction', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?scenario=night');
+  await page.getByRole('button', { name: 'Layers', exact: true }).click();
+  await expect(page.locator('.bottom-dock')).toHaveAttribute('inert', '');
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await expect(page.locator('.bottom-dock')).not.toHaveAttribute('inert');
+  await page.getByRole('button', { name: 'Now', exact: true }).click({ trial: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator('.bottom-dock')).toHaveAttribute('inert', '');
+  await page.getByRole('button', { name: 'Close inspector' }).click();
+  await expect(page.locator('[inert]')).toHaveCount(0);
+});

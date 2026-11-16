@@ -353,8 +353,8 @@ test('small screens keep the inspector and time controls reachable', async ({ pa
   await page.setViewportSize({ width: 320, height: 568 });
   await page.goto('/?scenario=night');
   await page.getByRole('button', { name: 'Weather', exact: true }).click();
+  await page.getByRole('button', { name: 'Close inspector' }).click();
   for (const locator of [
-    page.getByRole('button', { name: 'Close inspector' }),
     page.getByRole('button', { name: 'Now', exact: true }),
     page.getByRole('slider', { name: 'Time of day' }),
   ]) {

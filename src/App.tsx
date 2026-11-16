@@ -25,6 +25,7 @@ import { createCameraViewStore } from './lib/cameraViewStore';
 import type { AppNotice, BodyId, LocationInfo } from './types';
 import { useSimulation } from './hooks/useSimulation';
 import { useWeather } from './hooks/useWeather';
+import { useDrawerFocus } from './hooks/useDrawerFocus';
 import { MAX_INSTANT } from './domain/time';
 import { calculateSky, nextBodyRise } from './domain/astronomy';
 import {
@@ -129,6 +130,8 @@ export default function App({
   const skyRef = useRef<SkySceneHandle>(null);
   const shareDialog = useRef<ShareDialogHandle>(null);
   const panelTitle = useRef<HTMLHeadingElement>(null);
+  const inspector = useRef<HTMLElement>(null);
+  useDrawerFocus(inspector, panel !== null);
   const restoreFocus = useRef(false);
   const panelTrigger = useRef<HTMLElement | null>(null);
   const objectsTrigger = useRef<HTMLButtonElement>(null);
@@ -516,6 +519,7 @@ export default function App({
         </nav>
         {panel && (
           <section
+            ref={inspector}
             className="inspector"
             data-occludes-sky
             aria-label={m.inspector.region[panel]}
