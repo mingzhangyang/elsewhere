@@ -60,7 +60,7 @@ The responsive shell keeps a separate time dock and one inspector. The renderer 
 | `src/i18n`                      | Typed message catalogs (`en.ts` is the source, `zh-Hans.ts` matches its shape), each its own chunk; locale detection, Intl formatters, display names for objects and places                              |
 | `src/hooks`                     | Simulation clock and data subscriptions                                                                                                                                                                  |
 | `src/renderer`                  | Camera input, the rigid star sphere and its shader, retained celestial layers, atmosphere, particles, scheduling and resource ownership                                                                  |
-| `src/moment`                    | Keepsake images (phase 3 prototype, loaded on demand): projection, the illustrated drawing, horizon silhouettes and the postcard layout                                                                  |
+| `src/moment`                    | Keepsake images (phase 3 prototype, loaded on demand): projection, the illustrated painting (sky, clouds, landscape), horizon silhouettes and the postcard layout                                        |
 | `src/components`, `src/App.tsx` | Accessible exploration controls and presentation; App wires state to components                                                                                                                          |
 | `src/dev`, `tests`, `scripts`   | Development fixtures, qualification checks and asset tooling                                                                                                                                             |
 

@@ -6,7 +6,8 @@ import { isDeviceLocation } from '../lib/locations';
 import { objectName, placeLabel } from '../i18n/names';
 import { weatherDescription } from '../lib/weatherText';
 import { createProjection } from './projection';
-import { drawIllustration, type ToCanvas } from './illustration';
+import { drawIllustration, lettering, type ToCanvas } from './illustration';
+import { noise1 } from './paint';
 import { HORIZON_STEP, horizonAltitude, type HorizonVariant } from './scenery';
 import { seededRandom } from '../lib/random';
 
@@ -36,6 +37,7 @@ export const POSTCARD_WIDTH = 1200;
 export const FONT =
   '"Segoe UI", ui-sans-serif, system-ui, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", sans-serif';
 const PAD = 56;
+const PAPER = '#f6f1e7';
 
 /** Height of the sky area for a view `aspect` wide over high: as tall as the view, within limits. */
 export function skyHeight(aspect: number): number {
@@ -258,17 +260,25 @@ export function drawPostcard({
     }
   }
 
-  // The compass, as on screen.
-  const cx = width - 74,
-    cy = 74;
-  ctx.fillStyle = painted ? 'rgba(255,248,232,.88)' : 'rgba(8,15,28,.72)';
+  // The compass, as on screen; on a painting, a small paper disc ruled and lettered in ink.
+  const inset = painted ? 82 : 74;
+  const cx = width - inset,
+    cy = inset;
+  ctx.fillStyle = painted ? 'rgba(250,244,230,.9)' : 'rgba(8,15,28,.72)';
   ctx.beginPath();
   ctx.arc(cx, cy, 46, 0, Math.PI * 2);
   ctx.fill();
+  if (painted) {
+    ctx.strokeStyle = 'rgba(39,48,92,.55)';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 40.5, 0.1, Math.PI * 2 + 0.25);
+    ctx.stroke();
+  }
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate((-heading * Math.PI) / 180);
-  ctx.fillStyle = painted ? '#e0664a' : '#ff9f7a';
+  ctx.fillStyle = painted ? '#d85a40' : '#ff9f7a';
   ctx.beginPath();
   ctx.moveTo(0, -45);
   ctx.lineTo(7, -35);
@@ -276,27 +286,19 @@ export function drawPostcard({
   ctx.closePath();
   ctx.fill();
   ctx.restore();
-  ctx.fillStyle = painted ? '#24305a' : '#eef5fc';
+  ctx.fillStyle = painted ? '#27305c' : '#eef5fc';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = `700 22px ${FONT}`;
-  ctx.fillText(direction, cx, cy - 4);
-  ctx.font = `500 15px ${FONT}`;
-  ctx.fillText(`${heading}°`, cx, cy + 18);
+  ctx.font = painted ? lettering(direction, 23, FONT, 700) : `700 22px ${FONT}`;
+  ctx.fillText(direction, cx, cy - 5);
+  ctx.font = painted ? lettering(`${heading}°`, 15, FONT, 600) : `500 15px ${FONT}`;
+  ctx.fillText(`${heading}°`, cx, cy + 17);
   ctx.restore();
 
-  // The panel; under a painted sky, a sheet of paper with a softly deckled top edge.
-  ctx.fillStyle = '#f6f1e7';
-  if (painted) {
-    ctx.beginPath();
-    ctx.moveTo(0, canvas.height);
-    for (let x = 0; x <= width; x += 6)
-      ctx.lineTo(x, skyH - 3 + Math.sin(x * 0.045) * 1.6 + Math.sin(x * 0.17 + 1) * 1.1);
-    ctx.lineTo(width, canvas.height);
-    ctx.closePath();
-    ctx.fill();
-    paintFinish(ctx, 0, skyH - 6, width, canvas.height - skyH + 6, 7, false);
-  } else ctx.fillRect(0, skyH, width, canvas.height - skyH);
+  // The panel; under a painted sky, the same sheet of paper the sky is painted on.
+  ctx.fillStyle = PAPER;
+  ctx.fillRect(0, skyH, width, canvas.height - skyH);
+  if (painted) paintFinish(ctx, 0, skyH, width, canvas.height - skyH, 7, false);
   let y = skyH + PAD;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
@@ -376,9 +378,78 @@ function paperGrain(): HTMLCanvasElement {
   return tile;
 }
 
+let washTile: HTMLCanvasElement | null = null;
 /**
- * The finish that makes a painting of the illustrated sky: uneven watercolour blooms, a soft
- * vignette and paper grain. `sky` false gives the paper only, for the text panel.
+ * A tile of uneven pigment, as a wash dries on paper: smooth cloudy noise in three sizes, mid-grey
+ * around 128, repeating at its edges. Enlarged over the painting it makes no area quite flat.
+ */
+function pigmentWash(): HTMLCanvasElement {
+  if (washTile) return washTile;
+  const size = 128;
+  const tile = document.createElement('canvas');
+  tile.width = tile.height = size;
+  const ctx = tile.getContext('2d')!;
+  const image = ctx.createImageData(size, size);
+  const random = seededRandom(4321);
+  const octaves = [4, 9, 23].map((cells) => ({
+    cells,
+    values: Array.from({ length: cells * cells }, random),
+  }));
+  const smooth = (t: number) => t * t * (3 - 2 * t);
+  for (let y = 0; y < size; y++)
+    for (let x = 0; x < size; x++) {
+      let v = 0;
+      octaves.forEach(({ cells, values }, o) => {
+        const fx = (x / size) * cells,
+          fy = (y / size) * cells;
+        const x0 = Math.floor(fx),
+          y0 = Math.floor(fy);
+        const at = (i: number, j: number) => values[(j % cells) * cells + (i % cells)];
+        const u = smooth(fx - x0),
+          w = smooth(fy - y0);
+        const top = at(x0, y0) + (at(x0 + 1, y0) - at(x0, y0)) * u,
+          bottom = at(x0, y0 + 1) + (at(x0 + 1, y0 + 1) - at(x0, y0 + 1)) * u;
+        v += (top + (bottom - top) * w - 0.5) * [0.55, 0.3, 0.15][o];
+      });
+      const i = (y * size + x) * 4;
+      image.data[i] = image.data[i + 1] = image.data[i + 2] = 128 + v * 190;
+      image.data[i + 3] = 255;
+    }
+  ctx.putImageData(image, 0, 0);
+  washTile = tile;
+  return tile;
+}
+
+/** The painted area's outline: a rectangle whose edges wander, as a brush leaves them. */
+function paintedEdge(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  seed: number,
+) {
+  // Slow drift with a finer tremor, different on each side.
+  const drift = noise1(seed + 99),
+    tremor = noise1(seed + 199);
+  const wander = (side: number, t: number) =>
+    (drift(side * 61 + t / 90) - 0.5) * 7 + (tremor(side * 47 + t / 17) - 0.5) * 2.4;
+  const corner = 12;
+  ctx.moveTo(x + corner, y + wander(0, 0));
+  for (let t = corner; t <= w - corner; t += 12) ctx.lineTo(x + t, y + wander(0, t));
+  for (let t = corner; t <= h - corner; t += 12) ctx.lineTo(x + w + wander(1, t), y + t);
+  for (let t = w - corner; t >= corner; t -= 12) ctx.lineTo(x + t, y + h + wander(2, t));
+  for (let t = h - corner; t >= corner; t -= 12) ctx.lineTo(x + wander(3, t), y + t);
+  ctx.closePath();
+}
+
+/** Width of the bare paper left around the painted sky. */
+const MARGIN = 22;
+
+/**
+ * The finish that makes a painting of the illustrated sky: light that bleeds softly out of the
+ * bright passages, uneven pigment, a soft vignette, a border of bare paper with a wandering painted
+ * edge, and paper grain over all of it. `sky` false gives the paper only, for the text panel.
  */
 function paintFinish(
   ctx: CanvasRenderingContext2D,
@@ -394,15 +465,43 @@ function paintFinish(
   ctx.rect(x, y, w, h);
   ctx.clip();
   if (sky) {
-    const random = seededRandom(seed);
+    // Diffusion: a small, smoothed copy of the painting laid back over it, so lights glow into
+    // their surroundings and edges soften as they do in wet paint.
+    const sw = Math.ceil(w / 14),
+      sh = Math.ceil(h / 14);
+    const small = document.createElement('canvas');
+    small.width = sw;
+    small.height = sh;
+    const s = small.getContext('2d')!;
+    s.imageSmoothingQuality = 'high';
+    s.drawImage(ctx.canvas, x, y, w, h, 0, 0, sw, sh);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.globalCompositeOperation = 'screen';
+    ctx.globalAlpha = 0.14;
+    ctx.drawImage(small, 0, 0, sw, sh, x, y, w, h);
     ctx.globalCompositeOperation = 'soft-light';
-    for (let i = 0; i < 9; i++) {
+    ctx.globalAlpha = 0.28;
+    ctx.drawImage(small, 0, 0, sw, sh, x, y, w, h);
+    // Uneven pigment at two sizes.
+    const wash = pigmentWash();
+    for (const [size, alpha, shift] of [
+      [w * 1.1, 0.5, 0.13],
+      [w * 0.36, 0.3, 0.41],
+    ]) {
+      ctx.globalAlpha = alpha;
+      for (let ty = y - size * shift; ty < y + h; ty += size)
+        for (let tx = x - size * shift; tx < x + w; tx += size) ctx.drawImage(wash, tx, ty, size, size);
+    }
+    ctx.globalAlpha = 1;
+    const random = seededRandom(seed);
+    for (let i = 0; i < 6; i++) {
       const bx = x + random() * w,
         by = y + random() * h,
         r = (0.15 + random() * 0.3) * Math.max(w, h);
       const g = ctx.createRadialGradient(bx, by, 0, bx, by, r);
       const warm = random() < 0.5;
-      g.addColorStop(0, warm ? 'rgba(255,214,170,.22)' : 'rgba(120,150,230,.22)');
+      g.addColorStop(0, warm ? 'rgba(255,214,170,.2)' : 'rgba(120,150,230,.2)');
       g.addColorStop(1, 'rgba(128,128,128,0)');
       ctx.fillStyle = g;
       ctx.fillRect(x, y, w, h);
@@ -417,9 +516,24 @@ function paintFinish(
       Math.max(w, h) * 0.78,
     );
     v.addColorStop(0, 'rgba(20,16,40,0)');
-    v.addColorStop(1, 'rgba(20,16,40,.32)');
+    v.addColorStop(1, 'rgba(20,16,40,.26)');
     ctx.fillStyle = v;
     ctx.fillRect(x, y, w, h);
+    // Bare paper around the painting; pigment gathers in a slightly darker line at its edge.
+    const edge = () => {
+      ctx.beginPath();
+      paintedEdge(ctx, x + MARGIN, y + MARGIN, w - MARGIN * 2, h - MARGIN - 14, seed);
+    };
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.strokeStyle = 'rgba(70,74,120,.22)';
+    ctx.lineWidth = 5;
+    edge();
+    ctx.stroke();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = PAPER;
+    edge();
+    ctx.rect(x, y, w, h);
+    ctx.fill('evenodd');
   }
   const pattern = ctx.createPattern(paperGrain(), 'repeat');
   if (pattern) {

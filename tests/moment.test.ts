@@ -1,7 +1,14 @@
 import * as THREE from 'three';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createProjection } from '../src/moment/projection';
-import { HORIZON_VARIANTS, horizonAltitude } from '../src/moment/scenery';
+import {
+  HORIZON_VARIANTS,
+  ISLAND_TOP,
+  MAST_TOP,
+  TOWN_TOP,
+  horizonAltitude,
+  type HorizonVariant,
+} from '../src/moment/scenery';
 import { wrap } from '../src/moment/postcard';
 import { drawIllustration } from '../src/moment/illustration';
 import { defaultWeatherValues } from '../src/domain/weather';
@@ -19,6 +26,26 @@ import { cityLevel, parseExploration, type Exploration } from '../src/lib/persis
 import { normalizeLocation, PRESETS } from '../src/lib/locations';
 import type { WeatherSelection } from '../src/types';
 import { NEW_YORK } from './fixtures/locations';
+
+/** What the illustration paints, in order: each cloud, and each filled path with its circles. */
+const painted = vi.hoisted(
+  () => [] as ({ kind: 'cloud' } | { kind: 'fill'; arcs: { x: number; y: number; r: number }[] })[],
+);
+// The cloud painters, unchanged, noting each call in `painted`.
+vi.mock('../src/moment/clouds', async (importOriginal) => {
+  const clouds = await importOriginal<Record<string, unknown>>();
+  return Object.fromEntries(
+    Object.entries(clouds).map(([name, value]) => [
+      name,
+      typeof value === 'function'
+        ? (...args: unknown[]) => {
+            painted.push({ kind: 'cloud' });
+            return (value as (...a: unknown[]) => unknown)(...args);
+          }
+        : value,
+    ]),
+  );
+});
 
 describe('the illustrated image puts objects where the renderer does', () => {
   // The renderer's camera: rotation (pitch, yaw, 0) in YXZ order, as cameraControls sets it.
@@ -66,6 +93,12 @@ describe('horizon variants', () => {
         expect(altitude).toBeGreaterThanOrEqual(0);
         expect(altitude).toBeLessThan(2);
       }
+  });
+  it('what the illustration adds on the horizon line stays below 2° too', () => {
+    for (const top of [TOWN_TOP, ISLAND_TOP, MAST_TOP]) {
+      expect(top).toBeGreaterThan(0);
+      expect(top).toBeLessThan(2);
+    }
   });
 });
 
@@ -170,19 +203,79 @@ describe('image text', () => {
 });
 
 describe('the illustrated sky follows the layers and visibility', () => {
-  /** A 2D context that records what is drawn: dashed strokes (pattern lines) and text. */
+  /**
+   * A 2D context that records what is drawn: dashed strokes (pattern lines), text and where it is
+   * put, and the rectangles drawing is clipped to.
+   */
   const recorder = () => {
-    const calls = { dashedStrokes: 0, text: [] as string[] };
+    const calls = {
+      dashedStrokes: 0,
+      text: [] as string[],
+      textAt: [] as { text: string; y: number }[],
+      clips: [] as { y: number; height: number; drawnInside: number }[],
+    };
     let dashed = false;
+    let rect: { y: number; height: number } | null = null;
+    // The clips in force, innermost last, with the save depth each was made at.
+    const clipped: { depth: number; clip: (typeof calls.clips)[number] }[] = [];
+    let depth = 0;
+    // Circles in the current path, placed by the translation in force (the Moon is drawn translated).
+    let arcs: { x: number; y: number; r: number }[] = [];
+    const offsets = [{ x: 0, y: 0 }];
+    const offset = () => offsets[offsets.length - 1];
     const ctx = new Proxy(
       {},
       {
         get: (_target, key) => {
           if (key === 'setLineDash') return (dash: number[]) => (dashed = dash.length > 0);
-          if (key === 'stroke') return () => dashed && calls.dashedStrokes++;
-          if (key === 'fillText') return (text: string) => calls.text.push(text);
+          if (key === 'stroke')
+            return () => {
+              if (dashed) calls.dashedStrokes++;
+              for (const { clip } of clipped) clip.drawnInside++;
+            };
+          if (key === 'fill')
+            return () => {
+              clipped.forEach(({ clip }) => clip.drawnInside++);
+              painted.push({ kind: 'fill', arcs });
+            };
+          if (key === 'arc')
+            return (x: number, y: number, r: number) =>
+              arcs.push({ x: x + offset().x, y: y + offset().y, r });
+          if (key === 'translate')
+            return (x: number, y: number) =>
+              (offsets[offsets.length - 1] = { x: offset().x + x, y: offset().y + y });
+          if (key === 'fillText')
+            return (text: string, _x: number, y: number) => {
+              calls.text.push(text);
+              calls.textAt.push({ text, y });
+            };
           if (key === 'createLinearGradient' || key === 'createRadialGradient')
             return () => ({ addColorStop: () => {} });
+          if (key === 'save')
+            return () => {
+              depth++;
+              offsets.push({ ...offset() });
+            };
+          if (key === 'restore')
+            return () => {
+              depth--;
+              offsets.pop();
+              while (clipped.length && clipped[clipped.length - 1].depth > depth) clipped.pop();
+            };
+          if (key === 'beginPath')
+            return () => {
+              rect = null;
+              arcs = [];
+            };
+          if (key === 'rect')
+            return (_x: number, y: number, _w: number, height: number) => (rect = { y, height });
+          if (key === 'clip')
+            return () => {
+              if (!rect) return;
+              const clip = { ...rect, drawnInside: 0 };
+              calls.clips.push(clip);
+              clipped.push({ depth, clip });
+            };
           return () => {};
         },
         set: () => true,
@@ -194,17 +287,32 @@ describe('the illustrated sky follows the layers and visibility', () => {
     instant: string,
     view: { heading: number; altitude: number; fov: number },
     labels: boolean,
+    horizon: HorizonVariant = 'ridge',
+    cloud = 0,
   ) => {
     const sky = calculateSky(NEW_YORK, new Date(instant));
+    painted.length = 0;
     const { ctx, calls } = recorder();
     const project = createProjection(view, 1.5);
+    const toCanvas = (alt: number, az: number) => {
+      const p = project(alt, az);
+      return { x: (p.x + 1) * 600, y: (1 - p.y) * 400, front: p.front };
+    };
     drawIllustration(
       ctx,
       1200,
       800,
       {
         sky,
-        weather: { ...defaultWeatherValues(), cloudCover: 0, haze: 0, visibilityKm: 40 },
+        weather: {
+          ...defaultWeatherValues(),
+          cloudCover: cloud,
+          cloudLow: cloud,
+          cloudMid: cloud,
+          cloudHigh: cloud,
+          haze: 0,
+          visibilityKm: 40,
+        },
         view,
         aspect: 1.5,
         layers: { stars: true, lines: true, labels },
@@ -213,15 +321,12 @@ describe('the illustrated sky follows the layers and visibility', () => {
         skyBrightness: 'dark',
         provenance: { kind: 'none' },
       },
-      (alt, az) => {
-        const p = project(alt, az);
-        return { x: (p.x + 1) * 600, y: (1 - p.y) * 400, front: p.front };
-      },
-      'ridge',
+      toCanvas,
+      horizon,
       { object: (object) => object.name, pattern: (id) => id },
       'sans-serif',
     );
-    return calls;
+    return { ...calls, horizonY: toCanvas(0, view.heading).y, sky, toCanvas };
   };
   // Orion and Sirius in the south at midnight in January.
   const night = '2026-01-10T05:00:00Z';
@@ -240,4 +345,49 @@ describe('the illustrated sky follows the layers and visibility', () => {
     expect(draw('2026-06-15T04:00:00Z', north, true).dashedStrokes).toBeGreaterThan(0);
     expect(draw('2026-06-15T16:00:00Z', north, true).dashedStrokes).toBe(0);
   });
+  // Hills, trees, houses and people are taller than 2°, so they may only stand below the horizon line.
+  it('paints the taller scenery only inside a clip that starts under the horizon line', () => {
+    for (const horizon of HORIZON_VARIANTS) {
+      const { clips, horizonY } = draw(night, { heading: 190, altitude: 12, fov: 66 }, true, horizon);
+      const ground = clips.filter((clip) => clip.y > horizonY && clip.y < horizonY + 2);
+      expect(ground, horizon).toHaveLength(1);
+      expect(ground[0].y + ground[0].height, horizon).toBeGreaterThanOrEqual(800);
+      // The layers, trees, grass and figures (by the sea, a headland): many marks, all inside it.
+      expect(ground[0].drawnInside, horizon).toBeGreaterThan(50);
+    }
+  });
+  it('letters a name above its object when below would fall on the land', () => {
+    // Sunset in New York, facing the Sun on the horizon; Sirius, high in January, keeps its name below.
+    const sunset = draw('2026-11-12T21:35:00Z', { heading: 240, altitude: 14, fov: 66 }, true);
+    const sun = sunset.textAt.find(({ text }) => text === 'Sun')!;
+    expect(sun.y).toBeLessThan(sunset.horizonY - 40);
+    const high = draw(night, south, true);
+    const sirius = high.textAt.find(({ text }) => text === 'Sirius')!;
+    const star = calculateSky(NEW_YORK, new Date(night)).stars.find((s) => s.name === 'Sirius')!;
+    const at = createProjection(south, 1.5)(star.altitude, star.azimuth);
+    expect(sirius.y).toBeGreaterThan((1 - at.y) * 400);
+  });
+  // Clouds are illustrative and the Sun, Moon, planets and bright stars are not: under full cover at
+  // every level, every cloud is painted before the disc of a low Sun or Moon, so none can hide it.
+  for (const [body, instant, view] of [
+    ['Sun', '2026-11-12T21:35:00Z', { heading: 240, altitude: 14, fov: 66 }],
+    ['Moon', '2026-08-15T00:30:00Z', { heading: 265, altitude: 10, fov: 66 }],
+  ] as const)
+    it(`paints every cloud before the disc of a low ${body} under full cover`, () => {
+      const { sky, toCanvas } = draw(instant, view, false, 'ridge', 100);
+      const object = body === 'Sun' ? sky.sun : sky.moon;
+      expect(object.visible).toBe(true);
+      expect(object.altitude).toBeLessThan(6);
+      const at = toCanvas(object.altitude, object.azimuth);
+      // The disc: a circle on the body's position with its drawn radius (glows are wider).
+      const disc = painted.findIndex(
+        (step) =>
+          step.kind === 'fill' &&
+          step.arcs.some((a) => Math.hypot(a.x - at.x, a.y - at.y) < 0.5 && a.r > 20 && a.r < 40),
+      );
+      expect(disc).toBeGreaterThan(0);
+      const clouds = painted.flatMap((step, i) => (step.kind === 'cloud' ? [i] : []));
+      expect(clouds.length).toBeGreaterThan(10);
+      expect(Math.max(...clouds)).toBeLessThan(disc);
+    });
 });
