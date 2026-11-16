@@ -3,8 +3,11 @@ import { calculateSky } from '../src/domain/astronomy';
 import { objectVisibility, skyObjects, type SkyObject } from '../src/lib/exploration';
 import {
   limitingMagnitude,
+  magnitudeVisibility,
   STAR_VISIBLE_THRESHOLD,
+  starGlow,
   starIntensity,
+  starPointSize,
   twilightVisibility,
   weatherVisibility,
 } from '../src/domain/starVisibility';
@@ -89,5 +92,32 @@ describe('twilight star visibility', () => {
                   `sun ${sunAltitude}°, moon ${moonAltitude}°, mag ${magnitude} at ${altitude}°, ${skyBrightness}, haze ${weather.haze}: "${reason}" vs drawn ${share.toFixed(2)}`,
                 ).toBe(share >= STAR_VISIBLE_THRESHOLD);
               }
+  });
+});
+
+describe('dark-sky display scale', () => {
+  it('keeps the faint stars that fill a dark sky bright enough to see on a screen', () => {
+    for (const magnitude of [4, 5, 6]) {
+      expect(starIntensity(magnitude)).toBeGreaterThanOrEqual(0.3);
+      expect(starPointSize(magnitude)).toBeGreaterThanOrEqual(1.8);
+    }
+    expect(starIntensity(-1.5)).toBe(1);
+    expect(starIntensity(2)).toBeGreaterThan(starIntensity(4));
+  });
+
+  it('draws a halo only around the brightest stars and planets, strongest for the brightest', () => {
+    expect(starGlow(3)).toBe(0);
+    expect(starGlow(2)).toBe(0);
+    expect(starGlow(0)).toBeGreaterThan(starGlow(1));
+    expect(starGlow(-1.46)).toBeGreaterThan(starGlow(0));
+    expect(starGlow(-4.5)).toBe(1);
+  });
+
+  it('still lets light pollution decide which stars show at all', () => {
+    const zenith = { altitude: 89, magnitude: 5 };
+    const noMoon = { altitude: -20, illumination: 0 };
+    expect(magnitudeVisibility(zenith, limitingMagnitude('dark', noMoon))).toBe(1);
+    expect(magnitudeVisibility(zenith, limitingMagnitude('suburban', noMoon))).toBe(0);
+    expect(magnitudeVisibility(zenith, limitingMagnitude('city', noMoon))).toBe(0);
   });
 });

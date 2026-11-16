@@ -27,6 +27,7 @@ import { CLOUD_DRIFT_FPS, PRECIPITATION_VISIBLE, weatherMotion } from './weather
 import {
   limitingMagnitude,
   planetTwilightVisibility,
+  starGlow,
   starIntensity,
   starPointSize,
   twilightVisibility,
@@ -309,11 +310,13 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
       const sizes = new Float32Array(starCount);
       const magnitudes = new Float32Array(starCount);
       const intensities = new Float32Array(starCount);
+      const glows = new Float32Array(starCount);
       const colors = new Float32Array(starCount * 3);
       stars.forEach((star, i) => {
         sizes[i] = starPointSize(star.magnitude);
         magnitudes[i] = star.magnitude;
         intensities[i] = starIntensity(star.magnitude);
+        glows[i] = starGlow(star.magnitude);
         const color = new THREE.Color('#bdd6ff').lerp(
           new THREE.Color('#fff0cf'),
           THREE.MathUtils.clamp(((star.colorIndex ?? 0.4) + 0.3) / 1.4, 0, 1),
@@ -329,6 +332,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
       starGeometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
       starGeometry.setAttribute('aMagnitude', new THREE.BufferAttribute(magnitudes, 1));
       starGeometry.setAttribute('aIntensity', new THREE.BufferAttribute(intensities, 1));
+      starGeometry.setAttribute('aGlow', new THREE.BufferAttribute(glows, 1));
       starGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
       placeStars(vectors);
       starIndex = new Map(stars.map((star, index) => [star.id, index]));
@@ -346,12 +350,14 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
     const planetSizes = new THREE.BufferAttribute(new Float32Array(planetCount), 1);
     const planetMagnitudes = new THREE.BufferAttribute(new Float32Array(planetCount), 1);
     const planetIntensities = new THREE.BufferAttribute(new Float32Array(planetCount), 1);
+    const planetGlows = new THREE.BufferAttribute(new Float32Array(planetCount), 1);
     const planetColors = new Float32Array(planetCount * 3);
     PLANET_COLORS.forEach((color, i) => new THREE.Color(color).toArray(planetColors, i * 3));
     planetGeometry.setAttribute('position', planetPositions);
     planetGeometry.setAttribute('aSize', planetSizes);
     planetGeometry.setAttribute('aMagnitude', planetMagnitudes);
     planetGeometry.setAttribute('aIntensity', planetIntensities);
+    planetGeometry.setAttribute('aGlow', planetGlows);
     planetGeometry.setAttribute('color', new THREE.BufferAttribute(planetColors, 3));
     const planetMaterial = createStarMaterial(PLANET_DISTANCE, renderer.getPixelRatio());
     const planetPoints = new THREE.Points(planetGeometry, planetMaterial);
@@ -427,7 +433,14 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
         planetMagnitudes.setX(i, planet.magnitude);
         const twilight = planetTwilightVisibility(sunAltitude, planet.magnitude);
         planetIntensities.setX(i, starIntensity(planet.magnitude) * twilight);
-        for (const attribute of [planetPositions, planetSizes, planetMagnitudes, planetIntensities])
+        planetGlows.setX(i, starGlow(planet.magnitude));
+        for (const attribute of [
+          planetPositions,
+          planetSizes,
+          planetMagnitudes,
+          planetIntensities,
+          planetGlows,
+        ])
           attribute.needsUpdate = true;
         return planet.visible ? starAlpha(planet, starLimit) * twilight : 0;
       });

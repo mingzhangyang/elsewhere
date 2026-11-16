@@ -13,11 +13,14 @@ export const STAR_VERTEX = /* glsl */ `
 attribute float aSize;
 attribute float aMagnitude;
 attribute float aIntensity;
+attribute float aGlow;
 uniform float uPixelRatio;
 uniform float uLimit;
 uniform float uDistance;
 varying vec3 vColor;
 varying float vAlpha;
+varying float vGlow;
+varying float vCore;
 const float DEG = 0.017453292519943295;
 
 // Astronomy Engine's 'normal' refraction (Saemundsson), in degrees.
@@ -38,7 +41,11 @@ void main() {
   float c = cos(altitude * DEG);
   vec3 apparent = vec3(ground.x * c, sin(altitude * DEG), ground.y * c);
   gl_Position = projectionMatrix * viewMatrix * vec4(apparent * uDistance, 1.0);
-  gl_PointSize = aSize * uPixelRatio;
+  // A glowing point grows to hold its halo; vCore is the core's share of the point's radius.
+  float grow = 1.0 + ${glsl(STAR_MODEL.haloScale)} * aGlow;
+  gl_PointSize = aSize * grow * uPixelRatio;
+  vCore = 1.0 / grow;
+  vGlow = aGlow;
   vColor = color;
   float sinAltitude = sin(altitude * DEG);
   float magnitude = aMagnitude + ${glsl(STAR_MODEL.extinction)} / max(${glsl(STAR_MODEL.minSinAltitude)}, sinAltitude)
@@ -54,11 +61,16 @@ export const STAR_FRAGMENT = /* glsl */ `
 uniform float uOpacity;
 varying vec3 vColor;
 varying float vAlpha;
+varying float vGlow;
+varying float vCore;
 void main() {
-  vec2 p = gl_PointCoord - vec2(0.5);
-  float r = length(p);
-  if (r > 0.5) discard;
-  float alpha = (1.0 - smoothstep(0.12, 0.5, r)) * uOpacity * vAlpha;
+  // s: 0 at the center, 1 at the point's edge.
+  float s = length(gl_PointCoord - vec2(0.5)) * 2.0;
+  if (s > 1.0) discard;
+  float core = 1.0 - smoothstep(${glsl(STAR_MODEL.coreSoftStart)} * vCore, vCore, s);
+  float fall = 1.0 - s;
+  float halo = vGlow * ${glsl(STAR_MODEL.haloStrength)} * fall * fall;
+  float alpha = (core + halo * (1.0 - core)) * uOpacity * vAlpha;
   gl_FragColor = vec4(vColor, alpha);
 }
 `;

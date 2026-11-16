@@ -64,11 +64,26 @@ export const STAR_MODEL = {
   /** Air mass is capped where sin(altitude) falls below this. */
   minSinAltitude: 0.08,
   /** Stars fade from fully visible at `limit + fadeStart` to hidden at `limit + fadeEnd`. */
-  fadeStart: -1,
+  fadeStart: -0.5,
   fadeEnd: 0.3,
-  /** Display intensity is 10^(intensitySlope · magnitude), clamped to [minIntensity, 1]. */
-  intensitySlope: -0.16,
-  minIntensity: 0.15,
+  /**
+   * Display intensity is 10^(intensitySlope · magnitude), clamped to [minIntensity, 1]. The floor
+   * keeps the fourth- to sixth-magnitude stars that fill a dark sky visible on a screen; whether a
+   * star shows at all is still decided by the limiting magnitude.
+   */
+  intensitySlope: -0.12,
+  minIntensity: 0.3,
+  /** Smallest point, in CSS pixels: below about two pixels a faint star breaks up on the pixel grid. */
+  minPointSize: 1.8,
+  /** Fraction of the point's radius drawn at full strength before its edge softens. */
+  coreSoftStart: 0.45,
+  /** Stars brighter than glowMagnitude gain a halo, reaching full strength glowRange magnitudes brighter. */
+  glowMagnitude: 2,
+  glowRange: 2.5,
+  /** At full glow the point grows to (1 + haloScale) times its core to make room for the halo. */
+  haloScale: 2.5,
+  /** Peak halo strength relative to the core. */
+  haloStrength: 0.7,
 } as const;
 
 /** Magnitudes lost to the longer air path near the horizon; 0 at the zenith. */
@@ -91,7 +106,15 @@ export function starIntensity(magnitude: number): number {
 
 /** On-screen point size, in CSS pixels, by catalog brightness. */
 export function starPointSize(magnitude: number): number {
-  return Math.max(1.35, 4.1 - magnitude * 0.5);
+  return Math.max(STAR_MODEL.minPointSize, 4.1 - magnitude * 0.5);
+}
+
+/**
+ * 0–1: the halo drawn around the brightest stars and planets, as the eye sees them in a dark sky.
+ * Illustrative, like the rest of the display scale; it does not change whether an object is visible.
+ */
+export function starGlow(magnitude: number): number {
+  return clamp((STAR_MODEL.glowMagnitude - magnitude) / STAR_MODEL.glowRange, 0, 1);
 }
 
 /** 0.1–1: overall contrast lost to reported haze and poor visibility. */
