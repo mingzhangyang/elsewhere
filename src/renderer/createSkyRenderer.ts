@@ -26,7 +26,9 @@ import { betterHit, pickPointAt, starAlpha } from './starPicking';
 import { CLOUD_DRIFT_FPS, PRECIPITATION_VISIBLE, weatherMotion } from './weatherMotion';
 import {
   limitingMagnitude,
+  milkyWayVisibility,
   planetTwilightVisibility,
+  starGlow,
   starIntensity,
   starPointSize,
   twilightVisibility,
@@ -39,9 +41,12 @@ import {
   diurnalTurn,
   setRotationMatrix,
 } from './starMaterial';
+import { createMilkyWay } from './milkyWay';
 
 /** Radius of the sphere the star points are placed on. */
 const STAR_DISTANCE = 1770;
+/** The Milky Way's glow lies behind the stars, inside the sky dome. */
+const MILKY_WAY_DISTANCE = 2000;
 /** Planets are drawn just inside the star sphere, through the same point shader. */
 const PLANET_DISTANCE = 1760;
 /** Display tints, in PLANETS order: illustrative, chosen to tell the planets apart. */
@@ -292,6 +297,8 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
     starPoints.frustumCulled = false;
     starPoints.matrixAutoUpdate = false;
     scene.add(starPoints);
+    const milkyWay = createMilkyWay(MILKY_WAY_DISTANCE);
+    scene.add(milkyWay.mesh);
     let starIndex = new Map<string, number>();
     let labels = input.labels;
     const layersFor = (stars: Star[]) =>
@@ -309,11 +316,13 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
       const sizes = new Float32Array(starCount);
       const magnitudes = new Float32Array(starCount);
       const intensities = new Float32Array(starCount);
+      const glows = new Float32Array(starCount);
       const colors = new Float32Array(starCount * 3);
       stars.forEach((star, i) => {
         sizes[i] = starPointSize(star.magnitude);
         magnitudes[i] = star.magnitude;
         intensities[i] = starIntensity(star.magnitude);
+        glows[i] = starGlow(star.magnitude);
         const color = new THREE.Color('#bdd6ff').lerp(
           new THREE.Color('#fff0cf'),
           THREE.MathUtils.clamp(((star.colorIndex ?? 0.4) + 0.3) / 1.4, 0, 1),
@@ -329,6 +338,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
       starGeometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
       starGeometry.setAttribute('aMagnitude', new THREE.BufferAttribute(magnitudes, 1));
       starGeometry.setAttribute('aIntensity', new THREE.BufferAttribute(intensities, 1));
+      starGeometry.setAttribute('aGlow', new THREE.BufferAttribute(glows, 1));
       starGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
       placeStars(vectors);
       starIndex = new Map(stars.map((star, index) => [star.id, index]));
@@ -346,12 +356,14 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
     const planetSizes = new THREE.BufferAttribute(new Float32Array(planetCount), 1);
     const planetMagnitudes = new THREE.BufferAttribute(new Float32Array(planetCount), 1);
     const planetIntensities = new THREE.BufferAttribute(new Float32Array(planetCount), 1);
+    const planetGlows = new THREE.BufferAttribute(new Float32Array(planetCount), 1);
     const planetColors = new Float32Array(planetCount * 3);
     PLANET_COLORS.forEach((color, i) => new THREE.Color(color).toArray(planetColors, i * 3));
     planetGeometry.setAttribute('position', planetPositions);
     planetGeometry.setAttribute('aSize', planetSizes);
     planetGeometry.setAttribute('aMagnitude', planetMagnitudes);
     planetGeometry.setAttribute('aIntensity', planetIntensities);
+    planetGeometry.setAttribute('aGlow', planetGlows);
     planetGeometry.setAttribute('color', new THREE.BufferAttribute(planetColors, 3));
     const planetMaterial = createStarMaterial(PLANET_DISTANCE, renderer.getPixelRatio());
     const planetPoints = new THREE.Points(planetGeometry, planetMaterial);
@@ -367,11 +379,16 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
     const turn = new THREE.Quaternion();
     const turnMatrix = new THREE.Matrix4();
     const starBase = new THREE.Matrix4();
+    const milkyWayPrecession = new THREE.Matrix4();
     const playbackTurn = createPlaybackTurn(MAX_EXTRAPOLATION);
     const applyTurn = (seconds: number) => {
       diurnalTurn(activeSky.starField.rotation, seconds, turn);
       starPoints.matrix.multiplyMatrices(turnMatrix.makeRotationFromQuaternion(turn), starBase);
       starPoints.matrixWorldNeedsUpdate = true;
+      // The shader samples J2000 directions. Precess the sphere to the same date-frame
+      // as the catalog, then apply the same local sidereal/playback turn as the stars.
+      milkyWay.mesh.matrix.multiplyMatrices(starPoints.matrix, milkyWayPrecession);
+      milkyWay.mesh.matrixWorldNeedsUpdate = true;
       // Planets are placed in horizontal coordinates; between ticks they turn with the sky.
       planetPoints.matrix.copy(turnMatrix);
       planetPoints.matrixWorldNeedsUpdate = true;
@@ -427,7 +444,14 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
         planetMagnitudes.setX(i, planet.magnitude);
         const twilight = planetTwilightVisibility(sunAltitude, planet.magnitude);
         planetIntensities.setX(i, starIntensity(planet.magnitude) * twilight);
-        for (const attribute of [planetPositions, planetSizes, planetMagnitudes, planetIntensities])
+        planetGlows.setX(i, starGlow(planet.magnitude));
+        for (const attribute of [
+          planetPositions,
+          planetSizes,
+          planetMagnitudes,
+          planetIntensities,
+          planetGlows,
+        ])
           attribute.needsUpdate = true;
         return planet.visible ? starAlpha(planet, starLimit) * twilight : 0;
       });
@@ -460,6 +484,9 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
     let reducedMotion = input.reducedMotion;
     let skyBrightness = input.skyBrightness ?? 'dark';
     let quality = input.quality ?? 'auto';
+    /** Fewer layers of noise for the Milky Way's structure on the low quality setting. */
+    const milkyWayOctaves = () => (quality === 'low' ? 3 : 5);
+    milkyWay.material.uniforms.uOctaves.value = milkyWayOctaves();
     let contextLost = false;
     let starLimit = 6;
     /** A shared link's camera turn toward its subject, in progress (see `turnTo`). */
@@ -643,6 +670,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
         skyBrightness = settings.skyBrightness ?? 'dark';
         ridge.visible = settings.horizon !== 'flat';
         quality = settings.quality ?? 'auto';
+        milkyWay.material.uniforms.uOctaves.value = milkyWayOctaves();
         renderer.setPixelRatio(
           Math.min(window.devicePixelRatio || 1, quality === 'low' ? 1 : quality === 'auto' ? 1.5 : 2),
         );
@@ -703,6 +731,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
         if (nextSky.stars.length !== starCount) buildStars(nextSky.stars, nextSky.starField.vectors);
         else if (nextSky.starField.vectors !== starVectors) placeStars(nextSky.starField.vectors);
         setRotationMatrix(starBase, nextSky.starField.rotation);
+        setRotationMatrix(milkyWayPrecession, nextSky.starField.precession);
         // The new instant already includes the turn shown so far; restart from rest.
         if (ticked) playbackTurn.tick(performance.now());
         applyTurn(0);
@@ -712,6 +741,9 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
         starMaterial.uniforms.uLimit.value = starLimit;
         starMaterial.uniforms.uOpacity.value = nightVisibility * visibilityFactor;
         starPoints.visible = flags.stars;
+        const milkyWayShare = milkyWayVisibility(starLimit, nextSky.sunAltitude) * visibilityFactor;
+        milkyWay.material.uniforms.uIntensity.value = milkyWayShare;
+        milkyWay.mesh.visible = flags.stars && milkyWayShare > 0;
         planetAlphas = placePlanets(nextSky.planets, nextSky.sunAltitude);
         planetMaterial.uniforms.uLimit.value = starLimit;
         planetMaterial.uniforms.uOpacity.value = visibilityFactor;

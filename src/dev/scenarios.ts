@@ -20,6 +20,8 @@ export function scenarioProps(name: string | null): AppProps {
       unavailable: { time: '2026-11-12T17:00:00Z', cloudCover: 0, precipitation: 0, code: 0 },
       // Evening Venus, near greatest eastern elongation, at civil dusk in New York.
       venus: { time: '2026-08-15T00:30:00Z', cloudCover: 0, precipitation: 0, code: 0 },
+      // A moonless August evening in New York (new Moon), the Milky Way's core low in the south.
+      milkyway: { time: '2026-08-12T02:30:00Z', cloudCover: 0, precipitation: 0, code: 0 },
       // Local midnight in New York at Jupiter's opposition, the planet high in the south.
       jupiter: { time: '2026-01-10T05:00:00Z', cloudCover: 0, precipitation: 0, code: 0 },
     };

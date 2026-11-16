@@ -166,17 +166,42 @@ export function horizontalFromEquatorial(
   return { altitude, azimuth };
 }
 
-function precessJ2000(
-  raHours: number,
-  decDegrees: number,
-  date: Date,
-): { raHours: number; decDegrees: number } {
+function precessionAngles(date: Date) {
   const julianDay = date.getTime() / 86_400_000 + 2_440_587.5;
   const t = (julianDay - 2_451_545.0) / 36_525;
   const arcsecToRad = Math.PI / (180 * 3600);
   const zeta = (2306.2181 * t + 0.30188 * t * t + 0.017998 * t * t * t) * arcsecToRad;
   const z = (2306.2181 * t + 1.09468 * t * t + 0.018203 * t * t * t) * arcsecToRad;
   const theta = (2004.3109 * t - 0.42665 * t * t - 0.041833 * t * t * t) * arcsecToRad;
+  return { zeta, z, theta };
+}
+
+/** Row-major rotation from J2000 equatorial directions to the equator/equinox of the date. */
+export function precessionMatrixJ2000ToDate(date: Date): number[] {
+  const { zeta, z, theta } = precessionAngles(date);
+  const [cz, sz, ct, st, cze, sze] = [
+    Math.cos(z),
+    Math.sin(z),
+    Math.cos(theta),
+    Math.sin(theta),
+    Math.cos(zeta),
+    Math.sin(zeta),
+  ];
+  // The same Rz(z) * Ry(-theta) * Rz(zeta) used by precessJ2000 below.
+  // prettier-ignore
+  return [
+    cz * ct * cze - sz * sze, -cz * ct * sze - sz * cze, -cz * st,
+    sz * ct * cze + cz * sze, -sz * ct * sze + cz * cze, -sz * st,
+    st * cze, -st * sze, ct,
+  ];
+}
+
+function precessJ2000(
+  raHours: number,
+  decDegrees: number,
+  date: Date,
+): { raHours: number; decDegrees: number } {
+  const { zeta, z, theta } = precessionAngles(date);
   const ra = (raHours * 15 * Math.PI) / 180;
   const dec = (decDegrees * Math.PI) / 180;
   const a = Math.cos(dec) * Math.sin(ra + zeta);
@@ -196,6 +221,8 @@ export interface StarField {
    * z south). Every star shares it, so the sky turns as one rigid sphere.
    */
   rotation: number[];
+  /** Row-major J2000-to-date precession; the procedural galaxy uses this to follow the stars. */
+  precession: number[];
 }
 
 const DAY_MS = 86_400_000;
@@ -244,9 +271,12 @@ export function calculateStarField(
   date: Date,
   greenwichSiderealHours: number,
 ): StarField {
+  // apparentStarVectors samples its epoch at UTC noon and reuses it for the entire UTC day.
+  const catalogDay = Math.floor(date.getTime() / DAY_MS);
   return {
     vectors: apparentStarVectors(date),
     rotation: equatorialToScene(latitude, longitude, greenwichSiderealHours),
+    precession: precessionMatrixJ2000ToDate(new Date((catalogDay + 0.5) * DAY_MS)),
   };
 }
 
