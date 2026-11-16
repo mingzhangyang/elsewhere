@@ -81,6 +81,6 @@ it('keeps the November 16 Washington crescent in its calculated position', () =>
   // The independent ~33-degree reference is approximate, so allow +/-1 degree.
   expect(sky.moon.altitude).toBeGreaterThan(32);
   expect(sky.moon.altitude).toBeLessThan(34);
-  expect(sky.moon.illumination).toBeGreaterThan(0.40);
+  expect(sky.moon.illumination).toBeGreaterThan(0.4);
   expect(sky.moon.illumination).toBeLessThan(0.49);
 });

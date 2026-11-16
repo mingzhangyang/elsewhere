@@ -27,7 +27,7 @@ const DAYLIGHT_GLSL = `
 // The CPU reference and GLSL use the same constants (linear texture values).
 const MOON_ALBEDO_EXPONENT = 0.75;
 const MOON_NIGHT_FILL = 0.12;
-const MOON_DAY_FILL = 0.30;
+const MOON_DAY_FILL = 0.3;
 export function moonLitReflectance(linearLuminance: number, daylight: number): number {
   const luminance = Math.max(0, Math.min(1, linearLuminance));
   const day = Math.max(0, Math.min(1, daylight));
