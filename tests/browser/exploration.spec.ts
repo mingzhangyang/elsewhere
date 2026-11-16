@@ -106,32 +106,40 @@ const jupiterMoment = (subject?: string) =>
   );
 const compass = (page: import('@playwright/test').Page) => page.getByRole('img', { name: /^Facing / });
 
-test('a link with a subject turns to it on opening; the visitor’s own look stops the turn', async ({
-  page,
-}) => {
+test('a link with a subject turns to it on opening', async ({ page }) => {
   await page.goto(jupiterMoment('jupiter'));
   await expect(page.getByRole('img', { name: /^Sky view\./ })).toBeVisible();
   // It starts 70° to the left (heading 110°) and ends facing the link's view.
   await expect(compass(page)).not.toHaveAccessibleName(/180 degrees/);
   await expect(compass(page)).toHaveAccessibleName(/Facing S, 180 degrees/, { timeout: 8000 });
   await expect(page.getByRole('region', { name: 'Selected object' })).toContainText('Jupiter');
-  // A key press of the visitor's own during the turn leaves the view where they put it.
-  await page.goto('about:blank');
+});
+
+test('a visitor key press stops the shared-link turn at the current heading', async ({ page }) => {
   await page.goto(jupiterMoment('jupiter'));
   const sky = page.getByRole('img', { name: /^Sky view\./ });
   await expect(sky).toBeVisible();
+  const beforeKey = await compass(page).getAttribute('aria-label');
   await sky.press('ArrowLeft');
+  await expect(compass(page)).not.toHaveAttribute('aria-label', beforeKey!);
+  const afterKey = await compass(page).getAttribute('aria-label');
   await page.waitForTimeout(3500);
-  await expect(compass(page)).not.toHaveAccessibleName(/180 degrees/);
-  // So does a view button: Zoom in during the turn keeps its zoom and stops the turn short.
-  await page.goto('about:blank');
+  await expect(compass(page)).toHaveAttribute('aria-label', afterKey!);
+});
+
+test('zooming stops the shared-link turn without altering its heading', async ({ page }) => {
   await page.goto(jupiterMoment('jupiter'));
   await expect(page.getByRole('img', { name: /^Sky view\./ })).toBeVisible();
   await page.getByRole('button', { name: 'Zoom in' }).click();
+  // Zoom changes field of view, not heading. The arrival may already be complete on a slow
+  // runner, in which case 180° is correct; only a later automatic turn would be wrong.
+  const afterZoom = await compass(page).getAttribute('aria-label');
+  expect(afterZoom).toMatch(/^Facing /);
   await page.waitForTimeout(3500);
-  await expect(compass(page)).not.toHaveAccessibleName(/180 degrees/);
-  // Older links, without a subject, open where they were left.
-  await page.goto('about:blank');
+  await expect(compass(page)).toHaveAttribute('aria-label', afterZoom!);
+});
+
+test('older shared links without a subject open at their saved heading', async ({ page }) => {
   await page.goto(jupiterMoment());
   await expect(page.getByRole('img', { name: /^Sky view\./ })).toBeVisible();
   await expect(compass(page)).toHaveAccessibleName(/Facing S, 180 degrees/);
@@ -403,11 +411,19 @@ test('pausing between playback ticks leaves the sky at the displayed instant', a
     await page.getByRole('button', { name: 'Pause time' }).click();
     // Recentering uses the displayed instant; the drawn sky must agree with it.
     await page.getByRole('button', { name: 'Recenter' }).click();
-    await page.waitForTimeout(100);
-    const view = (await canvas.boundingBox())!;
-    const marker = (await ring.boundingBox())!;
-    expect(Math.abs(marker.x + marker.width / 2 - (view.x + view.width / 2))).toBeLessThan(3);
-    expect(Math.abs(marker.y + marker.height / 2 - (view.y + view.height / 2))).toBeLessThan(3);
+    // The marker can be temporarily hidden between renderer and playback updates. Wait for the
+    // settled view rather than dereferencing a null bounding box during the next animation frame.
+    await expect(ring).toBeVisible();
+    await expect
+      .poll(async () => {
+        const [view, marker] = await Promise.all([canvas.boundingBox(), ring.boundingBox()]);
+        if (!view || !marker) return Number.POSITIVE_INFINITY;
+        return Math.max(
+          Math.abs(marker.x + marker.width / 2 - (view.x + view.width / 2)),
+          Math.abs(marker.y + marker.height / 2 - (view.y + view.height / 2)),
+        );
+      })
+      .toBeLessThan(3);
   }
 });
 
