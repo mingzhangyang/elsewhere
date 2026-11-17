@@ -109,9 +109,7 @@ test('checks the full eleven-item dev-tooling propagation chain', () => {
     '@typescript-eslint/eslint-plugin': ['@typescript-eslint/parser', '@typescript-eslint/type-utils'],
     'typescript-eslint': ['@typescript-eslint/eslint-plugin', '@typescript-eslint/parser'],
   };
-  const findings = Object.fromEntries(
-    Object.entries(chain).map(([name, via]) => [name, finding(name, via)]),
-  );
+  const findings = Object.fromEntries(Object.entries(chain).map(([name, via]) => [name, finding(name, via)]));
   const lock = {
     packages: Object.fromEntries(
       Object.keys(chain).map((name) => ['node_modules/' + name, { version: '4.0.7', dev: true }]),

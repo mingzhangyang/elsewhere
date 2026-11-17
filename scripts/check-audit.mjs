@@ -63,9 +63,7 @@ export function checkAuditReport(report, lockfile, now = new Date()) {
       return false;
     }
     const path = new Set([...visited, name]);
-    return finding.via.every(
-      (cause) => typeof cause === 'string' && reachesKnownAdvisory(cause, path),
-    );
+    return finding.via.every((cause) => typeof cause === 'string' && reachesKnownAdvisory(cause, path));
   };
   for (const [name, finding] of severe) {
     if (
