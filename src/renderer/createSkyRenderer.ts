@@ -15,6 +15,8 @@ import {
   MOON_VERTEX,
   MOON_FRAGMENT,
   GROUND_FRAGMENT,
+  moonScreenDiameterPx,
+  moonTextureDetail,
 } from './shaders';
 import { directionVector, makeGlowTexture, setAtDirection } from './resources';
 import { RIDGE_RADIUS, ridgeHeight } from './ridge';
@@ -269,6 +271,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
       ...skyUniforms,
       uMap: { value: moonTexture },
       uMoonSunDirection: { value: new THREE.Vector3() },
+      uMoonDetail: { value: 0 },
     };
     const moonMesh = new THREE.Mesh(
       new THREE.SphereGeometry(20, 64, 48),
@@ -847,6 +850,9 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
         }
       }
       celestialLayers.layout(camera, host.clientWidth, host.clientHeight, blocked);
+      moonUniforms.uMoonDetail.value = moonTextureDetail(
+        moonScreenDiameterPx(activeSky.moon.distanceKm, host.clientHeight, camera.fov),
+      );
       renderer.render(scene, camera);
       drawTimes.push(performance.now() - start);
       if (drawTimes.length > 240) drawTimes.shift();

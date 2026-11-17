@@ -384,7 +384,12 @@ export default function App({
           }}
           onBodySelect={(body) => inspect(body, document.activeElement as HTMLElement)}
         />
-        <div className="stage-vignette" />
+        <div
+          className="stage-vignette"
+          style={{
+            opacity: 1 - 0.78 * Math.min(1, Math.max(0, (sky.sunAltitude + 6) / 8)),
+          }}
+        />
         {import.meta.env.DEV && diagnostics && (
           <div className="dev-diagnostics" data-occludes-sky role="region" aria-label="Renderer diagnostics">
             <strong>Development profile</strong>
