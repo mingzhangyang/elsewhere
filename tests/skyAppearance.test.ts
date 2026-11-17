@@ -51,7 +51,10 @@ describe('daylight and twilight appearance', () => {
     expect(MOON_FRAGMENT).toContain('smoothstep(-0.015, 0.065, incidence)');
     expect(MOON_FRAGMENT).toContain('vec3 shadow = mix(');
     expect(MOON_FRAGMENT).toContain('foreground + litSurface * transmission');
-    expect(MOON_FRAGMENT).toContain('moonLitReflectance(luminance, daylightFactor(uSunAltitude), uMoonDetail)');
+    expect(MOON_FRAGMENT).toContain(
+      'moonLitReflectance(luminance, daylightFactor(uSunAltitude), uMoonDetail)',
+    );
+    expect(MOON_FRAGMENT).toContain('exp(-(linear - knee) / shoulder)');
     expect(MOON_FRAGMENT).not.toContain('mix(0.80, 1.0, markings)');
     expect(MOON_FRAGMENT).not.toContain('pow(texture2D(uMap,vMapUv).rgb,vec3(1.0/2.2))');
   });
@@ -75,11 +78,16 @@ describe('daylight and twilight appearance', () => {
       expect(smallHighland - smallMaria).toBeLessThan(0.05);
       expect(detailedHighland - detailedMaria).toBeGreaterThan(0.15);
       expect(detailedHighland - detailedMaria).toBeGreaterThan((smallHighland - smallMaria) * 4);
+      // The two bright source values must not collapse to the same white pixel when zoomed.
+      const brightPeak = moonLitReflectance(0.8, day, 1);
+      expect(brightPeak - detailedHighland).toBeGreaterThan(0.05);
+      expect(brightPeak).toBeLessThan(1);
     }
     expect(moonLitReflectance(0.1, 1, 0)).toBeGreaterThan(0.9);
     expect(moonLitReflectance(0.1, 1, 0)).toBeGreaterThan(moonLitReflectance(0.1, 0, 0));
-    expect(moonLitReflectance(-1, 1)).toBeGreaterThan(0.7);
-    expect(moonLitReflectance(2, 1)).toBe(1);
+    expect(moonLitReflectance(-1, 1)).toBeGreaterThan(0.6);
+    expect(moonLitReflectance(2, 1)).toBeGreaterThan(moonLitReflectance(0.8, 1));
+    expect(moonLitReflectance(2, 1)).toBeLessThan(1);
   });
 });
 

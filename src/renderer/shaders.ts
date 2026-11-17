@@ -25,8 +25,8 @@ const DAYLIGHT_GLSL = `
 `;
 // Keep the daytime sky blue across a wide range of elevations. These are display-space
 // colours, like the rest of this custom shader (no automatic Three.js tone-mapping chunk).
-const DAY_SKY_HORIZON = [0.50, 0.72, 0.96] as const;
-const DAY_SKY_ZENITH = [0.20, 0.36, 0.71] as const;
+const DAY_SKY_HORIZON = [0.5, 0.72, 0.96] as const;
+const DAY_SKY_ZENITH = [0.2, 0.36, 0.71] as const;
 const shaderColor = (values: readonly number[]) =>
   `vec3(${values.map((value) => value.toFixed(2)).join(', ')})`;
 export function daylightSkyColor(elevationDegrees: number): [number, number, number] {
@@ -44,8 +44,10 @@ export function daylightSkyColor(elevationDegrees: number): [number, number, num
 const MOON_ALBEDO_MID = 0.27;
 const MOON_NIGHT_BASE = 0.77;
 const MOON_DAY_BASE = 0.93;
+const MOON_ZOOM_DAY_BASE = 0.82;
 const MOON_SMALL_CONTRAST = 0.08;
 const MOON_ZOOM_CONTRAST = 0.62;
+const MOON_HIGHLIGHT_SHOULDER = 0.12;
 export function moonScreenDiameterPx(distanceKm: number, heightPx: number, verticalFov: number): number {
   return (1737.4 * heightPx) / (distanceKm * Math.tan((verticalFov * Math.PI) / 360));
 }
@@ -57,15 +59,24 @@ export function moonLitReflectance(linearLuminance: number, daylight: number, de
   const luminance = Math.max(0, Math.min(1, linearLuminance));
   const day = Math.max(0, Math.min(1, daylight));
   const texture = Math.max(0, Math.min(1, detail));
-  const base = MOON_NIGHT_BASE + (MOON_DAY_BASE - MOON_NIGHT_BASE) * day;
+  const dayBase = MOON_DAY_BASE + (MOON_ZOOM_DAY_BASE - MOON_DAY_BASE) * texture;
+  const base = MOON_NIGHT_BASE + (dayBase - MOON_NIGHT_BASE) * day;
   const contrast = MOON_SMALL_CONTRAST + (MOON_ZOOM_CONTRAST - MOON_SMALL_CONTRAST) * texture;
-  return Math.max(0.6, Math.min(1, base + (luminance - MOON_ALBEDO_MID) * contrast));
+  const linear = Math.max(0.6, base + (luminance - MOON_ALBEDO_MID) * contrast);
+  // Zoomed highlights roll off gradually instead of saturating to pure white.
+  const shoulder = Math.max(0.001, MOON_HIGHLIGHT_SHOULDER * texture);
+  const knee = 1 - shoulder;
+  return linear <= knee ? linear : 1 - shoulder * Math.exp(-(linear - knee) / shoulder);
 }
 const MOON_REFLECTANCE_GLSL = `
   float moonLitReflectance(float luminance, float daylight, float detail) {
-    float base = mix(${MOON_NIGHT_BASE.toFixed(2)}, ${MOON_DAY_BASE.toFixed(2)}, clamp(daylight, 0.0, 1.0));
+    float dayBase = mix(${MOON_DAY_BASE.toFixed(2)}, ${MOON_ZOOM_DAY_BASE.toFixed(2)}, clamp(detail, 0.0, 1.0));
+    float base = mix(${MOON_NIGHT_BASE.toFixed(2)}, dayBase, clamp(daylight, 0.0, 1.0));
     float contrast = mix(${MOON_SMALL_CONTRAST.toFixed(2)}, ${MOON_ZOOM_CONTRAST.toFixed(2)}, clamp(detail, 0.0, 1.0));
-    return clamp(base + (clamp(luminance, 0.0, 1.0) - ${MOON_ALBEDO_MID.toFixed(2)}) * contrast, 0.60, 1.0);
+    float linear = max(0.60, base + (clamp(luminance, 0.0, 1.0) - ${MOON_ALBEDO_MID.toFixed(2)}) * contrast);
+    float shoulder = max(0.001, ${MOON_HIGHLIGHT_SHOULDER.toFixed(2)} * clamp(detail, 0.0, 1.0));
+    float knee = 1.0 - shoulder;
+    return linear <= knee ? linear : 1.0 - shoulder * exp(-(linear - knee) / shoulder);
   }
 `;
 // The sky and lunar foreground use exactly the same display-space atmospheric radiance.
