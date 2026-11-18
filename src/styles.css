@@ -308,15 +308,6 @@ button:hover:not(:disabled) {
   pointer-events: none;
   text-shadow: 0 2px 10px #0007;
 }
-/* A soft scrim keeps the title readable over a bright daytime sky; at night it is invisible. */
-.sky-context::before {
-  content: '';
-  position: absolute;
-  z-index: -1;
-  inset: -28px -48px -28px -40px;
-  background: radial-gradient(ellipse closest-side, #050b14c4, #050b1480 55%, #050b1400);
-  pointer-events: none;
-}
 .eyebrow {
   color: var(--muted);
   font-size: var(--text-xs);
