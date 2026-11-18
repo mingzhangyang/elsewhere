@@ -7,6 +7,21 @@ const axeScript = createRequire(import.meta.url).resolve('axe-core/axe.min.js');
 const CATALOG = /\/stars(-[\w-]+)?\.json$/;
 
 // Canvas-dependent cases below fail confusingly without WebGL; this names the cause directly.
+// Regression: the former .sky-context::before gradient made a huge black halo
+// around the clear-sky preview button in a bright phone-sized sky.
+test('daylight sky context does not cast a dark scrim around its controls', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?scenario=day');
+  const context = page.locator('.sky-context');
+  await expect(context).toBeVisible();
+  await expect(context.locator('.source-pill')).toBeVisible();
+  const overlay = await context.evaluate((element) => getComputedStyle(element, '::before').backgroundImage);
+  expect(overlay).not.toContain('gradient');
+  // Readability remains local to the text and button, not a large sky-covering backdrop.
+  const textShadow = await context.evaluate((element) => getComputedStyle(element).textShadow);
+  expect(textShadow).not.toBe('none');
+});
+
 test('the 3D sky starts', async ({ page }) => {
   await page.goto('/?scenario=night');
   // Report the browser's own WebGL failure reason (e.g. missing GL drivers) rather than only a missing canvas.
