@@ -23,21 +23,60 @@ const DAYLIGHT_GLSL = `
     return smoothstep(${((SKY_DAY_START_DEG * Math.PI) / 180).toFixed(8)}, ${((SKY_DAY_END_DEG * Math.PI) / 180).toFixed(8)}, sunAltitude);
   }
 `;
-// Preserve map detail while gently lifting dark lunar terrain in daylight.
-// The CPU reference and GLSL use the same constants (linear texture values).
-const MOON_ALBEDO_EXPONENT = 0.75;
-const MOON_NIGHT_FILL = 0.12;
-const MOON_DAY_FILL = 0.3;
-export function moonLitReflectance(linearLuminance: number, daylight: number): number {
+// Keep the daytime sky blue across a wide range of elevations. These are display-space
+// colours, like the rest of this custom shader (no automatic Three.js tone-mapping chunk).
+const DAY_SKY_HORIZON = [0.5, 0.72, 0.96] as const;
+const DAY_SKY_ZENITH = [0.2, 0.36, 0.71] as const;
+const shaderColor = (values: readonly number[]) =>
+  `vec3(${values.map((value) => value.toFixed(2)).join(', ')})`;
+export function daylightSkyColor(elevationDegrees: number): [number, number, number] {
+  const elevation = Math.sin((Math.max(0, Math.min(90, elevationDegrees)) * Math.PI) / 180);
+  const t = Math.pow(elevation, 0.6);
+  return [
+    DAY_SKY_HORIZON[0] + (DAY_SKY_ZENITH[0] - DAY_SKY_HORIZON[0]) * t,
+    DAY_SKY_HORIZON[1] + (DAY_SKY_ZENITH[1] - DAY_SKY_HORIZON[1]) * t,
+    DAY_SKY_HORIZON[2] + (DAY_SKY_ZENITH[2] - DAY_SKY_HORIZON[2]) * t,
+  ];
+}
+
+// At wide angles a lunar disc occupies only a few pixels. High-contrast terrain
+// then looks like a jagged grey rock; progressively restore it on close inspection.
+const MOON_ALBEDO_MID = 0.27;
+const MOON_NIGHT_BASE = 0.77;
+const MOON_DAY_BASE = 0.93;
+const MOON_ZOOM_DAY_BASE = 0.82;
+const MOON_SMALL_CONTRAST = 0.08;
+const MOON_ZOOM_CONTRAST = 0.62;
+const MOON_HIGHLIGHT_SHOULDER = 0.12;
+export function moonScreenDiameterPx(distanceKm: number, heightPx: number, verticalFov: number): number {
+  return (1737.4 * heightPx) / (distanceKm * Math.tan((verticalFov * Math.PI) / 360));
+}
+export function moonTextureDetail(diameterPx: number): number {
+  const t = Math.max(0, Math.min(1, (diameterPx - 24) / 72));
+  return t * t * (3 - 2 * t);
+}
+export function moonLitReflectance(linearLuminance: number, daylight: number, detail = 1): number {
   const luminance = Math.max(0, Math.min(1, linearLuminance));
   const day = Math.max(0, Math.min(1, daylight));
-  const fill = MOON_NIGHT_FILL + (MOON_DAY_FILL - MOON_NIGHT_FILL) * day;
-  return fill + (1 - fill) * Math.pow(luminance, MOON_ALBEDO_EXPONENT);
+  const texture = Math.max(0, Math.min(1, detail));
+  const dayBase = MOON_DAY_BASE + (MOON_ZOOM_DAY_BASE - MOON_DAY_BASE) * texture;
+  const base = MOON_NIGHT_BASE + (dayBase - MOON_NIGHT_BASE) * day;
+  const contrast = MOON_SMALL_CONTRAST + (MOON_ZOOM_CONTRAST - MOON_SMALL_CONTRAST) * texture;
+  const linear = Math.max(0.6, base + (luminance - MOON_ALBEDO_MID) * contrast);
+  // Zoomed highlights roll off gradually instead of saturating to pure white.
+  const shoulder = Math.max(0.001, MOON_HIGHLIGHT_SHOULDER * texture);
+  const knee = 1 - shoulder;
+  return linear <= knee ? linear : 1 - shoulder * Math.exp(-(linear - knee) / shoulder);
 }
 const MOON_REFLECTANCE_GLSL = `
-  float moonLitReflectance(float luminance, float daylight) {
-    float fill = mix(${MOON_NIGHT_FILL.toFixed(2)}, ${MOON_DAY_FILL.toFixed(2)}, clamp(daylight, 0.0, 1.0));
-    return mix(fill, 1.0, pow(clamp(luminance, 0.0, 1.0), ${MOON_ALBEDO_EXPONENT.toFixed(2)}));
+  float moonLitReflectance(float luminance, float daylight, float detail) {
+    float dayBase = mix(${MOON_DAY_BASE.toFixed(2)}, ${MOON_ZOOM_DAY_BASE.toFixed(2)}, clamp(detail, 0.0, 1.0));
+    float base = mix(${MOON_NIGHT_BASE.toFixed(2)}, dayBase, clamp(daylight, 0.0, 1.0));
+    float contrast = mix(${MOON_SMALL_CONTRAST.toFixed(2)}, ${MOON_ZOOM_CONTRAST.toFixed(2)}, clamp(detail, 0.0, 1.0));
+    float linear = max(0.60, base + (clamp(luminance, 0.0, 1.0) - ${MOON_ALBEDO_MID.toFixed(2)}) * contrast);
+    float shoulder = max(0.001, ${MOON_HIGHLIGHT_SHOULDER.toFixed(2)} * clamp(detail, 0.0, 1.0));
+    float knee = 1.0 - shoulder;
+    return linear <= knee ? linear : 1.0 - shoulder * exp(-(linear - knee) / shoulder);
   }
 `;
 // The sky and lunar foreground use exactly the same display-space atmospheric radiance.
@@ -53,7 +92,10 @@ const ATMOSPHERE = `
     float day = daylightFactor(uSunAltitude);
     vec3 night = mix(vec3(0.020, 0.043, 0.092), vec3(0.006, 0.013, 0.035), pow(elevation, 0.52));
     // A low Sun still lights the whole sky. Keep the horizon pale and the zenith neutral blue.
-    vec3 daylight = mix(vec3(0.72, 0.78, 0.88), vec3(0.38, 0.49, 0.68), skyHeight);
+    vec3 daylight = mix(${shaderColor(DAY_SKY_HORIZON)}, ${shaderColor(DAY_SKY_ZENITH)}, skyHeight);
+    // Forward scattering makes the low sky paler near the Sun, without greying the whole dome.
+    float sunAngle = max(dot(d, normalize(uSunDirection)), 0.0);
+    daylight = mix(daylight, vec3(0.73, 0.82, 0.93), horizon * pow(sunAngle, 5.0) * 0.22);
     vec3 color = mix(night, daylight, day);
     float twilight = smoothstep(-0.30, -0.12, uSunAltitude) * (1.0 - smoothstep(0.04, 0.18, uSunAltitude));
     vec3 duskBlue = mix(vec3(0.28, 0.26, 0.37), vec3(0.08, 0.12, 0.23), skyHeight);
@@ -65,7 +107,8 @@ const ATMOSPHERE = `
     color = mix(color, vec3(0.94, 0.65, 0.48), warmBand * (0.46 + 0.20 * (1.0 - day)));
     float solarGlow = pow(max(towardSun, 0.0), 14.0);
     color += vec3(0.18, 0.12, 0.075) * solarGlow * (0.10 + day * 0.09 + twilight * 0.35);
-    return mix(color, mix(vec3(0.15, 0.19, 0.24), vec3(0.78, 0.72, 0.64), day), clamp(uHaze, 0.0, 1.0) * horizon * 0.60);
+    // Haze is strongest at the horizon and is cool/bright by day, not brown-grey.
+    return mix(color, mix(vec3(0.15, 0.19, 0.24), vec3(0.74, 0.82, 0.90), day), clamp(uHaze, 0.0, 1.0) * horizon * 0.35);
   }
 `;
 
@@ -91,6 +134,7 @@ export const MOON_FRAGMENT = `
   precision highp float;
   uniform sampler2D uMap;
   uniform vec3 uMoonSunDirection;
+  uniform float uMoonDetail;
   varying vec3 vNormalWorld, vDirection;
   varying vec2 vMapUv;
   ${ATMOSPHERE}
@@ -103,8 +147,9 @@ export const MOON_FRAGMENT = `
     // The texture is already decoded from sRGB by the GPU; do not gamma-decode it twice.
     vec3 lunarAlbedo = texture2D(uMap, vMapUv).rgb;
     float luminance = dot(lunarAlbedo, vec3(0.2126, 0.7152, 0.0722));
-    float reflectance = moonLitReflectance(luminance, daylightFactor(uSunAltitude));
-    vec3 litSurface = vec3(0.95, 0.94, 0.90) * reflectance * (0.75 + 0.25 * pow(max(incidence, 0.0), 0.35));
+    float reflectance = moonLitReflectance(luminance, daylightFactor(uSunAltitude), uMoonDetail);
+    float relief = 0.80 + 0.20 * pow(max(incidence, 0.0), 0.45);
+    vec3 litSurface = vec3(0.96, 0.97, 0.99) * reflectance * mix(1.0, relief, uMoonDetail);
     float transmission = exp(-(0.055 + uHaze * 0.24) / max(0.12, d.y));
     vec3 sky = atmosphere(d);
     vec3 foreground = sky * (1.0 - transmission);
