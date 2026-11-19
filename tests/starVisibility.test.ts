@@ -28,6 +28,7 @@ const preferences: Preferences = {
   quality: 'auto',
   horizon: 'flat',
   skyBrightness: 'dark',
+  moonDisplayAid: true,
   language: 'auto',
 };
 const base = calculateSky(NEW_YORK, new Date('2026-11-12T17:00Z'));
