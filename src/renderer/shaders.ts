@@ -175,21 +175,41 @@ export const GROUND_FRAGMENT = `
 
 // A curved cloud deck gives distant clouds perspective compression toward the horizon.
 // One foreground pass attenuates the sky, bodies, stars, and labels together.
+// Lighting is a cheap 2D approximation of a cloud seen from below: optical depth along
+// the view darkens thick cores to a blue-grey base, a short march toward the Sun lights
+// the sunward lobes, thin edges glow when backlit, and distance fades into the horizon sky.
 export const CLOUD_FRAGMENT = `
   precision highp float;
   varying vec3 vDirection;
-  uniform float uSunAltitude,uCloud,uWindSpeed,uWindDirection,uTime;
-  uniform vec3 uSunDirection;
-  ${DAYLIGHT_GLSL}
-  float hash(vec2 p) { return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123); }
+  uniform float uCloud,uWindSpeed,uWindDirection,uTime;
+  ${ATMOSPHERE}
+  // Arithmetic hash: sin-based hashes lose precision on mobile GPUs and show as blocks.
+  float hash(vec2 p) {
+    vec3 p3=fract(vec3(p.xyx)*0.1031);
+    p3+=dot(p3,p3.yzx+33.33);
+    return fract((p3.x+p3.y)*p3.z);
+  }
   float noise(vec2 p) {
     vec2 i=floor(p),f=fract(p); f=f*f*(3.0-2.0*f);
     return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);
   }
-  float fbm(vec2 p) {
-    float value=0.0,amp=0.55;
-    for(int i=0;i<5;i++){value+=amp*noise(p);p=mat2(1.6,1.2,-1.2,1.6)*p; amp*=0.49;}
-    return value;
+  const mat2 OCTAVE=mat2(1.6,1.2,-1.2,1.6);
+  // Fine octaves fade to their mean with distance so the compressed horizon does not alias into
+  // streaks; the two finest are only added overhead, where the deck is near and edges are large.
+  float fbm(vec2 p, float detail, float near) {
+    float value=0.0,amp=0.5,total=0.0;
+    for(int i=0;i<7;i++){
+      float weight=i<2?1.0:(i<5?detail:near);
+      value+=amp*mix(0.5,noise(p),weight); total+=amp;
+      // A rough gain keeps fine octaves strong enough to give cloud margins a lumpy, crisp edge.
+      p=OCTAVE*p+vec2(3.1,1.7); amp*=0.56;
+    }
+    return value/total;
+  }
+  float shape(vec2 p) {
+    float value=0.0,amp=0.5;
+    for(int i=0;i<3;i++){value+=amp*noise(p);p=OCTAVE*p+vec2(3.1,1.7);amp*=0.5;}
+    return value/0.875;
   }
   void main() {
     vec3 d=normalize(vDirection);
@@ -198,20 +218,51 @@ export const CLOUD_FRAGMENT = `
     vec2 drift=vec2(sin(angle),-cos(angle))*uWindSpeed*0.0008*uTime;
     // Intersect a curved deck. Clamping a flat plane's denominator creates vertical horizon streaks.
     float distance=-64.0*d.y+sqrt(4096.0*d.y*d.y+38.49);
-    vec2 p=d.xz*distance*4.1-drift;
-    float n=fbm(p);
+    vec2 p=d.xz*distance*3.7-drift;
+    float detail=1.0-smoothstep(2.2,6.0,distance);
+    // Domain warping turns noise blobs into rounded, heaped lobes.
+    vec2 q=p+(vec2(noise(p*0.45+vec2(1.7,9.2)),noise(p*0.45+vec2(8.3,2.8)))-0.5)*0.75;
+    float near=1.0-smoothstep(0.4,2.0,distance);
+    float n=fbm(q,detail,near);
     float coverage=clamp(uCloud,0.0,1.0);
-    float density=smoothstep(0.69-coverage*0.48,0.79-coverage*0.48,n);
-    float alpha=mix(density,1.0,smoothstep(0.85,1.0,coverage))*smoothstep(0.0,0.12,coverage);
+    // Fitted to this noise so the mean cloud opacity tracks the reported cover (15% looks like 15%).
+    float threshold=0.7145+coverage*(-0.9431+coverage*(1.3002-coverage*0.8979));
+    // Thickness above the threshold: thin margins stay translucent, cores turn opaque quickly.
+    float thickness=max(n-threshold,0.0)/max(1.0-threshold,0.1);
+    float density=1.0-exp(-thickness*12.0);
+    float overcast=smoothstep(0.85,1.0,coverage);
+    float alpha=mix(density,1.0,overcast)*smoothstep(0.0,0.12,coverage);
     alpha*=smoothstep(0.0,0.025,d.y);
+
+    vec3 sunDir=normalize(uSunDirection);
     float day=daylightFactor(uSunAltitude);
-    float edge=clamp((n-fbm(p+uSunDirection.xz*0.14))*0.5,-0.04,0.04);
-    vec3 daytime=mix(vec3(0.88,0.91,0.94),vec3(0.64,0.71,0.79),density*0.7)-edge;
-    daytime=mix(daytime,vec3(0.44,0.51,0.60)*(0.86+n*0.25),smoothstep(0.75,1.0,coverage));
+    // Sunlight reddens through a long, low path; overhead it is close to white.
+    vec3 sunColor=mix(vec3(1.0,0.74,0.56),vec3(1.0,0.97,0.92),smoothstep(0.0,0.15,uSunAltitude));
+    // Short march toward the Sun across the deck: lobes facing it are lit, the far side is shaded.
+    vec2 sunStep=normalize(sunDir.xz+vec2(1e-4))*0.16*(1.0-0.7*clamp(sunDir.y,0.0,1.0));
+    float shadowDepth=max(shape(q+sunStep)-threshold,0.0)+0.6*max(shape(q+2.0*sunStep)-threshold,0.0);
+    float depth=thickness*1.6+shadowDepth*2.2/max(1.0-threshold,0.1);
+    float direct=exp(-depth*0.85);
+    // Shaded bases take the blue of the sky above; lit faces take the colour of the Sun.
+    vec3 skyLight=atmosphere(vec3(0.0,1.0,0.0));
+    vec3 base=mix(vec3(0.62,0.66,0.72),skyLight*0.55+vec3(0.40),0.5);
+    vec3 daytime=mix(base,sunColor*0.98,direct);
+    // An overcast deck is lit diffusely from above: a soft grey with gentle, darker undulations
+    // and a brighter patch where the Sun shines through, not the high contrast of separate clouds.
+    vec3 deck=mix(vec3(0.60,0.64,0.70),vec3(0.48,0.54,0.61),smoothstep(0.25,0.75,n));
+    daytime=mix(daytime,deck,overcast);
+    // Thin backlit margins glow (forward scattering) when the view is near the Sun.
+    float towardSun=max(dot(d,sunDir),0.0);
+    float forward=pow(towardSun,6.0)*0.55+pow(towardSun,40.0)*0.9;
+    daytime+=sunColor*forward*mix(1.0-density*0.85,0.3,overcast)*smoothstep(-0.05,0.05,uSunAltitude);
+    daytime=min(daytime,vec3(1.0));
+    // Aerial perspective: distant clouds lose contrast into the horizon sky.
+    float aerial=smoothstep(1.0,6.2,distance)*0.55+clamp(uHaze,0.0,1.0)*0.25*smoothstep(0.5,6.2,distance);
+    daytime=mix(daytime,atmosphere(d),clamp(aerial,0.0,0.75));
     float dusk=smoothstep(-0.30,-0.12,uSunAltitude)*(1.0-smoothstep(0.04,0.18,uSunAltitude));
-    float sunward=smoothstep(-0.25,0.96,dot(d,normalize(uSunDirection)));
+    float sunward=smoothstep(-0.25,0.96,dot(d,sunDir));
     vec3 color=mix(vec3(0.020,0.029,0.046)*(0.8+n*0.3),daytime,day);
-    color=mix(color,vec3(0.75,0.58,0.51),dusk*sunward*0.36);
+    color=mix(color,vec3(0.86,0.55,0.46)*(0.55+0.45*direct),dusk*sunward*0.36);
     gl_FragColor=vec4(color,alpha);
   }
 `;
