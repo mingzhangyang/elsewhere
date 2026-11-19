@@ -6,7 +6,6 @@ import { calculateSky } from '../src/domain/astronomy';
 import { NEW_YORK } from './fixtures/locations';
 import {
   betterDiscHit,
-  betterHit,
   pickDiscAt,
   pickPointAt,
   pickStarAt,
