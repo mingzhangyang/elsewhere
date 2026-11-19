@@ -338,7 +338,8 @@ const en = {
       case 'daylight-moon':
         return {
           label: 'A pale daytime Moon',
-          detail: 'The Moon has low contrast against the daytime sky. The optional wide-view size aid changes only its drawn disc, not its calculated size.',
+          detail:
+            'The Moon has low contrast against the daytime sky. The optional wide-view size aid changes only its drawn disc, not its calculated size.',
         };
       case 'partial-cloud':
         return {

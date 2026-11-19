@@ -420,7 +420,8 @@ const zh: Messages = {
       case 'daylight-moon':
         return {
           label: '白天的淡月',
-          detail: '在白天的天空中，月亮的对比度很低。可选的广角放大只影响画面上的圆面，不改变计算出的角直径。',
+          detail:
+            '在白天的天空中，月亮的对比度很低。可选的广角放大只影响画面上的圆面，不改变计算出的角直径。',
         };
       case 'partial-cloud':
         return {
