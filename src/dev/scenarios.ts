@@ -14,6 +14,8 @@ export function scenarioProps(name: string | null): AppProps {
       overcast: { time: '2026-11-13T04:00:00Z', cloudCover: 100, precipitation: 0, code: 3 },
       windy: { time: '2026-11-12T17:00:00Z', cloudCover: 60, precipitation: 0, code: 2 },
       sunset: { time: '2026-11-12T21:35:00Z', cloudCover: 30, precipitation: 0, code: 2 },
+      // Civil dusk in New York (Sun about 5° down) with a 12% waxing crescent low in the west.
+      dusk: { time: '2026-11-12T22:08:00Z', cloudCover: 0, precipitation: 0, code: 0 },
       moon: { time: '2026-11-24T02:00:00Z', cloudCover: 0, precipitation: 0, code: 0 },
       south: { time: '2026-06-21T12:00:00Z', cloudCover: 0, precipitation: 0, code: 0 },
       polar: { time: '2026-12-21T12:00:00Z', cloudCover: 15, precipitation: 0, code: 1 },

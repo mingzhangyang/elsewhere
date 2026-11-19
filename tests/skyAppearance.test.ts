@@ -47,9 +47,19 @@ describe('daylight and twilight appearance', () => {
     expect(CLOUD_FRAGMENT).toContain('dusk*sunward*0.36');
   });
 
+  it('shades daytime clouds by thickness and Sun direction and fades them into the horizon sky', () => {
+    // Cores darken with optical depth; lobes are lit or shaded along the Sun's bearing.
+    expect(CLOUD_FRAGMENT).toContain('float direct=exp(-depth*0.85);');
+    expect(CLOUD_FRAGMENT).toContain('shape(q+sunStep)');
+    // Distant clouds take the colour of the same atmosphere the sky dome draws.
+    expect(CLOUD_FRAGMENT).toContain('daytime=mix(daytime,atmosphere(d),clamp(aerial,0.0,0.75));');
+    // Fine octaves are faded with distance, so the compressed horizon does not alias.
+    expect(CLOUD_FRAGMENT).toContain('float detail=1.0-smoothstep(2.2,6.0,distance);');
+  });
+
   it('preserves the Moon terminator and daylight shadow without an oversized disc', () => {
     expect(MOON_FRAGMENT).toContain('smoothstep(-0.015, 0.065, incidence)');
-    expect(MOON_FRAGMENT).toContain('vec3 shadow = mix(');
+    expect(MOON_FRAGMENT).toContain('vec3 shadow = sky + lunarAlbedo * 0.025 * transmission;');
     expect(MOON_FRAGMENT).toContain('foreground + litSurface * transmission');
     expect(MOON_FRAGMENT).toContain(
       'moonLitReflectance(luminance, daylightFactor(uSunAltitude), uMoonDetail)',
