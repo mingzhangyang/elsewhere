@@ -109,8 +109,7 @@ it.each([66, 92])('picks a small Moon with a 20px tolerance on a 390px portrait 
   // the Moon's extended touch target. A tap centered on that star must not select Moon.
   for (const separation of [5, 5.5, 6]) {
     const closeStar = starsAt([pointAtPixel(camera, 195 + separation, 224.5)]);
-    const pickCloseStar = (x: number) =>
-      pickPointAt(closeStar, camera, x, 224.5, VIEWPORT, 1770, () => 0.9);
+    const pickCloseStar = (x: number) => pickPointAt(closeStar, camera, x, 224.5, VIEWPORT, 1770, () => 0.9);
     const atStar = pickCloseStar(195 + separation);
     expect(atStar?.distance).toBeCloseTo(0, 4);
     expect(betterDiscHit(tap(separation), atStar)).toBe(atStar);
