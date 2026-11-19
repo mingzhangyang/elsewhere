@@ -88,7 +88,7 @@ export default function App({
   );
   const { panel, selectedId, focusedId, custom, customWeather, clearSky, immersive, notice } = state;
   const simulation = useSimulation(
-    initialLocation ?? launch.shared.value?.location ?? PRESETS[0],
+    initialLocation ?? launch.shared.value?.location ?? launch.preferences.value.recent[0] ?? PRESETS[0],
     initialTime ?? (launch.shared.value ? new Date(launch.shared.value.instant) : undefined),
   );
   const {
