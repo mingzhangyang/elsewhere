@@ -18,6 +18,7 @@ const preferences: Preferences = {
   horizon: 'flat',
   skyBrightness: 'dark',
   language: 'auto',
+  moonDisplayAid: true,
 };
 const panel = (sky: ReturnType<typeof calculateSky>) => (
   <ObjectPanel

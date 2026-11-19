@@ -6,6 +6,7 @@ import {
   MOON_FRAGMENT,
   SKY_FRAGMENT,
   daylightSkyColor,
+  moonDisplayScale,
   moonLitReflectance,
   moonScreenDiameterPx,
   moonTextureDetail,
@@ -57,7 +58,7 @@ describe('daylight and twilight appearance', () => {
     expect(CLOUD_FRAGMENT).toContain('float detail=1.0-smoothstep(2.2,6.0,distance);');
   });
 
-  it('preserves the Moon terminator and daylight shadow without an oversized disc', () => {
+  it('preserves the Moon terminator and daylight shadow', () => {
     expect(MOON_FRAGMENT).toContain('smoothstep(-0.015, 0.065, incidence)');
     expect(MOON_FRAGMENT).toContain('vec3 shadow = sky + lunarAlbedo * 0.025 * transmission;');
     expect(MOON_FRAGMENT).toContain('foreground + litSurface * transmission');
@@ -68,8 +69,33 @@ describe('daylight and twilight appearance', () => {
     expect(MOON_FRAGMENT).not.toContain('mix(0.80, 1.0, markings)');
     expect(MOON_FRAGMENT).not.toContain('pow(texture2D(uMap,vMapUv).rgb,vec3(1.0/2.2))');
   });
+  it('keeps the wide-angle Moon readable but restores true size when zoomed', () => {
+    const distanceKm = 382_000;
+    for (const [height, fov] of [
+      [700, 66],
+      [390, 66],
+      [390, 92],
+    ]) {
+      const physical = moonScreenDiameterPx(distanceKm, height, fov);
+      expect(physical).toBeLessThan(8);
+      expect(physical * moonDisplayScale(physical)).toBeCloseTo(8, 6);
+      expect(moonDisplayScale(physical)).toBeLessThanOrEqual(5);
+    }
+    // No visual exaggeration at normal, zoomed or detailed lunar sizes.
+    for (const physical of [8, 12, 24, 96, 190]) expect(moonDisplayScale(physical)).toBe(1);
+    for (const invalid of [0, -1, NaN, Infinity]) expect(moonDisplayScale(invalid)).toBe(1);
+    // At the cap and at the 8px boundary, zooming must never make the disc shrink.
+    for (let physical = 0.5; physical <= 24; physical += 0.25) {
+      const next = physical + 0.25;
+      expect(next * moonDisplayScale(next)).toBeGreaterThanOrEqual(physical * moonDisplayScale(physical));
+    }
+    const zoomed = moonScreenDiameterPx(distanceKm, 700, 2);
+    expect(moonDisplayScale(zoomed)).toBe(1);
+    expect(moonTextureDetail(zoomed)).toBe(1);
+  });
+
   it('renders a bright, clean daylight Moon at ordinary sizes and terrain when zoomed', () => {
-    // Screen size changes surface appearance only, not the actual phase or angular diameter.
+    // Texture detail follows physical size, even when the tiny wide-angle disc is enhanced.
     const distanceKm = 382_000;
     const widePx = moonScreenDiameterPx(distanceKm, 700, 66);
     const zoomedPx = moonScreenDiameterPx(distanceKm, 700, 2);

@@ -67,6 +67,18 @@ export default function SettingsPanel({
             <span className="switch" />
           </button>
         ))}
+        <button
+          className="setting-toggle"
+          aria-pressed={preferences.moonDisplayAid}
+          aria-describedby="moon-display-aid-note"
+          onClick={() => onPreferences((p) => ({ ...p, moonDisplayAid: !p.moonDisplayAid }))}
+        >
+          <span>{t.moonDisplayAid}</span>
+          <span className="switch" />
+        </button>
+        <p className="muted" id="moon-display-aid-note">
+          {t.moonDisplayAidNote}
+        </p>
       </div>
       <div className="setting-group">
         <h3>{t.comfort}</h3>

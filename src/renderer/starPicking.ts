@@ -91,6 +91,48 @@ export interface PickViewport {
   height: number;
 }
 
+export interface DiscPickHit extends PickHit {
+  /** True if the tap landed inside the visible disc, not just its larger touch target. */
+  insideDisc: boolean;
+}
+
+/**
+ * The visible Moon is a foreground disc, so a direct disc tap wins over points behind it.
+ * Outside the disc, compare the Moon's touch padding by center distance, just like
+ * stars and planets. This avoids a bright Moon stealing taps on close point centers.
+ */
+export function betterDiscHit<T extends PickHit>(
+  disc: (T & { insideDisc: boolean }) | undefined,
+  point: T | undefined,
+): T | undefined {
+  if (disc?.insideDisc) return disc;
+  return betterHit(disc, point);
+}
+
+/**
+ * A rendered disc under a tap, in CSS screen pixels. A 20px minimum center tolerance
+ * makes a wide-view Moon usable by touch, and zoomed discs remain selectable across
+ * their visible area. The returned distance is always from the center, matching points.
+ */
+export function pickDiscAt(
+  worldCenter: Vector3,
+  camera: PerspectiveCamera,
+  x: number,
+  y: number,
+  viewport: PickViewport,
+  displayedDiameterPx: number,
+): DiscPickHit | undefined {
+  const point = worldCenter.clone().project(camera);
+  if (!Number.isFinite(point.x) || !Number.isFinite(point.y) || point.z <= -1 || point.z >= 1)
+    return undefined;
+  const radius = Math.max(0, displayedDiameterPx / 2);
+  const sx = viewport.left + ((point.x + 1) / 2) * viewport.width;
+  const sy = viewport.top + ((1 - point.y) / 2) * viewport.height;
+  const fromCenter = Math.hypot(sx - x, sy - y);
+  if (fromCenter > Math.max(STAR_PICK_RADIUS_PX, radius)) return undefined;
+  return { index: 0, distance: fromCenter, brightness: 1, insideDisc: fromCenter <= radius };
+}
+
 /**
  * Picks the star under a tap at client coordinates (`x`, `y`). The ray threshold is only a broad
  * phase: it matches the pick radius at the frame center, which is the largest angular radius 20px

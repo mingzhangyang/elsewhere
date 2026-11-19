@@ -157,8 +157,9 @@ const SkyScene = forwardRef<SkySceneHandle, Props>(function SkyScene(props, ref)
       quality: props.quality,
       horizon: props.horizon,
       skyBrightness: props.skyBrightness,
+      moonDisplayAid: props.moonDisplayAid,
     });
-  }, [props.reducedMotion, props.quality, props.horizon, props.skyBrightness]);
+  }, [props.reducedMotion, props.quality, props.horizon, props.skyBrightness, props.moonDisplayAid]);
   return (
     <>
       <div className="sky-scene" ref={hostRef} role="group" aria-label={m.sky.scene} />

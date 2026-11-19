@@ -420,7 +420,8 @@ const zh: Messages = {
       case 'daylight-moon':
         return {
           label: '白天的淡月',
-          detail: '在白天的天空中，月亮的对比度很低。它的视大小与真实比例一致。',
+          detail:
+            '在白天的天空中，月亮的对比度很低。可选的广角放大只影响画面上的圆面，不改变计算出的角直径。',
         };
       case 'partial-cloud':
         return {
@@ -546,6 +547,9 @@ const zh: Messages = {
     clearSky: '晴空预览',
     clearSkyNote: '隐藏云、霾和降水。仍保留当前时间、月光和光污染影响；关闭即可恢复天气。',
     layerNames: { stars: '恒星', lines: '星座连线', labels: '天体标签' },
+    moonDisplayAid: '广角视图放大月亮',
+    moonDisplayAidNote:
+      '仅为显示辅助：让较小的月亮更容易看清和点选。关闭后按物理比例显示；天体位置、月相及计算出的角直径不变。',
     comfort: '舒适与性能',
     reduceMotion: '减少大气动画',
     systemMotion: '正在遵循系统的“减弱动态效果”设置。',

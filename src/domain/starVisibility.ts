@@ -81,9 +81,9 @@ export const STAR_MODEL = {
   glowMagnitude: 2,
   glowRange: 2.5,
   /** At full glow the point grows to (1 + haloScale) times its core to make room for the halo. */
-  haloScale: 2.5,
+  haloScale: 1.5,
   /** Peak halo strength relative to the core. */
-  haloStrength: 0.7,
+  haloStrength: 0.55,
 } as const;
 
 /** Magnitudes lost to the longer air path near the horizon; 0 at the zenith. */

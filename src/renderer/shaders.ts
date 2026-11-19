@@ -51,6 +51,15 @@ const MOON_HIGHLIGHT_SHOULDER = 0.12;
 export function moonScreenDiameterPx(distanceKm: number, heightPx: number, verticalFov: number): number {
   return (1737.4 * heightPx) / (distanceKm * Math.tan((verticalFov * Math.PI) / 360));
 }
+// At wide angles the physically sized Moon can be smaller than a star's illustrative
+// point sprite. Keep its disc readable in CSS pixels, but cap the exaggeration for
+// very short views. The multiplier is exactly 1 once the physical disc reaches 8px.
+const MOON_MIN_DISPLAY_DIAMETER_PX = 8;
+const MOON_MAX_DISPLAY_SCALE = 5;
+export function moonDisplayScale(physicalDiameterPx: number): number {
+  if (!Number.isFinite(physicalDiameterPx) || physicalDiameterPx <= 0) return 1;
+  return Math.max(1, Math.min(MOON_MAX_DISPLAY_SCALE, MOON_MIN_DISPLAY_DIAMETER_PX / physicalDiameterPx));
+}
 export function moonTextureDetail(diameterPx: number): number {
   const t = Math.max(0, Math.min(1, (diameterPx - 24) / 72));
   return t * t * (3 - 2 * t);

@@ -4,6 +4,7 @@ import { objectVisibility, skyObjects, type SkyObject } from '../src/lib/explora
 import {
   limitingMagnitude,
   magnitudeVisibility,
+  STAR_MODEL,
   STAR_VISIBLE_THRESHOLD,
   starGlow,
   starIntensity,
@@ -27,6 +28,7 @@ const preferences: Preferences = {
   quality: 'auto',
   horizon: 'flat',
   skyBrightness: 'dark',
+  moonDisplayAid: true,
   language: 'auto',
 };
 const base = calculateSky(NEW_YORK, new Date('2026-11-12T17:00Z'));
@@ -111,6 +113,18 @@ describe('dark-sky display scale', () => {
     expect(starGlow(0)).toBeGreaterThan(starGlow(1));
     expect(starGlow(-1.46)).toBeGreaterThan(starGlow(0));
     expect(starGlow(-4.5)).toBe(1);
+  });
+
+  it('reduces oversized bright-star halos without shrinking their cores', () => {
+    const siriusCore = starPointSize(-1.46);
+    const fullGlow = starGlow(-1.46);
+    const priorDiameter = siriusCore * (1 + 2.5 * fullGlow);
+    const reducedDiameter = siriusCore * (1 + STAR_MODEL.haloScale * fullGlow);
+    expect(reducedDiameter / priorDiameter).toBeCloseTo(5 / 7, 6);
+    expect(STAR_MODEL.haloStrength).toBeLessThan(0.7);
+    // Dimmer stars without a halo retain their original screen size.
+    expect(starGlow(3)).toBe(0);
+    expect(starPointSize(3) * (1 + STAR_MODEL.haloScale * starGlow(3))).toBe(starPointSize(3));
   });
 
   it('still lets light pollution decide which stars show at all', () => {

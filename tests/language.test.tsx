@@ -236,7 +236,10 @@ describe('choosing a language', () => {
       skyBrightness: 'city',
     };
     localStorage.setItem('elsewhere.preferences.v1', JSON.stringify(old));
-    expect(loadPreferences()).toEqual({ value: { ...old, language: 'auto' }, notice: null });
+    expect(loadPreferences()).toEqual({
+      value: { ...old, language: 'auto', moonDisplayAid: true },
+      notice: null,
+    });
     localStorage.setItem('elsewhere.preferences.v1', JSON.stringify({ ...old, language: 'zh-Hans' }));
     expect(loadPreferences().value.language).toBe('zh-Hans');
     localStorage.setItem('elsewhere.preferences.v1', JSON.stringify({ ...old, language: 'fr' }));
@@ -272,4 +275,5 @@ const preferences: Preferences = {
   horizon: 'flat',
   skyBrightness: 'dark',
   language: 'auto',
+  moonDisplayAid: true,
 };
