@@ -5,6 +5,7 @@ import { createCelestialLayers } from '../src/renderer/celestialLayers';
 import { calculateSky } from '../src/domain/astronomy';
 import { NEW_YORK } from './fixtures/locations';
 import {
+  betterDiscHit,
   betterHit,
   pickDiscAt,
   pickPointAt,
@@ -84,7 +85,9 @@ it.each([66, 92])('picks a small Moon with a 20px tolerance on a 390px portrait 
     pickDiscAt(moon, camera, 195 + dx, 224.5 + dy, VIEWPORT, diameter);
 
   expect(tap(0)?.distance).toBe(0);
-  expect(tap(12)?.distance).toBeCloseTo(8, 4); // outside the 4px disc, still touchable
+  expect(tap(0)?.insideDisc).toBe(true);
+  expect(tap(12)?.distance).toBeCloseTo(12, 4); // center distance, as for point objects
+  expect(tap(12)?.insideDisc).toBe(false); // outside the 4px disc, still touchable
   expect(tap(19)).toBeDefined();
   expect(tap(21)).toBeUndefined();
   expect(tap(0, 19)).toBeDefined();
@@ -96,15 +99,37 @@ it.each([66, 92])('picks a small Moon with a 20px tolerance on a 390px portrait 
   const starAtStar = neighborAt(209);
   const moonAtStar = tap(14);
   expect(starAtStar?.distance).toBeCloseTo(0, 4);
-  expect(betterHit(moonAtStar, starAtStar)).toBe(starAtStar);
+  expect(betterDiscHit(moonAtStar, starAtStar)).toBe(starAtStar);
 
   const starNearMoon = neighborAt(198);
   const moonNearMoon = tap(3);
   expect(starNearMoon).toBeDefined();
-  expect(betterHit(moonNearMoon, starNearMoon)).toBe(moonNearMoon);
+  expect(betterDiscHit(moonNearMoon, starNearMoon)).toBe(moonNearMoon);
+
+  // At just 5-6px separation, the star is outside the 4px lunar disc but within
+  // the Moon's extended touch target. A tap centered on that star must not select Moon.
+  for (const separation of [5, 5.5, 6]) {
+    const closeStar = starsAt([pointAtPixel(camera, 195 + separation, 224.5)]);
+    const pickCloseStar = (x: number) =>
+      pickPointAt(closeStar, camera, x, 224.5, VIEWPORT, 1770, () => 0.9);
+    const atStar = pickCloseStar(195 + separation);
+    expect(atStar?.distance).toBeCloseTo(0, 4);
+    expect(betterDiscHit(tap(separation), atStar)).toBe(atStar);
+
+    // The visible Moon itself remains selectable even beside a brighter point.
+    const onDisc = tap(3.5);
+    expect(onDisc?.insideDisc).toBe(true);
+    expect(betterDiscHit(onDisc, pickCloseStar(198.5))).toBe(onDisc);
+    const atMoonCenter = tap(0);
+    expect(betterDiscHit(atMoonCenter, pickCloseStar(195))).toBe(atMoonCenter);
+  }
 
   // Zoomed Moon: the entire displayed disc is pickable, not just a 20px center.
-  expect(tap(45, 0, 100)?.distance).toBe(0);
+  const zoomedEdge = tap(45, 0, 100);
+  expect(zoomedEdge?.distance).toBeCloseTo(45, 4);
+  expect(zoomedEdge?.insideDisc).toBe(true);
+  // A foreground Moon disc stays selectable across its full apparent radius.
+  expect(betterDiscHit(zoomedEdge, { index: 0, distance: 0, brightness: 1.1 })).toBe(zoomedEdge);
   // The unenhanced physical Moon remains easy to tap, without enlarging it visually.
   expect(tap(19, 0, 3)).toBeDefined();
   expect(pickDiscAt(new THREE.Vector3(0, 0, 1650), camera, 195, 224.5, VIEWPORT, 8)).toBeUndefined();

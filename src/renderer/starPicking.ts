@@ -91,11 +91,28 @@ export interface PickViewport {
   height: number;
 }
 
+export interface DiscPickHit extends PickHit {
+  /** True if the tap landed inside the visible disc, not just its larger touch target. */
+  insideDisc: boolean;
+}
+
 /**
- * A rendered disc under a tap, in CSS screen pixels. The same minimum 20px center
- * tolerance as stars makes a wide-view Moon usable by touch, while larger zoomed
- * discs stay selectable across their visible area. Screen-space distances, not
- * raycaster world thresholds, are used to arbitrate with nearby point objects.
+ * The visible Moon is a foreground disc, so a direct disc tap wins over points behind it.
+ * Outside the disc, compare the Moon's touch padding by center distance, just like
+ * stars and planets. This avoids a bright Moon stealing taps on close point centers.
+ */
+export function betterDiscHit<T extends PickHit>(
+  disc: (T & { insideDisc: boolean }) | undefined,
+  point: T | undefined,
+): T | undefined {
+  if (disc?.insideDisc) return disc;
+  return betterHit(disc, point);
+}
+
+/**
+ * A rendered disc under a tap, in CSS screen pixels. A 20px minimum center tolerance
+ * makes a wide-view Moon usable by touch, and zoomed discs remain selectable across
+ * their visible area. The returned distance is always from the center, matching points.
  */
 export function pickDiscAt(
   worldCenter: Vector3,
@@ -104,7 +121,7 @@ export function pickDiscAt(
   y: number,
   viewport: PickViewport,
   displayedDiameterPx: number,
-): PickHit | undefined {
+): DiscPickHit | undefined {
   const point = worldCenter.clone().project(camera);
   if (!Number.isFinite(point.x) || !Number.isFinite(point.y) || point.z <= -1 || point.z >= 1)
     return undefined;
@@ -113,7 +130,7 @@ export function pickDiscAt(
   const sy = viewport.top + ((1 - point.y) / 2) * viewport.height;
   const fromCenter = Math.hypot(sx - x, sy - y);
   if (fromCenter > Math.max(STAR_PICK_RADIUS_PX, radius)) return undefined;
-  return { index: 0, distance: Math.max(0, fromCenter - radius), brightness: 1 };
+  return { index: 0, distance: fromCenter, brightness: 1, insideDisc: fromCenter <= radius };
 }
 
 /**

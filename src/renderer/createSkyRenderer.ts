@@ -25,7 +25,7 @@ import { advancePrecipitation, windVector } from './precipitation';
 import { createFrameLoop } from './frameLoop';
 import { adaptiveRatio, percentile, type RenderStats } from './performance';
 import { aboveHorizon, angularDiameter, findSkyObject, type SkyObject } from '../lib/exploration';
-import { betterHit, pickDiscAt, pickPointAt, starAlpha, type PickHit } from './starPicking';
+import { betterDiscHit, betterHit, pickDiscAt, pickPointAt, starAlpha, type PickHit } from './starPicking';
 import { CLOUD_DRIFT_FPS, PRECIPITATION_VISIBLE, weatherMotion } from './weatherMotion';
 import {
   limitingMagnitude,
@@ -573,13 +573,13 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
               )
             : undefined;
         type ObjectHit = PickHit & { kind: 'moon' | 'planet' | 'star' };
-        const hit = betterHit<ObjectHit>(
-          moonHit && { ...moonHit, kind: 'moon' },
-          betterHit<ObjectHit>(
-            planetHit && { ...planetHit, kind: 'planet' },
-            starHit && { ...starHit, kind: 'star' },
-          ),
+        const pointHit = betterHit<ObjectHit>(
+          planetHit && { ...planetHit, kind: 'planet' },
+          starHit && { ...starHit, kind: 'star' },
         );
+        // Direct taps on the foreground lunar disc win. Outside the disc, its touch
+        // tolerance competes on center distance with stars and planets.
+        const hit = betterDiscHit<ObjectHit>(moonHit && { ...moonHit, kind: 'moon' }, pointHit);
         if (hit?.kind === 'moon') {
           callbacks.onBodySelect?.('moon');
           return;
