@@ -80,7 +80,7 @@ const MOON_REFLECTANCE_GLSL = `
   }
 `;
 // The sky and lunar foreground use exactly the same display-space atmospheric radiance.
-// The unlit Moon blocks distant light, not the atmosphere between the observer and Moon.
+// The Moon lies beyond the atmosphere, so all of the sky's glow is in front of it.
 const ATMOSPHERE = `
   uniform float uSunAltitude, uHaze;
   uniform vec3 uSunDirection;
@@ -153,8 +153,9 @@ export const MOON_FRAGMENT = `
     float transmission = exp(-(0.055 + uHaze * 0.24) / max(0.12, d.y));
     vec3 sky = atmosphere(d);
     vec3 foreground = sky * (1.0 - transmission);
-    // In daylight the shadowed hemisphere blends into the sky; at night it occludes stars.
-    vec3 shadow = mix(foreground + lunarAlbedo * 0.025 * transmission, sky, smoothstep(-0.16, -0.025, uSunAltitude));
+    // The unlit hemisphere shows the sky in front of it plus faint earthshine, never a dark hole
+    // in a twilight sky. It still hides the stars behind it: the opaque disc writes depth.
+    vec3 shadow = sky + lunarAlbedo * 0.025 * transmission;
     // Preserve lunar phase, size, and surface relief while giving the lit crescent contrast.
     gl_FragColor = vec4(mix(shadow, foreground + litSurface * transmission, sunlit), 1.0);
   }

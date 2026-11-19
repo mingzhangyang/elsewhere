@@ -59,7 +59,7 @@ describe('daylight and twilight appearance', () => {
 
   it('preserves the Moon terminator and daylight shadow without an oversized disc', () => {
     expect(MOON_FRAGMENT).toContain('smoothstep(-0.015, 0.065, incidence)');
-    expect(MOON_FRAGMENT).toContain('vec3 shadow = mix(');
+    expect(MOON_FRAGMENT).toContain('vec3 shadow = sky + lunarAlbedo * 0.025 * transmission;');
     expect(MOON_FRAGMENT).toContain('foreground + litSurface * transmission');
     expect(MOON_FRAGMENT).toContain(
       'moonLitReflectance(luminance, daylightFactor(uSunAltitude), uMoonDetail)',
