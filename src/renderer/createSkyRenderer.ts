@@ -15,6 +15,7 @@ import {
   MOON_VERTEX,
   MOON_FRAGMENT,
   GROUND_FRAGMENT,
+  moonDisplayScale,
   moonScreenDiameterPx,
   moonTextureDetail,
 } from './shaders';
@@ -482,6 +483,22 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
 
     let activeWeather = weather;
     let activeSky = sky;
+    // The camera can change every animation frame. Keep the actual Moon's
+    // geometry, picking area and displayed size in step with its current FOV.
+    // Texture detail follows the *physical* projection, not the boosted disc.
+    const syncMoonDisplay = () => {
+      const physicalDiameter = moonScreenDiameterPx(
+        activeSky.moon.distanceKm,
+        host.clientHeight,
+        camera.fov,
+      );
+      const displayScale = moonDisplayScale(physicalDiameter);
+      moonMesh.scale.setScalar(
+        ((1650 * 1737.4) / activeSky.moon.distanceKm / 20) * displayScale,
+      );
+      moonUniforms.uMoonDetail.value = moonTextureDetail(physicalDiameter);
+      return physicalDiameter * displayScale;
+    };
     let activeStars = sky.stars;
     let activeShowStars = showStars;
     let reducedMotion = input.reducedMotion;
@@ -519,9 +536,14 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
           callbacks.onBodySelect?.('sun');
           return;
         }
-        if (moonGroup.visible && raycaster.intersectObject(moonMesh, false).length) {
-          callbacks.onBodySelect?.('moon');
-          return;
+        if (moonGroup.visible) {
+          // A zoom may have changed since the previous frame; pick the visible disc.
+          syncMoonDisplay();
+          moonGroup.updateMatrixWorld(true);
+          if (raycaster.intersectObject(moonMesh, false).length) {
+            callbacks.onBodySelect?.('moon');
+            return;
+          }
         }
         // Planets and stars compete on screen distance, so a star beside a planet stays selectable.
         const planetOpacity = planetMaterial.uniforms.uOpacity.value;
@@ -716,7 +738,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
 
         setAtDirection(moonGroup, nextSky.moon.altitude, nextSky.moon.azimuth, 1650);
         moonGroup.visible = nextSky.moon.visible;
-        moonMesh.scale.setScalar((1650 * 1737.4) / nextSky.moon.distanceKm / 20);
+        syncMoonDisplay();
         const north = new THREE.Vector3(...nextSky.moon.north),
           prime = new THREE.Vector3(...nextSky.moon.prime);
         moonMesh.quaternion.setFromRotationMatrix(
@@ -808,6 +830,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
       applyTurn(playbackTurn.seconds(now, !!reducedMotion));
       sunGroup.position.copy(bodyDirection(activeSky.sun, scratch).multiplyScalar(1650));
       moonGroup.position.copy(bodyDirection(activeSky.moon, scratch).multiplyScalar(1650));
+      const displayedMoonDiameter = syncMoonDisplay();
       celestialLayers.place(
         (index, target) => (index < starVectors.length / 3 ? starDirection(index, target) : null),
         (index, target) => {
@@ -833,7 +856,10 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
         ) {
           targetMarker.hidden = false;
           // A zoomed Sun or Moon is circled rather than covered, even when cloud hides the disc.
-          const discPx = ((angularDiameter(target) / camera.fov) * host.clientHeight) / 2;
+          const discPx =
+            target.kind === 'moon'
+              ? displayedMoonDiameter / 2
+              : ((angularDiameter(target) / camera.fov) * host.clientHeight) / 2;
           targetMarker.style.setProperty(
             '--ring',
             `${Math.round(Math.max(MARKER_RADIUS_PX, discPx + MARKER_GAP_PX) * 2)}px`,
@@ -850,9 +876,6 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
         }
       }
       celestialLayers.layout(camera, host.clientWidth, host.clientHeight, blocked);
-      moonUniforms.uMoonDetail.value = moonTextureDetail(
-        moonScreenDiameterPx(activeSky.moon.distanceKm, host.clientHeight, camera.fov),
-      );
       renderer.render(scene, camera);
       drawTimes.push(performance.now() - start);
       if (drawTimes.length > 240) drawTimes.shift();
