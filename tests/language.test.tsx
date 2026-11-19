@@ -272,4 +272,5 @@ const preferences: Preferences = {
   horizon: 'flat',
   skyBrightness: 'dark',
   language: 'auto',
+  moonDisplayAid: true,
 };

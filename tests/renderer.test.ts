@@ -5,6 +5,9 @@ import { createCelestialLayers } from '../src/renderer/celestialLayers';
 import { calculateSky } from '../src/domain/astronomy';
 import { NEW_YORK } from './fixtures/locations';
 import {
+  betterHit,
+  pickDiscAt,
+  pickPointAt,
   pickStarAt,
   pickStarIndex,
   pickThreshold,
@@ -72,6 +75,39 @@ it.each([
   expect(tap(-22, 0)).toBeUndefined();
   expect(tap(0, -22)).toBeUndefined();
   expect(tap(-30, 0)).toBeUndefined();
+});
+
+it.each([66, 92])('picks a small Moon with a 20px tolerance on a 390px portrait view at %d° FOV', (fov) => {
+  const camera = cameraAt(fov);
+  const moon = pointAtPixel(camera, 195, 224.5).normalize().multiplyScalar(1650);
+  const tap = (dx: number, dy = 0, diameter = 8) =>
+    pickDiscAt(moon, camera, 195 + dx, 224.5 + dy, VIEWPORT, diameter);
+
+  expect(tap(0)?.distance).toBe(0);
+  expect(tap(12)?.distance).toBeCloseTo(8, 4); // outside the 4px disc, still touchable
+  expect(tap(19)).toBeDefined();
+  expect(tap(21)).toBeUndefined();
+  expect(tap(0, 19)).toBeDefined();
+  expect(tap(0, 21)).toBeUndefined();
+
+  // Close to a planet/star, screen distance wins rather than Moon-first ray precedence.
+  const neighbor = starsAt([pointAtPixel(camera, 209, 224.5)]);
+  const neighborAt = (x: number) => pickPointAt(neighbor, camera, x, 224.5, VIEWPORT, 1770, () => 0.9);
+  const starAtStar = neighborAt(209);
+  const moonAtStar = tap(14);
+  expect(starAtStar?.distance).toBeCloseTo(0, 4);
+  expect(betterHit(moonAtStar, starAtStar)).toBe(starAtStar);
+
+  const starNearMoon = neighborAt(198);
+  const moonNearMoon = tap(3);
+  expect(starNearMoon).toBeDefined();
+  expect(betterHit(moonNearMoon, starNearMoon)).toBe(moonNearMoon);
+
+  // Zoomed Moon: the entire displayed disc is pickable, not just a 20px center.
+  expect(tap(45, 0, 100)?.distance).toBe(0);
+  // The unenhanced physical Moon remains easy to tap, without enlarging it visually.
+  expect(tap(19, 0, 3)).toBeDefined();
+  expect(pickDiscAt(new THREE.Vector3(0, 0, 1650), camera, 195, 224.5, VIEWPORT, 8)).toBeUndefined();
 });
 
 it('updates moving sky layers without reallocating their geometry or labels', () => {

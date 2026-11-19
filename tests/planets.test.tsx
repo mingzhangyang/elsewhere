@@ -33,6 +33,7 @@ const preferences: Preferences = {
   horizon: 'ridge',
   skyBrightness: 'suburban',
   language: 'auto',
+  moonDisplayAid: true,
 };
 const clear = { ...defaultWeatherValues(), cloudCover: 0, haze: 0, visibilityKm: 60 };
 // Civil dusk in New York near Venus's greatest eastern elongation (the dev scenario "venus").

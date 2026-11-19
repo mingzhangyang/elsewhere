@@ -32,6 +32,7 @@ export interface Preferences {
   quality: 'auto' | 'low' | 'high';
   horizon: 'flat' | 'ridge';
   skyBrightness: SkyBrightness;
+  moonDisplayAid: boolean;
   /**
    * Interface language: 'auto' follows the browser. Added within version 1: preferences saved
    * before it existed have no value and read as 'auto'.
@@ -74,6 +75,7 @@ const defaults = (): Preferences => ({
   quality: 'auto',
   horizon: 'ridge',
   skyBrightness: 'dark',
+  moonDisplayAid: true,
   language: 'auto',
 });
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -123,6 +125,7 @@ export function loadPreferences(): { value: Preferences; notice: AppNotice } {
         skyBrightness:
           data.skyBrightness === 'city' || data.skyBrightness === 'suburban' ? data.skyBrightness : 'dark',
         quality: data.quality === 'low' || data.quality === 'high' ? data.quality : 'auto',
+        moonDisplayAid: data.moonDisplayAid !== false,
         language: isLanguageSetting(data.language) ? data.language : 'auto',
       },
       notice: null,

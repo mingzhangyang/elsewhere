@@ -25,7 +25,7 @@ import { advancePrecipitation, windVector } from './precipitation';
 import { createFrameLoop } from './frameLoop';
 import { adaptiveRatio, percentile, type RenderStats } from './performance';
 import { aboveHorizon, angularDiameter, findSkyObject, type SkyObject } from '../lib/exploration';
-import { betterHit, pickPointAt, starAlpha } from './starPicking';
+import { betterHit, pickDiscAt, pickPointAt, starAlpha, type PickHit } from './starPicking';
 import { CLOUD_DRIFT_FPS, PRECIPITATION_VISIBLE, weatherMotion } from './weatherMotion';
 import {
   limitingMagnitude,
@@ -67,6 +67,8 @@ export interface RenderSettings {
   quality?: Preferences['quality'];
   horizon?: Preferences['horizon'];
   skyBrightness?: Preferences['skyBrightness'];
+  /** Wide-view visual aid only; astronomical sizes and texture detail remain physical. */
+  moonDisplayAid?: boolean;
 }
 /** Text the renderer shows, in the interface language. */
 export interface SkyLabels {
@@ -483,12 +485,13 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
 
     let activeWeather = weather;
     let activeSky = sky;
+    let moonDisplayAid = input.moonDisplayAid ?? true;
     // The camera can change every animation frame. Keep the actual Moon's
     // geometry, picking area and displayed size in step with its current FOV.
     // Texture detail follows the *physical* projection, not the boosted disc.
     const syncMoonDisplay = () => {
       const physicalDiameter = moonScreenDiameterPx(activeSky.moon.distanceKm, host.clientHeight, camera.fov);
-      const displayScale = moonDisplayScale(physicalDiameter);
+      const displayScale = moonDisplayAid ? moonDisplayScale(physicalDiameter) : 1;
       moonMesh.scale.setScalar(((1650 * 1737.4) / activeSky.moon.distanceKm / 20) * displayScale);
       moonUniforms.uMoonDetail.value = moonTextureDetail(physicalDiameter);
       return physicalDiameter * displayScale;
@@ -530,15 +533,11 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
           callbacks.onBodySelect?.('sun');
           return;
         }
-        if (moonGroup.visible) {
-          // A zoom may have changed since the previous frame; pick the visible disc.
-          syncMoonDisplay();
-          moonGroup.updateMatrixWorld(true);
-          if (raycaster.intersectObject(moonMesh, false).length) {
-            callbacks.onBodySelect?.('moon');
-            return;
-          }
-        }
+        // An approximately 8px wide-view Moon is too small to tap by ray/mesh intersection.
+        // Include it in the same screen-distance arbitration as stars and planets.
+        const moonHit = moonGroup.visible
+          ? pickDiscAt(moonGroup.position, camera, x, y, rect, syncMoonDisplay())
+          : undefined;
         // Planets and stars compete on screen distance, so a star beside a planet stays selectable.
         const planetOpacity = planetMaterial.uniforms.uOpacity.value;
         const planetHit = pickPointAt(
@@ -573,11 +572,19 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
                 },
               )
             : undefined;
-        const hit = betterHit(
-          planetHit && { ...planetHit, planet: true },
-          starHit && { ...starHit, planet: false },
+        type ObjectHit = PickHit & { kind: 'moon' | 'planet' | 'star' };
+        const hit = betterHit<ObjectHit>(
+          moonHit && { ...moonHit, kind: 'moon' },
+          betterHit<ObjectHit>(
+            planetHit && { ...planetHit, kind: 'planet' },
+            starHit && { ...starHit, kind: 'star' },
+          ),
         );
-        if (hit?.planet) {
+        if (hit?.kind === 'moon') {
+          callbacks.onBodySelect?.('moon');
+          return;
+        }
+        if (hit?.kind === 'planet') {
           callbacks.onBodySelect?.(activeSky.planets[hit.index].id);
           return;
         }
@@ -687,6 +694,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
       settings: (settings: RenderSettings) => {
         reducedMotion = settings.reducedMotion;
         skyBrightness = settings.skyBrightness ?? 'dark';
+        moonDisplayAid = settings.moonDisplayAid ?? true;
         ridge.visible = settings.horizon !== 'flat';
         quality = settings.quality ?? 'auto';
         milkyWay.material.uniforms.uOctaves.value = milkyWayOctaves();

@@ -36,6 +36,24 @@ test('clicking centered Mizar selects Mizar instead of Alcor', async ({ page }) 
   await expect(page.getByRole('heading', { name: 'Mizar', exact: true })).toBeVisible();
 });
 
+test.describe('portrait Moon touch', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
+  test('a finger tap near the small wide-view Moon selects the Moon', async ({ page }) => {
+    await page.goto('/?scenario=moon');
+    await page.getByRole('button', { name: 'Find the Moon' }).click();
+    await page.getByRole('button', { name: 'Center in view' }).click();
+    // Zoom back out to the smallest lunar disc while preserving its centered direction.
+    for (let step = 0; step < 20; step++) await page.getByRole('button', { name: 'Zoom out' }).click();
+    const ring = page.locator('.sky-target');
+    await expect(ring).toBeVisible();
+    const box = (await ring.boundingBox())!;
+    // Twelve pixels right of the Moon center is outside its ~4px visible radius.
+    await page.touchscreen.tap(box.x + box.width / 2 + 12, box.y + box.height / 2);
+    const inspector = page.getByRole('region', { name: 'objects inspector' });
+    await expect(inspector.getByRole('heading', { name: 'Moon', exact: true })).toBeVisible();
+  });
+});
+
 // "What is that bright point?": tapping it names the planet, for an evening Venus and a midnight Jupiter.
 for (const { scenario, planet } of [
   { scenario: 'venus', planet: 'Venus' },

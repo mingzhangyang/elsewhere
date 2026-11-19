@@ -374,6 +374,7 @@ export default function App({
           quality={preferences.quality}
           horizon={preferences.horizon}
           skyBrightness={preferences.skyBrightness}
+          moonDisplayAid={preferences.moonDisplayAid}
           targetId={immersive ? null : focusedId}
           playbackRate={playing && simTime.getTime() < MAX_INSTANT ? speed : 0}
           onAssetError={() => setNotice({ code: 'moon-map-unavailable' })}

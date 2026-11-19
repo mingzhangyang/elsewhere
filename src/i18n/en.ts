@@ -338,7 +338,7 @@ const en = {
       case 'daylight-moon':
         return {
           label: 'A pale daytime Moon',
-          detail: 'The Moon has low contrast against the daytime sky. Its apparent size is true to scale.',
+          detail: 'The Moon has low contrast against the daytime sky. The optional wide-view size aid changes only its drawn disc, not its calculated size.',
         };
       case 'partial-cloud':
         return {
@@ -479,6 +479,9 @@ const en = {
     clearSkyNote:
       'Hide clouds, haze and precipitation. Time, moonlight and light pollution still apply. Turn off to restore weather.',
     layerNames: { stars: 'Stars', lines: 'Constellation lines', labels: 'Object labels' },
+    moonDisplayAid: 'Enlarge Moon in wide views',
+    moonDisplayAidNote:
+      'Display aid only: makes a small Moon easier to see and tap. Turn off for physical screen size. Calculated positions, phases and angular sizes are unchanged.',
     comfort: 'Comfort & performance',
     reduceMotion: 'Reduce atmosphere motion',
     systemMotion: 'Following your system’s reduced-motion preference.',

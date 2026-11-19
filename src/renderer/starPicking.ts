@@ -92,6 +92,31 @@ export interface PickViewport {
 }
 
 /**
+ * A rendered disc under a tap, in CSS screen pixels. The same minimum 20px center
+ * tolerance as stars makes a wide-view Moon usable by touch, while larger zoomed
+ * discs stay selectable across their visible area. Screen-space distances, not
+ * raycaster world thresholds, are used to arbitrate with nearby point objects.
+ */
+export function pickDiscAt(
+  worldCenter: Vector3,
+  camera: PerspectiveCamera,
+  x: number,
+  y: number,
+  viewport: PickViewport,
+  displayedDiameterPx: number,
+): PickHit | undefined {
+  const point = worldCenter.clone().project(camera);
+  if (!Number.isFinite(point.x) || !Number.isFinite(point.y) || point.z <= -1 || point.z >= 1)
+    return undefined;
+  const radius = Math.max(0, displayedDiameterPx / 2);
+  const sx = viewport.left + ((point.x + 1) / 2) * viewport.width;
+  const sy = viewport.top + ((1 - point.y) / 2) * viewport.height;
+  const fromCenter = Math.hypot(sx - x, sy - y);
+  if (fromCenter > Math.max(STAR_PICK_RADIUS_PX, radius)) return undefined;
+  return { index: 0, distance: Math.max(0, fromCenter - radius), brightness: 1 };
+}
+
+/**
  * Picks the star under a tap at client coordinates (`x`, `y`). The ray threshold is only a broad
  * phase: it matches the pick radius at the frame center, which is the largest angular radius 20px
  * can cover, so no star within the radius elsewhere is missed before the exact screen-space test.

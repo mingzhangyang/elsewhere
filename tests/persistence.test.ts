@@ -35,6 +35,18 @@ describe('portable exploration state', () => {
       expect(isDeviceLocation(restored)).toBe(true);
     }
   });
+  it('migrates old Moon appearance preferences and persists the physical-size switch', () => {
+    const prefs = loadPreferences().value;
+    expect(prefs.moonDisplayAid).toBe(true);
+    const legacy = { ...prefs, moonDisplayAid: undefined };
+    localStorage.setItem('elsewhere.preferences.v1', JSON.stringify(legacy));
+    expect(loadPreferences().value.moonDisplayAid).toBe(true);
+    expect(savePreferences({ ...prefs, moonDisplayAid: false })).toBe(true);
+    expect(loadPreferences().value.moonDisplayAid).toBe(false);
+    expect(savePreferences({ ...prefs, moonDisplayAid: true })).toBe(true);
+    expect(loadPreferences().value.moonDisplayAid).toBe(true);
+  });
+
   it('preserves the repeated-hour instant, camera and custom conditions', () => {
     expect(parseExploration(new URL(explorationUrl(exploration)).hash)).toEqual({
       value: exploration,

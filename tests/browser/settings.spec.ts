@@ -1,5 +1,27 @@
 import { expect, test } from '@playwright/test';
 
+test('the wide-view Moon size aid is named, reversible and saved on a portrait phone', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?scenario=moon');
+  await page.getByRole('button', { name: 'Layers', exact: true }).click();
+  const toggle = page.getByRole('button', { name: 'Enlarge Moon in wide views' });
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#moon-display-aid-note')).toContainText('physical screen size');
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  await page.reload();
+  await page.getByRole('button', { name: 'Layers', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Enlarge Moon in wide views' })).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  );
+  await page.getByRole('button', { name: 'Enlarge Moon in wide views' }).click();
+  await expect(page.getByRole('button', { name: 'Enlarge Moon in wide views' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+});
+
 for (const width of [320, 390, 1280]) {
   test(`settings selectors have separate rows at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
