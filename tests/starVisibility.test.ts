@@ -123,9 +123,7 @@ describe('dark-sky display scale', () => {
     expect(STAR_MODEL.haloStrength).toBeLessThan(0.7);
     // Dimmer stars without a halo retain their original screen size.
     expect(starGlow(3)).toBe(0);
-    expect(starPointSize(3) * (1 + STAR_MODEL.haloScale * starGlow(3))).toBe(
-      starPointSize(3),
-    );
+    expect(starPointSize(3) * (1 + STAR_MODEL.haloScale * starGlow(3))).toBe(starPointSize(3));
   });
 
   it('still lets light pollution decide which stars show at all', () => {

@@ -487,15 +487,9 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
     // geometry, picking area and displayed size in step with its current FOV.
     // Texture detail follows the *physical* projection, not the boosted disc.
     const syncMoonDisplay = () => {
-      const physicalDiameter = moonScreenDiameterPx(
-        activeSky.moon.distanceKm,
-        host.clientHeight,
-        camera.fov,
-      );
+      const physicalDiameter = moonScreenDiameterPx(activeSky.moon.distanceKm, host.clientHeight, camera.fov);
       const displayScale = moonDisplayScale(physicalDiameter);
-      moonMesh.scale.setScalar(
-        ((1650 * 1737.4) / activeSky.moon.distanceKm / 20) * displayScale,
-      );
+      moonMesh.scale.setScalar(((1650 * 1737.4) / activeSky.moon.distanceKm / 20) * displayScale);
       moonUniforms.uMoonDetail.value = moonTextureDetail(physicalDiameter);
       return physicalDiameter * displayScale;
     };

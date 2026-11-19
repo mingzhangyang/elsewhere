@@ -87,9 +87,7 @@ describe('daylight and twilight appearance', () => {
     // At the cap and at the 8px boundary, zooming must never make the disc shrink.
     for (let physical = 0.5; physical <= 24; physical += 0.25) {
       const next = physical + 0.25;
-      expect(next * moonDisplayScale(next)).toBeGreaterThanOrEqual(
-        physical * moonDisplayScale(physical),
-      );
+      expect(next * moonDisplayScale(next)).toBeGreaterThanOrEqual(physical * moonDisplayScale(physical));
     }
     const zoomed = moonScreenDiameterPx(distanceKm, 700, 2);
     expect(moonDisplayScale(zoomed)).toBe(1);
