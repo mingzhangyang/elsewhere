@@ -93,3 +93,21 @@ For finite inputs, altitude `0` degrees is drawable and `[-90,0)` returns `null`
 ## SM2-C snapshot-specific validation
 
 See [SKY-CHART-SNAPSHOT.md](SKY-CHART-SNAPSHOT.md) and `tests/skyChartSnapshot.test.ts`. Synthetic fixtures assert loaded-vs-empty catalog behavior, 0° rim inclusion, magnitude 6.0 default, corrupted catalog and body rejection, request cancellation, and saved UTC/DST semantics. Real integration fixtures load the bundled 5,070-row HYG derivative and run `calculateSky` for S03 (New York, 2026-06-21T16:00:00.000Z, bright near-horizon samples), S04 (same instant, New York daytime), and S05 (Sydney and Tromsø, same UTC). These assert the existing engine's computed positions and projection properties, **not independently measured** historical positions. No new JPL/USNO SM2-C-scene observations are claimed. S06 moon bright-limb screen geometry and S07 independent high-precision historical validation are still open.
+
+## SM3-A renderer and time-presentation fixtures
+
+The new [artwork test contract](SKY-CHART-ARTWORK.md) covers a fictional New York
+June 21, 2026 local-noon event (16:00 UTC), an intentionally selected 21:15
+reference local time with next-day UTC (01:15 UTC, June 22), a saved 22:00
+reference value, and a November 1 DST fold with saved 01:30/-05:00. These values
+are tests of the preserved SM1 representation, not real birth records.
+Synthetic chart anchors confirm N/E/S/W, zenith, the exact 0° horizon,
+non-mirrored west/east and hemisphere-neutral orientation. Tests also verify
+English/Simplified Chinese text wrapping, grapheme limits, preserved license
+credits and both palettes. Browser screenshots are emitted only when the actual
+Playwright job runs.
+
+The SM3-A drawable Moon is deliberately **orientation-neutral**. S06 projected
+bright-limb rotation is **pending**, and no lunar crescent orientation test
+is recorded as passed. S07 independent historical position checks also remain
+pending. The existing S01-S05 evidence status is unchanged.

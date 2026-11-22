@@ -85,3 +85,23 @@ Planet samples were retrieved from Horizons on November 15, 2026 (`tests/fixture
 Reproduce the maxima with `node scripts/report-reference.mjs`. Refresh references deliberately with `node scripts/fetch-reference.mjs --refresh`, `node scripts/fetch-planet-reference.mjs --refresh` and `node scripts/fetch-events.mjs`; review changed results before accepting them. The JPL downloader requests sequentially and reuses existing files by default.
 
 The star row is a consistency check against Astronomy Engine's own refracted positions for the same catalog coordinates (786 samples of magnitude 3 or brighter, three observers, 48 hours), not an independent reference; `tests/starRefraction.test.ts` enforces its limit. These finite samples meet the stated regression limits. They do not qualify every date, near-zenith azimuth, polar grazing event, extreme elevation, or real atmospheric condition. Domain tests cover polar and DST semantics, but broader independent review remains a release qualification item.
+
+## SM3-A circular memorial artwork (illustrative only)
+
+The independent Canvas 2D artwork renderer is described in [SKY-CHART-ARTWORK.md](SKY-CHART-ARTWORK.md).
+It consumes a ready SM2-C snapshot and the original resolved SM1 civil-time record.
+It linearly paints the already-selected and already-projected unit-disc coordinates
+without recomputing astronomy, constellation geometry, or environmental visibility.
+Both palettes share one fixed layout, and the artist cannot change object centers.
+
+Artworks permanently disclose that positions are calculated, not a reconstruction
+of visible daylight or weather; above-horizon Sun scenes carry an additional
+daytime warning. The copied HYG v4.1 derivative is credited to David Nash /
+Astronexus under CC BY-SA 4.0, and Astronomy Engine under MIT, reflecting
+[existing source credits](../public/credits.html). Snapshot catalogHash stays null.
+
+**S06 remains open**: an orientation-neutral Moon symbol is used, not the
+explorer's bright-limb angle. A correct map-screen lunar limb direction still
+requires projection-specific geometry and quadrant, zenith and horizon tests.
+**S07** independent broad historical verification remains open. This is an
+educational/commemorative chart and not a research-grade sky or eclipse product.
