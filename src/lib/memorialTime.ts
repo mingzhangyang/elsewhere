@@ -264,6 +264,7 @@ export function assertMemorialTimeConsistency(value: MemorialTime): void {
   validateInstant(utc);
   if (utc.toISOString() !== value.utc)
     throw new RangeError('UTC must be a canonical millisecond ISO instant.');
+  if (typeof value.offset !== 'string') throw new RangeError('Invalid saved UTC offset.');
   const match = /^([+-])(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(value.offset);
   if (!match || Number(match[2]) > 23 || Number(match[3]) > 59 || Number(match[4] ?? 0) > 59) {
     throw new RangeError('Invalid saved UTC offset.');

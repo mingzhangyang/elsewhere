@@ -211,6 +211,7 @@ describe('memorial-time restoration and UTC boundary (SM1-C)', () => {
     for (const invalid of [
       { ...saved, utc: '2026-02-15T14:30:00.000Z' },
       { ...saved, offset: '+01:00' },
+      { ...saved, offset: ['-05:00'] },
       { ...saved, localDate: '2026-02-16' },
       { ...saved, localTime: '09:30' },
       { ...saved, disambiguation: 'maybe' },
@@ -219,6 +220,10 @@ describe('memorial-time restoration and UTC boundary (SM1-C)', () => {
     ]) {
       expect(() => restoreMemorialInstant(invalid)).toThrow(RangeError);
     }
+    // A JSON array stringifies to the expected offset in RegExp.exec unless its type is checked.
+    expect(() =>
+      restoreMemorialInstant(JSON.parse(JSON.stringify({ ...saved, offset: ['-05:00'] }))),
+    ).toThrow(RangeError);
     const reference = await resolved(createReferenceDraft(ny, '2026-07-16'));
     expect(() =>
       restoreMemorialInstant({ ...reference, reference: { localTime: '06:15', source: 'default' } }),

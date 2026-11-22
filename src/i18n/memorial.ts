@@ -25,7 +25,8 @@ const en = {
     'invalid-timezone': 'The selected place has an invalid time zone. Choose another city.',
     'nonexistent-time': 'This local clock time never occurred due to a clock change. Choose another time.',
     'out-of-range': 'The calculated UTC instant must be between 1900 and 2100.',
-    'invalid-choice': 'This time choice is no longer valid. Select a current candidate.',
+    'invalid-choice':
+      'This time choice is no longer valid. Review your input, then check again; select an offset if asked.',
   },
   ambiguous: 'This local clock time occurred twice. Select the intended offset:',
   ambiguousRestricted:
@@ -59,7 +60,7 @@ const zh: typeof en = {
     'invalid-timezone': '所选地点时区无效，请重新选择城市。',
     'nonexistent-time': '当地时钟调整导致这个时间不存在，请选择其他钟点。',
     'out-of-range': '换算后的世界协调时间必须在1900年至2100年之间。',
-    'invalid-choice': '该时间选择已失效，请重新选择当前候选。',
+    'invalid-choice': '该时间选择已失效。请核对日期和时间后重新校验；若出现时区偏移候选，请再作选择。',
   },
   ambiguous: '这个当地时间重复出现过两次，请明确选择所用时区偏移：',
   ambiguousRestricted: '这个当地时间重复出现过两次，但只有下列候选处于支持的 UTC 范围内，请明确确认：',

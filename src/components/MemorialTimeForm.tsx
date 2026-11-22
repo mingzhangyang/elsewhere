@@ -90,6 +90,12 @@ export default function MemorialTimeForm({
   const [fields, setFields] = useState<Fields>(() => initialFields(initialDraft));
   const [feedback, setFeedback] = useState<Feedback>(null);
   const generation = useRef(0);
+  const previousInitialDraft = useRef(initialDraft);
+  const onInvalidatedRef = useRef(onInvalidated);
+
+  useEffect(() => {
+    onInvalidatedRef.current = onInvalidated;
+  }, [onInvalidated]);
 
   // A slow time-zone/polyfill load must not publish a result after edits or unmount.
   useEffect(() => () => void (generation.current += 1), []);
@@ -97,7 +103,17 @@ export default function MemorialTimeForm({
   // A saved draft is untrusted until its candidate is rechecked against today's IANA rules.
   // The ticket also protects newer user edits from an older restoration response.
   useEffect(() => {
-    if (!initialDraft) return;
+    const replaced = previousInitialDraft.current !== initialDraft;
+    previousInitialDraft.current = initialDraft;
+    if (replaced) {
+      // Never leave a parent's resolved artwork pointing at the previous inputs.
+      onInvalidatedRef.current?.();
+      setFeedback(null);
+    }
+    if (!initialDraft) {
+      if (replaced) setFields(initialFields());
+      return;
+    }
     const ticket = ++generation.current;
     void restoreMemorialDraft(initialDraft)
       .then((restoration) => {
