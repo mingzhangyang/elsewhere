@@ -88,7 +88,7 @@ The new `projectSkyChart(altitude, azimuth)` pure function takes apparent center
 
 For finite inputs, altitude `0` degrees is drawable and `[-90,0)` returns `null`; non-finite inputs or altitude outside `[-90,90]` throw `RangeError`. Azimuth wraps modulo 360 degrees. Numerical assertions use 10 decimal places for coordinates and 12 for unit-circle distance; tiny IEEE-754 roundoff at cardinal points is expected. No canvas, timezone, location, camera or browser context is an input. Tests separately cover diagonal quadrants, scale, near-zenith stability, invalid values, and hemisphere-neutral compass orientation.
 
-**Only S01 and S02 have SM2-A implementation evidence.** S03–S07 remain pending: their astronomical observations, daylight/default object-selection policy, catalog/snapshot lifecycle, historical accuracy and new-projection crescent orientation are not verified by these geometry tests. The existing explorer and perspective postcard projection are unchanged. SM2-B is the next separate batch; SM2-C and any drawing/PNG work are later.
+**SM2-A establishes only S01 and S02 projection geometry.** Subsequent completed SM2-B and SM2-C batches add synthetic selection tests and in-project calculated snapshots for S03–S05, respectively; these are not independent observational reference checks. S06 projected crescent orientation and S07 historical ephemeris comparisons remain pending. The existing explorer and perspective postcard projection are unchanged. Drawing/PNG work belongs to SM3.
 
 ## SM2-C snapshot-specific validation
 

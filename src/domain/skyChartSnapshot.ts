@@ -109,6 +109,7 @@ function nonempty(value: unknown, label: string): asserts value is string {
 
 function copyLocation(location: LocationInfo): Readonly<LocationInfo> {
   requireRecord(location, 'Snapshot location');
+  nonempty(location.timezone, 'Location timezone');
   validateObserver(location);
   for (const key of ['id', 'name', 'country'] as const) nonempty(location[key], `Location ${key}`);
   if (location.source !== undefined && location.source !== 'device') {

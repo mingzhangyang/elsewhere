@@ -397,6 +397,28 @@ describe('SM2-C resource coordinator (synthetic injection)', () => {
     slow.resolve();
     expect((await waiting).status).toBe('stale');
   });
+  it('rejects malformed raw-UTC time zones before loading or calculation', async () => {
+    let loads = 0;
+    let calculations = 0;
+    const coordinator = createSkyChartSnapshotCoordinator({
+      catalogLoaded: () => false,
+      loadCatalog: async () => {
+        loads += 1;
+      },
+      getCatalog: () => catalog,
+      calculate: () => {
+        calculations += 1;
+        return sampleSky();
+      },
+    });
+    for (const timezone of [undefined, null, '', '   ', 42]) {
+      const malformed = invalid({ ...input(), location: { ...NEW_YORK, timezone } });
+      expect(() => prepareSkyChartSnapshotInput(malformed)).toThrow(TypeError);
+      expect(await coordinator.generate(malformed)).toMatchObject({ status: 'error', code: 'input' });
+    }
+    expect(loads).toBe(0);
+    expect(calculations).toBe(0);
+  });
   it('reports invalid input without requesting resources', async () => {
     let loads = 0;
     const coordinator = createSkyChartSnapshotCoordinator({
