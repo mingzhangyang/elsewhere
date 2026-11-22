@@ -1,6 +1,6 @@
 # Sky Moments SM3-A — artwork model and Canvas 2D painter
 
-Status: **SM3-A rendering and layout only**. No creator route, artwork-link protocol, PNG export, file download, OS share or changes to existing postcards. This module is not imported by explorer startup.
+Status: **SM3-A vector artwork + SM3-B PNG export and browser delivery adapters**. No creator route, artwork-link protocol, OS album-save confirmation or changes to existing postcards. All export and handwriting resources are loaded on demand; explorer startup does not import them.
 
 This document supplements SKY-CHART-SNAPSHOT.md, SKY-MOMENT-TIME-FIXTURES.md, SCIENCE.md and SKY-MOMENTS-PLAN.md.
 
@@ -20,9 +20,9 @@ The validated SkyArtwork (version 1) includes snapshot, chosen language (en or z
 | src/moment/skyChart.ts | prepareSkyChartFonts(fontSet?), canvasSkyChartTextMetrics(ctx), layoutSkyChartArtwork(artwork, metrics, fonts), drawSkyChartArtwork(ctx, layout, fonts) |
 | src/moment/skyChart.ts | SKY_CHART_ARTWORK_SIZE, SKY_CHART_PALETTES, SkyChartLayoutError and layout/font/metric interfaces                                                       |
 
-SM3-B may use this sequence directly after validating a coordinator-ready status: createSkyArtwork → await prepareSkyChartFonts() → create Canvas 2D context → layoutSkyChartArtwork(artwork, canvasSkyChartTextMetrics(ctx), fonts) → set a 4:5 canvas size → drawSkyChartArtwork(ctx, layout, fonts). This does **not** encode a PNG or manage object URLs. Changing Canvas size clears context state but retains the context reference.
+SM3-B may use this sequence directly after validating a coordinator-ready status: createSkyArtwork → await prepareSkyChartFonts() → create Canvas 2D context → layoutSkyChartArtwork(artwork, canvasSkyChartTextMetrics(ctx), fonts) → set a 4:5 canvas size → drawSkyChartArtwork(ctx, layout, fonts). SM3-B owns PNG encoding and object URLs separately from this painter. Changing Canvas size clears context state but retains the context reference.
 
-Fonts are opt-in: no module-initialization font, HYG or network request. The resource preparation waits for document.fonts.ready and checks system-ui; on failure it explicitly picks generic sans-serif. If the resource choice changes, **remeasure and relayout** before painting. Drawing requires exactly the same prepared font-resource object as layout. A font resource can be injected for deterministic tests; cross-browser font metric identity is not guaranteed.
+Fonts are opt-in: no module-initialization font, HYG or network request. The resource preparation waits for document.fonts.ready and checks system-ui; on failure it explicitly picks generic sans-serif. SM3-B additionally prepares a lazily imported Latin Caveat hand-lettered phrase (borrowed from InkScribe) where available; English titles remain serif, Chinese titles remain Songti-style and Chinese phrases use native KaiTi/Long Cang-like calligraphic font stacks. No CJK font files are bundled because that would defeat the offline/launch budget. If handwriting fails, the entire export is measured and painted with the same fallback font resource; the painter never swaps fonts after layout. If the resource choice changes, **remeasure and relayout** before painting. Drawing requires exactly the same prepared font-resource object as layout. A font resource can be injected for deterministic tests; cross-browser font metric identity is not guaranteed.
 
 ## Layout and representation
 
@@ -60,3 +60,53 @@ The two themes retain identical celestial positions and design-space placements.
 - tests/browser/sky-artwork.spec.ts generates screenshot attachments for **two palettes × two languages** plus a chart painted from actual SM2-C ready resource status. All test events are fictional. Screenshots are build artifacts only, not product features. Actual pass counts and build budgets must be retrieved from GitHub CI or validated locally, not inferred from source.
 
 **S06 lunar projected bright-limb orientation remains incomplete**: the current marker is intentionally orientation-neutral. It does not use the existing explorer brightLimbAngle, show a potentially misoriented crescent, or claim projected limb rotation. S06 needs separate four-quadrant/near-zenith/near-horizon checks before closure. **S07 wider independent historic verification** also remains pending. Existing explorer science formulas and Moon shading are unchanged. SM3-B should only add image encoding, resource lifecycle, cancellation and mobile save/share around the reused painter; SM3-C should supply UI without a second renderer.
+
+## SM3-B: PNG export, typography, ownership and browser delivery
+
+**Scope and entry:** `src/lib/skyArtworkExport.ts` and `src/lib/skyArtworkDelivery.ts` are consumed only by an explicit dynamic import from a future SM3-C creator. Neither is imported in `src/main.tsx`. There is no screenshot-to-image conversion, camera read, second sky projector, weather read, current date, time-zone inference or mutation of `SkyArtwork`. The existing `MomentImage` postcard path remains untouched.
+
+### Image and errors
+
+```ts
+import { exportSkyChartPng, createSkyArtworkExportCoordinator } from '../lib/skyArtworkExport';
+import { downloadSkyArtwork, shareSkyArtwork, skyArtworkShareCapability } from '../lib/skyArtworkDelivery';
+
+const coordinator = createSkyArtworkExportCoordinator();
+const prepared = await coordinator.export(artwork); // validated SM3-A model
+// In a subsequent *direct* click handler, use prepared.file and:
+// skyArtworkShareCapability(prepared) === 'files' ? shareSkyArtwork(prepared) : downloadSkyArtwork(prepared);
+// When replaced, dismissed or unmounted:
+coordinator.dispose();
+```
+
+- `exportSkyChartPng({ artwork, signal?, requestId?, createCanvas?, encodePng?, prepareFonts? })` validates the frozen SM2-C coordinates and saved SM1 civil-time metadata. A request identifier ties results to their caller's artwork revision. Invalid or contradictory inputs are terminal failures.
+- Creates a new Canvas **1200 × 1500**, using the SAME SM3-A `layoutSkyChartArtwork` and `drawSkyChartArtwork` functions. Layout is measured from the actual Canvas context with exactly the prepared font resources used for drawing. Drawing produces a complete opaque vector background; pixel probes reject transparent or flat/missing output.
+- Calls `canvas.toBlob(..., 'image/png')` or an explicitly injected encoder. Rejects thrown errors, null/empty/mismatched Blob, malformed signature, wrong IHDR dimensions, and missing IEND. Native browser tests additionally decode and inspect the PNG and compare sampled colors to a separately repainted same-resource preview. A successful browser download click is **not** proof of a completed phone photo save.
+- **Bounded fallback:** if primary Canvas allocation/context creation or encoder capacity fails, release its backing store and repaint once at **960 × 1200** using the identical vector layout path. No raster upscale, retry loop, layout overflow fallback, or fallback on corrupt scientific inputs. Both dimensions and the effective resolution are returned. Maximum edge **1500 px** and maximum pixels **1,800,000**.
+- `SkyArtworkExportError.code` identifies `invalid-artwork`, `resources-unavailable`, `layout-failed`, `canvas-unavailable`, `png-encoding-failed`, `aborted`, `file-unsupported`, `download-unavailable`, `download-failed`, `share-unavailable`, or `share-rejected` (plus a human-readable message and `retryable`). Host UI must key on these codes, not browser message strings.
+
+### Event date and font policy
+
+The default filename is `elsewhere-sky-YYYY-MM-DD.png` using **only** the artwork's saved `civilTime.localDate`; its UTF-8 text metadata uses the saved `localTime`, `offset`, exact/reference intent and attribution. A UTC crossing such as New York 2026-06-21 at 21:15 (UTC 2026-06-22 at 01:15) still exports `elsewhere-sky-2026-06-21.png`. Never derive it from `Date.now()`, the device timezone, the name or a prose phrase. A reference instant is always explicitly described as a calculation reference.
+
+InkScribe-inspired **typographic hierarchy**: editorial Georgia/Times serif remains the English title and Songti-style remains the Chinese title; the *personal caption* uses lazy **Caveat 400 Latin** or native handwritten fallbacks for English, and a **Long Cang/KaiTi** local stack for Chinese. This keeps celebratory character without replacing complete credits or dense notes with illegible handwriting. The `@fontsource/caveat` package has OFL 1.1 licensing, is imported inside `prepareSkyChartFonts()` only when generating a keepsake and provides no extra app entry CSS. CJK webfont subsetting is deferred: shipping hundreds of extra shards in an offline-precache build would regress size and first-install behavior. Browser-specific font rendering is not claimed pixel-identical; same-resource metric and layout plus overflow rejection protect consistency. If loading fails, measure and redraw with the returned fallback; never substitute a different face after layout.
+
+### Blob, File, temporary Canvas and Object URL lifecycle
+
+- Each attempt clears its Canvas backing store by setting width and height to zero in `finally`, even on abort, encoder failure or bounded retry. No global Canvas or cached Blob is allocated at import time.
+- `SkyArtworkPng` owns its Blob and lazily created `File`; `.release()`/ `releaseSkyArtworkExport(output)` invalidates Blob/File access and revokes **all** outstanding `.objectUrl()` leases. Each lease may be explicitly released exactly once; URLs are never silently retained by the export layer.
+- `downloadSkyArtwork(output)` creates its own URL lease and temporary anchor, uses the already-encoded Blob, removes the anchor, and delays URL revocation for a bounded 60-second navigation handoff. The returned `.release()` can revoke earlier when safe. Immediate revoke after `.click()` is not reliable on iOS Safari. A creator must not dispose the output until a download handoff is complete.
+- `createSkyArtworkExportCoordinator().export(artwork)` cancels the prior request, retires its output and stamps a monotonically increasing requestId. A new artwork invalidates the previous one. `.cancel()` and `.dispose()` cause in-flight work to stop accepting results immediately. Native `toBlob` cannot necessarily be cancelled; any later output is discarded. Retired results cannot create fresh File or object URLs.
+
+### iOS Safari, Android and desktop Web Share
+
+`skyArtworkShareCapability` distinguishes `files`, `text-only`, `unavailable` and `file-unsupported`. Only a real file-capable browser is allowed to call `shareSkyArtwork(output)`. It calls `navigator.share({files:[output.file]})` **synchronously in a user-gesture handler** after the file has already been prepared; it must never await PNG generation before invoking sharing. Resolution reports `shared` (browser handoff only), while `AbortError` reports `cancelled` and other rejections are typed failures. No `#sky=` link is used as a memorial artwork link.
+
+For download, `downloadSkyArtwork` checks whether the anchor supports `download` and otherwise attempts to open the PNG for manual saving. The result is `download-requested` or `image-opened`, not `saved-to-photos`. In browsers without file sharing, the creator can still offer PNG download. If both file download and opening are blocked, it returns `download-unavailable`/`download-failed`.
+
+### Verification and SM3-C integration
+
+- `tests/skyArtworkExport.test.ts`: isolated Canvas/encoder/share adapters cover full-size output, theme text, local filenames, invalid input, transparent Canvas, null/throw/wrong PNG, lower-res bounded retry, resources, racing requests, cancellation, object URL leases, download handoff and file-sharing cancellation.
+- `tests/browser/sky-artwork-export.spec.ts`: actual browser PNG encoding/decoding of fictional English midnight and Chinese paper event images, preview comparison, actual HYG snapshot output, PNG download and cancelled share. PNG screenshots are CI artifacts; browser/font antialiasing differences use sample tolerances rather than global strict pixel equality.
+- Existing SM1/SM2/SM3-A regressions, postcards, production size and offline validation remain part of `npm run validate`; Playwright includes Chromium, Firefox, WebKit and emulated Pixel. Actual phone Safari, Android browsers, OS Photos/Files save receipts and third-party share targets remain **SM4**, not claimed as tested.
+- The **S06 lunar projected illuminated-limb orientation** and S07 broader independent science checks remain open. SM3-B does not alter astronomical formulas or claim a physically rendered night sky.
