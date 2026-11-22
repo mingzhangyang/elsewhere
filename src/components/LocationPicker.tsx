@@ -19,12 +19,15 @@ export default function LocationPicker({
   recent,
   onSelect,
   onSave,
+  allowDeviceLocation = true,
 }: {
-  location: LocationInfo;
+  location: LocationInfo | null;
   saved: LocationInfo[];
   recent: LocationInfo[];
   onSelect: (place: LocationInfo) => void;
-  onSave: (place: LocationInfo) => void;
+  onSave?: (place: LocationInfo) => void;
+  /** Event forms require an explicitly chosen city; don't offer device geolocation there. */
+  allowDeviceLocation?: boolean;
 }) {
   const i18n = useI18n();
   const { m } = i18n;
@@ -135,26 +138,29 @@ export default function LocationPicker({
       { timeout: 10000, enableHighAccuracy: false },
     );
   };
-  const current = placeLabel(location, i18n);
+  const current = location ? placeLabel(location, i18n) : null;
   return (
     <>
       <button
         ref={trigger}
         className="location-trigger"
+        type="button"
         onClick={() => {
           dialog.current?.showModal();
           input.current?.focus();
         }}
         aria-haspopup="dialog"
-        aria-label={t.trigger({ name: current.name })}
+        aria-label={current ? t.trigger({ name: current.name }) : t.choose}
       >
         <MapPin size={18} />
         {/* Wide screens name the place in the sky title, so the trigger only offers the change. */}
-        <span className="location-current">
-          <strong>{current.name}</strong>
-          <small>{current.country}</small>
-        </span>
-        <span className="location-change">{t.change}</span>
+        {current && (
+          <span className="location-current">
+            <strong>{current.name}</strong>
+            <small>{current.country}</small>
+          </span>
+        )}
+        <span className="location-change">{current ? t.change : t.choose}</span>
         <ChevronDown size={16} />
       </button>
       <dialog
@@ -171,7 +177,7 @@ export default function LocationPicker({
             <p className="eyebrow">{t.eyebrow}</p>
             <h2 id="place-title">{t.title}</h2>
           </div>
-          <button className="icon-button" aria-label={t.close} onClick={close}>
+          <button type="button" className="icon-button" aria-label={t.close} onClick={close}>
             <X />
           </button>
         </div>
@@ -211,16 +217,22 @@ export default function LocationPicker({
             }}
           />
         </div>
-        <div className="place-actions">
-          <button onClick={locate} disabled={locating}>
-            <LocateFixed size={16} />
-            {locating ? t.locating : t.useMine}
-          </button>
-          <button onClick={() => onSave(location)}>
-            <Bookmark size={16} />
-            {saved.some((p) => p.id === location.id) ? t.removeSaved : t.saveCurrent}
-          </button>
-        </div>
+        {(allowDeviceLocation || (onSave && location)) && (
+          <div className="place-actions">
+            {allowDeviceLocation && (
+              <button type="button" onClick={locate} disabled={locating}>
+                <LocateFixed size={16} />
+                {locating ? t.locating : t.useMine}
+              </button>
+            )}
+            {onSave && location && (
+              <button type="button" onClick={() => onSave(location)}>
+                <Bookmark size={16} />
+                {saved.some((p) => p.id === location.id) ? t.removeSaved : t.saveCurrent}
+              </button>
+            )}
+          </div>
+        )}
         <p className="eyebrow">{trimmed.length >= 2 ? t.results : t.suggestions}</p>
         <div role="status" className="form-status">
           {(error && (error.kind === 'search' ? m.network(error.failure, 'search') : t[error.kind])) ||
@@ -231,6 +243,7 @@ export default function LocationPicker({
             const label = placeLabel(place, i18n);
             return (
               <button
+                type="button"
                 role="option"
                 tabIndex={-1}
                 aria-selected={active === index}
@@ -244,7 +257,7 @@ export default function LocationPicker({
                   <strong>{label.name}</strong>
                   <small>{[label.country, m.f.zone(place.timezone)].filter(Boolean).join(' · ')}</small>
                 </span>
-                {place.id === location.id ? (
+                {place.id === location?.id ? (
                   <Check size={16} />
                 ) : saved.some((p) => p.id === place.id) ? (
                   <Bookmark size={14} />
