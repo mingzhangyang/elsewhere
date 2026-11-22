@@ -68,9 +68,13 @@
 }
 
 @media (max-width: 680px) {
-  /* The shared header hides change text; an unselected event city still needs a visible label. */
-  .memorial-city .location-trigger[data-location-empty='true'] .location-change {
+  /* Restore the empty prompt, but keep the selected-city label compact on phones. */
+  .memorial-city .location-change {
     display: inline;
+  }
+
+  .memorial-city .location-current + .location-change {
+    display: none;
   }
 }
 

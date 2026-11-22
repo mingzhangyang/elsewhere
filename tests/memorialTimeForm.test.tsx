@@ -51,13 +51,16 @@ describe('memorial event creator input (SM1-B)', () => {
     expect(onResolved).not.toHaveBeenCalled();
 
     const emptyCityTrigger = screen.getByRole('button', { name: 'Choose a city' });
-    expect(emptyCityTrigger).toHaveAttribute('data-location-empty', 'true');
+    expect(emptyCityTrigger.querySelector('.location-current')).not.toBeInTheDocument();
+    expect(emptyCityTrigger.querySelector('.location-change')).toHaveTextContent('Choose a city');
+    expect(emptyCityTrigger).not.toHaveAttribute('data-location-empty');
     fireEvent.click(emptyCityTrigger);
     expect(screen.queryByRole('button', { name: 'Use my location' })).not.toBeInTheDocument();
     fireEvent.click(within(screen.getByRole('listbox')).getByRole('option', { name: /New York/ }));
-    expect(screen.getByRole('button', { name: 'Change location, New York' })).not.toHaveAttribute(
-      'data-location-empty',
-    );
+    const selectedCityTrigger = screen.getByRole('button', { name: 'Change location, New York' });
+    expect(selectedCityTrigger.querySelector('.location-current strong')).toHaveTextContent('New York');
+    expect(selectedCityTrigger.querySelector('.location-change')).toHaveTextContent('Change place');
+    expect(selectedCityTrigger).not.toHaveAttribute('data-location-empty');
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(onResolved).not.toHaveBeenCalled();
     checkTime();

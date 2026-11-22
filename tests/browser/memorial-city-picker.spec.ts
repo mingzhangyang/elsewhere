@@ -9,7 +9,7 @@ test('memorial city prompt remains visible across the mobile breakpoint', async 
       <body>
         <section class="memorial-time-form">
           <div class="memorial-city">
-            <button class="location-trigger" data-location-empty="true" aria-label="Choose a city">
+            <button class="location-trigger" aria-label="Choose a city">
               <svg width="18" height="18" aria-hidden="true"></svg>
               <span class="location-change">Choose a city</span>
               <svg width="16" height="16" aria-hidden="true"></svg>
