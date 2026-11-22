@@ -1,0 +1,129 @@
+/* Standalone SM1-B form. No explorer or canvas styles are changed. */
+.memorial-time-form {
+  width: min(100%, 640px);
+  margin-inline: auto;
+  padding: 24px;
+  color: var(--text);
+}
+
+.memorial-time-form h2 {
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+
+.memorial-intro {
+  color: var(--text-soft);
+  line-height: 1.6;
+  margin: 0 0 22px;
+}
+
+.memorial-time-form form {
+  display: grid;
+  gap: 18px;
+}
+
+.memorial-field {
+  display: grid;
+  gap: 8px;
+}
+
+.memorial-label,
+.memorial-field > span,
+.memorial-precision legend,
+.memorial-candidates legend {
+  color: var(--text-soft);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.memorial-field input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+}
+
+.memorial-field small,
+.memorial-zone {
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.memorial-zone {
+  margin: 8px 0 0;
+}
+
+.memorial-city .location-trigger {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.memorial-city .location-current {
+  display: block;
+}
+
+.memorial-city .location-change {
+  flex: 0 0 auto;
+  font-size: var(--text-sm);
+}
+
+.memorial-precision,
+.memorial-candidates {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+}
+
+.memorial-precision label {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-height: 38px;
+}
+
+.memorial-precision input {
+  width: 18px;
+  height: 18px;
+}
+
+.memorial-candidates button {
+  min-height: 44px;
+  padding: 12px;
+  border: 1px solid var(--gold-edge);
+  border-radius: 8px;
+  background: var(--raised);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.memorial-error,
+.memorial-ready,
+.memorial-loading {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.memorial-error {
+  color: #ffc7ba;
+}
+
+.memorial-ready {
+  color: #b5e2cf;
+  overflow-wrap: anywhere;
+}
+
+.memorial-submit {
+  min-height: 44px;
+  justify-self: start;
+  padding: 10px 22px;
+}
+
+@media (max-width: 560px) {
+  .memorial-time-form {
+    padding: 18px;
+  }
+}
