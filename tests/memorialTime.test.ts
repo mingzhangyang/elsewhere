@@ -31,7 +31,8 @@ async function resolved(draft: MemorialTimeDraft): Promise<MemorialTime> {
 describe('memorial event time (SM1-A)', () => {
   it('rejects New York spring-forward gap without changing the local clock', async () => {
     expect(await resolveMemorialTime(exact(ny, '2026-03-08', '02:30'))).toMatchObject({
-      status: 'error', code: 'nonexistent-time',
+      status: 'error',
+      code: 'nonexistent-time',
     });
   });
 
@@ -52,7 +53,8 @@ describe('memorial event time (SM1-A)', () => {
     expect(() => assertMemorialTimeConsistency(earlier)).not.toThrow();
     expect(() => assertMemorialTimeConsistency(later)).not.toThrow();
     expect(await resolveMemorialTime({ ...draft, choiceUtc: '2026-11-01T07:30:00.000Z' })).toMatchObject({
-      status: 'error', code: 'invalid-choice',
+      status: 'error',
+      code: 'invalid-choice',
     });
   });
 
@@ -73,7 +75,12 @@ describe('memorial event time (SM1-A)', () => {
     if (first.status !== 'ambiguous') throw new Error('Expected DST fold');
     const old = await resolved({ ...repeated, choiceUtc: first.candidates[0].utc });
     const switched = changeMemorialLocation(old, beijing);
-    expect(switched).toMatchObject({ state: 'draft', kind: 'exact', localDate: '2026-11-01', localTime: '01:30' });
+    expect(switched).toMatchObject({
+      state: 'draft',
+      kind: 'exact',
+      localDate: '2026-11-01',
+      localTime: '01:30',
+    });
     expect(switched.choiceUtc).toBeUndefined();
     const next = await resolved(switched);
     expect(next.utc).toBe('2026-10-31T17:30:00.000Z');
@@ -85,7 +92,9 @@ describe('memorial event time (SM1-A)', () => {
     const draft = createReferenceDraft(ny, '2026-07-16');
     const value = await resolved(draft);
     expect(value).toMatchObject({
-      state: 'resolved', kind: 'reference', reference: { localTime: '22:00', source: 'default' },
+      state: 'resolved',
+      kind: 'reference',
+      reference: { localTime: '22:00', source: 'default' },
       utc: '2026-07-17T02:00:00.000Z',
     });
     const moved = changeMemorialLocation(value, sydney);
@@ -105,7 +114,8 @@ describe('memorial event time (SM1-A)', () => {
     expect((await resolved(exact(utc, '2000-02-29', '12:00'))).localDate).toBe('2000-02-29');
     for (const date of ['1900-02-29', '2026-02-30', '2026-04-31', '2026-2-03']) {
       expect(await resolveMemorialTime(exact(utc, date, '12:00'))).toMatchObject({
-        status: 'error', code: 'invalid-date',
+        status: 'error',
+        code: 'invalid-date',
       });
     }
   });
@@ -118,10 +128,12 @@ describe('memorial event time (SM1-A)', () => {
     expect(() => validateInstant(new Date(MIN_INSTANT - 1))).toThrow(RangeError);
     expect(() => validateInstant(new Date(MAX_INSTANT + 1))).toThrow(RangeError);
     expect(await resolveMemorialTime(exact(utc, '1899-12-31', '23:59'))).toMatchObject({
-      status: 'error', code: 'out-of-range',
+      status: 'error',
+      code: 'out-of-range',
     });
     expect(await resolveMemorialTime(exact(utc, '2101-01-01', '00:00'))).toMatchObject({
-      status: 'error', code: 'out-of-range',
+      status: 'error',
+      code: 'out-of-range',
     });
     // A local date outside 1900 may still be legal when its UTC instant is inside the range.
     const westFixed = { ...utc, id: 'west-fixed', timezone: 'Etc/GMT+12' };
@@ -142,18 +154,26 @@ describe('memorial event time (SM1-A)', () => {
   });
 
   it('reports invalid zones, coordinates and local clocks distinctly', async () => {
-    expect(await resolveMemorialTime(exact({ ...ny, timezone: 'Mars/Olympus' }, '2026-11-20', '12:00'))).toMatchObject({
-      status: 'error', code: 'invalid-timezone',
+    expect(
+      await resolveMemorialTime(exact({ ...ny, timezone: 'Mars/Olympus' }, '2026-11-20', '12:00')),
+    ).toMatchObject({
+      status: 'error',
+      code: 'invalid-timezone',
     });
     expect(await resolveMemorialTime(exact({ ...ny, latitude: 91 }, '2026-11-20', '12:00'))).toMatchObject({
-      status: 'error', code: 'invalid-location',
+      status: 'error',
+      code: 'invalid-location',
     });
-    expect(await resolveMemorialTime(exact({ ...ny, longitude: Number.NaN }, '2026-11-20', '12:00'))).toMatchObject({
-      status: 'error', code: 'invalid-location',
+    expect(
+      await resolveMemorialTime(exact({ ...ny, longitude: Number.NaN }, '2026-11-20', '12:00')),
+    ).toMatchObject({
+      status: 'error',
+      code: 'invalid-location',
     });
     for (const time of ['24:00', '12:60', '1:30']) {
       expect(await resolveMemorialTime(exact(ny, '2026-11-20', time))).toMatchObject({
-        status: 'error', code: 'invalid-time',
+        status: 'error',
+        code: 'invalid-time',
       });
     }
   });
@@ -163,7 +183,8 @@ describe('memorial event time (SM1-A)', () => {
     const value = await resolved(draft);
     expect(value.disambiguation).toBeNull();
     expect(await resolveMemorialTime({ ...draft, choiceUtc: '2026-11-01T05:30:00.000Z' })).toMatchObject({
-      status: 'error', code: 'invalid-choice',
+      status: 'error',
+      code: 'invalid-choice',
     });
   });
 
@@ -173,6 +194,8 @@ describe('memorial event time (SM1-A)', () => {
     expect(() => assertMemorialTimeConsistency({ ...value, offset: '+01:00' })).toThrow();
     expect(() => assertMemorialTimeConsistency({ ...value, localDate: '2026-02-16' })).toThrow();
     // A stored, internally consistent offset survives later zone rule changes.
-    expect(() => assertMemorialTimeConsistency({ ...value, location: { ...value.location, timezone: 'Europe/Paris' } })).not.toThrow();
+    expect(() =>
+      assertMemorialTimeConsistency({ ...value, location: { ...value.location, timezone: 'Europe/Paris' } }),
+    ).not.toThrow();
   });
 });

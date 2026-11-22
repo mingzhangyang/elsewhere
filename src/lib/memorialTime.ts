@@ -69,7 +69,13 @@ export function changeMemorialLocation(
   location: LocationInfo,
 ): MemorialTimeDraft {
   if (event.kind === 'exact') {
-    return { state: 'draft', kind: 'exact', location, localDate: event.localDate, localTime: event.localTime };
+    return {
+      state: 'draft',
+      kind: 'exact',
+      location,
+      localDate: event.localDate,
+      localTime: event.localTime,
+    };
   }
   return {
     state: 'draft',
@@ -141,14 +147,17 @@ export async function resolveMemorialTime(draft: MemorialTimeDraft): Promise<Mem
   if (!draft || draft.state !== 'draft' || (draft.kind !== 'exact' && draft.kind !== 'reference')) {
     return error('invalid-choice', 'Expected an unresolved memorial time draft.');
   }
-  if (!validLocation(draft.location)) return error('invalid-location', 'Select a location with valid coordinates.');
-  if (!validTimeZone(draft.location.timezone)) return error('invalid-timezone', 'Select a valid IANA time zone.');
-  if (!validCivilDate(draft.localDate)) return error('invalid-date', 'Enter a valid Gregorian date (YYYY-MM-DD).');
+  if (!validLocation(draft.location))
+    return error('invalid-location', 'Select a location with valid coordinates.');
+  if (!validTimeZone(draft.location.timezone))
+    return error('invalid-timezone', 'Select a valid IANA time zone.');
+  if (!validCivilDate(draft.localDate))
+    return error('invalid-date', 'Enter a valid Gregorian date (YYYY-MM-DD).');
   const localTime = draft.kind === 'exact' ? draft.localTime : draft.reference?.localTime;
   if (!validClock(localTime)) return error('invalid-time', 'Enter a valid local time (HH:mm).');
   if (
     draft.kind === 'reference' &&
-    (draft.reference.source !== 'user' && draft.reference.source !== 'default' ||
+    ((draft.reference.source !== 'user' && draft.reference.source !== 'default') ||
       (draft.reference.source === 'default' && localTime !== DEFAULT_REFERENCE_TIME))
   ) {
     return error('invalid-choice', 'Invalid reference time source.');
@@ -161,7 +170,8 @@ export async function resolveMemorialTime(draft: MemorialTimeDraft): Promise<Mem
     // Civil inputs and time zone have already been checked. This is the UTC range gate.
     return error('out-of-range', 'The resulting UTC instant must be between 1900 and 2100.');
   }
-  if (dates.length === 0) return error('nonexistent-time', 'This local time does not exist in the selected time zone.');
+  if (dates.length === 0)
+    return error('nonexistent-time', 'This local time does not exist in the selected time zone.');
   const candidates = dates
     .map((date) => ({ utc: date.toISOString(), offset: offsetAt(date, draft.location.timezone) }))
     .sort((a, b) => a.utc.localeCompare(b.utc));
@@ -176,7 +186,8 @@ export async function resolveMemorialTime(draft: MemorialTimeDraft): Promise<Mem
     state: 'resolved',
     utc: selected.utc,
     offset: selected.offset,
-    disambiguation: candidates.length === 2 ? (selected.utc === candidates[0].utc ? 'earlier' : 'later') : null,
+    disambiguation:
+      candidates.length === 2 ? (selected.utc === candidates[0].utc ? 'earlier' : 'later') : null,
   };
   const value: MemorialTime =
     draft.kind === 'exact'
@@ -197,34 +208,44 @@ export async function resolveMemorialTime(draft: MemorialTimeDraft): Promise<Mem
  * Future artwork-link readers may retain a self-consistent historical record after a tzdb update.
  */
 export function assertMemorialTimeConsistency(value: MemorialTime): void {
-  if (!value || value.state !== 'resolved' || !validLocation(value.location) || !validTimeZone(value.location.timezone)) {
+  if (
+    !value ||
+    value.state !== 'resolved' ||
+    !validLocation(value.location) ||
+    !validTimeZone(value.location.timezone)
+  ) {
     throw new RangeError('Invalid resolved memorial location or state.');
   }
-  const localTime = value.kind === 'exact' ? value.localTime : value.kind === 'reference' ? value.reference?.localTime : '';
+  const localTime =
+    value.kind === 'exact' ? value.localTime : value.kind === 'reference' ? value.reference?.localTime : '';
   if (!validClock(localTime) || !/^\d{4}-\d{2}-\d{2}$/.test(value.localDate)) {
     throw new RangeError('Invalid resolved civil time.');
   }
   if (
     value.kind === 'reference' &&
-    (value.reference.source !== 'user' && value.reference.source !== 'default' ||
+    ((value.reference.source !== 'user' && value.reference.source !== 'default') ||
       (value.reference.source === 'default' && localTime !== DEFAULT_REFERENCE_TIME))
   ) {
     throw new RangeError('Invalid reference source.');
   }
-  if (value.disambiguation !== null && value.disambiguation !== 'earlier' && value.disambiguation !== 'later') {
+  if (
+    value.disambiguation !== null &&
+    value.disambiguation !== 'earlier' &&
+    value.disambiguation !== 'later'
+  ) {
     throw new RangeError('Invalid DST choice.');
   }
   if (typeof value.utc !== 'string') throw new RangeError('Invalid UTC instant.');
   const utc = new Date(value.utc);
   validateInstant(utc);
-  if (utc.toISOString() !== value.utc) throw new RangeError('UTC must be a canonical millisecond ISO instant.');
+  if (utc.toISOString() !== value.utc)
+    throw new RangeError('UTC must be a canonical millisecond ISO instant.');
   const match = /^([+-])(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(value.offset);
   if (!match || Number(match[2]) > 23 || Number(match[3]) > 59 || Number(match[4] ?? 0) > 59) {
     throw new RangeError('Invalid saved UTC offset.');
   }
   const seconds =
-    (match[1] === '-' ? -1 : 1) *
-    (Number(match[2]) * 3600 + Number(match[3]) * 60 + Number(match[4] ?? 0));
+    (match[1] === '-' ? -1 : 1) * (Number(match[2]) * 3600 + Number(match[3]) * 60 + Number(match[4] ?? 0));
   const wall = new Date(utc.getTime() + seconds * 1000).toISOString();
   if (wall !== `${value.localDate}T${localTime}:00.000Z`) {
     throw new RangeError('Saved UTC instant, offset, and local clock disagree.');
