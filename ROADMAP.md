@@ -1,6 +1,6 @@
 # Elsewhere roadmap
 
-Status: current plan, November 14, 2026. It replaces the refactor roadmap, the mobile roadmap and the product direction proposal, which are now in the [archive](docs/archive/README.md). Release gates stay in [RELEASE.md](docs/RELEASE.md), evidence in [VALIDATION.md](docs/VALIDATION.md), and scientific conventions in [SCIENCE.md](docs/SCIENCE.md).
+Status: current plan, updated November 22, 2026. It replaces the refactor roadmap, the mobile roadmap and the product direction proposal, which are now in the [archive](docs/archive/README.md). Release gates stay in [RELEASE.md](docs/RELEASE.md), evidence in [VALIDATION.md](docs/VALIDATION.md), and scientific conventions in [SCIENCE.md](docs/SCIENCE.md).
 
 ## Summary
 
@@ -16,6 +16,8 @@ Build in this order:
 5. **Horizon scenery**: illustrative mountains, snow peaks, forest, sea or city at the horizon.
 6. **Will I see it?** A planner for the next few nights, together with a red night theme and the installable web app, for use outdoors.
 7. **Two skies side by side.**
+
+The [birth-sky and commemorative star-map implementation plan](docs/SKY-MOMENTS-PLAN.md) (in Chinese) details the Sky moments work as SM0–SM6. SM0–SM4 deliver a free PNG trial that can be released independently after its quality and user checks; artwork links (SM5) and further output formats (SM6) follow evidence from use. Implementation is pending.
 
 Phone pointing, real terrain horizons and a general light theme are deferred, and the cartoon style is for exported images only; see [Deferred](#deferred).
 
@@ -60,7 +62,7 @@ Together they support one idea: the sky of a moment that matters to someone. "Th
 These carry forward from the earlier roadmaps and apply to every phase.
 
 1. **Audience:** curious people exploring the sky and learning where things appear. Research-grade use would be a separate qualification effort.
-2. **Realistic by default.** Any stylization or enhancement is a named display setting and never changes calculated positions, times or visibility.
+2. **Realistic by default in the live explorer.** Its stylization or enhancement is a named display setting and never changes calculated positions, times or visibility. Separate commemorative charts keep calculated positions and times but use explicitly labelled schematic display rules: daylight, weather, moonlight and light pollution do not hide their plotted stars. They do not change the live explorer's visibility model.
 3. **Say where everything comes from.** Calculated, from a weather model, chosen by the visitor, or illustrative. Missing data stays missing. Images and shared links carry the same labels as the screen.
 4. **Disclose little.** Shared moments use city-level coordinates by default; precise device coordinates are shared only when the person chooses to share them. Diagnostics and any measurement avoid coordinates.
 5. **Every batch leaves a runnable app** with its own observable acceptance criteria. Do not mix visual redesign, numerical changes and provider migrations in one review.
@@ -118,7 +120,7 @@ Every phase after this one adds sentences, so the cost of translating grows the 
 
 Build the cheapest convincing version: a static image of a chosen moment and a share link that turns to its subject. Show it to five or six people new to the app (this also covers the unfamiliar-user gate in [RELEASE.md](docs/RELEASE.md)). Observe whether they want to send it, and to whom. Try the realistic image against an illustrated (cartoon-style) one, and the ridge against horizon scenery (phase 5), as variants. A hand-made illustration is enough for the test; the illustrated renderer comes in phase 4.
 
-**Decision:** if the response is strong, build phase 4; if it is weak, build the planner (phase 6) first.
+**Decision:** use these prototype sessions and the birth-sky plan's SM4 trial to guide further investment. A validated free PNG version may be released independently; artwork links (SM5) and output expansion (SM6) are conditional. If interest remains weak after the targeted revision, prioritize the planner (phase 6).
 
 **Status:** prototype built November 15, 2026; user sessions not yet run. The session script, variant order and observation sheet are in [SKY-MOMENT-TEST.md](docs/SKY-MOMENT-TEST.md); evidence for the build is in [VALIDATION.md](docs/VALIDATION.md#sky-moment-prototype-november-15).
 
@@ -129,6 +131,8 @@ Build the cheapest convincing version: a static image of a chosen moment and a s
 - **Not in the prototype:** link previews in chat apps, the one-sentence arrival, high-resolution or off-screen export, physical-phone checks of capture and memory, and reverse geocoding (a device location is printed as "My location").
 
 ### 4. Sky moments (L)
+
+The [detailed implementation plan](docs/SKY-MOMENTS-PLAN.md) defines the birth-sky creator, labelled all-sky charts, local-time rules and staged acceptance. The postcard and sharing capabilities below remain the broader target; full artwork links and chat previews are not prerequisites for releasing its P0 PNG version. Chart output does not require weather; weather and provenance requirements below apply when that data is used in postcards.
 
 - **Save as image.** A postcard layout: the sky, the place, local time, Moon phase and that night's conditions, made in the browser. Two styles: realistic and illustrated.
 - **Realistic image**, captured from the live renderer:
