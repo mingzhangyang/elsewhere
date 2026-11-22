@@ -222,7 +222,7 @@ export function drawIllustration(
   horizon: HorizonVariant,
   text: IllustrationText,
   font: string,
-  cityImage?: HTMLImageElement | null,
+  landscapeArt?: HTMLImageElement | null,
 ) {
   const { sky, weather, layers, view } = snapshot;
   const unit = height / 1000;
@@ -639,13 +639,15 @@ export function drawIllustration(
     sky,
     day,
     night,
-    urban,
-    seed,
+    // A place keeps its terrain and landmarks as the simulated sky moves through the day.
+    seed:
+      Math.imul(Math.round(snapshot.location.latitude * 100), 73856093) ^
+      Math.imul(Math.round(snapshot.location.longitude * 100), 19349663),
     lightX,
     lightStrength,
     halfWidth,
     horizon,
-    cityImage,
+    landscapeArt,
   });
 
   const size = 21 * unit;

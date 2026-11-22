@@ -42,8 +42,6 @@ export interface LandScene {
   day: number;
   /** 1 in full night, 0 from dusk on. */
   night: number;
-  /** The visitor's light-pollution setting, 0 to 1. */
-  urban: number;
   seed: number;
   /** Which side the light comes from, −1 (left) to 1 (right). */
   lightX: number;
@@ -52,7 +50,7 @@ export interface LandScene {
   /** Half the horizontal field of view, in degrees. */
   halfWidth: number;
   horizon: HorizonVariant;
-  cityImage?: HTMLImageElement | null;
+  landscapeArt?: HTMLImageElement | null;
 }
 
 /** Mist lying in a valley: a band of the horizon's colour that fades upward. */
@@ -311,45 +309,6 @@ function broadleaf(
   for (const [cx, cy, r, back] of clumps) if (!back) clump(cx, cy, r, false);
 }
 
-/** A conifer: drooping tiers that narrow to a point, lit along one side. */
-function conifer(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  h: number,
-  c: TreeColours,
-  lightX: number,
-  strength: number,
-  random: () => number,
-) {
-  ctx.fillStyle = css(c.bark);
-  ctx.fillRect(x - h * 0.02, y - h * 0.14, h * 0.04, h * 0.15);
-  const tiers = 6;
-  for (const lit of [false, true]) {
-    ctx.fillStyle = lit ? css(mix(c.mid, c.light, 0.3 + 0.5 * strength), 0.4 + 0.5 * strength) : css(c.dark);
-    ctx.beginPath();
-    for (let i = 0; i < tiers; i++) {
-      const t = i / tiers;
-      const ty = y - h * (0.08 + 0.9 * t),
-        w = h * 0.2 * (1 - t * 0.82) * (0.9 + random() * 0.25),
-        apex = ty - h * 0.26 * (1 - t * 0.4);
-      if (lit) {
-        ctx.moveTo(x + lightX * w * 0.1, apex + h * 0.03);
-        ctx.quadraticCurveTo(x + lightX * w * 0.6, ty - h * 0.03, x + lightX * w * 0.95, ty + h * 0.015);
-        ctx.quadraticCurveTo(x + lightX * w * 0.5, ty - h * 0.005, x + lightX * w * 0.2, ty - h * 0.01);
-        ctx.closePath();
-      } else {
-        ctx.moveTo(x, apex);
-        ctx.quadraticCurveTo(x + w * 0.5, ty - h * 0.05, x + w, ty + h * 0.025);
-        ctx.quadraticCurveTo(x + w * 0.4, ty - h * 0.005, x, ty + h * 0.01);
-        ctx.quadraticCurveTo(x - w * 0.4, ty - h * 0.005, x - w, ty + h * 0.025);
-        ctx.quadraticCurveTo(x - w * 0.5, ty - h * 0.05, x, apex);
-      }
-    }
-    ctx.fill();
-  }
-}
-
 interface HouseColours {
   wall: Rgb;
   roof: Rgb;
@@ -368,10 +327,9 @@ function cottage(
   c: HouseColours,
   glow: number,
   lightX: number,
-  gable: boolean,
 ) {
-  const w = h * (gable ? 0.95 : 1.4);
-  const eave = y - h * (gable ? 0.56 : 0.5);
+  const w = h * 1.4;
+  const eave = y - h * 0.5;
   // The wall, lighter toward the light, shaded under the eave.
   const wall = ctx.createLinearGradient(x - w / 2, 0, x + w / 2, 0);
   wall.addColorStop(lightX > 0 ? 1 : 0, css(c.wall));
@@ -385,39 +343,26 @@ function cottage(
   ctx.fillRect(x + w * 0.18, y - h * 1.06, h * 0.13, h * 0.3);
   ctx.fillStyle = css(c.roof);
   ctx.beginPath();
-  if (gable) {
-    ctx.moveTo(x - w * 0.62, eave + h * 0.03);
-    ctx.lineTo(x, y - h * 1.02);
-    ctx.lineTo(x + w * 0.62, eave + h * 0.03);
-  } else {
-    ctx.moveTo(x - w * 0.58, eave + h * 0.03);
-    ctx.lineTo(x - w * 0.4, y - h);
-    ctx.lineTo(x + w * 0.4, y - h);
-    ctx.lineTo(x + w * 0.58, eave + h * 0.03);
-  }
+  ctx.moveTo(x - w * 0.58, eave + h * 0.03);
+  ctx.lineTo(x - w * 0.4, y - h);
+  ctx.lineTo(x + w * 0.4, y - h);
+  ctx.lineTo(x + w * 0.58, eave + h * 0.03);
   ctx.closePath();
   ctx.fill();
   // Light along the ridge and the lit pitch of the roof.
   ctx.fillStyle = css(mix(c.roof, c.trim, 0.55), 0.7);
   ctx.beginPath();
-  if (gable) {
-    ctx.moveTo(x, y - h * 1.02);
-    ctx.lineTo(x + lightX * w * 0.62, eave + h * 0.03);
-    ctx.lineTo(x + lightX * w * 0.5, eave + h * 0.03);
-    ctx.lineTo(x, y - h * 0.92);
-  } else {
-    ctx.moveTo(x - w * 0.4, y - h);
-    ctx.lineTo(x + w * 0.4, y - h);
-    ctx.lineTo(x + w * 0.43, y - h * 0.92);
-    ctx.lineTo(x - w * 0.43, y - h * 0.92);
-  }
+  ctx.moveTo(x - w * 0.4, y - h);
+  ctx.lineTo(x + w * 0.4, y - h);
+  ctx.lineTo(x + w * 0.43, y - h * 0.92);
+  ctx.lineTo(x - w * 0.43, y - h * 0.92);
   ctx.closePath();
   ctx.fill();
   // Door and windows; the windows light up at dusk and spill onto the ground.
   ctx.fillStyle = css(deepen(c.roof, 0.35));
   ctx.fillRect(x - h * 0.07, y - h * 0.3, h * 0.14, h * 0.32);
   const pane = mix(mix(c.wall, hex('#7f9cc0'), 0.6), hex('#ffd98a'), glow);
-  for (const side of gable ? [-0.26, 0.26] : [-0.32, 0.3]) {
+  for (const side of [-0.32, 0.3]) {
     const wx = x + side * w,
       wy = y - h * 0.3;
     if (glow > 0.15) glowAt(ctx, wx, wy, h * 0.7, hex('#ffc56e'), 0.38 * glow);
@@ -433,63 +378,6 @@ function cottage(
     glowAt(ctx, 0, 0, w * 0.9, hex('#ffc56e'), 0.3 * glow);
     ctx.restore();
   }
-}
-
-/**
- * Two small figures seen from behind, a grown-up and a child hand in hand, looking up at the sky:
- * the people this sky is being kept for.
- */
-function onlookers(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  h: number,
-  scene: LandScene,
-  towardSky: number,
-) {
-  const { day, palette, lightX, lightStrength } = scene;
-  const dim = (colour: Rgb) => mix(deepen(palette.landNear, 0.35), colour, 0.12 + 0.88 * day);
-  const person = (px: number, ph: number, coat: Rgb, hair: Rgb, lift: number) => {
-    const shoulder = y - ph * 0.78,
-      hem = y - ph * 0.3;
-    ctx.fillStyle = css(dim(hex('#2b2f4a')));
-    ctx.fillRect(px - ph * 0.085, hem - ph * 0.02, ph * 0.07, ph * 0.33);
-    ctx.fillRect(px + ph * 0.015, hem - ph * 0.02, ph * 0.07, ph * 0.33);
-    ctx.fillStyle = css(dim(coat));
-    ctx.beginPath();
-    ctx.moveTo(px - ph * 0.13, shoulder + ph * 0.03);
-    ctx.quadraticCurveTo(px, shoulder - ph * 0.06, px + ph * 0.13, shoulder + ph * 0.03);
-    ctx.quadraticCurveTo(px + ph * 0.19, hem - ph * 0.2, px + ph * 0.17, hem);
-    ctx.quadraticCurveTo(px, hem + ph * 0.04, px - ph * 0.17, hem);
-    ctx.quadraticCurveTo(px - ph * 0.19, hem - ph * 0.2, px - ph * 0.13, shoulder + ph * 0.03);
-    ctx.fill();
-    // The arm on the sky's side: raised to point, or lowered to hold a hand.
-    ctx.strokeStyle = css(dim(coat));
-    ctx.lineWidth = ph * 0.07;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(px + towardSky * ph * 0.12, shoulder + ph * 0.06);
-    ctx.lineTo(px + towardSky * ph * (0.2 + 0.1 * lift), shoulder + ph * (0.3 - 0.52 * lift));
-    ctx.stroke();
-    ctx.fillStyle = css(dim(hair));
-    ctx.beginPath();
-    ctx.arc(px, y - ph * 0.88, ph * 0.105, 0, TAU);
-    ctx.fill();
-    // A touch of light down the side that faces it.
-    ctx.strokeStyle = css(mix(dim(coat), palette.leafLight, 0.7), 0.25 + 0.55 * lightStrength);
-    ctx.lineWidth = Math.max(1, ph * 0.025);
-    ctx.beginPath();
-    ctx.moveTo(px + lightX * ph * 0.14, shoulder + ph * 0.06);
-    ctx.quadraticCurveTo(px + lightX * ph * 0.18, hem - ph * 0.2, px + lightX * ph * 0.16, hem - ph * 0.02);
-    ctx.stroke();
-  };
-  // Their shadow on the grass.
-  ctx.fillStyle = css(deepen(palette.landNear, 0.5), 0.3);
-  ctx.beginPath();
-  ctx.ellipse(x - towardSky * h * 0.1, y + h * 0.01, h * 0.42, h * 0.045, 0, 0, TAU);
-  ctx.fill();
-  person(x, h, hex('#c8553d'), hex('#3a2a24'), 1);
-  person(x - towardSky * h * 0.36, h * 0.62, hex('#f2c14e'), hex('#2a2422'), 0);
 }
 
 /** Grass along a crest: tufts of thin tapered blades in the meadow's own colour, some catching the light. */
@@ -522,54 +410,8 @@ function grass(scene: LandScene, points: Point[], dark: Rgb, light: Rgb, random:
   }
 }
 
-/** Meadow flowers on a slope: small five-petalled blossoms on stems, larger toward the viewer. */
-function flowers(
-  scene: LandScene,
-  crest: Point[],
-  bottom: number,
-  stem: Rgb,
-  random: () => number,
-  count: number,
-) {
-  const { ctx, unit, day, lightStrength } = scene;
-  // In fading light the petals keep their own colour but lose their brightness: no glow.
-  const fade = (colour: Rgb) => mix(deepen(scene.palette.landNear, 0.1), colour, 0.18 + 0.82 * day * day);
-  const petals = [hex('#fffaf0'), hex('#ffd95e'), hex('#f7a8c4'), hex('#ff8a6a'), hex('#b9a4f0')].map(fade);
-  const heart = fade(hex('#f2a23a'));
-  for (let i = 0; i < count; i++) {
-    const p = crest[Math.floor(random() * (crest.length - 1))];
-    const depth = random();
-    const y = p.y + 8 * unit + depth * depth * (bottom - p.y);
-    if (y > bottom + 20 * unit) continue;
-    const s = (2.4 + depth * 4.6) * unit * (0.8 + random() * 0.5);
-    const x = p.x + (random() - 0.5) * 30 * unit;
-    const sway = (random() - 0.5) * s * 2;
-    ctx.strokeStyle = css(stem, 0.9);
-    ctx.lineWidth = Math.max(1, s * 0.22);
-    ctx.beginPath();
-    ctx.moveTo(x, y + s * 4.2);
-    ctx.quadraticCurveTo(x + sway * 0.2, y + s * 2, x + sway, y);
-    ctx.stroke();
-    ctx.fillStyle = css(petals[Math.floor(random() * petals.length)], 0.75 + 0.25 * lightStrength);
-    ctx.beginPath();
-    const turn = random() * TAU;
-    for (let k = 0; k < 5; k++) {
-      const a = turn + (k / 5) * TAU;
-      const px = x + sway + Math.cos(a) * s * 0.8,
-        py = y + Math.sin(a) * s * 0.62;
-      ctx.moveTo(px + s * 0.62, py);
-      ctx.ellipse(px, py, s * 0.62, s * 0.5, a, 0, TAU);
-    }
-    ctx.fill();
-    ctx.fillStyle = css(heart);
-    ctx.beginPath();
-    ctx.arc(x + sway, y, s * 0.36, 0, TAU);
-    ctx.fill();
-  }
-}
-
 /**
- * Small trees along a crest, in loose groups: rounded crowns (or pointed firs) that overlap into
+ * Small trees along a crest, in loose groups: rounded crowns that overlap into
  * hedgerows, each with a lit side, standing on their own small shadows.
  */
 function copse(
@@ -578,10 +420,9 @@ function copse(
   c: TreeColours,
   size: number,
   density: number,
-  pointed: boolean,
   random: () => number,
 ) {
-  const { ctx, horizonY, unit, lightX, lightStrength } = scene;
+  const { ctx, horizonY, unit, lightX } = scene;
   const stride = Math.max(1, Math.round((size * 0.55) / 8));
   let run = 0;
   for (let i = 0; i < points.length; i += stride) {
@@ -597,23 +438,6 @@ function copse(
     ctx.beginPath();
     ctx.ellipse(x - lightX * h * 0.3, y, h * 0.6, h * 0.1, 0, 0, TAU);
     ctx.fill();
-    if (pointed) {
-      ctx.fillStyle = css(c.dark);
-      ctx.beginPath();
-      ctx.moveTo(x, y - h * 1.4);
-      ctx.quadraticCurveTo(x + h * 0.12, y - h * 0.5, x + h * 0.36, y);
-      ctx.lineTo(x - h * 0.36, y);
-      ctx.quadraticCurveTo(x - h * 0.12, y - h * 0.5, x, y - h * 1.4);
-      ctx.fill();
-      ctx.fillStyle = css(mix(c.mid, c.light, 0.5), 0.3 + 0.5 * lightStrength);
-      ctx.beginPath();
-      ctx.moveTo(x, y - h * 1.34);
-      ctx.quadraticCurveTo(x + lightX * h * 0.14, y - h * 0.5, x + lightX * h * 0.33, y - h * 0.03);
-      ctx.lineTo(x + lightX * h * 0.1, y - h * 0.03);
-      ctx.closePath();
-      ctx.fill();
-      continue;
-    }
     crown(scene, x, y, h, tall, c, random);
   }
 }
@@ -782,6 +606,49 @@ function paintSea(scene: LandScene, haze: Rgb) {
   }
 }
 
+// Flat, fractured shelves at one corner; broken surf follows their seaward edges.
+function paintReef(scene: LandScene) {
+  const { ctx, width, height, horizonY, seed, palette, day, lightStrength } = scene;
+  const random = seededRandom(seed + 103);
+  const side = random() < 0.5 ? -1 : 1;
+  const waterDepth = height - horizonY;
+  const reach = Math.min(width * 0.34, waterDepth * 1.5);
+  const slate = mix(palette.landNear, hex('#4a565b'), 0.08 + 0.65 * day);
+  const foam = mix(palette.horizon, palette.cloudLight, 0.75);
+  ctx.save();
+  ctx.translate(side > 0 ? 0 : width, height);
+  ctx.scale(side, 1);
+  for (let i = 0; i < 14; i++) {
+    const t = i / 13;
+    const x = reach * ((1 - t) * 0.85 + random() * 0.18);
+    const y = -Math.min(waterDepth * 0.27, reach * 0.32) * (1 - t) + reach * (random() * 0.12 - 0.055);
+    const w = reach * (0.06 + t * 0.28 + random() * 0.08);
+    const h = w * (0.24 + random() * 0.26);
+    ctx.fillStyle = css(foam, 0.24 + 0.35 * lightStrength);
+    ctx.beginPath();
+    mark(ctx, x + w * 0.54, y + h * 0.2, w * 1.12, h * 0.2, 0, -h * 0.09);
+    ctx.fill();
+    ctx.fillStyle = css(deepen(slate, 0.3));
+    ctx.beginPath();
+    ctx.moveTo(x - w, y - h * 0.5);
+    ctx.lineTo(x - w * 0.25, y - h);
+    ctx.lineTo(x + w * 0.64, y - h * 0.65);
+    ctx.lineTo(x + w, y);
+    ctx.lineTo(x - w * 0.65, y + h * 0.12);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = css(mix(slate, palette.horizon, 0.12 + 0.16 * lightStrength));
+    ctx.beginPath();
+    ctx.moveTo(x - w, y - h * 0.5);
+    ctx.lineTo(x - w * 0.25, y - h);
+    ctx.lineTo(x + w * 0.64, y - h * 0.65);
+    ctx.lineTo(x + w * 0.12, y - h * 0.37);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
 export function paintLandscape(scene: LandScene) {
   const { ctx, width, height, unit, horizonY, palette, toCanvas, view, day, seed, horizon } = scene;
   if (horizonY > height + 40 * unit) return;
@@ -797,24 +664,25 @@ export function paintLandscape(scene: LandScene) {
     return points;
   };
   const haze = mix(palette.horizon, palette.glow, 0.25);
-  const far = mix(palette.landFar, palette.horizon, 0.32);
+  const twilight = 1 - clamp01(Math.abs(scene.sky.sunAltitude) / 12);
+  const far = mix(palette.landFar, palette.horizon, 0.32 + 0.28 * twilight);
   const brush = seededRandom(seed + 71);
   const light = mix(palette.landLight, palette.glow, 0.15);
 
   // The horizon variant itself: the only scenery above the horizon line, under 2°.
   if (horizon === 'sea') paintSea(scene, haze);
-  else if (horizon !== 'city') {
+  else if (horizon === 'ridge') {
     const farEdge = edge((az) => horizonAltitude(horizon, az), HORIZON_STEP[horizon] / 5);
     landLayer(
       scene,
       farEdge,
       {
-        crest: mix(far, palette.horizon, horizon === 'mountains' ? 0 : 0.12),
+        crest: mix(far, palette.horizon, 0.12),
         body: mix(far, haze, 0.35),
-        light: horizon === 'mountains' ? mix(light, palette.cloudLight, 0.6) : mix(light, haze, 0.4),
+        light: mix(light, haze, 0.4),
         shade: deepen(far, 0.25),
-        depth: (horizon === 'mountains' ? 9 : 12) * unit,
-        lightAlpha: (horizon === 'mountains' ? 0.75 : 0.4) * lightStrength,
+        depth: 12 * unit,
+        lightAlpha: 0.4 * lightStrength,
         marks: 30,
       },
       brush,
@@ -823,18 +691,26 @@ export function paintLandscape(scene: LandScene) {
 
   // Everything else stands on ground below the horizon line.
   const ground = height - horizonY;
-  if (ground < (horizon === 'city' ? 1 : 14 * unit)) return;
+  if (ground <= 1) return;
   ctx.save();
   ctx.beginPath();
   ctx.rect(0, horizonY + 1, width, ground + 10);
   ctx.clip();
-  if (horizon === 'city') {
-    const art = scene.cityImage;
+  if (horizon === 'city' || horizon === 'mountains') {
+    const art = scene.landscapeArt;
     if (art) {
       const scale = Math.max(width / art.naturalWidth, ground / art.naturalHeight);
       const w = art.naturalWidth * scale;
-      ctx.drawImage(art, (width - w) / 2, horizonY + 1, w, art.naturalHeight * scale);
+      const fullHeight = art.naturalHeight * scale;
+      // Keep the valley floor in shallow postcard strips. Cap the compression for high sky views.
+      const h = horizon === 'mountains' ? Math.max(ground, fullHeight * 0.52) : fullHeight;
+      ctx.drawImage(art, (width - w) / 2, horizonY + 1, w, h);
     }
+    ctx.restore();
+    return;
+  }
+  if (horizon === 'sea') {
+    paintReef(scene);
     ctx.restore();
     return;
   }
@@ -851,11 +727,6 @@ export function paintLandscape(scene: LandScene) {
       });
     }
     return points;
-  };
-  const rugged = horizon === 'mountains';
-  const peak = (noise: (x: number) => number) => (x: number) => {
-    const v = noise(x);
-    return rugged ? Math.abs(2 * v - 1) : v;
   };
   const n1 = noise1(seed + 11),
     n2 = noise1(seed + 23),
@@ -881,116 +752,90 @@ export function paintLandscape(scene: LandScene) {
     );
   const side = seededRandom(seed + 41)() < 0.5 ? -1 : 1;
 
-  if (horizon !== 'sea') {
-    const hills = [
-      crestLine(0.03, 0.1, peak(n1), rugged ? 7 : 11),
-      crestLine(0.2, 0.17, peak(n2), rugged ? 10 : 16),
-    ];
-    const tones: LayerTone[] = [
+  const hills = [crestLine(0.03, 0.1, n1, 11), crestLine(0.2, 0.17, n2, 16)];
+  const tones: LayerTone[] = [
+    {
+      crest: mix(far, palette.landMid, 0.45),
+      body: mix(mix(far, palette.landMid, 0.6), haze, 0.3),
+      light: mix(light, haze, 0.2),
+      shade: deepen(palette.landMid, 0.2),
+      depth: 16 * unit,
+      lightAlpha: 0.55 * lightStrength,
+      marks: 90,
+    },
+    {
+      crest: mix(palette.landMid, palette.landNear, 0.25),
+      body: mix(mix(palette.landMid, palette.landNear, 0.45), haze, 0.16),
+      light,
+      shade: deepen(palette.landNear, 0.15),
+      depth: 26 * unit,
+      lightAlpha: 0.6 * lightStrength,
+      marks: 150,
+    },
+  ];
+  hills.forEach((points, i) => {
+    const crestY = points.reduce((m, p) => Math.min(m, p.y), Infinity);
+    mist(ctx, crestY + 8 * unit, width, haze, 0.42 - i * 0.1 + 0.12 * (1 - day), (46 + i * 14) * unit);
+    landLayer(scene, points, tones[i], brush);
+    const wood = seededRandom(seed + 81 + i);
+    copse(scene, points, i ? midTrees : farTrees, (13 + i * 14) * unit, 0.05 + i * 0.012, wood);
+  });
+  // A cottage on the middle hill, away from the tree, with a thread of chimney smoke at dusk.
+  const home = at(hills[1], side < 0 ? 0.36 : 0.62);
+  const hh = Math.min(home.y - horizonY - 5 * unit, 32 * unit);
+  if (hh > 16 * unit) {
+    const glow = clamp01(1.25 - day * 1.6);
+    cottage(
+      ctx,
+      home.x,
+      home.y + 4 * unit,
+      hh,
       {
-        crest: mix(far, palette.landMid, 0.45),
-        body: mix(mix(far, palette.landMid, 0.6), haze, 0.3),
-        light: mix(light, haze, 0.2),
-        shade: deepen(palette.landMid, 0.2),
-        depth: 16 * unit,
-        lightAlpha: 0.55 * lightStrength,
-        marks: 90,
+        wall: mix(deepen(palette.landMid, 0.2), hex('#f6ead0'), 0.2 + 0.75 * day),
+        roof: mix(deepen(palette.landMid, 0.3), hex('#b4503a'), 0.3 + 0.65 * day),
+        trim: mix(light, palette.cloudLight, 0.5),
       },
-      {
-        crest: mix(palette.landMid, palette.landNear, 0.25),
-        body: mix(mix(palette.landMid, palette.landNear, 0.45), haze, 0.16),
-        light,
-        shade: deepen(palette.landNear, 0.15),
-        depth: 26 * unit,
-        lightAlpha: 0.6 * lightStrength,
-        marks: 150,
-      },
-    ];
-    hills.forEach((points, i) => {
-      const crestY = points.reduce((m, p) => Math.min(m, p.y), Infinity);
-      mist(ctx, crestY + 8 * unit, width, haze, 0.42 - i * 0.1 + 0.12 * (1 - day), (46 + i * 14) * unit);
-      landLayer(scene, points, tones[i], brush);
-      const wood = seededRandom(seed + 81 + i);
-      copse(scene, points, i ? midTrees : farTrees, (13 + i * 14) * unit, 0.05 + i * 0.012, rugged, wood);
-    });
-    // A cottage on the middle hill, away from the tree, with a thread of chimney smoke at dusk.
-    const home = at(hills[1], side < 0 ? 0.36 : 0.62);
-    const hh = Math.min(home.y - horizonY - 5 * unit, 56 * unit);
-    if (hh > 16 * unit) {
-      const glow = clamp01(1.25 - day * 1.6);
-      cottage(
-        ctx,
-        home.x,
-        home.y + 4 * unit,
-        hh,
-        {
-          wall: mix(deepen(palette.landMid, 0.2), hex('#f6ead0'), 0.2 + 0.75 * day),
-          roof: mix(deepen(palette.landMid, 0.3), hex('#b4503a'), 0.3 + 0.65 * day),
-          trim: mix(light, palette.cloudLight, 0.5),
-        },
-        glow,
-        lightX,
-        false,
+      glow,
+      lightX,
+    );
+    const cx = home.x + hh * 0.34,
+      cy = home.y - hh * 1.02;
+    if (glow > 0.3 && cy - hh * 0.9 > horizonY) {
+      ctx.strokeStyle = css(palette.cloudLight, 0.22);
+      ctx.lineWidth = 3 * unit;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.bezierCurveTo(
+        cx + 6 * unit,
+        cy - hh * 0.35,
+        cx - 8 * unit,
+        cy - hh * 0.55,
+        cx + 10 * unit,
+        cy - hh * 0.85,
       );
-      const cx = home.x + hh * 0.34,
-        cy = home.y - hh * 1.02;
-      if (glow > 0.3 && cy - hh * 0.9 > horizonY) {
-        ctx.strokeStyle = css(palette.cloudLight, 0.22);
-        ctx.lineWidth = 3 * unit;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.bezierCurveTo(
-          cx + 6 * unit,
-          cy - hh * 0.35,
-          cx - 8 * unit,
-          cy - hh * 0.55,
-          cx + 10 * unit,
-          cy - hh * 0.85,
-        );
-        ctx.stroke();
-      }
-      const garden = seededRandom(seed + 47);
-      copse(
-        scene,
-        [
-          { x: home.x - hh * 1.3, y: home.y + 5 * unit },
-          { x: home.x - hh * 1.0, y: home.y + 6 * unit },
-          { x: home.x + hh * 1.15, y: home.y + 6 * unit },
-        ],
-        midTrees,
-        hh * 0.8,
-        1,
-        rugged,
-        garden,
-      );
+      ctx.stroke();
     }
+    const garden = seededRandom(seed + 47);
+    copse(
+      scene,
+      [
+        { x: home.x - hh * 1.3, y: home.y + 5 * unit },
+        { x: home.x - hh * 1.0, y: home.y + 6 * unit },
+        { x: home.x + hh * 1.15, y: home.y + 6 * unit },
+      ],
+      midTrees,
+      hh * 0.8,
+      1,
+      garden,
+    );
   }
 
-  // The foreground: a near rise of meadow (a headland, by the sea) with grass, flowers, a tree and
-  // two people looking up.
+  // A quiet foreground meadow with a single broadleaf tree.
   if (ground > 70 * unit) {
-    const sea = horizon === 'sea';
-    const rise = sea
-      ? (() => {
-          // A grassy headland rising from one bottom corner.
-          const points: Point[] = [];
-          for (let x = -24; x <= width + 24; x += 8) {
-            const u = side < 0 ? x / width : 1 - x / width;
-            const lift = clamp01(1 - u / 0.62);
-            points.push({
-              x,
-              y:
-                horizonY +
-                reach * (1.04 - 0.6 * lift * lift * (3 - 2 * lift) - 0.035 * n3(azAt(x) / 4) * lift) +
-                (ground - reach),
-            });
-          }
-          return points;
-        })()
-      : crestLine(0.5, 0.26, n3, 20).map((p) => ({ x: p.x, y: p.y + (ground - reach) * 0.6 }));
+    const rise = crestLine(0.5, 0.26, n3, 20).map((p) => ({ x: p.x, y: p.y + (ground - reach) * 0.6 }));
     const crestY = rise.reduce((m, p) => Math.min(m, p.y), Infinity);
-    if (!sea) mist(ctx, crestY + 10 * unit, width, haze, 0.26 + 0.12 * (1 - day), 60 * unit);
+    mist(ctx, crestY + 10 * unit, width, haze, 0.26 + 0.12 * (1 - day), 60 * unit);
     const near = mix(palette.landNear, palette.landMid, 0.12);
     landLayer(
       scene,
@@ -1017,15 +862,6 @@ export function paintLandscape(scene: LandScene) {
         meadow,
         26,
       );
-      if (day > 0.12)
-        flowers(
-          scene,
-          visible,
-          height,
-          deepen(near, 0.1),
-          seededRandom(seed + 33),
-          Math.round(18 + 44 * day),
-        );
       const fraction = side < 0 ? 0.14 : 0.86;
       const spot = at(visible, fraction);
       const room = spot.y - horizonY - 8 * unit;
@@ -1037,23 +873,8 @@ export function paintLandscape(scene: LandScene) {
         ctx.beginPath();
         ctx.ellipse(spot.x - lightX * h * 0.18, spot.y + 8 * unit, h * 0.42, h * 0.045, 0, 0, TAU);
         ctx.fill();
-        if (rugged) {
-          conifer(
-            ctx,
-            spot.x + side * h * 0.2,
-            spot.y + 8 * unit,
-            h * 0.7,
-            trees,
-            lightX,
-            lightStrength,
-            big,
-          );
-          conifer(ctx, spot.x, spot.y + 10 * unit, h, trees, lightX, lightStrength, big);
-        } else broadleaf(ctx, spot.x, spot.y + 8 * unit, h, trees, lightX, lightStrength, big);
+        broadleaf(ctx, spot.x, spot.y + 8 * unit, h, trees, lightX, lightStrength, big);
       }
-      const stand = at(visible, side < 0 ? 0.31 : 0.69);
-      const tall = Math.min(stand.y - horizonY - 8 * unit, 64 * unit, ground * 0.3);
-      if (tall > 22 * unit) onlookers(ctx, stand.x, stand.y + 5 * unit, tall, scene, -side);
       // Tall seed heads in front of everything, at the bottom edge.
       const reeds = seededRandom(seed + 35);
       ctx.strokeStyle = css(deepen(near, 0.3));
