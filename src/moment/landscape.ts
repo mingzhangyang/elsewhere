@@ -689,7 +689,16 @@ export function paintLandscape(scene: LandScene) {
       const fullHeight = art.naturalHeight * scale;
       // Keep the valley floor in shallow postcard strips. Cap the compression for high sky views.
       const h = horizon === 'mountains' ? Math.max(ground, fullHeight * 0.52) : fullHeight;
-      ctx.drawImage(art, (width - w) / 2, horizonY + 1, w, h);
+      const x = (width - w) / 2;
+      const y = horizonY + 1;
+      if (horizon === 'mountains') {
+        // The valley renders have a small gap at the bottom. Extend an opaque foreground row
+        // behind it, preserving each season's rock/snow colours and the transparent skyline.
+        const row = Math.floor(art.naturalHeight * 0.94);
+        const top = (row / art.naturalHeight) * h;
+        ctx.drawImage(art, 0, row, art.naturalWidth, 1, x, y + top, w, h - top);
+      }
+      ctx.drawImage(art, x, y, w, h);
     }
     ctx.restore();
     return;

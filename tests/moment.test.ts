@@ -388,7 +388,8 @@ describe('the illustrated sky follows the layers and visibility', () => {
       expect(ground, horizon).toHaveLength(1);
       expect(ground[0].y + ground[0].height, horizon).toBeGreaterThanOrEqual(800);
       // The layers, trees, grass and figures (by the sea, a headland): many marks, all inside it.
-      if (horizon === 'city' || horizon === 'mountains') expect(ground[0].drawnInside).toBe(1);
+      if (horizon === 'city' || horizon === 'mountains')
+        expect(ground[0].drawnInside).toBe(horizon === 'mountains' ? 2 : 1);
       else expect(ground[0].drawnInside, horizon).toBeGreaterThan(horizon === 'sea' ? 0 : 50);
     }
   });
