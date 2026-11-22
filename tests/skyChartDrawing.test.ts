@@ -226,7 +226,7 @@ describe('SM3-A shared fixed layout and drawing', () => {
 
   it('reports impossible text without shrinking endlessly or silently cutting a line', () => {
     const snapshot = fixture();
-    const wide = { ...snapshot, location: { ...snapshot.location, name: 'W'.repeat(190) } };
+    const wide = { ...snapshot, location: { ...snapshot.location, name: 'W'.repeat(140) } };
     const modifiedEvent: MemorialTime = { ...event, location: wide.location };
     const layout = () => makeLayout('paper', 'en', wide, {}, modifiedEvent);
     expect(layout).toThrow(SkyChartLayoutError);

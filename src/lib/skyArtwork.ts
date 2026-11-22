@@ -56,7 +56,11 @@ function plainText(value: unknown, max: number, label: string): string {
   if (value === undefined) return '';
   if (typeof value !== 'string') throw new TypeError(label + ' must be plain text.');
   // No invisible controls, bidi overrides or HTML handling. Newlines are whitespace, not markup.
-  if (/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/u.test(value)) {
+  if ([...value].some((character) => {
+    const point = character.codePointAt(0)!;
+    return point < 0x20 || (point >= 0x7f && point <= 0x9f) ||
+      (point >= 0x202a && point <= 0x202e) || (point >= 0x2066 && point <= 0x2069);
+  })) {
     throw new RangeError(label + ' contains unsupported control characters.');
   }
   const clean = value.normalize('NFC').replace(/\s+/gu, ' ').trim();
