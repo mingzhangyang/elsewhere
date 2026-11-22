@@ -35,7 +35,7 @@ function chooseCity(name: string) {
 
 function fill(localDate: string, localTime: string) {
   fireEvent.change(screen.getByLabelText('Gregorian date'), { target: { value: localDate } });
-  fireEvent.change(screen.getByLabelText('Local time at the event'), { target: { value: localTime } });
+  fireEvent.change(screen.getByLabelText(/^Local time at the event/), { target: { value: localTime } });
 }
 
 function checkTime() {
@@ -74,7 +74,7 @@ describe('memorial event creator input (SM1-B)', () => {
 
     chooseCity('Beijing');
     expect(screen.getByLabelText('Gregorian date')).toHaveValue('2026-02-15');
-    expect(screen.getByLabelText('Local time at the event')).toHaveValue('08:30');
+    expect(screen.getByLabelText(/^Local time at the event/)).toHaveValue('08:30');
     expect(screen.queryByText(/Resolved:/)).not.toBeInTheDocument();
     checkTime();
     await waitFor(() => expect(onResolved).toHaveBeenCalledTimes(2));
@@ -92,7 +92,7 @@ describe('memorial event creator input (SM1-B)', () => {
     chooseCity('New York');
     fireEvent.change(screen.getByLabelText('Gregorian date'), { target: { value: '2026-07-16' } });
     fireEvent.click(screen.getByRole('radio', { name: 'I don’t know the time' }));
-    expect(screen.getByLabelText('Reference local time')).toHaveValue('22:00');
+    expect(screen.getByLabelText(/^Reference local time/)).toHaveValue('22:00');
     checkTime();
     await waitFor(() => expect(onResolved).toHaveBeenCalledTimes(1));
     expect(onResolved.mock.lastCall?.[0]).toMatchObject({
@@ -101,7 +101,7 @@ describe('memorial event creator input (SM1-B)', () => {
       utc: '2026-07-17T02:00:00.000Z',
     });
 
-    fireEvent.change(screen.getByLabelText('Reference local time'), { target: { value: '06:15' } });
+    fireEvent.change(screen.getByLabelText(/^Reference local time/), { target: { value: '06:15' } });
     checkTime();
     await waitFor(() => expect(onResolved).toHaveBeenCalledTimes(2));
     expect(onResolved.mock.lastCall?.[0]).toMatchObject({
@@ -111,7 +111,7 @@ describe('memorial event creator input (SM1-B)', () => {
     });
 
     chooseCity('Beijing');
-    expect(screen.getByLabelText('Reference local time')).toHaveValue('06:15');
+    expect(screen.getByLabelText(/^Reference local time/)).toHaveValue('06:15');
     checkTime();
     await waitFor(() => expect(onResolved).toHaveBeenCalledTimes(3));
     expect(onResolved.mock.lastCall?.[0]).toMatchObject({
@@ -145,7 +145,7 @@ describe('memorial event creator input (SM1-B)', () => {
       disambiguation: 'earlier',
     });
 
-    fireEvent.change(screen.getByLabelText('Local time at the event'), { target: { value: '01:31' } });
+    fireEvent.change(screen.getByLabelText(/^Local time at the event/), { target: { value: '01:31' } });
     checkTime();
     expect(await screen.findByRole('group', { name: /occurred twice/ })).toBeInTheDocument();
     expect(onResolved).toHaveBeenCalledTimes(1);
@@ -179,7 +179,7 @@ describe('memorial event creator input (SM1-B)', () => {
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(screen.getByRole('button', { name: 'Change location, Sydney' })).toBeInTheDocument();
     expect(onResolved).not.toHaveBeenCalled();
-    expect(screen.getByText(/Australia\/Sydney/)).toBeInTheDocument();
+    expect(screen.getByText(/^Time zone: Australia\/Sydney$/)).toBeInTheDocument();
   });
 
   it('rewords an error after switching the interface language', async () => {
@@ -223,7 +223,7 @@ describe('memorial event creator input (SM1-B)', () => {
   it('accepts a pre-existing reference draft without silently upgrading its precision', async () => {
     const onResolved = start(setReferenceTime(createReferenceDraft(city('beijing'), '2026-07-16'), '07:45'));
     expect(screen.getByRole('radio', { name: 'I don’t know the time' })).toBeChecked();
-    expect(screen.getByLabelText('Reference local time')).toHaveValue('07:45');
+    expect(screen.getByLabelText(/^Reference local time/)).toHaveValue('07:45');
     checkTime();
     await waitFor(() => expect(onResolved).toHaveBeenCalledTimes(1));
     expect(onResolved.mock.lastCall?.[0]).toMatchObject({
@@ -237,7 +237,7 @@ describe('memorial event creator input (SM1-B)', () => {
     chooseCity('New York');
     expect(screen.getByRole('radio', { name: 'I know the time' })).toBeChecked();
     expect(screen.getByLabelText('Gregorian date')).toHaveAttribute('type', 'date');
-    expect(screen.getByLabelText('Local time at the event')).toHaveAttribute('type', 'time');
+    expect(screen.getByLabelText(/^Local time at the event/)).toHaveAttribute('type', 'time');
     const report = await axe.run(document.body, { rules: { 'color-contrast': { enabled: false } } });
     expect(report.violations.map((issue) => issue.id)).toEqual([]);
   });
