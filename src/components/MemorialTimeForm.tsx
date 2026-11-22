@@ -213,9 +213,7 @@ export default function MemorialTimeForm({
               type="time"
               step={60}
               value={fields.reference.localTime}
-              onChange={(event) =>
-                edit({ reference: { localTime: event.target.value, source: 'user' } })
-              }
+              onChange={(event) => edit({ reference: { localTime: event.target.value, source: 'user' } })}
               required
             />
             <small>{t.referenceNote}</small>
@@ -256,7 +254,11 @@ export default function MemorialTimeForm({
             {t.checking}
           </p>
         )}
-        <button type="submit" className="primary-button memorial-submit" disabled={feedback?.type === 'loading'}>
+        <button
+          type="submit"
+          className="primary-button memorial-submit"
+          disabled={feedback?.type === 'loading'}
+        >
           {t.submit}
         </button>
       </form>

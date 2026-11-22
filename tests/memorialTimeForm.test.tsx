@@ -156,7 +156,9 @@ describe('memorial event creator input (SM1-B)', () => {
     chooseCity('New York');
     fill('2026-11-01', '01:30');
     checkTime();
-    fireEvent.click(within(await screen.findByRole('group', { name: /occurred twice/ })).getAllByRole('button')[1]);
+    fireEvent.click(
+      within(await screen.findByRole('group', { name: /occurred twice/ })).getAllByRole('button')[1],
+    );
     await waitFor(() => expect(onResolved).toHaveBeenCalledTimes(1));
     expect(onResolved.mock.lastCall?.[0].disambiguation).toBe('later');
 
