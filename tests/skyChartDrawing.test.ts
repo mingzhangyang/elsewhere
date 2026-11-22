@@ -182,7 +182,7 @@ describe('SM3-A shared fixed layout and drawing', () => {
 
   it('does not resurface below-horizon objects omitted by SM2-B/C', () => {
     const snapshot = fixture();
-    const absent = { ...snapshot, objects: snapshot.objects.filter(o => o.kind !== 'mars') };
+    const absent = { ...snapshot, objects: snapshot.objects.filter(o => o.id !== 'mars') };
     expect(makeLayout('midnight', 'en', absent).objects.some(o => o.id === 'mars')).toBe(false);
   });
 
