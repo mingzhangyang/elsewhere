@@ -14,11 +14,11 @@ The validated SkyArtwork (version 1) includes snapshot, chosen language (en or z
 
 ## Public API
 
-| File | API |
-| --- | --- |
-| src/lib/skyArtwork.ts | createSkyArtwork, skyArtworkGraphemeCount, assertDrawableSkyChartSnapshot; SkyArtworkInput, SkyArtwork, SkyArtworkTheme |
+| File                   | API                                                                                                                                                     |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| src/lib/skyArtwork.ts  | createSkyArtwork, skyArtworkGraphemeCount, assertDrawableSkyChartSnapshot; SkyArtworkInput, SkyArtwork, SkyArtworkTheme                                 |
 | src/moment/skyChart.ts | prepareSkyChartFonts(fontSet?), canvasSkyChartTextMetrics(ctx), layoutSkyChartArtwork(artwork, metrics, fonts), drawSkyChartArtwork(ctx, layout, fonts) |
-| src/moment/skyChart.ts | SKY_CHART_ARTWORK_SIZE, SKY_CHART_PALETTES, SkyChartLayoutError and layout/font/metric interfaces |
+| src/moment/skyChart.ts | SKY_CHART_ARTWORK_SIZE, SKY_CHART_PALETTES, SkyChartLayoutError and layout/font/metric interfaces                                                       |
 
 SM3-B may use this sequence directly after validating a coordinator-ready status: createSkyArtwork → await prepareSkyChartFonts() → create Canvas 2D context → layoutSkyChartArtwork(artwork, canvasSkyChartTextMetrics(ctx), fonts) → set a 4:5 canvas size → drawSkyChartArtwork(ctx, layout, fonts). This does **not** encode a PNG or manage object URLs. Changing Canvas size clears context state but retains the context reference.
 

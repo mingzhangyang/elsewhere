@@ -132,7 +132,9 @@ function wrapText(
       continue;
     }
     // A single unbreakable word/Chinese run is split at visible grapheme boundaries.
-    for (const { segment: grapheme } of new Intl.Segmenter(locale, { granularity: 'grapheme' }).segment(word)) {
+    for (const { segment: grapheme } of new Intl.Segmenter(locale, { granularity: 'grapheme' }).segment(
+      word,
+    )) {
       if (measured(metrics, line + grapheme, font) > width) {
         if (!line) throw new SkyChartLayoutError(label + ' glyph exceeds available width');
         flush();
@@ -194,8 +196,15 @@ export function layoutSkyChartArtwork(
     text(artwork.astronomyCredit, 'astronomy attribution', 'credit', 1463, 15, 400, 20, 1),
   ]);
   const slots = [
-    [985, 1083], [1090, 1154], [1164, 1196], [1207, 1234],
-    [1246, 1310], [1332, 1378], [1385, 1429], [1433, 1453], [1463, 1483],
+    [985, 1083],
+    [1090, 1154],
+    [1164, 1196],
+    [1207, 1234],
+    [1246, 1310],
+    [1332, 1378],
+    [1385, 1429],
+    [1433, 1453],
+    [1463, 1483],
   ] as const;
   for (let i = 0; i < blocks.length; i++) {
     const block = blocks[i];
@@ -203,27 +212,35 @@ export function layoutSkyChartArtwork(
       throw new SkyChartLayoutError('Text section overlap');
     }
   }
-  const objects = Object.freeze(artwork.snapshot.objects.map((object): SkyChartDrawObject => {
-    // SM2-C already did all altitude/azimuth computation, selection and projection.
-    // This is ONLY a linear normalization-to-canvas transform.
-    const px = GRAPH.cx + object.x * GRAPH.radius;
-    const py = GRAPH.cy + object.y * GRAPH.radius;
-    if (!Number.isFinite(px) || !Number.isFinite(py) || Math.hypot(object.x, object.y) > 1 + 1e-12) {
-      throw new RangeError('Invalid drawable sky chart coordinate.');
-    }
-    return Object.freeze({
-      id: object.id,
-      kind: object.kind,
-      x: object.x,
-      y: object.y,
-      px,
-      py,
-      radius: object.kind === 'sun' ? 9 : object.kind === 'moon' ? 8 :
-        object.kind === 'planet' ? 5.1 : starRadius(object.magnitude),
-      magnitude: 'magnitude' in object ? object.magnitude : null,
-      colorIndex: object.kind === 'star' ? object.colorIndex : null,
-    });
-  }));
+  const objects = Object.freeze(
+    artwork.snapshot.objects.map((object): SkyChartDrawObject => {
+      // SM2-C already did all altitude/azimuth computation, selection and projection.
+      // This is ONLY a linear normalization-to-canvas transform.
+      const px = GRAPH.cx + object.x * GRAPH.radius;
+      const py = GRAPH.cy + object.y * GRAPH.radius;
+      if (!Number.isFinite(px) || !Number.isFinite(py) || Math.hypot(object.x, object.y) > 1 + 1e-12) {
+        throw new RangeError('Invalid drawable sky chart coordinate.');
+      }
+      return Object.freeze({
+        id: object.id,
+        kind: object.kind,
+        x: object.x,
+        y: object.y,
+        px,
+        py,
+        radius:
+          object.kind === 'sun'
+            ? 9
+            : object.kind === 'moon'
+              ? 8
+              : object.kind === 'planet'
+                ? 5.1
+                : starRadius(object.magnitude),
+        magnitude: 'magnitude' in object ? object.magnitude : null,
+        colorIndex: object.kind === 'star' ? object.colorIndex : null,
+      });
+    }),
+  );
   const zh = artwork.locale === 'zh-Hans';
   const compass = Object.freeze([
     Object.freeze({ text: zh ? '北' : 'N', x: GRAPH.cx, y: 55 }),
@@ -261,42 +278,44 @@ export interface SkyChartPalette {
   readonly planet: string;
 }
 
-export const SKY_CHART_PALETTES: Readonly<Record<SkyArtworkTheme, Readonly<SkyChartPalette>>> = Object.freeze({
-  midnight: Object.freeze({
-    background: '#0b152c',
-    disc: '#112443',
-    grid: '#334b70',
-    rim: '#91a9c6',
-    title: '#f4efe6',
-    metadata: '#e8e4dc',
-    subtle: '#c6d3e4',
-    note: '#bbc9db',
-    credit: '#a8b9d2',
-    star: '#f8f4e9',
-    starBlue: '#c9ddfa',
-    starWarm: '#f3cfac',
-    sun: '#f6cc85',
-    moon: '#eee6d6',
-    planet: '#c7dfd7',
-  }),
-  paper: Object.freeze({
-    background: '#f5f0e6',
-    disc: '#ebe6d9',
-    grid: '#c8bdad',
-    rim: '#6e7a8a',
-    title: '#26364c',
-    metadata: '#304259',
-    subtle: '#4d5c6c',
-    note: '#445466',
-    credit: '#4c5a6b',
-    star: '#3e526e',
-    starBlue: '#365e86',
-    starWarm: '#956245',
-    sun: '#b47a35',
-    moon: '#5c6674',
-    planet: '#356976',
-  }),
-});
+export const SKY_CHART_PALETTES: Readonly<Record<SkyArtworkTheme, Readonly<SkyChartPalette>>> = Object.freeze(
+  {
+    midnight: Object.freeze({
+      background: '#0b152c',
+      disc: '#112443',
+      grid: '#334b70',
+      rim: '#91a9c6',
+      title: '#f4efe6',
+      metadata: '#e8e4dc',
+      subtle: '#c6d3e4',
+      note: '#bbc9db',
+      credit: '#a8b9d2',
+      star: '#f8f4e9',
+      starBlue: '#c9ddfa',
+      starWarm: '#f3cfac',
+      sun: '#f6cc85',
+      moon: '#eee6d6',
+      planet: '#c7dfd7',
+    }),
+    paper: Object.freeze({
+      background: '#f5f0e6',
+      disc: '#ebe6d9',
+      grid: '#c8bdad',
+      rim: '#6e7a8a',
+      title: '#26364c',
+      metadata: '#304259',
+      subtle: '#4d5c6c',
+      note: '#445466',
+      credit: '#4c5a6b',
+      star: '#3e526e',
+      starBlue: '#365e86',
+      starWarm: '#956245',
+      sun: '#b47a35',
+      moon: '#5c6674',
+      planet: '#356976',
+    }),
+  },
+);
 
 function dot(ctx: CanvasRenderingContext2D, x: number, y: number, r: number): void {
   ctx.beginPath();
@@ -307,15 +326,21 @@ function dot(ctx: CanvasRenderingContext2D, x: number, y: number, r: number): vo
 function drawBody(ctx: CanvasRenderingContext2D, object: SkyChartDrawObject, palette: SkyChartPalette): void {
   const { px, py, radius } = object;
   if (object.kind === 'star') {
-    ctx.fillStyle = object.colorIndex === null
-      ? palette.star
-      : object.colorIndex < 0.25 ? palette.starBlue : object.colorIndex > 1.2 ? palette.starWarm : palette.star;
+    ctx.fillStyle =
+      object.colorIndex === null
+        ? palette.star
+        : object.colorIndex < 0.25
+          ? palette.starBlue
+          : object.colorIndex > 1.2
+            ? palette.starWarm
+            : palette.star;
     ctx.globalAlpha = Math.max(0.62, Math.min(1, 0.72 + (6 - (object.magnitude ?? 6)) * 0.035));
     dot(ctx, px, py, radius);
     ctx.globalAlpha = 1;
     return;
   }
-  ctx.fillStyle = object.kind === 'sun' ? palette.sun : object.kind === 'moon' ? palette.moon : palette.planet;
+  ctx.fillStyle =
+    object.kind === 'sun' ? palette.sun : object.kind === 'moon' ? palette.moon : palette.planet;
   dot(ctx, px, py, radius);
   ctx.strokeStyle = palette.rim;
   ctx.lineWidth = object.kind === 'planet' ? 1.4 : 1.9;
@@ -348,8 +373,11 @@ export function drawSkyChartArtwork(
   }
   const { width, height } = ctx.canvas;
   if (
-    !Number.isSafeInteger(width) || !Number.isSafeInteger(height) ||
-    width <= 0 || height <= 0 || width * 5 !== height * 4
+    !Number.isSafeInteger(width) ||
+    !Number.isSafeInteger(height) ||
+    width <= 0 ||
+    height <= 0 ||
+    width * 5 !== height * 4
   ) {
     throw new RangeError('Canvas output must have positive integer 4:5 dimensions.');
   }

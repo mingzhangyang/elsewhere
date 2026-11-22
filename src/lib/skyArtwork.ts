@@ -41,8 +41,18 @@ export interface SkyArtwork {
 }
 
 const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ] as const;
 const PLANETS = ['mercury', 'venus', 'mars', 'jupiter', 'saturn'] as const;
 
@@ -56,11 +66,17 @@ function plainText(value: unknown, max: number, label: string): string {
   if (value === undefined) return '';
   if (typeof value !== 'string') throw new TypeError(label + ' must be plain text.');
   // No invisible controls, bidi overrides or HTML handling. Newlines are whitespace, not markup.
-  if ([...value].some((character) => {
-    const point = character.codePointAt(0)!;
-    return point < 0x20 || (point >= 0x7f && point <= 0x9f) ||
-      (point >= 0x202a && point <= 0x202e) || (point >= 0x2066 && point <= 0x2069);
-  })) {
+  if (
+    [...value].some((character) => {
+      const point = character.codePointAt(0)!;
+      return (
+        point < 0x20 ||
+        (point >= 0x7f && point <= 0x9f) ||
+        (point >= 0x202a && point <= 0x202e) ||
+        (point >= 0x2066 && point <= 0x2069)
+      );
+    })
+  ) {
     throw new RangeError(label + ' contains unsupported control characters.');
   }
   const clean = value.normalize('NFC').replace(/\s+/gu, ' ').trim();
@@ -172,8 +188,7 @@ function assertMatchingCivilTime(snapshot: SkyChartSnapshot, event: MemorialTime
     snapshot.time.kind !== event.kind ||
     snapshot.time.disambiguation !== event.disambiguation ||
     snapshot.time.offset !== event.offset ||
-    (event.kind === 'reference' &&
-      snapshot.time.referenceSource !== event.reference.source)
+    (event.kind === 'reference' && snapshot.time.referenceSource !== event.reference.source)
   ) {
     throw new RangeError('Resolved civil time and sky chart snapshot disagree.');
   }
@@ -220,8 +235,13 @@ export function createSkyArtwork(input: SkyArtworkInput): SkyArtwork {
   const title = plainText(input.title, 40, 'Title');
   const phrase = plainText(input.phrase, 80, 'Phrase');
   const zh = input.locale === 'zh-Hans';
-  const dateTime = localDateLabel(event.localDate, input.locale) +
-    ' · ' + localTime + ' (UTC' + event.offset.replace('-', '−') + ')';
+  const dateTime =
+    localDateLabel(event.localDate, input.locale) +
+    ' · ' +
+    localTime +
+    ' (UTC' +
+    event.offset.replace('-', '−') +
+    ')';
   const civilTime = Object.freeze({
     kind: event.kind,
     utc: event.utc,
@@ -236,19 +256,36 @@ export function createSkyArtwork(input: SkyArtworkInput): SkyArtwork {
     snapshot: input.snapshot,
     locale: input.locale,
     theme: input.theme,
-    title: title || (zh ? (isReference ? '这一天的星空' : '此刻的星空') :
-      (isReference ? 'The sky on this day' : 'Under this sky')),
+    title:
+      title ||
+      (zh
+        ? isReference
+          ? '这一天的星空'
+          : '此刻的星空'
+        : isReference
+          ? 'The sky on this day'
+          : 'Under this sky'),
     phrase,
-    location: plainText(input.snapshot.location.name + ' · ' + input.snapshot.location.country, 200, 'Location'),
+    location: plainText(
+      input.snapshot.location.name + ' · ' + input.snapshot.location.country,
+      200,
+      'Location',
+    ),
     dateTime,
     timeNote: zh
-      ? (isReference ? '计算参考时刻，非已知的事件确切时间' : '事件发生地的已知具体时刻')
-      : (isReference ? 'Reference time for calculation — not a known exact event time' : 'Known exact local event time'),
+      ? isReference
+        ? '计算参考时刻，非已知的事件确切时间'
+        : '事件发生地的已知具体时刻'
+      : isReference
+        ? 'Reference time for calculation — not a known exact event time'
+        : 'Known exact local event time',
     scienceNote: zh
       ? '天体位置计算示意；不模拟日光、天气遮挡或肉眼可见性。'
       : 'Calculated positions; daylight, weather and naked-eye visibility are not simulated.',
     daylightNote: input.snapshot.objects.some((object) => object.kind === 'sun')
-      ? (zh ? '白天星图：图中天体不代表当时肉眼可见。' : 'Daytime diagram: objects may not have been visible to the unaided eye.')
+      ? zh
+        ? '白天星图：图中天体不代表当时肉眼可见。'
+        : 'Daytime diagram: objects may not have been visible to the unaided eye.'
       : null,
     starCredit: zh
       ? '恒星：HYG v4.1 衍生数据 · David Nash / Astronexus · CC BY-SA 4.0'

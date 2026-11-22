@@ -45,17 +45,44 @@ export function fixtureSnapshot(event: MemorialTime = exactEvent): SkyChartSnaps
     objects: [
       { id: 'sun', kind: 'sun', altitude: 45, azimuth: 0, x: 0, y: -0.5, distanceKm: 150000000 },
       {
-        id: 'moon', kind: 'moon', altitude: 0, azimuth: 90, x: -1, y: 0,
-        phase: 'first-quarter', phaseAngle: 90, illumination: 0.5, waxing: true, distanceKm: 385000,
+        id: 'moon',
+        kind: 'moon',
+        altitude: 0,
+        azimuth: 90,
+        x: -1,
+        y: 0,
+        phase: 'first-quarter',
+        phaseAngle: 90,
+        illumination: 0.5,
+        waxing: true,
+        distanceKm: 385000,
       },
       {
-        id: 'venus', kind: 'planet', altitude: 45, azimuth: 180, x: 0, y: 0.5,
-        name: 'Venus', magnitude: -4, illumination: 0.75, phaseAngle: 30,
-        distanceKm: 90000000, radiusKm: 6051, elongation: 50, apparition: 'evening',
+        id: 'venus',
+        kind: 'planet',
+        altitude: 45,
+        azimuth: 180,
+        x: 0,
+        y: 0.5,
+        name: 'Venus',
+        magnitude: -4,
+        illumination: 0.75,
+        phaseAngle: 30,
+        distanceKm: 90000000,
+        radiusKm: 6051,
+        elongation: 50,
+        apparition: 'evening',
       },
       {
-        id: 'hyg-42', kind: 'star', altitude: 45, azimuth: 270, x: 0.5, y: 0,
-        name: 'Fictional test star', magnitude: 3.1, colorIndex: 0.75,
+        id: 'hyg-42',
+        kind: 'star',
+        altitude: 45,
+        azimuth: 270,
+        x: 0.5,
+        y: 0,
+        name: 'Fictional test star',
+        magnitude: 3.1,
+        colorIndex: 0.75,
       },
     ],
   };
@@ -119,8 +146,9 @@ describe('SM3-A artwork model and SM1 civil-time contract', () => {
   it('rejects overlong title and phrase without silently clipping', () => {
     expect(() => createSkyArtwork(artworkInput({ title: '汉'.repeat(41) }))).toThrow('40');
     expect(() => createSkyArtwork(artworkInput({ phrase: '👩‍🚀'.repeat(81) }))).toThrow('80');
-    expect(createSkyArtwork(artworkInput({ title: '漢'.repeat(40), phrase: 'W'.repeat(80) })).phrase)
-      .toBe('W'.repeat(80));
+    expect(createSkyArtwork(artworkInput({ title: '漢'.repeat(40), phrase: 'W'.repeat(80) })).phrase).toBe(
+      'W'.repeat(80),
+    );
   });
 
   it('accepts empty optional text, normalizes whitespace and treats HTML as literal text', () => {
@@ -150,7 +178,8 @@ describe('SM3-A artwork model and SM1 civil-time contract', () => {
 
   it('keeps default 22:00 only when already resolved and saved by SM1', () => {
     const event = {
-      ...referenceEvent('22:00'), reference: { localTime: '22:00', source: 'default' },
+      ...referenceEvent('22:00'),
+      reference: { localTime: '22:00', source: 'default' },
     } as MemorialTime;
     const artwork = createSkyArtwork(artworkInput({ event, snapshot: fixtureSnapshot(event) }));
     expect(artwork.dateTime).toContain('22:00');
@@ -161,10 +190,12 @@ describe('SM3-A artwork model and SM1 civil-time contract', () => {
     const event = referenceEvent();
     expect(() => createSkyArtwork(artworkInput({ event }))).toThrow('disagree');
     expect(() =>
-      createSkyArtwork(artworkInput({
-        event: exactEvent,
-        snapshot: { ...fixtureSnapshot(), time: { kind: 'utc', disambiguation: null } },
-      }))
+      createSkyArtwork(
+        artworkInput({
+          event: exactEvent,
+          snapshot: { ...fixtureSnapshot(), time: { kind: 'utc', disambiguation: null } },
+        }),
+      ),
     ).toThrow('disagree');
   });
 
@@ -178,16 +209,27 @@ describe('SM3-A artwork model and SM1 civil-time contract', () => {
     ]) {
       expect(() => createSkyArtwork(artworkInput({ event }))).toThrow();
     }
-    expect(() => createSkyArtwork(artworkInput({
-      event: reference,
-      snapshot: { ...fixtureSnapshot(reference), time: { ...fixtureSnapshot(reference).time, referenceSource: 'default' } },
-    }))).toThrow('disagree');
+    expect(() =>
+      createSkyArtwork(
+        artworkInput({
+          event: reference,
+          snapshot: {
+            ...fixtureSnapshot(reference),
+            time: { ...fixtureSnapshot(reference).time, referenceSource: 'default' },
+          },
+        }),
+      ),
+    ).toThrow('disagree');
   });
 
   it('preserves a selected DST fold and its saved historical offset', () => {
     const event: MemorialTime = {
-      ...exactEvent, localDate: '2026-11-01', localTime: '01:30',
-      utc: '2026-11-01T06:30:00.000Z', offset: '-05:00', disambiguation: 'later',
+      ...exactEvent,
+      localDate: '2026-11-01',
+      localTime: '01:30',
+      utc: '2026-11-01T06:30:00.000Z',
+      offset: '-05:00',
+      disambiguation: 'later',
     };
     const artwork = createSkyArtwork(artworkInput({ event, snapshot: fixtureSnapshot(event) }));
     expect(artwork.civilTime.disambiguation).toBe('later');
@@ -203,7 +245,10 @@ describe('SM3-A artwork model and SM1 civil-time contract', () => {
   });
 
   it('marks daylight scenes, but keeps the visibility limitation on night scenes', () => {
-    const withoutSun = { ...fixtureSnapshot(), objects: fixtureSnapshot().objects.filter(o => o.kind !== 'sun') };
+    const withoutSun = {
+      ...fixtureSnapshot(),
+      objects: fixtureSnapshot().objects.filter((o) => o.kind !== 'sun'),
+    };
     const night = createSkyArtwork(artworkInput({ snapshot: withoutSun }));
     expect(night.daylightNote).toBeNull();
     expect(night.scienceNote).toContain('naked-eye visibility');
