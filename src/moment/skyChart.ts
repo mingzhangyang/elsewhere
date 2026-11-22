@@ -9,6 +9,8 @@ export interface SkyChartFonts {
   readonly status: 'ready' | 'fallback';
   /** Use the identical resource when measuring and drawing; fallback requires a fresh layout. */
   readonly family: 'system-ui' | 'sans-serif';
+  /** Optional handwriting accent loaded only for keepsake generation. */
+  readonly handwriting?: 'caveat' | 'native';
 }
 
 export interface SkyChartFontSet {
@@ -21,16 +23,32 @@ export async function prepareSkyChartFonts(fontSet?: SkyChartFontSet): Promise<S
   const selected = fontSet ?? (typeof document !== 'undefined' ? document.fonts : undefined);
   if (selected) {
     try {
+      // InkScribe's Caveat handwriting accent is imported ONLY when an actual browser
+      // prepares a keepsake. It is never part of explorer startup and only the
+      // Latin 400 subset is emitted. The Chinese phrase uses local KaiTi stacks
+      // rather than shipping megabytes of CJK font shards.
+      let handwriting: 'caveat' | 'native' = 'native';
+      if (!fontSet && typeof document !== 'undefined') {
+        try {
+          await import('@fontsource/caveat/latin-400.css');
+          const faces = await document.fonts.load('400 26px "Caveat"', 'The stars remember');
+          if (faces.some((face) => face.family === 'Caveat' && face.status === 'loaded')) {
+            handwriting = 'caveat';
+          }
+        } catch {
+          // Keep the serif title and native handwritten fallback; measure afresh.
+        }
+      }
       await selected.ready;
-      // Check every family used by the fixed title, phrase and metadata slots before layout.
-      // Missing local fonts still resolve through the CSS serif stacks; a failed check
-      // explicitly selects generic fallback fonts for a fresh measurement.
+      // The chosen CSS stack must be settled before measuring and painting.
       if (
         selected.check('400 20px system-ui', '星空 Stars') &&
         selected.check('400 52px Georgia, "Times New Roman", serif', 'The sky remembers') &&
         selected.check('400 52px "Songti SC", "Noto Serif CJK SC", "SimSun", serif', '星光记得')
       ) {
-        return Object.freeze({ status: 'ready' as const, family: 'system-ui' as const });
+        return fontSet
+          ? Object.freeze({ status: 'ready' as const, family: 'system-ui' as const })
+          : Object.freeze({ status: 'ready' as const, family: 'system-ui' as const, handwriting });
       }
     } catch {
       // Even on a rejected font resource, the generic browser font is available.
@@ -188,14 +206,22 @@ export function layoutSkyChartArtwork(
     maxLines: number,
   ): SkyChartTextBlock => {
     const family =
-      role === 'title' || label === 'phrase'
+      label === 'phrase'
         ? fonts.status === 'fallback'
           ? 'serif'
           : artwork.locale === 'zh-Hans'
-            ? '"Songti SC", "Noto Serif CJK SC", "SimSun", serif'
-            : 'Georgia, "Times New Roman", serif'
-        : fonts.family;
-    const style = label === 'phrase' && artwork.locale === 'en' ? 'italic ' : '';
+            ? '"Long Cang", "Kaiti SC", "STKaiti", "KaiTi", serif'
+            : fonts.handwriting === 'caveat'
+              ? '"Caveat", "Bradley Hand", cursive'
+              : '"Bradley Hand", "Segoe Print", cursive'
+        : role === 'title'
+          ? fonts.status === 'fallback'
+            ? 'serif'
+            : artwork.locale === 'zh-Hans'
+              ? '"Songti SC", "Noto Serif CJK SC", "SimSun", serif'
+              : 'Georgia, "Times New Roman", serif'
+          : fonts.family;
+    const style = label === 'phrase' && artwork.locale === 'en' && !fonts.handwriting ? 'italic ' : '';
     const font = style + weight + ' ' + fontSize + 'px ' + family;
     const lines = wrapText(value ?? '', artwork.locale, font, 1052, maxLines, metrics, label);
     return Object.freeze({ role, top, lineHeight, font, lines });
