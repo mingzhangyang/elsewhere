@@ -10,6 +10,8 @@ import {
   type HorizonVariant,
 } from '../src/moment/scenery';
 import { wrap } from '../src/moment/postcard';
+import { landscapeSeason } from '../src/moment/seasons';
+import { landscapeLight } from '../src/moment/landscapeArt';
 import { drawIllustration } from '../src/moment/illustration';
 import { defaultWeatherValues } from '../src/domain/weather';
 import { ridgeAltitude, ridgeHeight, RIDGE_RADIUS } from '../src/renderer/ridge';
@@ -76,6 +78,23 @@ describe('the illustrated image puts objects where the renderer does', () => {
       }
       expect(ours(-altitude, heading + 180).front).toBe(false);
     });
+});
+
+it('uses the shared local month for temperate seasons and keeps tropical scenes green', () => {
+  const instant = new Date('2026-03-01T02:00:00Z');
+  const at = (timezone: string, latitude: number) =>
+    landscapeSeason({ instant, location: { ...NEW_YORK, timezone, latitude } });
+  expect(at('America/New_York', 41)).toBe('winter');
+  expect(at('Europe/Paris', 49)).toBe('spring');
+  expect(at('Australia/Sydney', -34)).toBe('autumn');
+  expect(at('Asia/Singapore', 1)).toBe('summer');
+});
+
+it('selects landscape lighting from the shared sky on either side of solar noon', () => {
+  expect(landscapeLight(6, 80)).toBe('day');
+  expect(landscapeLight(-6.01, 280)).toBe('night');
+  expect(landscapeLight(-6, 70)).toBe('dawn');
+  expect(landscapeLight(-6, 290)).toBe('dusk');
 });
 
 describe('horizon variants', () => {
@@ -212,6 +231,7 @@ describe('the illustrated sky follows the layers and visibility', () => {
       dashedStrokes: 0,
       text: [] as string[],
       textAt: [] as { text: string; y: number }[],
+      groundRects: [] as number[][],
       clips: [] as { y: number; height: number; drawnInside: number }[],
     };
     let dashed = false;
@@ -269,6 +289,11 @@ describe('the illustrated sky follows the layers and visibility', () => {
             };
           if (key === 'rect')
             return (_x: number, y: number, _w: number, height: number) => (rect = { y, height });
+          if (key === 'fillRect')
+            return (...args: number[]) => {
+              if (clipped.length) calls.groundRects.push(args);
+            };
+          if (key === 'drawImage') return () => clipped.forEach(({ clip }) => clip.drawnInside++);
           if (key === 'clip')
             return () => {
               if (!rect) return;
@@ -325,12 +350,22 @@ describe('the illustrated sky follows the layers and visibility', () => {
       horizon,
       { object: (object) => object.name, pattern: (id) => id },
       'sans-serif',
+      horizon !== 'ridge' ? ({ naturalWidth: 960, naturalHeight: 496 } as HTMLImageElement) : null,
     );
     return { ...calls, horizonY: toCanvas(0, view.heading).y, sky, toCanvas };
   };
   // Orion and Sirius in the south at midnight in January.
   const night = '2026-01-10T05:00:00Z';
   const south = { heading: 190, altitude: 30, fov: 70 };
+  it('keeps the ridge cottage in place when the shared hour changes', () => {
+    const view = { heading: 110, altitude: 10, fov: 65 };
+    const noon = draw('2026-06-15T16:00:00Z', view, false).groundRects;
+    const dusk = draw('2026-06-16T00:30:00Z', view, false).groundRects;
+    // The cottage wall measures 1.4 by 0.53 house heights; its windows can change with the light.
+    const walls = (rects: number[][]) => rects.filter(([, , w, h]) => Math.abs(w / h - 1.4 / 0.53) < 0.001);
+    expect(walls(noon)).toHaveLength(1);
+    expect(walls(dusk)).toEqual(walls(noon));
+  });
   it('draws pattern lines and names at night with labels on', () => {
     const calls = draw(night, south, true);
     expect(calls.dashedStrokes).toBeGreaterThan(0);
@@ -353,7 +388,9 @@ describe('the illustrated sky follows the layers and visibility', () => {
       expect(ground, horizon).toHaveLength(1);
       expect(ground[0].y + ground[0].height, horizon).toBeGreaterThanOrEqual(800);
       // The layers, trees, grass and figures (by the sea, a headland): many marks, all inside it.
-      expect(ground[0].drawnInside, horizon).toBeGreaterThan(50);
+      if (horizon === 'city' || horizon === 'mountains')
+        expect(ground[0].drawnInside).toBe(horizon === 'mountains' ? 2 : 1);
+      else expect(ground[0].drawnInside, horizon).toBeGreaterThan(horizon === 'sea' ? 0 : 50);
     }
   });
   it('letters a name above its object when below would fall on the land', () => {

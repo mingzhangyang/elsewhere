@@ -213,8 +213,12 @@ test('the share dialog draws a keepsake image in each style and horizon', async 
   await expect.poll(async () => (await inspect()).src).not.toBe(realistic.src);
   const illustrated = await inspect();
   expect(illustrated.lit).toBeGreaterThan(0.5); // a painted sky
-  await dialog.getByRole('button', { name: 'Sea', exact: true }).click();
-  await expect.poll(async () => (await inspect()).src).not.toBe(illustrated.src);
+  let previous = illustrated.src;
+  for (const horizon of ['Mountains', 'Sea', 'City']) {
+    await dialog.getByRole('button', { name: horizon, exact: true }).click();
+    await expect.poll(async () => (await inspect()).src).not.toBe(previous);
+    previous = (await inspect()).src;
+  }
   await expect(dialog.getByRole('link', { name: 'Save image' })).toHaveAttribute(
     'download',
     'elsewhere-sky-2026-01-10.png',

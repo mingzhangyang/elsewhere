@@ -1,3 +1,5 @@
+import { landscapeSeason } from '../moment/seasons';
+import { loadLandscapeArt } from '../moment/landscapeArt';
 import { useEffect, useRef, useState } from 'react';
 import { Download, Share2 } from 'lucide-react';
 import type { MomentSnapshot } from '../lib/moment';
@@ -46,9 +48,18 @@ export default function MomentImage({
     const place = isDeviceLocation(snapshot.location)
       ? m.moment.devicePlace
       : placeLabel(snapshot.location, i18n).name;
-    labelFontReady(place + m.moment.attribution + m.phases[snapshot.sky.moon.phase])
+    const artwork =
+      style === 'illustrated' && horizon !== 'ridge'
+        ? loadLandscapeArt(
+            horizon,
+            landscapeSeason(snapshot),
+            snapshot.sky.sunAltitude,
+            snapshot.sky.sun.azimuth,
+          )
+        : null;
+    Promise.all([labelFontReady(place + m.moment.attribution + m.phases[snapshot.sky.moon.phase]), artwork])
       .then(
-        () =>
+        ([, landscapeArt]) =>
           new Promise<Blob | null>((resolve) => {
             const frame = style === 'realistic' ? latest.current({ ridge: horizon === 'ridge' }) : null;
             if (style === 'realistic' && !frame) return resolve(null);
@@ -57,6 +68,7 @@ export default function MomentImage({
               style,
               horizon,
               capture: frame,
+              landscapeArt,
               i18n,
               site: window.location.host,
             }).toBlob(resolve, 'image/png');
