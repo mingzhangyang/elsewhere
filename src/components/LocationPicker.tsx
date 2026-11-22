@@ -145,6 +145,7 @@ export default function LocationPicker({
         ref={trigger}
         className="location-trigger"
         type="button"
+        data-location-empty={current ? undefined : 'true'}
         onClick={() => {
           dialog.current?.showModal();
           input.current?.focus();

@@ -50,9 +50,14 @@ describe('memorial event creator input (SM1-B)', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Select an event city');
     expect(onResolved).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Choose a city' }));
+    const emptyCityTrigger = screen.getByRole('button', { name: 'Choose a city' });
+    expect(emptyCityTrigger).toHaveAttribute('data-location-empty', 'true');
+    fireEvent.click(emptyCityTrigger);
     expect(screen.queryByRole('button', { name: 'Use my location' })).not.toBeInTheDocument();
     fireEvent.click(within(screen.getByRole('listbox')).getByRole('option', { name: /New York/ }));
+    expect(screen.getByRole('button', { name: 'Change location, New York' })).not.toHaveAttribute(
+      'data-location-empty',
+    );
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(onResolved).not.toHaveBeenCalled();
     checkTime();
