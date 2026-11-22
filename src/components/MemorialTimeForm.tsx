@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import LocationPicker from './LocationPicker';
 import './memorialTimeForm.css';
 import { useI18n } from '../i18n';
+import { memorialMessages } from '../i18n/memorial';
 import {
   changeMemorialLocation,
   createReferenceDraft,
@@ -77,8 +78,8 @@ export default function MemorialTimeForm({
   /** A resolved event, not an artwork; the creator/astronomy handoff is a later batch. */
   onResolved: (value: MemorialTime) => void;
 }) {
-  const { m } = useI18n();
-  const t = m.memorial;
+  const { locale } = useI18n();
+  const t = memorialMessages(locale);
   const radioName = useId();
   const [fields, setFields] = useState<Fields>(() => initialFields(initialDraft));
   const [feedback, setFeedback] = useState<Feedback>(null);
