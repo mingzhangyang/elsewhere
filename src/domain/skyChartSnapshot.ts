@@ -79,8 +79,14 @@ export const EXPECTED_HYG_DERIVATIVE_STAR_COUNT = 5070;
 
 const PLANET_IDS: readonly PlanetId[] = ['mercury', 'venus', 'mars', 'jupiter', 'saturn'];
 const PHASES: readonly MoonPhaseKey[] = [
-  'new', 'waxing-crescent', 'first-quarter', 'waxing-gibbous',
-  'full', 'waning-gibbous', 'last-quarter', 'waning-crescent',
+  'new',
+  'waxing-crescent',
+  'first-quarter',
+  'waxing-gibbous',
+  'full',
+  'waning-gibbous',
+  'last-quarter',
+  'waning-crescent',
 ];
 
 function requireRecord(value: unknown, name: string): asserts value is Record<string, unknown> {
@@ -209,21 +215,29 @@ function assertSkyComplete(sky: SkyState, catalog: readonly CatalogStar[]): void
     const catalogStar = byId.get(star.id);
     if (!catalogStar || seenStars.has(star.id)) throw new RangeError('Missing or duplicate calculated star.');
     seenStars.add(star.id);
-    if (star.name !== catalogStar.name || star.magnitude !== catalogStar.magnitude ||
-        (star.colorIndex ?? null) !== catalogStar.colorIndex ||
-        star.ra !== catalogStar.ra || star.dec !== catalogStar.dec) {
+    if (
+      star.name !== catalogStar.name ||
+      star.magnitude !== catalogStar.magnitude ||
+      (star.colorIndex ?? null) !== catalogStar.colorIndex ||
+      star.ra !== catalogStar.ra ||
+      star.dec !== catalogStar.dec
+    ) {
       throw new RangeError(`Calculated star ${star.id} does not match loaded catalog.`);
     }
   }
   // The original field is not copied into the snapshot, but its integrity must be checked.
   requireRecord(sky.starField, 'Calculated star field');
-  if (!(sky.starField.vectors instanceof Float32Array) ||
-      sky.starField.vectors.length !== catalog.length * 3 ||
-      !Array.isArray(sky.starField.rotation) || sky.starField.rotation.length !== 9 ||
-      !Array.isArray(sky.starField.precession) || sky.starField.precession.length !== 9 ||
-      !sky.starField.rotation.every(Number.isFinite) ||
-      !sky.starField.precession.every(Number.isFinite) ||
-      !sky.starField.vectors.every(Number.isFinite)) {
+  if (
+    !(sky.starField.vectors instanceof Float32Array) ||
+    sky.starField.vectors.length !== catalog.length * 3 ||
+    !Array.isArray(sky.starField.rotation) ||
+    sky.starField.rotation.length !== 9 ||
+    !Array.isArray(sky.starField.precession) ||
+    sky.starField.precession.length !== 9 ||
+    !sky.starField.rotation.every(Number.isFinite) ||
+    !sky.starField.precession.every(Number.isFinite) ||
+    !sky.starField.vectors.every(Number.isFinite)
+  ) {
     throw new RangeError('Incomplete calculated star field.');
   }
 }
@@ -256,29 +270,46 @@ export function buildPreparedSkyChartSnapshot(
   const planets = new Map(sky.planets.map((planet) => [planet.id, planet]));
   const objects: SkyChartSnapshotObject[] = selected.objects.map((object) => {
     const point = projectSkyChart(object.altitude, object.azimuth);
-    if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y) ||
-        Math.hypot(point.x, point.y) > 1 + 1e-12) {
+    if (
+      !point ||
+      !Number.isFinite(point.x) ||
+      !Number.isFinite(point.y) ||
+      Math.hypot(point.x, point.y) > 1 + 1e-12
+    ) {
       throw new RangeError(`Invalid projected sky chart object: ${object.id}`);
     }
     const pointCoordinates = { x: point.x, y: point.y };
     switch (object.kind) {
-      case 'sun': return Object.freeze({ ...object, ...pointCoordinates, distanceKm: sky.sun.distanceKm });
-      case 'moon': return Object.freeze({
-        ...object, ...pointCoordinates, phase: sky.moon.phase, phaseAngle: sky.moon.phaseAngle,
-        illumination: sky.moon.illumination, waxing: sky.moon.waxing,
-        distanceKm: sky.moon.distanceKm,
-      });
+      case 'sun':
+        return Object.freeze({ ...object, ...pointCoordinates, distanceKm: sky.sun.distanceKm });
+      case 'moon':
+        return Object.freeze({
+          ...object,
+          ...pointCoordinates,
+          phase: sky.moon.phase,
+          phaseAngle: sky.moon.phaseAngle,
+          illumination: sky.moon.illumination,
+          waxing: sky.moon.waxing,
+          distanceKm: sky.moon.distanceKm,
+        });
       case 'planet': {
         const planet = planets.get(object.id);
         if (!planet) throw new RangeError(`Calculated planet missing: ${object.id}`);
         return Object.freeze({
-          ...object, ...pointCoordinates, name: planet.name, magnitude: planet.magnitude,
-          illumination: planet.illumination, phaseAngle: planet.phaseAngle,
-          distanceKm: planet.distanceKm, radiusKm: planet.radiusKm,
-          elongation: planet.elongation, apparition: planet.apparition,
+          ...object,
+          ...pointCoordinates,
+          name: planet.name,
+          magnitude: planet.magnitude,
+          illumination: planet.illumination,
+          phaseAngle: planet.phaseAngle,
+          distanceKm: planet.distanceKm,
+          radiusKm: planet.radiusKm,
+          elongation: planet.elongation,
+          apparition: planet.apparition,
         });
       }
-      case 'star': return Object.freeze({ ...object, ...pointCoordinates });
+      case 'star':
+        return Object.freeze({ ...object, ...pointCoordinates });
     }
   });
   return Object.freeze({
@@ -288,9 +319,13 @@ export function buildPreparedSkyChartSnapshot(
     location: Object.freeze({ ...input.location }),
     options: Object.freeze({ limitingMagnitude: selected.limitingMagnitude }),
     provenance: Object.freeze({
-      catalog: 'HYG v4.1 derivative', catalogStarCount: catalog.length,
-      calculation: 'calculateSky / astronomy-engine', refraction: 'normal',
-      projection: 'azimuthal-equidistant', selection: 'SM2-B', catalogHash: null,
+      catalog: 'HYG v4.1 derivative',
+      catalogStarCount: catalog.length,
+      calculation: 'calculateSky / astronomy-engine',
+      refraction: 'normal',
+      projection: 'azimuthal-equidistant',
+      selection: 'SM2-B',
+      catalogHash: null,
     }),
     objects: Object.freeze(objects),
   });

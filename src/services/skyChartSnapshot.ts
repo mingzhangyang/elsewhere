@@ -18,7 +18,9 @@ export type SkyChartSnapshotRequest =
   | { readonly time: MemorialTime; readonly limitingMagnitude?: number };
 
 /** Reuse SM1's saved UTC/offset/DST consistency check before handing off pure UTC domain input. */
-export function prepareSkyChartSnapshotRequest(input: SkyChartSnapshotRequest): PreparedSkyChartSnapshotInput {
+export function prepareSkyChartSnapshotRequest(
+  input: SkyChartSnapshotRequest,
+): PreparedSkyChartSnapshotInput {
   if (!input || typeof input !== 'object' || !input.time || typeof input.time !== 'object') {
     throw new TypeError('Sky chart request must include an explicit time.');
   }
@@ -46,7 +48,12 @@ export function prepareSkyChartSnapshotRequest(input: SkyChartSnapshotRequest): 
 export type SkyChartSnapshotStatus =
   | { readonly status: 'loading'; readonly requestId: number }
   | { readonly status: 'ready'; readonly requestId: number; readonly snapshot: SkyChartSnapshot }
-  | { readonly status: 'error'; readonly requestId: number; readonly code: 'input' | 'catalog-load' | 'catalog-data' | 'calculation' | 'snapshot'; readonly message: string }
+  | {
+      readonly status: 'error';
+      readonly requestId: number;
+      readonly code: 'input' | 'catalog-load' | 'catalog-data' | 'calculation' | 'snapshot';
+      readonly message: string;
+    }
   | { readonly status: 'stale'; readonly requestId: number };
 
 /** Testable adapter; the default catalog loader is imported only when the feature is requested. */
@@ -79,9 +86,7 @@ function diagnostic(error: unknown): string {
  * as stale (never ready); invalidate() revokes pending results on caller unmount/navigation.
  * Call generate() again to retry catalog or computation errors. No personal inputs in diagnostics.
  */
-export function createSkyChartSnapshotCoordinator(
-  overrides: Partial<SkyChartSnapshotDependencies> = {},
-) {
+export function createSkyChartSnapshotCoordinator(overrides: Partial<SkyChartSnapshotDependencies> = {}) {
   const dependencies = { ...defaultDependencies, ...overrides };
   let latestRequest = 0;
   let loadingCatalog: Promise<void> | null = null;
@@ -143,6 +148,8 @@ export function createSkyChartSnapshotCoordinator(
   };
   return {
     generate,
-    invalidate: () => { latestRequest += 1; },
+    invalidate: () => {
+      latestRequest += 1;
+    },
   };
 }

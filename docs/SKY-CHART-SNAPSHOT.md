@@ -17,15 +17,15 @@ Only the selected objects are copied into the frozen returned snapshot. The full
 
 A coordinator call emits `loading` then resolves to one of:
 
-| State | Meaning / next action |
-| --- | --- |
-| `ready` | Catalog and the full computed sky validated; usable immutable snapshot present |
-| `error` with `input` | Invalid UTC, saved memorial time, place or limiting magnitude; correct input |
-| `error` with `catalog-load` | Catalog request/import failed; call `generate()` again to retry |
-| `error` with `catalog-data` | Loaded catalog absent, damaged or incomplete; retry may require a corrected asset or reload |
-| `error` with `calculation` | Astronomy computation failed; diagnose the engine/environment and retry |
-| `error` with `snapshot` | Computed sky incomplete, SM2-B selection failed, or SM2-A projection invalid; reject the whole snapshot |
-| `stale` | An older request has been superseded or `invalidate()` called; never adopt its result |
+| State                       | Meaning / next action                                                                                   |
+| --------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `ready`                     | Catalog and the full computed sky validated; usable immutable snapshot present                          |
+| `error` with `input`        | Invalid UTC, saved memorial time, place or limiting magnitude; correct input                            |
+| `error` with `catalog-load` | Catalog request/import failed; call `generate()` again to retry                                         |
+| `error` with `catalog-data` | Loaded catalog absent, damaged or incomplete; retry may require a corrected asset or reload             |
+| `error` with `calculation`  | Astronomy computation failed; diagnose the engine/environment and retry                                 |
+| `error` with `snapshot`     | Computed sky incomplete, SM2-B selection failed, or SM2-A projection invalid; reject the whole snapshot |
+| `stale`                     | An older request has been superseded or `invalidate()` called; never adopt its result                   |
 
 `requestId` monotonically increases **within each coordinator**. A new `generate` call supersedes earlier calls, including when an old time/place is waiting on catalog resources. Only the most recent call invokes its final `onStatus`; older calls return `stale`. Callers should use one coordinator per active editor instance and call `invalidate()` when leaving that flow. There is no remote cancellation and no forced interruption of synchronous `calculateSky`; the result is invalidated at the async checkpoint. The existing loader's promise caching and a per-coordinator in-flight promise prevent duplicate parallel requests. A rejected promise is cleared for retry. Status messages contain stable error class names only, not original provider error strings, URLs, precise locations or personal event times.
 

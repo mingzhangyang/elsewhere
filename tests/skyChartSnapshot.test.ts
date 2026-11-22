@@ -10,35 +10,76 @@ import {
 } from '../src/domain/skyChartSnapshot';
 import { SkyChartCatalogNotReadyError } from '../src/domain/skyChartSelection';
 import { loadStarCatalog, STAR_CATALOG, type CatalogRow, type CatalogStar } from '../src/domain/stars';
-import { createSkyChartSnapshotCoordinator, prepareSkyChartSnapshotRequest } from '../src/services/skyChartSnapshot';
+import {
+  createSkyChartSnapshotCoordinator,
+  prepareSkyChartSnapshotRequest,
+} from '../src/services/skyChartSnapshot';
 import type { LocationInfo, PlanetId, SkyState } from '../src/types';
 import { NEW_YORK, SYDNEY, TROMSO } from './fixtures/locations';
 
-const input = (utc = '2026-06-21T16:00:00.000Z', location: LocationInfo = NEW_YORK): SkyChartSnapshotInput => ({
-  time: { kind: 'utc', utc }, location,
+const input = (
+  utc = '2026-06-21T16:00:00.000Z',
+  location: LocationInfo = NEW_YORK,
+): SkyChartSnapshotInput => ({
+  time: { kind: 'utc', utc },
+  location,
 });
-const catalog: CatalogStar[] = [{
-  id: 'hyg-1', catalogId: 1, name: 'Sample', ra: 12, dec: 20,
-  magnitude: 5.5, colorIndex: 0.6, pmra: 0, pmdec: 0,
-}];
+const catalog: CatalogStar[] = [
+  {
+    id: 'hyg-1',
+    catalogId: 1,
+    name: 'Sample',
+    ra: 12,
+    dec: 20,
+    magnitude: 5.5,
+    colorIndex: 0.6,
+    pmra: 0,
+    pmdec: 0,
+  },
+];
 const planetIds: PlanetId[] = ['mercury', 'venus', 'mars', 'jupiter', 'saturn'];
 function sampleSky() {
   const sky = {
     sun: { altitude: 25, azimuth: 0, geometricAltitude: 24.5, visible: true, distanceKm: 149600000 },
     moon: {
-      altitude: 0, azimuth: 90, geometricAltitude: -0.5, visible: false,
-      phase: 'waxing-crescent', phaseAngle: 45, illumination: 0.18, waxing: true,
-      distanceKm: 384400, brightLimbAngle: 10, north: [0, 1, 0], prime: [1, 0, 0],
+      altitude: 0,
+      azimuth: 90,
+      geometricAltitude: -0.5,
+      visible: false,
+      phase: 'waxing-crescent',
+      phaseAngle: 45,
+      illumination: 0.18,
+      waxing: true,
+      distanceKm: 384400,
+      brightLimbAngle: 10,
+      north: [0, 1, 0],
+      prime: [1, 0, 0],
     },
     planets: planetIds.map((id, index) => ({
-      id, name: id, altitude: index * 10, azimuth: index * 60,
-      geometricAltitude: index * 10 - 0.5, visible: true, magnitude: -1,
-      illumination: 0.8, phaseAngle: 40, distanceKm: 60000000,
-      radiusKm: 3000, elongation: 65, apparition: 'evening', brightLimbAngle: 0,
+      id,
+      name: id,
+      altitude: index * 10,
+      azimuth: index * 60,
+      geometricAltitude: index * 10 - 0.5,
+      visible: true,
+      magnitude: -1,
+      illumination: 0.8,
+      phaseAngle: 40,
+      distanceKm: 60000000,
+      radiusKm: 3000,
+      elongation: 65,
+      apparition: 'evening',
+      brightLimbAngle: 0,
     })),
     stars: catalog.map((star) => ({
-      id: star.id, name: star.name, ra: star.ra, dec: star.dec,
-      magnitude: star.magnitude, colorIndex: star.colorIndex, altitude: 30, azimuth: 270,
+      id: star.id,
+      name: star.name,
+      ra: star.ra,
+      dec: star.dec,
+      magnitude: star.magnitude,
+      colorIndex: star.colorIndex,
+      altitude: 30,
+      azimuth: 270,
     })),
     starField: {
       vectors: new Float32Array(3),
@@ -59,13 +100,18 @@ describe('SM2-C snapshot: pure calculation and data contracts (synthetic)', () =
   });
   it('includes seven solar-system bodies plus a star in selection order', () => {
     const objects = snapshot().objects;
-    expect(objects.map((o) => o.id)).toEqual([
-      'sun', 'moon', ...planetIds, 'hyg-1',
-    ]);
+    expect(objects.map((o) => o.id)).toEqual(['sun', 'moon', ...planetIds, 'hyg-1']);
     expect(objects.find((o) => o.id === 'hyg-1')).toMatchObject({ magnitude: 5.5, colorIndex: 0.6 });
-    expect(objects.find((o) => o.kind === 'moon')).toMatchObject({ illumination: 0.18, phase: 'waxing-crescent' });
+    expect(objects.find((o) => o.kind === 'moon')).toMatchObject({
+      illumination: 0.18,
+      phase: 'waxing-crescent',
+    });
     expect(objects.find((o) => o.kind === 'planet')).toMatchObject({ radiusKm: 3000, apparition: 'evening' });
-    expect(snapshot().provenance).toMatchObject({ catalogStarCount: 1, catalogHash: null, selection: 'SM2-B' });
+    expect(snapshot().provenance).toMatchObject({
+      catalogStarCount: 1,
+      catalogHash: null,
+      selection: 'SM2-B',
+    });
   });
   it('puts an exact-horizon Moon on the rim; north up, east left', () => {
     const moon = snapshot().objects.find((o) => o.kind === 'moon');
@@ -88,7 +134,9 @@ describe('SM2-C snapshot: pure calculation and data contracts (synthetic)', () =
     const sky = sampleSky();
     sky.stars[0].magnitude = 6.5;
     const dimCatalog = [{ ...catalog[0], magnitude: 6.5 }];
-    expect(buildSkyChartSnapshot(input(), sky, dimCatalog).objects.some((o) => o.kind === 'star')).toBe(false);
+    expect(buildSkyChartSnapshot(input(), sky, dimCatalog).objects.some((o) => o.kind === 'star')).toBe(
+      false,
+    );
     const custom = buildSkyChartSnapshot({ ...input(), limitingMagnitude: 7 }, sky, dimCatalog);
     expect(custom.options.limitingMagnitude).toBe(7);
     expect(custom.objects.some((o) => o.kind === 'star')).toBe(true);
@@ -103,7 +151,8 @@ describe('SM2-C snapshot: pure calculation and data contracts (synthetic)', () =
       [{ ...catalog[0], name: null as never }],
       [{ ...catalog[0], pmra: NaN }],
       [...catalog, { ...catalog[0] }],
-    ]) expect(() => assertSkyChartCatalog(bad)).toThrow();
+    ])
+      expect(() => assertSkyChartCatalog(bad)).toThrow();
   });
   it('rejects missing or corrupt stars even if no star would be selected', () => {
     const sky = sampleSky();
@@ -111,13 +160,17 @@ describe('SM2-C snapshot: pure calculation and data contracts (synthetic)', () =
     expect(() => snapshot({ ...sky, stars: [] })).toThrow();
     expect(() => snapshot({ ...sky, stars: [{ ...sky.stars[0], magnitude: NaN }] })).toThrow();
     expect(() => snapshot({ ...sky, stars: [{ ...sky.stars[0], id: 'hyg-999' }] })).toThrow();
-    expect(() => snapshot({ ...sky, starField: { ...sky.starField, vectors: new Float32Array() } })).toThrow();
+    expect(() =>
+      snapshot({ ...sky, starField: { ...sky.starField, vectors: new Float32Array() } }),
+    ).toThrow();
   });
   it('rejects missing/duplicated planets and incomplete physical properties', () => {
     const sky = sampleSky();
     expect(() => snapshot({ ...sky, planets: sky.planets.slice(1) })).toThrow();
     expect(() => snapshot({ ...sky, planets: [...sky.planets.slice(0, 4), sky.planets[0]] })).toThrow();
-    expect(() => snapshot({ ...sky, planets: [{ ...sky.planets[0], radiusKm: NaN }, ...sky.planets.slice(1)] })).toThrow();
+    expect(() =>
+      snapshot({ ...sky, planets: [{ ...sky.planets[0], radiusKm: NaN }, ...sky.planets.slice(1)] }),
+    ).toThrow();
     expect(() => snapshot({ ...sky, moon: { ...sky.moon, illumination: NaN } })).toThrow();
     expect(() => snapshot({ ...sky, sun: { ...sky.sun, distanceKm: NaN } })).toThrow();
   });
@@ -126,7 +179,9 @@ describe('SM2-C snapshot: pure calculation and data contracts (synthetic)', () =
     expect(() => snapshot({ ...sky, sun: { ...sky.sun, altitude: 95 } })).toThrow(RangeError);
     expect(() => snapshot({ ...sky, moon: { ...sky.moon, azimuth: NaN } })).toThrow(RangeError);
     expect(() => snapshot({ ...sky, stars: [{ ...sky.stars[0], altitude: Infinity }] })).toThrow();
-    expect(() => snapshot({ ...sky, planets: [{ ...sky.planets[0], altitude: NaN }, ...sky.planets.slice(1)] })).toThrow();
+    expect(() =>
+      snapshot({ ...sky, planets: [{ ...sky.planets[0], altitude: NaN }, ...sky.planets.slice(1)] }),
+    ).toThrow();
   });
   it('keeps all returned coordinates finite in the unit disc', () => {
     for (const object of snapshot().objects) {
@@ -167,27 +222,50 @@ describe('SM2-C snapshot: pure calculation and data contracts (synthetic)', () =
     for (const utc of ['1900-01-01T00:00:00.000Z', '2100-12-31T23:59:59.999Z']) {
       expect(snapshot(sampleSky(), input(utc)).utc).toBe(utc);
     }
-    for (const utc of ['1899-12-31T23:59:59.999Z', '2101-01-01T00:00:00.000Z',
-      '2026-06-21T12:00:00-04:00', '2026-06-21T16:00:00Z', 'not-a-date']) {
+    for (const utc of [
+      '1899-12-31T23:59:59.999Z',
+      '2101-01-01T00:00:00.000Z',
+      '2026-06-21T12:00:00-04:00',
+      '2026-06-21T16:00:00Z',
+      'not-a-date',
+    ]) {
       expect(() => prepareSkyChartSnapshotInput(input(utc))).toThrow();
     }
   });
   it('preserves previously resolved SM1 exact versus reference time and DST fold choice', () => {
     const folded = {
-      state: 'resolved', kind: 'exact', localTime: '01:30', localDate: '2026-11-01',
-      utc: '2026-11-01T06:30:00.000Z', offset: '-05:00', disambiguation: 'later', location: NEW_YORK,
+      state: 'resolved',
+      kind: 'exact',
+      localTime: '01:30',
+      localDate: '2026-11-01',
+      utc: '2026-11-01T06:30:00.000Z',
+      offset: '-05:00',
+      disambiguation: 'later',
+      location: NEW_YORK,
     } as const;
-    const result = buildPreparedSkyChartSnapshot(prepareSkyChartSnapshotRequest({ time: folded }), sampleSky(), catalog);
+    const result = buildPreparedSkyChartSnapshot(
+      prepareSkyChartSnapshotRequest({ time: folded }),
+      sampleSky(),
+      catalog,
+    );
     expect(result.time).toEqual({ kind: 'exact', offset: '-05:00', disambiguation: 'later' });
     const reference = {
-      ...folded, kind: 'reference', reference: { localTime: '01:30', source: 'user' },
+      ...folded,
+      kind: 'reference',
+      reference: { localTime: '01:30', source: 'user' },
     } as const;
-    expect(prepareSkyChartSnapshotRequest({ time: reference }).time).toMatchObject({ kind: 'reference', referenceSource: 'user' });
+    expect(prepareSkyChartSnapshotRequest({ time: reference }).time).toMatchObject({
+      kind: 'reference',
+      referenceSource: 'user',
+    });
     expect(() => prepareSkyChartSnapshotRequest({ time: { ...folded, offset: '-04:00' } })).toThrow();
   });
   it('rejects invalid location, magnitude and wrong time type', () => {
-    for (const location of [{ ...NEW_YORK, latitude: 91 }, { ...NEW_YORK, longitude: NaN },
-      { ...NEW_YORK, timezone: 'Broken/Timezone' }]) {
+    for (const location of [
+      { ...NEW_YORK, latitude: 91 },
+      { ...NEW_YORK, longitude: NaN },
+      { ...NEW_YORK, timezone: 'Broken/Timezone' },
+    ]) {
       expect(() => prepareSkyChartSnapshotInput(input(undefined, location))).toThrow();
     }
     for (const limitingMagnitude of [-6, 21, NaN, Infinity]) {
@@ -205,7 +283,10 @@ describe('SM2-C snapshot: pure calculation and data contracts (synthetic)', () =
 function deferred<T>() {
   let resolve!: (value: T) => void;
   let reject!: (error: Error) => void;
-  const promise = new Promise<T>((r, j) => { resolve = r; reject = j; });
+  const promise = new Promise<T>((r, j) => {
+    resolve = r;
+    reject = j;
+  });
   return { promise, resolve, reject };
 }
 
@@ -216,13 +297,18 @@ describe('SM2-C resource coordinator (synthetic injection)', () => {
     let attempts = 0;
     const coordinator = createSkyChartSnapshotCoordinator({
       catalogLoaded: () => loaded,
-      loadCatalog: () => { attempts += 1; return pending.promise; },
+      loadCatalog: () => {
+        attempts += 1;
+        return pending.promise;
+      },
       getCatalog: () => catalog,
       calculate: () => sampleSky(),
     });
     const observed: string[] = [];
     const older = coordinator.generate(input(), (s) => observed.push(`old:${s.status}`));
-    const newer = coordinator.generate(input('2026-06-21T17:00:00.000Z'), (s) => observed.push(`new:${s.status}`));
+    const newer = coordinator.generate(input('2026-06-21T17:00:00.000Z'), (s) =>
+      observed.push(`new:${s.status}`),
+    );
     await Promise.resolve();
     expect(attempts).toBe(1);
     expect(observed).toEqual(['old:loading', 'new:loading']);
@@ -253,28 +339,43 @@ describe('SM2-C resource coordinator (synthetic injection)', () => {
   });
   it('rejects a loader resolving without actually making the catalog ready', async () => {
     const result = await createSkyChartSnapshotCoordinator({
-      catalogLoaded: () => false, loadCatalog: async () => {},
-      getCatalog: () => catalog, calculate: () => sampleSky(),
+      catalogLoaded: () => false,
+      loadCatalog: async () => {},
+      getCatalog: () => catalog,
+      calculate: () => sampleSky(),
     }).generate(input());
     expect(result).toMatchObject({ status: 'error', code: 'catalog-data' });
   });
   it('rejects corrupted loaded resources and failed computation instead of ready', async () => {
     const base = { catalogLoaded: () => true, loadCatalog: async () => {}, calculate: () => sampleSky() };
-    expect(await createSkyChartSnapshotCoordinator({ ...base, getCatalog: () => [] }).generate(input()))
-      .toMatchObject({ status: 'error', code: 'catalog-data' });
-    expect(await createSkyChartSnapshotCoordinator({
-      ...base, getCatalog: () => catalog, calculate: () => { throw new Error('fatal'); },
-    }).generate(input())).toMatchObject({ status: 'error', code: 'calculation' });
-    expect(await createSkyChartSnapshotCoordinator({
-      ...base, getCatalog: () => catalog, calculate: () => ({ ...sampleSky(), stars: [] }),
-    }).generate(input())).toMatchObject({ status: 'error', code: 'snapshot' });
+    expect(
+      await createSkyChartSnapshotCoordinator({ ...base, getCatalog: () => [] }).generate(input()),
+    ).toMatchObject({ status: 'error', code: 'catalog-data' });
+    expect(
+      await createSkyChartSnapshotCoordinator({
+        ...base,
+        getCatalog: () => catalog,
+        calculate: () => {
+          throw new Error('fatal');
+        },
+      }).generate(input()),
+    ).toMatchObject({ status: 'error', code: 'calculation' });
+    expect(
+      await createSkyChartSnapshotCoordinator({
+        ...base,
+        getCatalog: () => catalog,
+        calculate: () => ({ ...sampleSky(), stars: [] }),
+      }).generate(input()),
+    ).toMatchObject({ status: 'error', code: 'snapshot' });
   });
   it('captures time/location before awaiting loading and revokes unfinished requests', async () => {
     const pending = deferred<void>();
     let loaded = false;
     const coordinator = createSkyChartSnapshotCoordinator({
-      catalogLoaded: () => loaded, loadCatalog: () => pending.promise,
-      getCatalog: () => catalog, calculate: () => sampleSky(),
+      catalogLoaded: () => loaded,
+      loadCatalog: () => pending.promise,
+      getCatalog: () => catalog,
+      calculate: () => sampleSky(),
     });
     const place = { ...NEW_YORK };
     const original = coordinator.generate(input(undefined, place));
@@ -286,8 +387,10 @@ describe('SM2-C resource coordinator (synthetic injection)', () => {
     if (result.status === 'ready') expect(result.snapshot.location.latitude).toBe(NEW_YORK.latitude);
     const slow = deferred<void>();
     const next = createSkyChartSnapshotCoordinator({
-      catalogLoaded: () => false, loadCatalog: () => slow.promise,
-      getCatalog: () => catalog, calculate: () => sampleSky(),
+      catalogLoaded: () => false,
+      loadCatalog: () => slow.promise,
+      getCatalog: () => catalog,
+      calculate: () => sampleSky(),
     });
     const waiting = next.generate(input());
     next.invalidate();
@@ -298,8 +401,11 @@ describe('SM2-C resource coordinator (synthetic injection)', () => {
     let loads = 0;
     const coordinator = createSkyChartSnapshotCoordinator({
       catalogLoaded: () => false,
-      loadCatalog: async () => { loads++; },
-      getCatalog: () => catalog, calculate: () => sampleSky(),
+      loadCatalog: async () => {
+        loads++;
+      },
+      getCatalog: () => catalog,
+      calculate: () => sampleSky(),
     });
     expect(await coordinator.generate(input('bad-utc'))).toMatchObject({ status: 'error', code: 'input' });
     expect(loads).toBe(0);
@@ -323,8 +429,11 @@ describe('SM2-C real loaded HYG/astronomy integration', () => {
     const stars = chart.objects.filter((o) => o.kind === 'star');
     expect(stars.length).toBeGreaterThan(100);
     expect(stars.every((s) => s.altitude >= 0 && s.magnitude <= 6)).toBe(true);
-    expect(chart.objects.every((o) => Number.isFinite(o.x) && Number.isFinite(o.y) &&
-      Math.hypot(o.x, o.y) <= 1 + 1e-12)).toBe(true);
+    expect(
+      chart.objects.every(
+        (o) => Number.isFinite(o.x) && Number.isFinite(o.y) && Math.hypot(o.x, o.y) <= 1 + 1e-12,
+      ),
+    ).toBe(true);
     const again = await coordinator.generate(input());
     expect(again.status).toBe('ready');
     if (again.status === 'ready') expect(again.snapshot).toEqual(chart);
@@ -339,7 +448,10 @@ describe('SM2-C real loaded HYG/astronomy integration', () => {
     }
   });
   it('S04 draws real computed New York daytime stars; no environment visibility applied', () => {
-    const chart = buildSkyChartSnapshot(input(), calculateSky(NEW_YORK, new Date('2026-06-21T16:00:00.000Z')));
+    const chart = buildSkyChartSnapshot(
+      input(),
+      calculateSky(NEW_YORK, new Date('2026-06-21T16:00:00.000Z')),
+    );
     expect(chart.objects.find((o) => o.kind === 'sun')?.altitude).toBeGreaterThan(0);
     expect(chart.objects.some((o) => o.kind === 'star')).toBe(true);
   });
