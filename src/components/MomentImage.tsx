@@ -1,3 +1,4 @@
+import { landscapeSeason } from '../moment/seasons';
 import { loadLandscapeArt } from '../moment/landscapeArt';
 import { useEffect, useRef, useState } from 'react';
 import { Download, Share2 } from 'lucide-react';
@@ -48,8 +49,13 @@ export default function MomentImage({
       ? m.moment.devicePlace
       : placeLabel(snapshot.location, i18n).name;
     const artwork =
-      style === 'illustrated' && (horizon === 'city' || horizon === 'mountains')
-        ? loadLandscapeArt(horizon, snapshot.sky.sunAltitude, snapshot.sky.sun.azimuth)
+      style === 'illustrated' && horizon !== 'ridge'
+        ? loadLandscapeArt(
+            horizon,
+            landscapeSeason(snapshot),
+            snapshot.sky.sunAltitude,
+            snapshot.sky.sun.azimuth,
+          )
         : null;
     Promise.all([labelFontReady(place + m.moment.attribution + m.phases[snapshot.sky.moon.phase]), artwork])
       .then(

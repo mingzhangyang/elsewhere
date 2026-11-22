@@ -1,3 +1,5 @@
+import { seasonalColours, type LandscapeSeason } from './seasons';
+import { paintCove } from './coast';
 import type { MomentSnapshot } from '../lib/moment';
 import { seededRandom } from '../lib/random';
 import { HORIZON_STEP, ISLAND_TOP, MAST_TOP, horizonAltitude, type HorizonVariant } from './scenery';
@@ -29,6 +31,7 @@ import {
 type ToCanvas = (altitude: number, azimuth: number) => { x: number; y: number; front: boolean };
 
 export interface LandScene {
+  season: LandscapeSeason;
   ctx: CanvasRenderingContext2D;
   width: number;
   height: number;
@@ -236,6 +239,7 @@ function broadleaf(
   lightX: number,
   strength: number,
   random: () => number,
+  bare: boolean,
 ) {
   const lean = (random() - 0.5) * 0.1 * h;
   const fork = { x: x + lean * 0.7, y: y - h * 0.36 };
@@ -280,7 +284,7 @@ function broadleaf(
     leaves(ctx, lx, ly, r * 0.5, r * 0.13, 12, random);
     ctx.fill();
   };
-  for (const [cx, cy, r, back] of clumps) if (back) clump(cx, cy, r, true);
+  for (const [cx, cy, r, back] of clumps) if (back && !bare) clump(cx, cy, r, true);
   // The trunk, flared at the foot, and branches reaching into the crown.
   ctx.fillStyle = css(c.bark);
   ctx.beginPath();
@@ -298,6 +302,15 @@ function broadleaf(
     ctx.moveTo(fork.x, fork.y + h * 0.02);
     ctx.quadraticCurveTo(lerp(fork.x, cx, 0.3), lerp(fork.y, cy, 0.75), cx, cy + r * 0.3);
     ctx.stroke();
+    if (bare) {
+      for (const side of [-1, 1]) {
+        ctx.lineWidth = h * 0.009;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy + r * 0.3);
+        ctx.quadraticCurveTo(cx + side * r * 0.43, cy, cx + side * r * 0.68, cy - r * 0.66);
+        ctx.stroke();
+      }
+    }
   }
   // Light catching one side of the trunk.
   ctx.strokeStyle = css(mix(c.bark, c.light, 0.5), 0.5 * strength);
@@ -306,7 +319,7 @@ function broadleaf(
   ctx.moveTo(x + lightX * h * 0.03, y - h * 0.04);
   ctx.quadraticCurveTo(x + lightX * h * 0.018, y - h * 0.2, fork.x + lightX * h * 0.014, fork.y);
   ctx.stroke();
-  for (const [cx, cy, r, back] of clumps) if (!back) clump(cx, cy, r, false);
+  for (const [cx, cy, r, back] of clumps) if (!back && !bare) clump(cx, cy, r, false);
 }
 
 interface HouseColours {
@@ -478,10 +491,10 @@ function crown(
 /** Sea to the horizon: washes that mirror the sky, brushed swell, a path of light, a far boat. */
 function paintSea(scene: LandScene, haze: Rgb) {
   const { ctx, width, height, horizonY, unit, palette, sky, view, toCanvas, night, day, seed } = scene;
-  const deep = mix(mix(palette.landNear, hex('#0c3a66'), 0.55), palette.upper, 0.25);
+  const deep = mix(palette.landNear, hex(seasonalColours[scene.season].sea), day * 0.85);
   const water = ctx.createLinearGradient(0, horizonY, 0, Math.max(height, horizonY + 10));
   water.addColorStop(0, css(mix(palette.horizon, palette.landFar, 0.4)));
-  water.addColorStop(0.25, css(mix(palette.lower, palette.landFar, 0.55)));
+  water.addColorStop(0.32, css(mix(palette.lower, deep, 0.55)));
   water.addColorStop(1, css(deep));
   ctx.fillStyle = water;
   ctx.fillRect(0, horizonY, width, height - horizonY + 10);
@@ -530,8 +543,8 @@ function paintSea(scene: LandScene, haze: Rgb) {
         ctx,
         waves() * width,
         y,
-        (26 + t * 240) * unit * (0.5 + waves()),
-        (0.9 + t * 4.5) * unit,
+        (17 + t * 82) * unit * (0.5 + waves()),
+        (0.7 + t * 2.8) * unit,
         0,
         -(1 + t * 3) * unit,
       );
@@ -606,53 +619,25 @@ function paintSea(scene: LandScene, haze: Rgb) {
   }
 }
 
-// Flat, fractured shelves at one corner; broken surf follows their seaward edges.
-function paintReef(scene: LandScene) {
-  const { ctx, width, height, horizonY, seed, palette, day, lightStrength } = scene;
-  const random = seededRandom(seed + 103);
-  const side = random() < 0.5 ? -1 : 1;
-  const waterDepth = height - horizonY;
-  const reach = Math.min(width * 0.34, waterDepth * 1.5);
-  const slate = mix(palette.landNear, hex('#4a565b'), 0.08 + 0.65 * day);
-  const foam = mix(palette.horizon, palette.cloudLight, 0.75);
-  ctx.save();
-  ctx.translate(side > 0 ? 0 : width, height);
-  ctx.scale(side, 1);
-  for (let i = 0; i < 14; i++) {
-    const t = i / 13;
-    const x = reach * ((1 - t) * 0.85 + random() * 0.18);
-    const y = -Math.min(waterDepth * 0.27, reach * 0.32) * (1 - t) + reach * (random() * 0.12 - 0.055);
-    const w = reach * (0.06 + t * 0.28 + random() * 0.08);
-    const h = w * (0.24 + random() * 0.26);
-    ctx.fillStyle = css(foam, 0.24 + 0.35 * lightStrength);
-    ctx.beginPath();
-    mark(ctx, x + w * 0.54, y + h * 0.2, w * 1.12, h * 0.2, 0, -h * 0.09);
-    ctx.fill();
-    ctx.fillStyle = css(deepen(slate, 0.3));
-    ctx.beginPath();
-    ctx.moveTo(x - w, y - h * 0.5);
-    ctx.lineTo(x - w * 0.25, y - h);
-    ctx.lineTo(x + w * 0.64, y - h * 0.65);
-    ctx.lineTo(x + w, y);
-    ctx.lineTo(x - w * 0.65, y + h * 0.12);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = css(mix(slate, palette.horizon, 0.12 + 0.16 * lightStrength));
-    ctx.beginPath();
-    ctx.moveTo(x - w, y - h * 0.5);
-    ctx.lineTo(x - w * 0.25, y - h);
-    ctx.lineTo(x + w * 0.64, y - h * 0.65);
-    ctx.lineTo(x + w * 0.12, y - h * 0.37);
-    ctx.closePath();
-    ctx.fill();
-  }
-  ctx.restore();
-}
-
 export function paintLandscape(scene: LandScene) {
-  const { ctx, width, height, unit, horizonY, palette, toCanvas, view, day, seed, horizon } = scene;
+  const { ctx, width, height, unit, horizonY, toCanvas, view, day, seed, horizon } = scene;
+  if (horizon === 'ridge') {
+    const colours = seasonalColours[scene.season];
+    const turf = hex(colours.turf);
+    const palette = scene.palette;
+    scene = {
+      ...scene,
+      palette: {
+        ...palette,
+        landMid: mix(palette.landMid, turf, day * 0.65),
+        landNear: mix(palette.landNear, deepen(turf, 0.25), day * 0.7),
+        landLight: mix(palette.landLight, turf, day * 0.58),
+        leafLight: mix(palette.leafLight, hex(colours.leaf), day * 0.9),
+      },
+    };
+  }
   if (horizonY > height + 40 * unit) return;
-  const { lightX, lightStrength } = scene;
+  const { lightX, lightStrength, palette } = scene;
   const left = view.heading - 100,
     right = view.heading + 100;
   const edge = (altitude: (az: number) => number, step: number) => {
@@ -710,7 +695,7 @@ export function paintLandscape(scene: LandScene) {
     return;
   }
   if (horizon === 'sea') {
-    paintReef(scene);
+    paintCove(scene);
     ctx.restore();
     return;
   }
@@ -873,7 +858,17 @@ export function paintLandscape(scene: LandScene) {
         ctx.beginPath();
         ctx.ellipse(spot.x - lightX * h * 0.18, spot.y + 8 * unit, h * 0.42, h * 0.045, 0, 0, TAU);
         ctx.fill();
-        broadleaf(ctx, spot.x, spot.y + 8 * unit, h, trees, lightX, lightStrength, big);
+        broadleaf(
+          ctx,
+          spot.x,
+          spot.y + 8 * unit,
+          h,
+          trees,
+          lightX,
+          lightStrength,
+          big,
+          scene.season === 'winter',
+        );
       }
       // Tall seed heads in front of everything, at the bottom edge.
       const reeds = seededRandom(seed + 35);

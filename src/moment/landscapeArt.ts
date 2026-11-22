@@ -1,17 +1,9 @@
-import dawn from '../assets/waterfront/dawn.webp';
-import day from '../assets/waterfront/day.webp';
-import dusk from '../assets/waterfront/dusk.webp';
-import night from '../assets/waterfront/night.webp';
+import type { LandscapeSeason } from './seasons';
 
-import alpineDawn from '../assets/valley/dawn.webp';
-import alpineDay from '../assets/valley/day.webp';
-import alpineDusk from '../assets/valley/dusk.webp';
-import alpineNight from '../assets/valley/night.webp';
-
-const scenes = {
-  city: { dawn, day, dusk, night },
-  mountains: { dawn: alpineDawn, day: alpineDay, dusk: alpineDusk, night: alpineNight },
-};
+const assets = import.meta.glob<string>('../assets/{waterfront,valley,coast}/*.webp', {
+  eager: true,
+  import: 'default',
+});
 
 // The shared moment already carries the Sun's local horizon coordinates.
 // In twilight an eastern Sun is rising and a western Sun is setting.
@@ -21,9 +13,16 @@ export function landscapeLight(altitude: number, azimuth: number) {
   return azimuth < 180 ? 'dawn' : 'dusk';
 }
 
-export async function loadLandscapeArt(scene: keyof typeof scenes, altitude: number, azimuth: number) {
+export async function loadLandscapeArt(
+  scene: 'city' | 'mountains' | 'sea',
+  season: LandscapeSeason,
+  altitude: number,
+  azimuth: number,
+) {
   const image = new Image();
-  image.src = scenes[scene][landscapeLight(altitude, azimuth)];
+  const folder = { city: 'waterfront', mountains: 'valley', sea: 'coast' }[scene];
+  const light = landscapeLight(altitude, azimuth);
+  image.src = assets[`../assets/${folder}/${season}-${light}.webp`];
   await image.decode();
   return image;
 }

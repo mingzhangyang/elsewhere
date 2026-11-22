@@ -27,6 +27,7 @@ import {
   washAt,
 } from './paint';
 import { type CloudLight, altocumulus, cirrus, cloudSheet, cumulus, stratus } from './clouds';
+import { landscapeSeason } from './seasons';
 import { paintLandscape } from './landscape';
 
 /**
@@ -628,6 +629,7 @@ export function drawIllustration(
 
   // 8. The landscape, painted in depth under the same light.
   paintLandscape({
+    season: landscapeSeason(snapshot),
     ctx,
     width,
     height,

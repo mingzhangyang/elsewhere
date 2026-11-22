@@ -12,6 +12,9 @@ vi.mock('../src/moment/postcard', () => ({
   MOMENT_STYLES: ['realistic', 'illustrated'],
   drawPostcard: () => ({ toBlob: (done: (blob: Blob | null) => void) => pending.push(done) }),
 }));
+vi.mock('../src/moment/landscapeArt', () => ({
+  loadLandscapeArt: vi.fn(async () => new Image()),
+}));
 const { default: MomentImage } = await import('../src/components/MomentImage');
 
 let created: string[] = [];
@@ -35,7 +38,7 @@ beforeEach(() => {
 const snapshot = {
   location: PRESETS[0],
   instant: new Date('2026-01-10T00:30:00Z'),
-  sky: { moon: { phase: 'full' } },
+  sky: { sunAltitude: -18, sun: { azimuth: 270 }, moon: { phase: 'full' } },
 } as unknown as MomentSnapshot;
 const capture = () => ({ image: document.createElement('canvas'), target: null });
 const settle = () => act(async () => {});

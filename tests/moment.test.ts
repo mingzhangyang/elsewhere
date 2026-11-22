@@ -10,6 +10,7 @@ import {
   type HorizonVariant,
 } from '../src/moment/scenery';
 import { wrap } from '../src/moment/postcard';
+import { landscapeSeason } from '../src/moment/seasons';
 import { landscapeLight } from '../src/moment/landscapeArt';
 import { drawIllustration } from '../src/moment/illustration';
 import { defaultWeatherValues } from '../src/domain/weather';
@@ -77,6 +78,16 @@ describe('the illustrated image puts objects where the renderer does', () => {
       }
       expect(ours(-altitude, heading + 180).front).toBe(false);
     });
+});
+
+it('uses the shared local month for temperate seasons and keeps tropical scenes green', () => {
+  const instant = new Date('2026-03-01T02:00:00Z');
+  const at = (timezone: string, latitude: number) =>
+    landscapeSeason({ instant, location: { ...NEW_YORK, timezone, latitude } });
+  expect(at('America/New_York', 41)).toBe('winter');
+  expect(at('Europe/Paris', 49)).toBe('spring');
+  expect(at('Australia/Sydney', -34)).toBe('autumn');
+  expect(at('Asia/Singapore', 1)).toBe('summer');
 });
 
 it('selects landscape lighting from the shared sky on either side of solar noon', () => {
@@ -339,9 +350,7 @@ describe('the illustrated sky follows the layers and visibility', () => {
       horizon,
       { object: (object) => object.name, pattern: (id) => id },
       'sans-serif',
-      horizon === 'city' || horizon === 'mountains'
-        ? ({ naturalWidth: 960, naturalHeight: 496 } as HTMLImageElement)
-        : null,
+      horizon !== 'ridge' ? ({ naturalWidth: 960, naturalHeight: 496 } as HTMLImageElement) : null,
     );
     return { ...calls, horizonY: toCanvas(0, view.heading).y, sky, toCanvas };
   };
