@@ -1,5 +1,5 @@
 import { Temporal, ensureTemporal } from '../domain/temporal';
-import { MAX_INSTANT, MIN_INSTANT, validateInstant, wallTimeCandidatesUnbounded } from '../domain/time';
+import { MAX_INSTANT, MIN_INSTANT, validateInstant, wallTimeCandidates } from '../domain/time';
 import type { LocationInfo } from '../types';
 
 export const DEFAULT_REFERENCE_TIME = '22:00';
@@ -177,7 +177,7 @@ export async function resolveMemorialTime(draft: MemorialTimeDraft): Promise<Mem
 
   let dates: Date[];
   try {
-    dates = wallTimeCandidatesUnbounded(draft.localDate, localTime, draft.location.timezone);
+    dates = wallTimeCandidates(draft.localDate, localTime, draft.location.timezone, false);
   } catch {
     return error('out-of-range', 'The resulting UTC instant must be between 1900 and 2100.');
   }
