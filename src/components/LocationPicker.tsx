@@ -210,9 +210,10 @@ export default function LocationPicker({
                 setActive(next);
                 document.getElementById(`place-${next}`)?.scrollIntoView?.({ block: 'nearest' });
               }
-              if (event.key === 'Enter' && active >= 0 && options[active]) {
+              if (event.key === 'Enter') {
+                // Never submit a parent event form while choosing a city.
                 event.preventDefault();
-                select(options[active]);
+                if (active >= 0 && options[active]) select(options[active]);
               }
             }}
           />
