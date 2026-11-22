@@ -123,7 +123,9 @@ describe('memorial-time restoration and UTC boundary (SM1-C)', () => {
       code: 'invalid-date',
       draft: { localDate: '1900-02-29' },
     });
-    expect(await restoreMemorialDraft({ ...draft, localDate: '2026-02-15', localTime: '24:01' })).toMatchObject({
+    expect(
+      await restoreMemorialDraft({ ...draft, localDate: '2026-02-15', localTime: '24:01' }),
+    ).toMatchObject({
       status: 'needs-confirmation',
       code: 'invalid-time',
     });
@@ -186,7 +188,7 @@ describe('memorial-time restoration and UTC boundary (SM1-C)', () => {
     expect(recovered.utc).toBe('2026-02-15T13:30:00.000Z');
   });
 
-  it('preserves reference default/user source when restoring and deliberately editing saved records', async () => {
+  it('preserves reference source through restoration and editing', async () => {
     for (const draft of [
       createReferenceDraft(ny, '2026-07-16'),
       setReferenceTime(createReferenceDraft(beijing, '2026-07-16'), '06:15'),

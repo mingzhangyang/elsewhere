@@ -28,7 +28,8 @@ const en = {
     'invalid-choice': 'This time choice is no longer valid. Select a current candidate.',
   },
   ambiguous: 'This local clock time occurred twice. Select the intended offset:',
-  ambiguousRestricted: 'This time occurred twice, but only the following offset is in the supported UTC range. Confirm it:',
+  ambiguousRestricted:
+    'This time occurred twice, but only the following offset is in the supported UTC range. Confirm it:',
   candidate: ({ utc, offset }: { utc: string; offset: string }) => `Offset ${offset} · UTC ${utc}`,
   ready: ({ utc, offset }: { utc: string; offset: string }) => `Resolved: ${utc} · UTC offset ${offset}`,
   checking: 'Checking the time…',

@@ -280,9 +280,11 @@ export function assertMemorialTimeConsistency(value: MemorialTime): void {
  * Parse an untrusted draft without coercing precision, time, date or location.
  * A corrupted UTC choice can be discarded, but all other required fields must be structurally sound.
  */
-function readMemorialDraft(input: unknown):
+type ParsedMemorialDraft =
   | { draft: MemorialTimeDraft; discardedChoice: boolean }
-  | { code: MemorialTimeErrorCode } {
+  | { code: MemorialTimeErrorCode };
+
+function readMemorialDraft(input: unknown): ParsedMemorialDraft {
   if (!input || typeof input !== 'object') return { code: 'invalid-choice' };
   const value = input as Record<string, unknown>;
   if (value.state !== 'draft' || (value.kind !== 'exact' && value.kind !== 'reference')) {

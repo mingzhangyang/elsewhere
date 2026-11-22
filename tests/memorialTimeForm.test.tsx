@@ -278,13 +278,11 @@ describe('memorial input restoration (SM1-C)', () => {
     });
   });
 
-  it('restores reference source, clears an external snapshot on edits, and never upgrades it to exact', async () => {
+  it('preserves reference precision and clears the old snapshot on edits', async () => {
     const onResolved = vi.fn<(value: MemorialTime) => void>();
     const onInvalidated = vi.fn();
     const draft = setReferenceTime(createReferenceDraft(city('beijing'), '2026-07-16'), '06:15');
-    render(
-      <MemorialTimeForm initialDraft={draft} onResolved={onResolved} onInvalidated={onInvalidated} />,
-    );
+    render(<MemorialTimeForm initialDraft={draft} onResolved={onResolved} onInvalidated={onInvalidated} />);
     await act(async () => {});
     expect(screen.getByRole('radio', { name: 'I don’t know the time' })).toBeChecked();
     expect(screen.getByLabelText(/^Reference local time/)).toHaveValue('06:15');
