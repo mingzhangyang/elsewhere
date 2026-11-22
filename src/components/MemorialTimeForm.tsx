@@ -8,9 +8,11 @@ import {
   createReferenceDraft,
   DEFAULT_REFERENCE_TIME,
   resolveMemorialTime,
+  restoreMemorialDraft,
   setReferenceTime,
   type MemorialTime,
   type MemorialTimeDraft,
+  type MemorialTimeErrorCode,
   type MemorialTimeResult,
   type ReferenceClock,
 } from '../lib/memorialTime';
@@ -31,6 +33,7 @@ type Fields = {
 
 type Feedback =
   | { type: 'missing-city' | 'loading' | 'unexpected' }
+  | { type: 'restore-error'; code: MemorialTimeErrorCode }
   | { type: 'result'; result: MemorialTimeResult }
   | null;
 
@@ -72,11 +75,14 @@ function toDraft(fields: Fields): MemorialTimeDraft | null {
 export default function MemorialTimeForm({
   initialDraft,
   onResolved,
+  onInvalidated,
 }: {
   /** Restoring an in-progress draft is separate from restoring a saved artwork/link (SM5). */
   initialDraft?: MemorialTimeDraft;
   /** A resolved event, not an artwork; the creator/astronomy handoff is a later batch. */
   onResolved: (value: MemorialTime) => void;
+  /** Clear the creator's last resolved snapshot whenever its inputs are edited. */
+  onInvalidated?: () => void;
 }) {
   const { locale } = useI18n();
   const t = memorialMessages(locale);
@@ -84,13 +90,58 @@ export default function MemorialTimeForm({
   const [fields, setFields] = useState<Fields>(() => initialFields(initialDraft));
   const [feedback, setFeedback] = useState<Feedback>(null);
   const generation = useRef(0);
+  const previousInitialDraft = useRef(initialDraft);
+  const onInvalidatedRef = useRef(onInvalidated);
+
+  useEffect(() => {
+    onInvalidatedRef.current = onInvalidated;
+  }, [onInvalidated]);
 
   // A slow time-zone/polyfill load must not publish a result after edits or unmount.
   useEffect(() => () => void (generation.current += 1), []);
 
+  // A saved draft is untrusted until its candidate is rechecked against today's IANA rules.
+  // The ticket also protects newer user edits from an older restoration response.
+  useEffect(() => {
+    const replaced = previousInitialDraft.current !== initialDraft;
+    previousInitialDraft.current = initialDraft;
+    if (replaced) {
+      // Never leave a parent's resolved artwork pointing at the previous inputs.
+      onInvalidatedRef.current?.();
+      setFeedback(null);
+    }
+    if (!initialDraft) {
+      if (replaced) setFields(initialFields());
+      return;
+    }
+    const ticket = ++generation.current;
+    void restoreMemorialDraft(initialDraft)
+      .then((restoration) => {
+        if (ticket !== generation.current) return;
+        if (restoration.status === 'error') {
+          setFields(initialFields());
+          setFeedback({ type: 'restore-error', code: restoration.code });
+          return;
+        }
+        setFields(initialFields(restoration.draft));
+        setFeedback(
+          restoration.status === 'needs-confirmation'
+            ? { type: 'restore-error', code: restoration.code }
+            : null,
+        );
+      })
+      .catch(() => {
+        if (ticket === generation.current) setFeedback({ type: 'unexpected' });
+      });
+    return () => {
+      generation.current += 1;
+    };
+  }, [initialDraft]);
+
   const invalidate = () => {
     generation.current += 1;
     setFeedback(null);
+    onInvalidated?.();
   };
 
   const edit = (partial: Partial<Fields>) => {
@@ -229,6 +280,11 @@ export default function MemorialTimeForm({
             {t.unexpected}
           </p>
         )}
+        {feedback?.type === 'restore-error' && (
+          <p className="memorial-error" role="alert">
+            {t.errors[feedback.code]}
+          </p>
+        )}
         {result?.status === 'error' && (
           <p className="memorial-error" role="alert">
             {t.errors[result.code]}
@@ -236,7 +292,7 @@ export default function MemorialTimeForm({
         )}
         {result?.status === 'ambiguous' && (
           <fieldset className="memorial-candidates">
-            <legend>{t.ambiguous}</legend>
+            <legend>{result.hasOutOfRangeCandidate ? t.ambiguousRestricted : t.ambiguous}</legend>
             {result.candidates.map((candidate) => (
               <button type="button" key={candidate.utc} onClick={() => chooseOffset(candidate.utc)}>
                 {t.candidate(candidate)}

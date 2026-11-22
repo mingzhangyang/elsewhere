@@ -70,7 +70,11 @@ export function zonedDateTimeToUtc(
   );
 }
 
-export function wallTimeCandidates(date: string, time: string, timeZone: string): Date[] {
+/**
+ * The creator may inspect all real candidates before applying its final UTC range.
+ * Explorer callers retain the existing fail-closed range check by default.
+ */
+export function wallTimeCandidates(date: string, time: string, timeZone: string, checkRange = true): Date[] {
   const plain = Temporal.PlainDateTime.from(`${date}T${time}`, { overflow: 'reject' });
   const candidates = ['earlier', 'later'].map((disambiguation) =>
     plain.toZonedDateTime(timeZone, { disambiguation: disambiguation as 'earlier' | 'later' }),
@@ -81,9 +85,11 @@ export function wallTimeCandidates(date: string, time: string, timeZone: string)
         .filter((zoned) => zoned.toPlainDateTime().equals(plain))
         .map((zoned) => zoned.epochMilliseconds),
     ),
-  ].map((ms) => validateInstant(new Date(ms)));
+  ].map((ms) => {
+    const instant = new Date(ms);
+    return checkRange ? validateInstant(instant) : instant;
+  });
 }
-
 export function localDayBounds(date: Date, timeZone: string): { start: Date; end: Date; minutes: number } {
   const zoned = Temporal.Instant.fromEpochMilliseconds(date.getTime()).toZonedDateTimeISO(timeZone);
   const start = zoned.startOfDay();
