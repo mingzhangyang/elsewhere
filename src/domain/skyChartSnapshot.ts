@@ -1,5 +1,4 @@
 import type { LocationInfo, MoonPhaseKey, PlanetId, SkyState } from '../types';
-import { assertMemorialTimeConsistency, type MemorialTime } from '../lib/memorialTime';
 import { validateObserver } from './observer';
 import { projectSkyChart, type SkyChartPoint } from './skyChartProjection';
 import {
@@ -12,14 +11,12 @@ import {
 import { STAR_CATALOG, starCatalogLoaded, type CatalogStar } from './stars';
 import { validateInstant } from './time';
 
-/** An already resolved UTC instant, or an SM1 record with its exact/reference intent intact. */
-export type SkyChartSnapshotInput =
-  | {
-      readonly time: { readonly kind: 'utc'; readonly utc: string };
-      readonly location: LocationInfo;
-      readonly limitingMagnitude?: number;
-    }
-  | { readonly time: MemorialTime; readonly limitingMagnitude?: number };
+/** Pure domain input: a canonical UTC instant plus one explicit observer. */
+export interface SkyChartSnapshotInput {
+  readonly time: { readonly kind: 'utc'; readonly utc: string };
+  readonly location: LocationInfo;
+  readonly limitingMagnitude?: number;
+}
 
 export interface PreparedSkyChartSnapshotInput {
   readonly utc: string;
@@ -128,27 +125,11 @@ export function prepareSkyChartSnapshotInput(input: SkyChartSnapshotInput): Prep
   requireRecord(input, 'Snapshot input');
   requireRecord(input.time, 'Snapshot time');
   const time = input.time;
-  let utc: string;
-  let location: LocationInfo;
-  let timeMetadata: PreparedSkyChartSnapshotInput['time'];
-  if (time.kind === 'utc') {
-    utc = time.utc as string;
-    location = (input as Extract<SkyChartSnapshotInput, { time: { kind: 'utc' } }>).location;
-    timeMetadata = { kind: 'utc', disambiguation: null };
-  } else if (time.kind === 'exact' || time.kind === 'reference') {
-    assertMemorialTimeConsistency(time as MemorialTime);
-    const resolved = time as MemorialTime;
-    utc = resolved.utc;
-    location = resolved.location;
-    timeMetadata = {
-      kind: resolved.kind,
-      disambiguation: resolved.disambiguation,
-      offset: resolved.offset,
-      ...(resolved.kind === 'reference' ? { referenceSource: resolved.reference.source } : {}),
-    };
-  } else {
-    throw new TypeError('Expected a canonical UTC instant or resolved SM1 memorial time.');
+  if (time.kind !== 'utc') {
+    throw new TypeError('Expected a canonical UTC instant; resolved SM1 times must use the service adapter.');
   }
+  const utc = time.utc;
+  const timeMetadata: PreparedSkyChartSnapshotInput['time'] = { kind: 'utc', disambiguation: null };
   if (typeof utc !== 'string') throw new TypeError('UTC must be a canonical ISO string.');
   const date = new Date(utc);
   validateInstant(date);
@@ -158,7 +139,7 @@ export function prepareSkyChartSnapshotInput(input: SkyChartSnapshotInput): Prep
   return Object.freeze({
     utc,
     time: Object.freeze(timeMetadata),
-    location: copyLocation(location),
+    location: copyLocation(input.location),
     limitingMagnitude: magnitude,
   });
 }

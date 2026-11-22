@@ -1,4 +1,5 @@
 import { calculateSky } from '../domain/astronomy';
+import { assertMemorialTimeConsistency, type MemorialTime } from '../lib/memorialTime';
 import {
   assertSkyChartCatalog,
   buildPreparedSkyChartSnapshot,
@@ -6,9 +7,41 @@ import {
   prepareSkyChartSnapshotInput,
   type SkyChartSnapshot,
   type SkyChartSnapshotInput,
+  type PreparedSkyChartSnapshotInput,
 } from '../domain/skyChartSnapshot';
 import { STAR_CATALOG, starCatalogLoaded, type CatalogStar } from '../domain/stars';
 import type { LocationInfo, SkyState } from '../types';
+
+/** The SM1 branch is validated here: domain code never imports from lib/. */
+export type SkyChartSnapshotRequest =
+  | SkyChartSnapshotInput
+  | { readonly time: MemorialTime; readonly limitingMagnitude?: number };
+
+/** Reuse SM1's saved UTC/offset/DST consistency check before handing off pure UTC domain input. */
+export function prepareSkyChartSnapshotRequest(input: SkyChartSnapshotRequest): PreparedSkyChartSnapshotInput {
+  if (!input || typeof input !== 'object' || !input.time || typeof input.time !== 'object') {
+    throw new TypeError('Sky chart request must include an explicit time.');
+  }
+  const time = input.time;
+  if (time.kind !== 'exact' && time.kind !== 'reference') {
+    return prepareSkyChartSnapshotInput(input as SkyChartSnapshotInput);
+  }
+  assertMemorialTimeConsistency(time);
+  const prepared = prepareSkyChartSnapshotInput({
+    time: { kind: 'utc', utc: time.utc },
+    location: time.location,
+    limitingMagnitude: input.limitingMagnitude,
+  });
+  return Object.freeze({
+    ...prepared,
+    time: Object.freeze({
+      kind: time.kind,
+      disambiguation: time.disambiguation,
+      offset: time.offset,
+      ...(time.kind === 'reference' ? { referenceSource: time.reference.source } : {}),
+    }),
+  });
+}
 
 export type SkyChartSnapshotStatus =
   | { readonly status: 'loading'; readonly requestId: number }
@@ -53,7 +86,7 @@ export function createSkyChartSnapshotCoordinator(
   let latestRequest = 0;
   let loadingCatalog: Promise<void> | null = null;
   const generate = async (
-    input: SkyChartSnapshotInput,
+    input: SkyChartSnapshotRequest,
     onStatus?: (state: SkyChartSnapshotStatus) => void,
   ): Promise<SkyChartSnapshotStatus> => {
     const requestId = ++latestRequest;
@@ -61,9 +94,9 @@ export function createSkyChartSnapshotCoordinator(
       if (requestId === latestRequest) onStatus?.(state);
       return state;
     };
-    let prepared: ReturnType<typeof prepareSkyChartSnapshotInput>;
+    let prepared: PreparedSkyChartSnapshotInput;
     try {
-      prepared = prepareSkyChartSnapshotInput(input);
+      prepared = prepareSkyChartSnapshotRequest(input);
     } catch (error) {
       return emit({ status: 'error', requestId, code: 'input', message: diagnostic(error) });
     }

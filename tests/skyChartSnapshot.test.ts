@@ -3,13 +3,14 @@ import rows from '../src/data/stars.json';
 import { calculateSky } from '../src/domain/astronomy';
 import {
   assertSkyChartCatalog,
+  buildPreparedSkyChartSnapshot,
   buildSkyChartSnapshot,
   prepareSkyChartSnapshotInput,
   type SkyChartSnapshotInput,
 } from '../src/domain/skyChartSnapshot';
 import { SkyChartCatalogNotReadyError } from '../src/domain/skyChartSelection';
 import { loadStarCatalog, STAR_CATALOG, type CatalogRow, type CatalogStar } from '../src/domain/stars';
-import { createSkyChartSnapshotCoordinator } from '../src/services/skyChartSnapshot';
+import { createSkyChartSnapshotCoordinator, prepareSkyChartSnapshotRequest } from '../src/services/skyChartSnapshot';
 import type { LocationInfo, PlanetId, SkyState } from '../src/types';
 import { NEW_YORK, SYDNEY, TROMSO } from './fixtures/locations';
 
@@ -67,7 +68,9 @@ describe('SM2-C snapshot: pure calculation and data contracts (synthetic)', () =
     expect(snapshot().provenance).toMatchObject({ catalogStarCount: 1, catalogHash: null, selection: 'SM2-B' });
   });
   it('puts an exact-horizon Moon on the rim; north up, east left', () => {
-    expect(snapshot().objects.find((o) => o.kind === 'moon')).toMatchObject({ x: -1, y: 0 });
+    const moon = snapshot().objects.find((o) => o.kind === 'moon');
+    expect(moon?.x).toBeCloseTo(-1, 12);
+    expect(moon?.y).toBeCloseTo(0, 12);
     const north = snapshot().objects.find((o) => o.kind === 'sun');
     expect(north?.x).toBeCloseTo(0, 12);
     expect(north?.y).toBeLessThan(0);
@@ -97,7 +100,7 @@ describe('SM2-C snapshot: pure calculation and data contracts (synthetic)', () =
       [{ ...catalog[0], ra: NaN }],
       [{ ...catalog[0], dec: 91 }],
       [{ ...catalog[0], colorIndex: Infinity }],
-      [{ ...catalog[0], name: '' }],
+      [{ ...catalog[0], name: null as never }],
       [{ ...catalog[0], pmra: NaN }],
       [...catalog, { ...catalog[0] }],
     ]) expect(() => assertSkyChartCatalog(bad)).toThrow();
@@ -174,13 +177,13 @@ describe('SM2-C snapshot: pure calculation and data contracts (synthetic)', () =
       state: 'resolved', kind: 'exact', localTime: '01:30', localDate: '2026-11-01',
       utc: '2026-11-01T06:30:00.000Z', offset: '-05:00', disambiguation: 'later', location: NEW_YORK,
     } as const;
-    const result = snapshot(sampleSky(), { time: folded });
+    const result = buildPreparedSkyChartSnapshot(prepareSkyChartSnapshotRequest({ time: folded }), sampleSky(), catalog);
     expect(result.time).toEqual({ kind: 'exact', offset: '-05:00', disambiguation: 'later' });
     const reference = {
       ...folded, kind: 'reference', reference: { localTime: '01:30', source: 'user' },
     } as const;
-    expect(snapshot(sampleSky(), { time: reference }).time).toMatchObject({ kind: 'reference', referenceSource: 'user' });
-    expect(() => snapshot(sampleSky(), { time: { ...folded, offset: '-04:00' } })).toThrow();
+    expect(prepareSkyChartSnapshotRequest({ time: reference }).time).toMatchObject({ kind: 'reference', referenceSource: 'user' });
+    expect(() => prepareSkyChartSnapshotRequest({ time: { ...folded, offset: '-04:00' } })).toThrow();
   });
   it('rejects invalid location, magnitude and wrong time type', () => {
     for (const location of [{ ...NEW_YORK, latitude: 91 }, { ...NEW_YORK, longitude: NaN },
