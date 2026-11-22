@@ -1,6 +1,6 @@
 # Sky moments: SM0-B time and science fixture register
 
-Status: **time semantics specified; SM2 astronomy checks pending**. Based on `main` at `0e76c7f` (November 22, 2026). Inputs are fictional, not personal records. This register complements the human-session script in [`SKY-MOMENT-TEST.md`](SKY-MOMENT-TEST.md); it is not a report of completed scientific validation.
+Status: **SM1 time semantics covered; SM2-A geometry tested; SM2-B/C astronomy checks pending**. Based on `main` at `0e76c7f` (November 22, 2026). Inputs are fictional, not personal records. This register complements the human-session script in [`SKY-MOMENT-TEST.md`](SKY-MOMENT-TEST.md); it is not a report of completed scientific validation.
 
 ## Frozen rules for SM1-A
 
@@ -34,12 +34,12 @@ These rules follow [`SKY-MOMENTS-PLAN.md`](SKY-MOMENTS-PLAN.md) §§5–6, 8, 10
 
 Fixture values above are reproducible civil-time expectations, **not** newly acquired independent star-position results. The implementation uses the runtime IANA database; future browser/Node tzdb updates may change pre-modern historical rules, so recorded offsets must be kept when archiving works.
 
-## SM2 reference scenes — definitions, not acceptance results
+## SM2 reference scenes — geometry evidence and pending astronomy checks
 
 | ID  | Input or mathematical scenario                                            | Expected quantity / rule                                                                                                            | Validation plan and reference                                                                                                               | Status                                                            |
 | --- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| S01 | Synthetic apparent altitude 90° (zenith), any azimuth                     | `r=0` at circle center                                                                                                              | Analytical projection formula in plan §6; direct pure-function test in SM2                                                                  | Pending implementation                                            |
-| S02 | Synthetic apparent altitude 0° and azimuth N=0°, E=90°, S=180°, W=270°    | North top, east **left**, south bottom, west right on rim                                                                           | Analytic equations `x=cx-Rr sin(az)`, `y=cy-Rr cos(az)`; independent expected coordinates                                                   | Pending implementation                                            |
+| S01 | Synthetic apparent altitude 90° (zenith), any azimuth                     | `r=0` at circle center                                                                                                              | Analytical projection formula in plan §6; direct pure-function test in SM2                                                                  | Verified (SM2-A)                                                  |
+| S02 | Synthetic apparent altitude 0° and azimuth N=0°, E=90°, S=180°, W=270°    | North top, east **left**, south bottom, west right on rim                                                                           | Analytic equations `x=cx-Rr sin(az)`, `y=cy-Rr cos(az)`; independent expected coordinates                                                   | Verified (SM2-A)                                                  |
 | S03 | New York vs Sydney, same UTC, bright Sun/planet/star around the horizon   | Compare apparent altitude/azimuth; center `alt>=0` only                                                                             | Existing `tests/fixtures/horizons` and `tests/fixtures/planets` with provenance; match refraction conventions in `SCIENCE.md`               | Existing astronomy regressions only; SM2 selection not yet tested |
 | S04 | New York daytime 2026-06-21 12:00 local                                   | Diagram plots geometrically above-horizon stars even in daylight; interactive sky stays daylight                                    | Existing `calculateSky` plus independently checked ephemerides as appropriate; **no numeric star references assigned yet**                  | Pending separate display test                                     |
 | S05 | Tromsø summer night, Sydney southern winter sky                           | Verify north/south hemisphere orientation and high-latitude day/night claims                                                        | Existing USNO/Horizons cached queries in `tests/fixtures`; create SM2 case-specific expected observations                                   | Pending                                                           |
@@ -73,3 +73,11 @@ For future numerical checks, record: source URL/query, response file, retrieval 
   bounds and local dates on either side of the UTC range. These are **time
   consistency tests**, not independent astronomical validation or tzdb-version
   certification.
+
+## SM2-A circular-projection evidence (November 22, 2026)
+
+The new `projectSkyChart(altitude, azimuth)` pure function takes apparent center altitude and north-clockwise azimuth in **degrees**. Output is a unit-radius disk, centered at the zenith, with screen `x` right and `y` down. The independent analytic anchors in `tests/skyChartProjection.test.ts` establish **S01** (90 degrees at arbitrary azimuth is exactly `(0,0)`) and **S02** (horizon N `(0,-1)`, E `(-1,0)`, S `(0,1)`, W `(1,0)`). Intermediate north positions at altitudes 30, 45, 60 degrees have radii `2/3`, `1/2`, `1/3`; NE at 45 degrees azimuth follows `sqrt(1/2)` per axis at the horizon. These are synthetic analytic geometry cases derived from plan section 6, not JPL/USNO observational measurements.
+
+For finite inputs, altitude `0` degrees is drawable and `[-90,0)` returns `null`; non-finite inputs or altitude outside `[-90,90]` throw `RangeError`. Azimuth wraps modulo 360 degrees. Numerical assertions use 10 decimal places for coordinates and 12 for unit-circle distance; tiny IEEE-754 roundoff at cardinal points is expected. No canvas, timezone, location, camera or browser context is an input. Tests separately cover diagonal quadrants, scale, near-zenith stability, invalid values, and hemisphere-neutral compass orientation.
+
+**Only S01 and S02 have SM2-A implementation evidence.** S03–S07 remain pending: their astronomical observations, daylight/default object-selection policy, catalog/snapshot lifecycle, historical accuracy and new-projection crescent orientation are not verified by these geometry tests. The existing explorer and perspective postcard projection are unchanged. SM2-B is the next separate batch; SM2-C and any drawing/PNG work are later.
