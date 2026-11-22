@@ -145,6 +145,15 @@ function recordingContext(width = 1200, height = 1500) {
   const ctx = new Proxy(state, {
     get(target, name) {
       if (name in target) return target[name as keyof typeof target];
+      if (name === 'measureText') {
+        return (text: string) => ({ width: text.length * 8 });
+      }
+      if (name === 'createLinearGradient' || name === 'createRadialGradient') {
+        return (...args: number[]) => {
+          calls.push({ method: String(name), args, fillStyle: state.fillStyle, font: state.font });
+          return { addColorStop: (_offset: number, _color: string) => undefined };
+        };
+      }
       return (...args: (string | number)[]) => {
         calls.push({ method: String(name), args, fillStyle: state.fillStyle, font: state.font });
       };
@@ -165,9 +174,32 @@ describe('SM3-A shared fixed layout and drawing', () => {
     expect(layout.disc.cx).toBe(600);
     expect(layout.disc.cy - layout.disc.radius).toBeGreaterThan(0);
     expect(layout.disc.cy + layout.disc.radius).toBeLessThan(950);
-    expect(layout.blocks.every((b) => b.top >= 985 && b.top + b.lines.length * b.lineHeight <= 1500)).toBe(
+    expect(layout.blocks.every((b) => b.top >= 972 && b.top + b.lines.length * b.lineHeight <= 1500)).toBe(
       true,
     );
+  });
+
+  it('gives both themes editorial gradients and framing without moving scientific positions', () => {
+    for (const theme of ['midnight', 'paper'] as const) {
+      const layout = makeLayout(theme);
+      const { ctx, calls } = recordingContext();
+      drawSkyChartArtwork(ctx, layout, fonts);
+      expect(calls.filter((c) => c.method === 'createLinearGradient')).toHaveLength(1);
+      expect(calls.filter((c) => c.method === 'createRadialGradient')).toHaveLength(3);
+      expect(calls.filter((c) => c.method === 'strokeRect')).toHaveLength(2);
+      expect(layout.blocks[0].font).toContain('Georgia');
+      expect(layout.objects.map((o) => [o.px, o.py])).toEqual(
+        makeLayout(theme === 'midnight' ? 'paper' : 'midnight').objects.map((o) => [o.px, o.py]),
+      );
+    }
+  });
+
+  it('uses a Chinese-appropriate serif for titles and keeps text checks in the fixed grid', () => {
+    const layout = makeLayout('paper', 'zh-Hans');
+    expect(layout.blocks[0].font).toContain('Songti SC');
+    expect(layout.blocks[4].font).toContain('Songti SC');
+    expect(layout.blocks[5].font).toContain('system-ui');
+    expect(layout.blocks[0].top).toBe(972);
   });
 
   it('keeps north up, east left, south down and west right with exact anchor mapping', () => {

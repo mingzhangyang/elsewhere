@@ -260,11 +260,11 @@ export function createSkyArtwork(input: SkyArtworkInput): SkyArtwork {
       title ||
       (zh
         ? isReference
-          ? '这一天的星空'
-          : '此刻的星空'
+          ? '星光记得这一天'
+          : '星光记得这一刻'
         : isReference
-          ? 'The sky on this day'
-          : 'Under this sky'),
+          ? 'The sky remembers this day'
+          : 'The sky remembers'),
     phrase,
     location: plainText(
       input.snapshot.location.name + ' · ' + input.snapshot.location.country,

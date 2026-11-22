@@ -148,7 +148,7 @@ function wrapText(
 }
 
 function starRadius(magnitude: number): number {
-  return Math.max(1.25, Math.min(4.5, 1.5 + (6 - magnitude) * 0.38));
+  return Math.max(1.35, Math.min(4.8, 1.45 + (6 - magnitude) * 0.38));
 }
 
 /**
@@ -180,31 +180,38 @@ export function layoutSkyChartArtwork(
     lineHeight: number,
     maxLines: number,
   ): SkyChartTextBlock => {
-    const font = weight + ' ' + fontSize + 'px ' + fonts.family;
+    const family =
+    role === 'title' || label === 'phrase'
+      ? artwork.locale === 'zh-Hans'
+        ? '"Songti SC", "Noto Serif CJK SC", "SimSun", serif'
+        : 'Georgia, "Times New Roman", serif'
+      : fonts.family;
+  const style = label === 'phrase' && artwork.locale === 'en' ? 'italic ' : '';
+  const font = style + weight + ' ' + fontSize + 'px ' + family;
     const lines = wrapText(value ?? '', artwork.locale, font, 1052, maxLines, metrics, label);
     return Object.freeze({ role, top, lineHeight, font, lines });
   };
   const blocks = Object.freeze([
-    text(artwork.title, 'title', 'title', 985, 43, 600, 49, 2),
-    text(artwork.location, 'location', 'metadata', 1090, 28, 500, 32, 2),
-    text(artwork.dateTime, 'date/time', 'metadata', 1164, 26, 500, 32, 1),
-    text(artwork.timeNote, 'time intent', 'subtle', 1207, 20, 400, 27, 1),
-    text(artwork.phrase, 'phrase', 'metadata', 1246, 23, 400, 32, 2),
-    text(artwork.scienceNote, 'scientific note', 'note', 1332, 17, 400, 23, 2),
-    text(artwork.daylightNote, 'daytime note', 'note', 1385, 16, 400, 22, 2),
-    text(artwork.starCredit, 'HYG attribution', 'credit', 1433, 15, 400, 20, 1),
-    text(artwork.astronomyCredit, 'astronomy attribution', 'credit', 1463, 15, 400, 20, 1),
+    text(artwork.title, 'title', 'title', 972, 52, 400, 58, 2),
+    text(artwork.location, 'location', 'metadata', 1093, 27, 500, 32, 2),
+    text(artwork.dateTime, 'date/time', 'metadata', 1164, 24, 400, 32, 1),
+    text(artwork.timeNote, 'time intent', 'subtle', 1206, 19, 400, 26, 1),
+    text(artwork.phrase, 'phrase', 'metadata', 1248, 26, 400, 32, 2),
+    text(artwork.scienceNote, 'scientific note', 'note', 1331, 17, 400, 22, 2),
+    text(artwork.daylightNote, 'daytime note', 'note', 1381, 16, 400, 21, 2),
+    text(artwork.starCredit, 'HYG attribution', 'credit', 1428, 15, 400, 20, 1),
+    text(artwork.astronomyCredit, 'astronomy attribution', 'credit', 1453, 15, 400, 20, 1),
   ]);
   const slots = [
-    [985, 1083],
-    [1090, 1154],
+    [972, 1088],
+    [1093, 1157],
     [1164, 1196],
-    [1207, 1234],
-    [1246, 1310],
-    [1332, 1378],
-    [1385, 1429],
-    [1433, 1453],
-    [1463, 1483],
+    [1206, 1232],
+    [1248, 1312],
+    [1331, 1375],
+    [1381, 1423],
+    [1428, 1448],
+    [1453, 1473],
   ] as const;
   for (let i = 0; i < blocks.length; i++) {
     const block = blocks[i];
@@ -262,7 +269,19 @@ export function layoutSkyChartArtwork(
 
 export interface SkyChartPalette {
   readonly background: string;
+  readonly backgroundBottom: string;
+  readonly ambient: string;
+  readonly ambientFade: string;
   readonly disc: string;
+  readonly discHighlight: string;
+  readonly discEdge: string;
+  readonly discWash: string;
+  readonly discWashFade: string;
+  readonly frame: string;
+  readonly accent: string;
+  readonly accentSoft: string;
+  readonly halo: string;
+  readonly footer: string;
   readonly grid: string;
   readonly rim: string;
   readonly title: string;
@@ -278,44 +297,225 @@ export interface SkyChartPalette {
   readonly planet: string;
 }
 
-export const SKY_CHART_PALETTES: Readonly<Record<SkyArtworkTheme, Readonly<SkyChartPalette>>> = Object.freeze(
-  {
+export const SKY_CHART_PALETTES: Readonly<Record<SkyArtworkTheme, Readonly<SkyChartPalette>>> =
+  Object.freeze({
     midnight: Object.freeze({
-      background: '#0b152c',
-      disc: '#112443',
-      grid: '#334b70',
-      rim: '#91a9c6',
-      title: '#f4efe6',
-      metadata: '#e8e4dc',
-      subtle: '#c6d3e4',
-      note: '#bbc9db',
-      credit: '#a8b9d2',
-      star: '#f8f4e9',
-      starBlue: '#c9ddfa',
-      starWarm: '#f3cfac',
-      sun: '#f6cc85',
-      moon: '#eee6d6',
-      planet: '#c7dfd7',
+      background: '#090e22',
+      backgroundBottom: '#20172d',
+      ambient: 'rgba(165, 83, 163, 0.22)',
+      ambientFade: 'rgba(165, 83, 163, 0)',
+      disc: '#18264b',
+      discHighlight: '#30456d',
+      discEdge: '#101930',
+      discWash: 'rgba(176, 111, 163, 0.19)',
+      discWashFade: 'rgba(176, 111, 163, 0)',
+      frame: '#715e7e',
+      accent: '#d9b88b',
+      accentSoft: '#9f869f',
+      halo: '#f4ddc5',
+      footer: 'rgba(196, 157, 174, 0.24)',
+      grid: '#4b526d',
+      rim: '#c7a77d',
+      title: '#fff0dd',
+      metadata: '#eddfdf',
+      subtle: '#d8c1d1',
+      note: '#d2c4d1',
+      credit: '#b9aabd',
+      star: '#fff7ef',
+      starBlue: '#d8e6ff',
+      starWarm: '#ffd9b5',
+      sun: '#ffd28a',
+      moon: '#f9ebdc',
+      planet: '#cddbe5',
     }),
     paper: Object.freeze({
-      background: '#f5f0e6',
-      disc: '#ebe6d9',
-      grid: '#c8bdad',
-      rim: '#6e7a8a',
-      title: '#26364c',
-      metadata: '#304259',
-      subtle: '#4d5c6c',
-      note: '#445466',
-      credit: '#4c5a6b',
-      star: '#3e526e',
-      starBlue: '#365e86',
-      starWarm: '#956245',
-      sun: '#b47a35',
-      moon: '#5c6674',
-      planet: '#356976',
+      background: '#fbf5ec',
+      backgroundBottom: '#f0e5e3',
+      ambient: 'rgba(213, 137, 157, 0.24)',
+      ambientFade: 'rgba(213, 137, 157, 0)',
+      disc: '#e8e8ea',
+      discHighlight: '#f7e8ed',
+      discEdge: '#d7dce5',
+      discWash: 'rgba(170, 146, 184, 0.17)',
+      discWashFade: 'rgba(170, 146, 184, 0)',
+      frame: '#c3a7a3',
+      accent: '#9a685d',
+      accentSoft: '#b7928c',
+      halo: '#c3a8b2',
+      footer: 'rgba(155, 106, 103, 0.28)',
+      grid: '#c3afbb',
+      rim: '#9a756f',
+      title: '#463447',
+      metadata: '#544051',
+      subtle: '#665463',
+      note: '#59485a',
+      credit: '#6d5d6a',
+      star: '#3e4f68',
+      starBlue: '#456c8e',
+      starWarm: '#915e55',
+      sun: '#b27841',
+      moon: '#6e7084',
+      planet: '#61718d',
     }),
-  },
-);
+  });
+
+/**
+ * The colored washes and engraved border are editorial decoration, NOT a
+ * computed Milky Way, a weather simulation, or additional celestial bodies.
+ * All celestial dots and halos are anchored to actual SM2-C objects only.
+ */
+function paintArtworkGround(ctx: CanvasRenderingContext2D, palette: SkyChartPalette): void {
+  const wash = ctx.createLinearGradient(0, 0, 0, 1500);
+  wash.addColorStop(0, palette.background);
+  wash.addColorStop(1, palette.backgroundBottom);
+  ctx.fillStyle = wash;
+  ctx.fillRect(0, 0, 1200, 1500);
+
+  const ambient = ctx.createRadialGradient(670, 560, 70, 670, 560, 910);
+  ambient.addColorStop(0, palette.ambient);
+  ambient.addColorStop(1, palette.ambientFade);
+  ctx.fillStyle = ambient;
+  ctx.fillRect(0, 0, 1200, 1500);
+
+  ctx.save();
+  ctx.strokeStyle = palette.frame;
+  ctx.lineWidth = 1.1;
+  ctx.globalAlpha = 0.68;
+  ctx.strokeRect(29, 29, 1142, 1462);
+  ctx.globalAlpha = 0.3;
+  ctx.strokeRect(41, 41, 1118, 1438);
+  ctx.restore();
+}
+
+function paintSkyDisc(
+  ctx: CanvasRenderingContext2D,
+  palette: SkyChartPalette,
+  cx: number,
+  cy: number,
+  radius: number,
+): void {
+  const sky = ctx.createRadialGradient(cx - radius * 0.35, cy - radius * 0.34, 15, cx, cy, radius * 1.16);
+  sky.addColorStop(0, palette.discHighlight);
+  sky.addColorStop(0.68, palette.disc);
+  sky.addColorStop(1, palette.discEdge);
+  ctx.fillStyle = sky;
+  dot(ctx, cx, cy, radius);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, TWO_PI);
+  ctx.clip();
+  const softWash = ctx.createRadialGradient(cx + radius * 0.42, cy + radius * 0.57, 10, cx + radius * 0.42, cy + radius * 0.57, radius * 0.95);
+  softWash.addColorStop(0, palette.discWash);
+  softWash.addColorStop(1, palette.discWashFade);
+  ctx.fillStyle = softWash;
+  ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+  ctx.restore();
+}
+
+function paintEngravedRing(
+  ctx: CanvasRenderingContext2D,
+  palette: SkyChartPalette,
+  cx: number,
+  cy: number,
+  radius: number,
+): void {
+  ctx.save();
+  ctx.strokeStyle = palette.rim;
+  ctx.lineWidth = 1.9;
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, TWO_PI);
+  ctx.stroke();
+
+  ctx.globalAlpha = 0.56;
+  ctx.lineWidth = 0.9;
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius + 12, 0, TWO_PI);
+  ctx.stroke();
+
+  // The ticks are anchored to compass angles but not a second projection.
+  // Cardinal labels replace ticks at N/E/S/W, so they never collide.
+  for (let index = 0; index < 72; index++) {
+    if (index % 18 === 0) continue;
+    const a = (index * TWO_PI) / 72 - Math.PI / 2;
+    const length = index % 6 === 0 ? 9 : 4;
+    const inner = radius + 14;
+    const outer = inner + length;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * inner, cy + Math.sin(a) * inner);
+    ctx.lineTo(cx + Math.cos(a) * outer, cy + Math.sin(a) * outer);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawTracking(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  spacing: number,
+  align: 'left' | 'right',
+): void {
+  const segments = [...new Intl.Segmenter('en', { granularity: 'grapheme' }).segment(text)];
+  const widths = segments.map(({ segment }) => ctx.measureText(segment).width);
+  const total = widths.reduce((a, b) => a + b, 0) + Math.max(0, segments.length - 1) * spacing;
+  let position = align === 'left' ? x : x - total;
+  for (let i = 0; i < segments.length; i++) {
+    ctx.fillText(segments[i].segment, position, y);
+    position += widths[i] + spacing;
+  }
+}
+
+function paintEditorialDetails(
+  ctx: CanvasRenderingContext2D,
+  layout: SkyChartArtworkLayout,
+  palette: SkyChartPalette,
+): void {
+  ctx.save();
+  ctx.font = '500 15px ' + layout.fonts.family;
+  ctx.fillStyle = palette.accent;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  drawTracking(ctx, 'ELSEWHERE', 76, 63, 3, 'left');
+  drawTracking(
+    ctx,
+    layout.artwork.locale === 'zh-Hans' ? '星 空 纪 念' : 'CELESTIAL KEEPSAKE',
+    1125,
+    63,
+    layout.artwork.locale === 'zh-Hans' ? 2 : 1.6,
+    'right',
+  );
+
+  // A flourish is typographic furniture outside the projected sky. No fake stars.
+  if (layout.blocks[0].lines.length === 1) {
+    ctx.globalAlpha = 0.72;
+    ctx.strokeStyle = palette.accentSoft;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(475, 1064);
+    ctx.lineTo(567, 1064);
+    ctx.moveTo(633, 1064);
+    ctx.lineTo(725, 1064);
+    ctx.stroke();
+    ctx.fillStyle = palette.accent;
+    ctx.beginPath();
+    ctx.moveTo(600, 1059);
+    ctx.lineTo(605, 1064);
+    ctx.lineTo(600, 1069);
+    ctx.lineTo(595, 1064);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  ctx.strokeStyle = palette.footer;
+  ctx.globalAlpha = 0.84;
+  ctx.beginPath();
+  ctx.moveTo(174, 1320);
+  ctx.lineTo(1026, 1320);
+  ctx.stroke();
+  ctx.restore();
+}
 
 function dot(ctx: CanvasRenderingContext2D, x: number, y: number, r: number): void {
   ctx.beginPath();
@@ -334,8 +534,29 @@ function drawBody(ctx: CanvasRenderingContext2D, object: SkyChartDrawObject, pal
           : object.colorIndex > 1.2
             ? palette.starWarm
             : palette.star;
-    ctx.globalAlpha = Math.max(0.62, Math.min(1, 0.72 + (6 - (object.magnitude ?? 6)) * 0.035));
-    dot(ctx, px, py, radius);
+    ctx.globalAlpha = Math.max(0.42, Math.min(1, 0.5 + (6 - (object.magnitude ?? 6)) * 0.08));
+    if ((object.magnitude ?? 6) < 2.5) {
+      ctx.save();
+      ctx.shadowColor = palette.halo;
+      ctx.shadowBlur = (object.magnitude ?? 6) < 0.8 ? 13 : 7;
+      dot(ctx, px, py, radius);
+      ctx.restore();
+    } else {
+      dot(ctx, px, py, radius);
+    }
+    // Only the brightest *real* stars earn a restrained four-point sparkle.
+    if ((object.magnitude ?? 6) < 0.5) {
+      const reach = radius + 5.5;
+      ctx.strokeStyle = ctx.fillStyle;
+      ctx.lineWidth = 0.9;
+      ctx.globalAlpha = 0.65;
+      ctx.beginPath();
+      ctx.moveTo(px - reach, py);
+      ctx.lineTo(px + reach, py);
+      ctx.moveTo(px, py - reach);
+      ctx.lineTo(px, py + reach);
+      ctx.stroke();
+    }
     ctx.globalAlpha = 1;
     return;
   }
@@ -387,33 +608,21 @@ export function drawSkyChartArtwork(
   try {
     ctx.scale(width / layout.width, height / layout.height);
     ctx.clearRect(0, 0, layout.width, layout.height);
-    ctx.fillStyle = palette.background;
-    ctx.fillRect(0, 0, layout.width, layout.height);
+    paintArtworkGround(ctx, palette);
     const { cx, cy, radius } = layout.disc;
-    ctx.fillStyle = palette.disc;
-    dot(ctx, cx, cy, radius);
+    paintSkyDisc(ctx, palette, cx, cy, radius);
     ctx.save();
     try {
       ctx.beginPath();
       ctx.arc(cx, cy, radius, 0, TWO_PI);
       ctx.clip();
-      ctx.strokeStyle = palette.grid;
-      ctx.lineWidth = 1.35;
-      for (const portion of [1 / 3, 2 / 3]) {
-        ctx.beginPath();
-        ctx.arc(cx, cy, radius * portion, 0, TWO_PI);
-        ctx.stroke();
-      }
       for (const object of layout.objects) drawBody(ctx, object, palette);
     } finally {
       ctx.restore();
     }
-    ctx.strokeStyle = palette.rim;
-    ctx.lineWidth = 2.1;
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius, 0, TWO_PI);
-    ctx.stroke();
-    ctx.font = '600 22px ' + fonts.family;
+    paintEngravedRing(ctx, palette, cx, cy, radius);
+    paintEditorialDetails(ctx, layout, palette);
+    ctx.font = '500 20px ' + fonts.family;
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'center';
     ctx.fillStyle = palette.subtle;

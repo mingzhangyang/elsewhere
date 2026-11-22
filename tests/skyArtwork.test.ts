@@ -115,7 +115,7 @@ describe('SM3-A artwork model and SM1 civil-time contract', () => {
   it('builds a versioned English artwork with all permanent scientific credits', () => {
     const artwork = createSkyArtwork(artworkInput());
     expect(artwork.formatVersion).toBe(1);
-    expect(artwork.title).toBe('Under this sky');
+    expect(artwork.title).toBe('The sky remembers');
     expect(artwork.location).toContain('New York');
     expect(artwork.dateTime).toContain('June 21, 2026 · 12:00 (UTC−04:00)');
     expect(artwork.timeNote).toContain('Known exact');
@@ -128,7 +128,7 @@ describe('SM3-A artwork model and SM1 civil-time contract', () => {
 
   it('uses the selected Chinese artwork language, not the host language', () => {
     const zh = createSkyArtwork(artworkInput({ locale: 'zh-Hans', theme: 'paper' }));
-    expect(zh.title).toBe('此刻的星空');
+    expect(zh.title).toBe('星光记得这一刻');
     expect(zh.dateTime).toContain('2026年6月21日');
     expect(zh.timeNote).toContain('具体时刻');
     expect(zh.scienceNote).toContain('天气');
@@ -153,7 +153,7 @@ describe('SM3-A artwork model and SM1 civil-time contract', () => {
 
   it('accepts empty optional text, normalizes whitespace and treats HTML as literal text', () => {
     const blank = createSkyArtwork(artworkInput({ title: '', phrase: '  ' }));
-    expect(blank.title).toBe('Under this sky');
+    expect(blank.title).toBe('The sky remembers');
     expect(blank.phrase).toBe('');
     const literal = createSkyArtwork(artworkInput({ title: '<script>alert(1)</script>' }));
     expect(literal.title).toBe('<script>alert(1)</script>');
@@ -173,7 +173,7 @@ describe('SM3-A artwork model and SM1 civil-time contract', () => {
     expect(artwork.civilTime.utc).toBe('2026-06-22T01:15:00.000Z');
     expect(artwork.civilTime.referenceSource).toBe('user');
     expect(artwork.timeNote).toContain('not a known exact event time');
-    expect(artwork.title).toBe('The sky on this day');
+    expect(artwork.title).toBe('The sky remembers this day');
   });
 
   it('keeps default 22:00 only when already resolved and saved by SM1', () => {
