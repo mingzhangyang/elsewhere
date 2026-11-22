@@ -101,12 +101,15 @@ function validLocation(location: unknown): location is LocationInfo {
     place.name.trim().length > 0 &&
     typeof place.country === 'string' &&
     place.country.trim().length > 0 &&
+    typeof place.latitude === 'number' &&
     Number.isFinite(place.latitude) &&
     place.latitude >= -90 &&
     place.latitude <= 90 &&
+    typeof place.longitude === 'number' &&
     Number.isFinite(place.longitude) &&
     place.longitude >= -180 &&
     place.longitude <= 180 &&
+    typeof place.elevation === 'number' &&
     Number.isFinite(place.elevation)
   );
 }
@@ -188,7 +191,10 @@ export async function resolveMemorialTime(draft: MemorialTimeDraft): Promise<Mem
   const candidates = supported
     .map((date) => ({ utc: date.toISOString(), offset: offsetAt(date, draft.location.timezone) }))
     .sort((a, b) => a.utc.localeCompare(b.utc));
-  if (draft.choiceUtc !== undefined && !candidates.some((candidate) => candidate.utc === draft.choiceUtc)) {
+  if (
+    draft.choiceUtc !== undefined &&
+    (dates.length !== 2 || !candidates.some((candidate) => candidate.utc === draft.choiceUtc))
+  ) {
     return error('invalid-choice', 'The selected UTC candidate does not match this local time and location.');
   }
   if (dates.length === 2 && draft.choiceUtc === undefined) {

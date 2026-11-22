@@ -62,6 +62,12 @@ describe('memorial-time restoration and UTC boundary (SM1-C)', () => {
     expect(clock.draft.choiceUtc).toBeUndefined();
     expect((await resolveMemorialTime(clock.draft)).status).toBe('ambiguous');
 
+    const unique = await restoreMemorialDraft({
+      ...exact(ny, '2026-11-02', '01:30'),
+      choiceUtc: '2026-11-02T06:30:00.000Z',
+    });
+    expect(unique).toMatchObject({ status: 'needs-confirmation', code: 'invalid-choice' });
+
     const date = await restoreMemorialDraft({ ...folded, localDate: '2026-11-02' });
     expect(date).toMatchObject({ status: 'needs-confirmation', code: 'invalid-choice' });
     if (date.status === 'needs-confirmation') {
