@@ -181,13 +181,13 @@ export function layoutSkyChartArtwork(
     maxLines: number,
   ): SkyChartTextBlock => {
     const family =
-    role === 'title' || label === 'phrase'
-      ? artwork.locale === 'zh-Hans'
-        ? '"Songti SC", "Noto Serif CJK SC", "SimSun", serif'
-        : 'Georgia, "Times New Roman", serif'
-      : fonts.family;
-  const style = label === 'phrase' && artwork.locale === 'en' ? 'italic ' : '';
-  const font = style + weight + ' ' + fontSize + 'px ' + family;
+      role === 'title' || label === 'phrase'
+        ? artwork.locale === 'zh-Hans'
+          ? '"Songti SC", "Noto Serif CJK SC", "SimSun", serif'
+          : 'Georgia, "Times New Roman", serif'
+        : fonts.family;
+    const style = label === 'phrase' && artwork.locale === 'en' ? 'italic ' : '';
+    const font = style + weight + ' ' + fontSize + 'px ' + family;
     const lines = wrapText(value ?? '', artwork.locale, font, 1052, maxLines, metrics, label);
     return Object.freeze({ role, top, lineHeight, font, lines });
   };
@@ -297,8 +297,8 @@ export interface SkyChartPalette {
   readonly planet: string;
 }
 
-export const SKY_CHART_PALETTES: Readonly<Record<SkyArtworkTheme, Readonly<SkyChartPalette>>> =
-  Object.freeze({
+export const SKY_CHART_PALETTES: Readonly<Record<SkyArtworkTheme, Readonly<SkyChartPalette>>> = Object.freeze(
+  {
     midnight: Object.freeze({
       background: '#090e22',
       backgroundBottom: '#20172d',
@@ -357,7 +357,8 @@ export const SKY_CHART_PALETTES: Readonly<Record<SkyArtworkTheme, Readonly<SkyCh
       moon: '#6e7084',
       planet: '#61718d',
     }),
-  });
+  },
+);
 
 /**
  * The colored washes and engraved border are editorial decoration, NOT a
@@ -405,7 +406,14 @@ function paintSkyDisc(
   ctx.beginPath();
   ctx.arc(cx, cy, radius, 0, TWO_PI);
   ctx.clip();
-  const softWash = ctx.createRadialGradient(cx + radius * 0.42, cy + radius * 0.57, 10, cx + radius * 0.42, cy + radius * 0.57, radius * 0.95);
+  const softWash = ctx.createRadialGradient(
+    cx + radius * 0.42,
+    cy + radius * 0.57,
+    10,
+    cx + radius * 0.42,
+    cy + radius * 0.57,
+    radius * 0.95,
+  );
   softWash.addColorStop(0, palette.discWash);
   softWash.addColorStop(1, palette.discWashFade);
   ctx.fillStyle = softWash;
