@@ -511,6 +511,7 @@ const en = {
   location: {
     trigger: ({ name }: { name: string }) => `Change location, ${name}`,
     change: 'Change place',
+    choose: 'Choose a city',
     eyebrow: 'A different perspective',
     title: 'Choose your place',
     close: 'Close locations',

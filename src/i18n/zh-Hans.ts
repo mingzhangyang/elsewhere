@@ -577,6 +577,7 @@ const zh: Messages = {
   location: {
     trigger: ({ name }) => `更改地点，当前为${name}`,
     change: '更改地点',
+    choose: '选择城市',
     eyebrow: '换个视角',
     title: '选择你的地点',
     close: '关闭地点选择',
