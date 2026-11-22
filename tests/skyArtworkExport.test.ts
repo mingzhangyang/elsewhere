@@ -148,7 +148,7 @@ function fixtureCanvas(config: {
         if (property in target) return target[String(property)];
         if (property === 'measureText') {
           return (text: string) => {
-            const size = Number(/\\d+(?=px)/u.exec(String(state.font))?.[0] ?? 16);
+            const size = Number(/\d+(?=px)/u.exec(String(state.font))?.[0] ?? 16);
             return { width: [...text].length * size * 0.55 };
           };
         }
@@ -262,7 +262,7 @@ describe('SM3-B vector PNG encoding and layout', () => {
 
   it('keeps combining characters and emoji intact in literal fillText', async () => {
     const mock = fixtureCanvas();
-    const art = createSkyArtwork({ event, snapshot, locale: 'en', theme: 'midnight', title: 'Cafe\\u0301 ☁️', phrase: 'Together 👩‍🚀 🌙' });
+    const art = createSkyArtwork({ event, snapshot, locale: 'en', theme: 'midnight', title: 'Cafe\u0301 ☁️', phrase: 'Together 👩‍🚀 🌙' });
     await exportSkyChartPng(options(art, mock.createCanvas));
     expect(mock.painted[0].join(' ')).toContain('Café');
     expect(mock.painted[0].join(' ')).toContain('👩‍🚀');
