@@ -180,7 +180,8 @@ describe('memorial-time restoration and UTC boundary (SM1-C)', () => {
     expect(recovered.offset).toBe('-04:00');
     expect(recovered).toEqual(archived);
     const edit = editMemorialTime(recovered);
-    expect(edit).toMatchObject({ kind: 'exact', localTime: '09:30', choiceUtc: undefined });
+    expect(edit).toMatchObject({ kind: 'exact', localTime: '09:30' });
+    expect(edit.choiceUtc).toBeUndefined();
     expect((await resolved(edit)).utc).toBe('2026-02-15T14:30:00.000Z');
     expect(recovered.utc).toBe('2026-02-15T13:30:00.000Z');
   });
