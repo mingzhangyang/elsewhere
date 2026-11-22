@@ -22,7 +22,14 @@ export async function prepareSkyChartFonts(fontSet?: SkyChartFontSet): Promise<S
   if (selected) {
     try {
       await selected.ready;
-      if (selected.check('400 20px system-ui', '星空 Stars')) {
+      // Check every family used by the fixed title, phrase and metadata slots before layout.
+      // Missing local fonts still resolve through the CSS serif stacks; a failed check
+      // explicitly selects generic fallback fonts for a fresh measurement.
+      if (
+        selected.check('400 20px system-ui', '星空 Stars') &&
+        selected.check('400 52px Georgia, "Times New Roman", serif', 'The sky remembers') &&
+        selected.check('400 52px "Songti SC", "Noto Serif CJK SC", "SimSun", serif', '星光记得')
+      ) {
         return Object.freeze({ status: 'ready' as const, family: 'system-ui' as const });
       }
     } catch {
@@ -182,9 +189,11 @@ export function layoutSkyChartArtwork(
   ): SkyChartTextBlock => {
     const family =
       role === 'title' || label === 'phrase'
-        ? artwork.locale === 'zh-Hans'
-          ? '"Songti SC", "Noto Serif CJK SC", "SimSun", serif'
-          : 'Georgia, "Times New Roman", serif'
+        ? fonts.status === 'fallback'
+          ? 'serif'
+          : artwork.locale === 'zh-Hans'
+            ? '"Songti SC", "Noto Serif CJK SC", "SimSun", serif'
+            : 'Georgia, "Times New Roman", serif'
         : fonts.family;
     const style = label === 'phrase' && artwork.locale === 'en' ? 'italic ' : '';
     const font = style + weight + ' ' + fontSize + 'px ' + family;
