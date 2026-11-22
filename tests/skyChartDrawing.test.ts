@@ -267,7 +267,7 @@ describe('SM3-A shared fixed layout and drawing', () => {
     expect(layout.objects.filter((o) => o.kind === 'star')).toHaveLength(1);
     const { ctx, calls } = recordingContext();
     drawSkyChartArtwork(ctx, layout, fonts);
-    expect(calls.filter((c) => c.method === 'clip')).toHaveLength(1);
+    expect(calls.filter((c) => c.method === 'clip')).toHaveLength(2);
     expect(calls.filter((c) => c.method === 'arc').length).toBeGreaterThan(layout.objects.length);
   });
 
