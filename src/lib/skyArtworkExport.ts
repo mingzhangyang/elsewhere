@@ -100,7 +100,7 @@ function assertArtwork(artwork: SkyArtwork): string {
     assertDrawableSkyChartSnapshot(artwork.snapshot);
     const time = artwork.civilTime;
     if (
-      !/^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$/.test(time.localDate) ||
+      !/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(time.localDate) ||
       time.utc !== artwork.snapshot.utc ||
       time.kind !== artwork.snapshot.time.kind ||
       time.offset !== artwork.snapshot.time.offset ||
