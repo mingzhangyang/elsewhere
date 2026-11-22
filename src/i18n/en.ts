@@ -511,6 +511,7 @@ const en = {
   location: {
     trigger: ({ name }: { name: string }) => `Change location, ${name}`,
     change: 'Change place',
+    choose: 'Choose a city',
     eyebrow: 'A different perspective',
     title: 'Choose your place',
     close: 'Close locations',
@@ -550,6 +551,39 @@ const en = {
     copy: 'Copy link',
   },
   /** The keepsake image of a moment (ROADMAP phase 3 prototype). */
+  memorial: {
+    title: 'Choose a moment',
+    intro: 'Enter a date and the event city’s local time. This checks the time; it does not draw a star map yet.',
+    city: 'Event city',
+    zone: ({ timeZone }: { timeZone: string }) => `Time zone: ${timeZone}`,
+    chooseCityHint: 'Select a city from the suggestions or search results.',
+    date: 'Gregorian date',
+    precision: 'How certain is the time?',
+    exact: 'I know the time',
+    unknown: 'I don’t know the time',
+    localTime: 'Local time at the event',
+    exactNote: 'Use the local clock at the chosen city, not your device time.',
+    referenceTime: 'Reference local time',
+    referenceNote: 'A calculation reference only, defaulting to 22:00. It is not an exact event time.',
+    cityRequired: 'Select an event city to continue.',
+    unexpected: 'The time could not be checked. Please try again.',
+    errors: {
+      'invalid-date': 'Enter a valid Gregorian date, including the year.',
+      'invalid-time': 'Enter a valid local time between 00:00 and 23:59.',
+      'invalid-location': 'The selected place has invalid coordinates. Choose another city.',
+      'invalid-timezone': 'The selected place has an invalid time zone. Choose another city.',
+      'nonexistent-time': 'This local clock time never occurred due to a clock change. Choose another time.',
+      'out-of-range': 'The calculated UTC instant must be between 1900 and 2100.',
+      'invalid-choice': 'This time choice is no longer valid. Select a current candidate.',
+    },
+    ambiguous: 'This local clock time occurred twice. Select the intended offset:',
+    candidate: ({ utc, offset }: { utc: string; offset: string }) =>
+      `Offset ${offset} · UTC ${utc}`,
+    ready: ({ utc, offset }: { utc: string; offset: string }) =>
+      `Resolved: ${utc} · UTC offset ${offset}`,
+    checking: 'Checking the time…',
+    submit: 'Check time',
+  },
   moment: {
     section: 'Keepsake image',
     note: 'A prototype: a picture of this moment to send with the link.',
