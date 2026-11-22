@@ -47,3 +47,29 @@ Fixture values above are reproducible civil-time expectations, **not** newly acq
 | S07 | New York/Sydney/Tromsø near 1900, 1950, 1980, 2000 and 2100               | Compare selected historical positions only after fixing the reference frame, star catalog, proper motion and precession conventions | [JPL Horizons](https://ssd.jpl.nasa.gov/horizons/) / [USNO](https://aa.usno.navy.mil/) and `SCIENCE.md` budget                              | Reference samples **not acquired**; no science claim              |
 
 For future numerical checks, record: source URL/query, response file, retrieval date, observer coordinates/elevation, time scale, apparent vs geometric altitude, refraction convention, reference frame, tolerance and software/catalog versions. The existing JPL/USNO 2026 fixtures are real cited references; extending their applicability to new dates without fresh comparisons is not permitted. SM2 should keep numerical comparisons separate from screenshot-based visual review.
+
+## SM1-C restoration and boundary contract
+
+- `restoreMemorialDraft(untrusted)` is asynchronous because it validates any retained
+  `choiceUtc` using the current IANA candidate set. It returns `restored`,
+  `needs-confirmation` (with editable input and a localized error code), or
+  `error` for structurally damaged input. An invalid or stale DST choice is
+  removed, never accepted as an implicit earlier/later choice.
+- `restoreMemorialInstant(untrusted)` validates a saved resolved record and
+  returns its **original UTC**, local civil clock, IANA zone and full-precision
+  saved offset. Its arithmetic consistency check does **not** re-resolve
+  against today's tzdb. Corrupt or contradictory records are rejected.
+- `editMemorialTime(saved)` is deliberately different: it produces a new
+  unresolved draft, preserving exact/reference and reference source, while
+  discarding old UTC/offset/disambiguation. A subsequent submit uses current
+  IANA rules. `changeMemorialLocation` continues to preserve civil time only
+  in the memorial creator; explorer location changes still preserve UTC.
+- For a fold with one UTC candidate outside the supported range, the creator
+  exposes only the eligible candidate and still requires an explicit choice.
+  Neither the excluded candidate nor an implicit default can be committed.
+  Existing `wallTimeCandidates` callers retain their original range behavior.
+- Tests in `tests/memorialTimeRestoration.test.ts` cover archived rule drift,
+  both restored fold choices, damaged inputs, the inclusive UTC millisecond
+  bounds and local dates on either side of the UTC range. These are **time
+  consistency tests**, not independent astronomical validation or tzdb-version
+  certification.

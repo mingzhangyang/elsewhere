@@ -252,3 +252,84 @@ describe('memorial event creator input (SM1-B)', () => {
     expect(report.violations.map((issue) => issue.id)).toEqual([]);
   });
 });
+
+describe('memorial input restoration (SM1-C)', () => {
+  it('clears an obsolete restored DST selection and demands a fresh candidate click', async () => {
+    const initial = {
+      state: 'draft' as const,
+      kind: 'exact' as const,
+      location: city('new-york'),
+      localDate: '2026-11-01',
+      localTime: '01:30',
+      choiceUtc: '2026-11-01T07:30:00.000Z',
+    };
+    const onResolved = start(initial);
+    expect(await screen.findByRole('alert')).toHaveTextContent('no longer valid');
+    expect(onResolved).not.toHaveBeenCalled();
+    checkTime();
+    const group = await screen.findByRole('group', { name: /occurred twice/ });
+    expect(within(group).getAllByRole('button')).toHaveLength(2);
+    fireEvent.click(within(group).getAllByRole('button')[1]);
+    await waitFor(() => expect(onResolved).toHaveBeenCalledTimes(1));
+    expect(onResolved.mock.lastCall?.[0]).toMatchObject({
+      utc: '2026-11-01T06:30:00.000Z',
+      offset: '-05:00',
+      disambiguation: 'later',
+    });
+  });
+
+  it('restores reference source, clears an external snapshot on edits, and never upgrades it to exact', async () => {
+    const onResolved = vi.fn<(value: MemorialTime) => void>();
+    const onInvalidated = vi.fn();
+    const draft = setReferenceTime(createReferenceDraft(city('beijing'), '2026-07-16'), '06:15');
+    render(
+      <MemorialTimeForm initialDraft={draft} onResolved={onResolved} onInvalidated={onInvalidated} />,
+    );
+    await act(async () => {});
+    expect(screen.getByRole('radio', { name: 'I don’t know the time' })).toBeChecked();
+    expect(screen.getByLabelText(/^Reference local time/)).toHaveValue('06:15');
+    checkTime();
+    await waitFor(() => expect(onResolved).toHaveBeenCalledTimes(1));
+    expect(onResolved.mock.lastCall?.[0]).toMatchObject({
+      kind: 'reference',
+      reference: { localTime: '06:15', source: 'user' },
+    });
+    fireEvent.click(screen.getByRole('radio', { name: 'I know the time' }));
+    expect(onInvalidated).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(/Resolved:/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('radio', { name: 'I don’t know the time' }));
+    expect(screen.getByLabelText(/^Reference local time/)).toHaveValue('06:15');
+    checkTime();
+    await waitFor(() => expect(onResolved).toHaveBeenCalledTimes(2));
+    expect(onResolved.mock.lastCall?.[0]).toMatchObject({
+      kind: 'reference',
+      reference: { localTime: '06:15', source: 'user' },
+    });
+  });
+
+  it('shows a damaged recovered draft as a localized error rather than resolving it', async () => {
+    const onResolved = start({
+      state: 'draft',
+      kind: 'exact',
+      location: city('new-york'),
+      localDate: '1900-02-29',
+      localTime: '08:30',
+    });
+    expect(await screen.findByRole('alert')).toHaveTextContent('valid Gregorian date');
+    expect(screen.getByLabelText('Gregorian date')).toHaveValue('1900-02-29');
+    expect(onResolved).not.toHaveBeenCalled();
+    await act(() => setLanguage('zh-Hans'));
+    expect(screen.getByRole('alert')).toHaveTextContent('有效的公历日期');
+  });
+
+  it('ignores pending time resolution after the form unmounts', async () => {
+    const onResolved = vi.fn<(value: MemorialTime) => void>();
+    const view = render(<MemorialTimeForm onResolved={onResolved} />);
+    chooseCity('Beijing');
+    fill('2026-02-15', '08:30');
+    checkTime();
+    view.unmount();
+    await act(async () => {});
+    expect(onResolved).not.toHaveBeenCalled();
+  });
+});

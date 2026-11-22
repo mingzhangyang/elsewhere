@@ -70,7 +70,12 @@ export function zonedDateTimeToUtc(
   );
 }
 
-export function wallTimeCandidates(date: string, time: string, timeZone: string): Date[] {
+/**
+ * Return every actual wall-clock candidate before applying the explorer's supported UTC range.
+ * Memorial-time resolution applies the range per candidate so an in-range fold branch is not
+ * accidentally rejected because its sibling falls outside the supported interval.
+ */
+export function wallTimeCandidatesUnbounded(date: string, time: string, timeZone: string): Date[] {
   const plain = Temporal.PlainDateTime.from(`${date}T${time}`, { overflow: 'reject' });
   const candidates = ['earlier', 'later'].map((disambiguation) =>
     plain.toZonedDateTime(timeZone, { disambiguation: disambiguation as 'earlier' | 'later' }),
@@ -81,7 +86,12 @@ export function wallTimeCandidates(date: string, time: string, timeZone: string)
         .filter((zoned) => zoned.toPlainDateTime().equals(plain))
         .map((zoned) => zoned.epochMilliseconds),
     ),
-  ].map((ms) => validateInstant(new Date(ms)));
+  ].map((ms) => new Date(ms));
+}
+
+/** Preserve the explorer's existing fail-closed UTC range behavior. */
+export function wallTimeCandidates(date: string, time: string, timeZone: string): Date[] {
+  return wallTimeCandidatesUnbounded(date, time, timeZone).map(validateInstant);
 }
 
 export function localDayBounds(date: Date, timeZone: string): { start: Date; end: Date; minutes: number } {
