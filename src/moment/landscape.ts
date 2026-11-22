@@ -1,13 +1,7 @@
+import { paintCityBlocks, paintCityHorizon } from './city';
 import type { MomentSnapshot } from '../lib/moment';
 import { seededRandom } from '../lib/random';
-import {
-  HORIZON_STEP,
-  ISLAND_TOP,
-  MAST_TOP,
-  TOWN_TOP,
-  horizonAltitude,
-  type HorizonVariant,
-} from './scenery';
+import { HORIZON_STEP, ISLAND_TOP, MAST_TOP, horizonAltitude, type HorizonVariant } from './scenery';
 import {
   type Palette,
   type Point,
@@ -788,106 +782,6 @@ function paintSea(scene: LandScene, haze: Rgb) {
   }
 }
 
-/** A picture-book town on the horizon, under 2°: pitched roofs, the odd tower, warm windows. */
-function farTown(scene: LandScene, left: number, right: number, far: Rgb) {
-  const { ctx, toCanvas, night, urban, unit, seed, width, lightX, palette, lightStrength } = scene;
-  const random = seededRandom(seed + 51);
-  const windows = seededRandom(seed + 53);
-  const shades = [far, deepen(far, 0.14), mix(far, palette.horizon, 0.18)];
-  for (let az = left; az < right; ) {
-    const w = 0.8 + random() * 1.1;
-    const tower = random() < 0.07;
-    const wall = tower ? TOWN_TOP - 0.5 : 0.35 + random() * 0.55;
-    const roof = Math.min(TOWN_TOP, tower ? TOWN_TOP : wall + 0.18 + random() * 0.3);
-    const shade = shades[Math.floor(random() * shades.length)];
-    const a = toCanvas(0, az),
-      b = toCanvas(0, az + w);
-    if (a.front && b.front && b.x > -50 && a.x < width + 50) {
-      const inset = tower ? w * 0.3 : 0;
-      const wa = toCanvas(wall, az + inset),
-        wb = toCanvas(wall, az + w - inset),
-        peak = toCanvas(roof, az + w / 2);
-      ctx.fillStyle = css(shade);
-      ctx.beginPath();
-      ctx.moveTo(wa.x, a.y + 2 * unit);
-      ctx.lineTo(wa.x, wa.y);
-      ctx.lineTo(peak.x, peak.y);
-      ctx.lineTo(wb.x, wb.y);
-      ctx.lineTo(wb.x, b.y + 2 * unit);
-      ctx.closePath();
-      ctx.fill();
-      // The roof pitch that faces the light.
-      ctx.fillStyle = css(mix(shade, palette.landLight, 0.5), 0.25 + 0.45 * lightStrength);
-      ctx.beginPath();
-      ctx.moveTo(peak.x, peak.y);
-      ctx.lineTo(lightX > 0 ? wb.x : wa.x, wa.y);
-      ctx.lineTo(peak.x, wa.y);
-      ctx.closePath();
-      ctx.fill();
-      if (night > 0.2) {
-        const step = (wb.x - wa.x) / 4;
-        for (let i = 1; i < 4; i++)
-          if (windows() < 0.3 + 0.5 * urban) {
-            const x = wa.x + step * i,
-              y = wa.y + (a.y - wa.y) * (0.35 + windows() * 0.3);
-            ctx.fillStyle = css(hex('#ffd27f'), 0.9 * night);
-            ctx.fillRect(x - 1.6 * unit, y - 2 * unit, 3.2 * unit, 3.6 * unit);
-          }
-      }
-    }
-    az += w;
-  }
-}
-
-/** Rows of small houses and garden trees stepping down a slope below the horizon line. */
-function hillTown(
-  scene: LandScene,
-  crest: Point[],
-  rows: number,
-  size: number,
-  trees: TreeColours,
-  random: () => number,
-  distance: number,
-) {
-  const { ctx, unit, horizonY, day, night, urban, lightX, palette } = scene;
-  const walls = [hex('#f4e8cf'), hex('#ecdcc0'), hex('#e6e2d6')];
-  const roofs = [hex('#b85a40'), hex('#a8503e'), hex('#c06a48'), hex('#66708e'), hex('#b85a40')];
-  // Daylight colours sink into the dusk, and into the haze with distance.
-  const shadeOf = (colour: Rgb) =>
-    mix(mix(deepen(palette.landMid, 0.25), colour, 0.16 + 0.84 * day), palette.landFar, distance);
-  for (let row = 0; row < rows; row++) {
-    const scale = size * (1 + row * 0.32);
-    for (let i = Math.floor(random() * 3); i < crest.length; i += 1 + Math.floor(random() * 3)) {
-      const p = crest[i];
-      const y = p.y + (4 + row * 1.25 * size) * unit;
-      const h = Math.min(scale * (0.8 + random() * 0.5) * unit, y - horizonY - 3 * unit);
-      if (h < 5 * unit) {
-        random();
-        continue;
-      }
-      if (random() < 0.34) {
-        crown(scene, p.x, y, h * 1.15, random() < 0.25, trees, random);
-        continue;
-      }
-      const lit = random() < 0.35 + 0.45 * urban;
-      cottage(
-        ctx,
-        p.x,
-        y,
-        h,
-        {
-          wall: shadeOf(walls[Math.floor(random() * walls.length)]),
-          roof: shadeOf(roofs[Math.floor(random() * roofs.length)]),
-          trim: mix(palette.landLight, palette.cloudLight, 0.5),
-        },
-        lit ? clamp01(night * 1.4 + (1 - day) * 0.5) : 0,
-        lightX,
-        random() < 0.5,
-      );
-    }
-  }
-}
-
 export function paintLandscape(scene: LandScene) {
   const { ctx, width, height, unit, horizonY, palette, toCanvas, view, day, night, urban, seed, horizon } =
     scene;
@@ -914,7 +808,7 @@ export function paintLandscape(scene: LandScene) {
     ctx.fillStyle = css(deepen(far, 0.12));
     ctx.fillRect(0, horizonY, width, height - horizonY + 10);
     if (night > 0.2) washAtHorizon(scene, hex('#ffbe8c'), 0.22 * night * (0.4 + 0.6 * urban), 70 * unit);
-    farTown(scene, left, right, far);
+    paintCityHorizon(scene, far);
   } else {
     const farEdge = edge((az) => horizonAltitude(horizon, az), HORIZON_STEP[horizon] / 5);
     landLayer(
@@ -940,6 +834,11 @@ export function paintLandscape(scene: LandScene) {
   ctx.beginPath();
   ctx.rect(0, horizonY + 1, width, ground + 10);
   ctx.clip();
+  if (horizon === 'city') {
+    paintCityBlocks(scene);
+    ctx.restore();
+    return;
+  }
   const reach = Math.min(ground, 640 * unit);
   // Azimuth across the canvas, near enough for placing illustrative ground.
   const azAt = (x: number) => view.heading + (x / width - 0.5) * 2 * scene.halfWidth;
@@ -1013,64 +912,59 @@ export function paintLandscape(scene: LandScene) {
       mist(ctx, crestY + 8 * unit, width, haze, 0.42 - i * 0.1 + 0.12 * (1 - day), (46 + i * 14) * unit);
       landLayer(scene, points, tones[i], brush);
       const wood = seededRandom(seed + 81 + i);
-      if (horizon === 'city')
-        hillTown(scene, points, 2 + i, 15 + i * 13, i ? midTrees : farTrees, wood, i ? 0.08 : 0.3);
-      else
-        copse(scene, points, i ? midTrees : farTrees, (13 + i * 14) * unit, 0.05 + i * 0.012, rugged, wood);
+      copse(scene, points, i ? midTrees : farTrees, (13 + i * 14) * unit, 0.05 + i * 0.012, rugged, wood);
     });
     // A cottage on the middle hill, away from the tree, with a thread of chimney smoke at dusk.
-    if (horizon !== 'city') {
-      const home = at(hills[1], side < 0 ? 0.36 : 0.62);
-      const hh = Math.min(home.y - horizonY - 5 * unit, 56 * unit);
-      if (hh > 16 * unit) {
-        const glow = clamp01(1.25 - day * 1.6);
-        cottage(
-          ctx,
-          home.x,
-          home.y + 4 * unit,
-          hh,
-          {
-            wall: mix(deepen(palette.landMid, 0.2), hex('#f6ead0'), 0.2 + 0.75 * day),
-            roof: mix(deepen(palette.landMid, 0.3), hex('#b4503a'), 0.3 + 0.65 * day),
-            trim: mix(light, palette.cloudLight, 0.5),
-          },
-          glow,
-          lightX,
-          false,
+    const home = at(hills[1], side < 0 ? 0.36 : 0.62);
+    const hh = Math.min(home.y - horizonY - 5 * unit, 56 * unit);
+    if (hh > 16 * unit) {
+      const glow = clamp01(1.25 - day * 1.6);
+      cottage(
+        ctx,
+        home.x,
+        home.y + 4 * unit,
+        hh,
+        {
+          wall: mix(deepen(palette.landMid, 0.2), hex('#f6ead0'), 0.2 + 0.75 * day),
+          roof: mix(deepen(palette.landMid, 0.3), hex('#b4503a'), 0.3 + 0.65 * day),
+          trim: mix(light, palette.cloudLight, 0.5),
+        },
+        glow,
+        lightX,
+        false,
+      );
+      const cx = home.x + hh * 0.34,
+        cy = home.y - hh * 1.02;
+      if (glow > 0.3 && cy - hh * 0.9 > horizonY) {
+        ctx.strokeStyle = css(palette.cloudLight, 0.22);
+        ctx.lineWidth = 3 * unit;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.bezierCurveTo(
+          cx + 6 * unit,
+          cy - hh * 0.35,
+          cx - 8 * unit,
+          cy - hh * 0.55,
+          cx + 10 * unit,
+          cy - hh * 0.85,
         );
-        const cx = home.x + hh * 0.34,
-          cy = home.y - hh * 1.02;
-        if (glow > 0.3 && cy - hh * 0.9 > horizonY) {
-          ctx.strokeStyle = css(palette.cloudLight, 0.22);
-          ctx.lineWidth = 3 * unit;
-          ctx.lineCap = 'round';
-          ctx.beginPath();
-          ctx.moveTo(cx, cy);
-          ctx.bezierCurveTo(
-            cx + 6 * unit,
-            cy - hh * 0.35,
-            cx - 8 * unit,
-            cy - hh * 0.55,
-            cx + 10 * unit,
-            cy - hh * 0.85,
-          );
-          ctx.stroke();
-        }
-        const garden = seededRandom(seed + 47);
-        copse(
-          scene,
-          [
-            { x: home.x - hh * 1.3, y: home.y + 5 * unit },
-            { x: home.x - hh * 1.0, y: home.y + 6 * unit },
-            { x: home.x + hh * 1.15, y: home.y + 6 * unit },
-          ],
-          midTrees,
-          hh * 0.8,
-          1,
-          rugged,
-          garden,
-        );
+        ctx.stroke();
       }
+      const garden = seededRandom(seed + 47);
+      copse(
+        scene,
+        [
+          { x: home.x - hh * 1.3, y: home.y + 5 * unit },
+          { x: home.x - hh * 1.0, y: home.y + 6 * unit },
+          { x: home.x + hh * 1.15, y: home.y + 6 * unit },
+        ],
+        midTrees,
+        hh * 0.8,
+        1,
+        rugged,
+        garden,
+      );
     }
   }
 

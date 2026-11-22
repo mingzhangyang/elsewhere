@@ -10,6 +10,7 @@ import {
   type HorizonVariant,
 } from '../src/moment/scenery';
 import { wrap } from '../src/moment/postcard';
+import { cityLight } from '../src/moment/city';
 import { drawIllustration } from '../src/moment/illustration';
 import { defaultWeatherValues } from '../src/domain/weather';
 import { ridgeAltitude, ridgeHeight, RIDGE_RADIUS } from '../src/renderer/ridge';
@@ -76,6 +77,13 @@ describe('the illustrated image puts objects where the renderer does', () => {
       }
       expect(ours(-altitude, heading + 180).front).toBe(false);
     });
+});
+
+it('selects the city lighting from the shared sky on either side of solar noon', () => {
+  expect(cityLight(6, 80)).toBe('day');
+  expect(cityLight(-6.01, 280)).toBe('night');
+  expect(cityLight(-6, 70)).toBe('dawn');
+  expect(cityLight(-6, 290)).toBe('dusk');
 });
 
 describe('horizon variants', () => {
