@@ -43,7 +43,10 @@ export type MemorialTimeResult =
   | { status: 'ambiguous'; candidates: [MemorialTimeCandidate, MemorialTimeCandidate] }
   | { status: 'error'; code: MemorialTimeErrorCode; message: string };
 
-export function createReferenceDraft(location: LocationInfo, localDate: string): MemorialTimeDraft {
+export function createReferenceDraft(
+  location: LocationInfo,
+  localDate: string,
+): Extract<MemorialTimeDraft, { kind: 'reference' }> {
   return {
     state: 'draft',
     kind: 'reference',
