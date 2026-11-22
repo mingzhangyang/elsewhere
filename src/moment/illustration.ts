@@ -222,6 +222,7 @@ export function drawIllustration(
   horizon: HorizonVariant,
   text: IllustrationText,
   font: string,
+  cityImage?: HTMLImageElement | null,
 ) {
   const { sky, weather, layers, view } = snapshot;
   const unit = height / 1000;
@@ -644,6 +645,7 @@ export function drawIllustration(
     lightStrength,
     halfWidth,
     horizon,
+    cityImage,
   });
 
   const size = 21 * unit;

@@ -277,6 +277,7 @@ describe('the illustrated sky follows the layers and visibility', () => {
             };
           if (key === 'rect')
             return (_x: number, y: number, _w: number, height: number) => (rect = { y, height });
+          if (key === 'drawImage') return () => clipped.forEach(({ clip }) => clip.drawnInside++);
           if (key === 'clip')
             return () => {
               if (!rect) return;
@@ -333,6 +334,7 @@ describe('the illustrated sky follows the layers and visibility', () => {
       horizon,
       { object: (object) => object.name, pattern: (id) => id },
       'sans-serif',
+      horizon === 'city' ? ({ naturalWidth: 960, naturalHeight: 496 } as HTMLImageElement) : null,
     );
     return { ...calls, horizonY: toCanvas(0, view.heading).y, sky, toCanvas };
   };
@@ -361,7 +363,8 @@ describe('the illustrated sky follows the layers and visibility', () => {
       expect(ground, horizon).toHaveLength(1);
       expect(ground[0].y + ground[0].height, horizon).toBeGreaterThanOrEqual(800);
       // The layers, trees, grass and figures (by the sea, a headland): many marks, all inside it.
-      expect(ground[0].drawnInside, horizon).toBeGreaterThan(50);
+      if (horizon === 'city') expect(ground[0].drawnInside).toBe(1);
+      else expect(ground[0].drawnInside, horizon).toBeGreaterThan(50);
     }
   });
   it('letters a name above its object when below would fall on the land', () => {

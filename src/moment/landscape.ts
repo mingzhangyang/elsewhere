@@ -1,4 +1,3 @@
-import { paintCityBlocks, paintCityHorizon } from './city';
 import type { MomentSnapshot } from '../lib/moment';
 import { seededRandom } from '../lib/random';
 import { HORIZON_STEP, ISLAND_TOP, MAST_TOP, horizonAltitude, type HorizonVariant } from './scenery';
@@ -53,6 +52,7 @@ export interface LandScene {
   /** Half the horizontal field of view, in degrees. */
   halfWidth: number;
   horizon: HorizonVariant;
+  cityImage?: HTMLImageElement | null;
 }
 
 /** Mist lying in a valley: a band of the horizon's colour that fades upward. */
@@ -783,8 +783,7 @@ function paintSea(scene: LandScene, haze: Rgb) {
 }
 
 export function paintLandscape(scene: LandScene) {
-  const { ctx, width, height, unit, horizonY, palette, toCanvas, view, day, night, urban, seed, horizon } =
-    scene;
+  const { ctx, width, height, unit, horizonY, palette, toCanvas, view, day, seed, horizon } = scene;
   if (horizonY > height + 40 * unit) return;
   const { lightX, lightStrength } = scene;
   const left = view.heading - 100,
@@ -804,12 +803,7 @@ export function paintLandscape(scene: LandScene) {
 
   // The horizon variant itself: the only scenery above the horizon line, under 2°.
   if (horizon === 'sea') paintSea(scene, haze);
-  else if (horizon === 'city') {
-    ctx.fillStyle = css(deepen(far, 0.12));
-    ctx.fillRect(0, horizonY, width, height - horizonY + 10);
-    if (night > 0.2) washAtHorizon(scene, hex('#ffbe8c'), 0.22 * night * (0.4 + 0.6 * urban), 70 * unit);
-    paintCityHorizon(scene, far);
-  } else {
+  else if (horizon !== 'city') {
     const farEdge = edge((az) => horizonAltitude(horizon, az), HORIZON_STEP[horizon] / 5);
     landLayer(
       scene,
@@ -829,13 +823,18 @@ export function paintLandscape(scene: LandScene) {
 
   // Everything else stands on ground below the horizon line.
   const ground = height - horizonY;
-  if (ground < 14 * unit) return;
+  if (ground < (horizon === 'city' ? 1 : 14 * unit)) return;
   ctx.save();
   ctx.beginPath();
   ctx.rect(0, horizonY + 1, width, ground + 10);
   ctx.clip();
   if (horizon === 'city') {
-    paintCityBlocks(scene);
+    const art = scene.cityImage;
+    if (art) {
+      const scale = Math.max(width / art.naturalWidth, ground / art.naturalHeight);
+      const w = art.naturalWidth * scale;
+      ctx.drawImage(art, (width - w) / 2, horizonY + 1, w, art.naturalHeight * scale);
+    }
     ctx.restore();
     return;
   }
@@ -1077,14 +1076,4 @@ export function paintLandscape(scene: LandScene) {
     }
   }
   ctx.restore();
-}
-
-/** A warm haze lying on the horizon line, for a town's lights. */
-function washAtHorizon(scene: LandScene, colour: Rgb, alpha: number, depth: number) {
-  const { ctx, width, horizonY } = scene;
-  const g = ctx.createLinearGradient(0, horizonY - depth, 0, horizonY);
-  g.addColorStop(0, css(colour, 0));
-  g.addColorStop(1, css(colour, alpha));
-  ctx.fillStyle = g;
-  ctx.fillRect(0, horizonY - depth, width, depth);
 }

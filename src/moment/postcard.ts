@@ -26,6 +26,7 @@ export interface PostcardInput {
   snapshot: MomentSnapshot;
   style: MomentStyle;
   horizon: HorizonVariant;
+  cityImage?: HTMLImageElement | null;
   /** The renderer's frame, captured with the ridge drawn only for the ridge variant. Realistic only. */
   capture: SkyCapture | null;
   i18n: I18n;
@@ -82,6 +83,7 @@ export function drawPostcard({
   snapshot,
   style,
   horizon,
+  cityImage,
   capture,
   i18n,
   site,
@@ -209,6 +211,7 @@ export function drawPostcard({
       horizon,
       { object: (object) => objectName(object, i18n), pattern: (id) => m.patterns[id] },
       FONT,
+      cityImage,
     );
   const painted = style === 'illustrated' || !capture;
   if (painted) paintFinish(ctx, 0, 0, width, skyH, Math.round(instant.getTime() / 3600000));
