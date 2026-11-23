@@ -554,6 +554,8 @@ const en = {
   moment: {
     section: 'Keepsake image',
     note: 'A prototype: a picture of this moment to send with the link.',
+    clearSkyImage: 'Clear Sky for image (default; does not change the live sky or shared link)',
+    clearSkyBadge: 'Clear Sky mode · clouds removed',
     make: 'Make an image',
     drawing: 'Drawing the image…',
     failed: 'The image could not be drawn. Try another style.',
