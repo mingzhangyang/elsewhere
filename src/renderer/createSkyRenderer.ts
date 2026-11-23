@@ -92,6 +92,14 @@ export interface RenderInput extends RenderSettings {
   /** Simulated seconds per real second while time plays; 0 or omitted when it is still. */
   playbackRate?: number;
 }
+/**
+ * Optional image-only weather override. Capture restores the on-screen weather
+ * before returning, so the postcard cannot change exploration or shared links.
+ */
+export interface SkyCaptureOptions {
+  ridge: boolean;
+  weather?: WeatherValues;
+}
 /** One frame of the sky, captured for a sky-moment image. */
 export interface SkyCapture {
   /** The sky as drawn, at the canvas's pixel size, labels included. */
@@ -672,10 +680,13 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
        * does not keep it). Labels are laid out ignoring the interface over the sky, which the image
        * does not show. `ridge` draws the illustrative ridge for this frame whatever the setting.
        */
-      capture: ({ ridge: withRidge }: { ridge: boolean }): SkyCapture => {
+      capture: ({ ridge: withRidge, weather: imageWeather }: SkyCaptureOptions): SkyCapture => {
         const shown = ridge.visible;
-        ridge.visible = withRidge;
+        const onScreenWeather = activeWeather;
         try {
+          // The caller's cloud-free preview is strictly temporary, for this frame only.
+          if (imageWeather) api.update(activeSky, imageWeather, activeFlags);
+          ridge.visible = withRidge;
           drawFrame(performance.now(), 0, false, true);
           const image = document.createElement('canvas');
           image.width = renderer.domElement.width;
@@ -684,6 +695,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
           return { image, target: lastTarget };
         } finally {
           ridge.visible = shown;
+          if (imageWeather) api.update(activeSky, onScreenWeather, activeFlags);
           invalidate();
         }
       },
