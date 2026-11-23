@@ -1570,12 +1570,12 @@ dialog:not([open]) {
   content: '';
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(1px 1px at 17% 22%, #dfd6ba, transparent),
-    radial-gradient(2px 2px at 74% 13%, #f2e2c0, transparent),
-    radial-gradient(1px 1px at 82% 65%, #c4d6ee, transparent),
-    radial-gradient(2px 2px at 29% 78%, #c5d6e9, transparent),
-    radial-gradient(1px 1px at 55% 44%, #f7e2b6, transparent);
+  --spark-1: radial-gradient(1px 1px at 17% 22%, #dfd6ba, transparent);
+  --spark-2: radial-gradient(2px 2px at 74% 13%, #f2e2c0, transparent);
+  --spark-3: radial-gradient(1px 1px at 82% 65%, #c4d6ee, transparent);
+  --spark-4: radial-gradient(2px 2px at 29% 78%, #c5d6e9, transparent);
+  --spark-5: radial-gradient(1px 1px at 55% 44%, #f7e2b6, transparent);
+  background: var(--spark-1), var(--spark-2), var(--spark-3), var(--spark-4), var(--spark-5);
   pointer-events: none;
 }
 .moment-preview {
