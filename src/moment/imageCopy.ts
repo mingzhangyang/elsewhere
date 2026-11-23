@@ -17,7 +17,4 @@ export const momentImageCopy = {
     clearSkyImage: '图片使用晴朗天空（默认；不改变实时天空或分享链接）',
     clearSkyBadge: 'Clear Sky 模式 · 已移除云层',
   },
-} satisfies Record<
-  Locale,
-  { section: string; note: string; clearSkyImage: string; clearSkyBadge: string }
->;
+} satisfies Record<Locale, { section: string; note: string; clearSkyImage: string; clearSkyBadge: string }>;
