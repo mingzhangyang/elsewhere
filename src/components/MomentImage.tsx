@@ -40,12 +40,11 @@ export default function MomentImage({
   );
   const [image, setImage] = useState<{ url: string; blob: Blob; choices: typeof choices } | null>(null);
   const [failed, setFailed] = useState(false);
-  const [loadedUrl, setLoadedUrl] = useState<string | null>(null);
   const request = useRef(0);
   const shown = useRef<string | null>(null);
   const latest = useRef(capture);
   const current = image?.choices === choices ? image : null;
-  const ready = !!current && loadedUrl === current.url;
+  const ready = !!current && !failed;
   latest.current = capture;
   useEffect(() => {
     const [imageSnapshot, style, horizon, clearSkyImage, i18n] = choices;
@@ -144,17 +143,16 @@ export default function MomentImage({
       <div className="moment-preview-slot" aria-busy={!ready && !failed}>
         {image && (
           <img
-            className={ready ? 'moment-preview is-ready' : 'moment-preview is-stale'}
+            className="moment-preview"
             src={image.url}
             alt={m.moment.alt({ place })}
             aria-hidden={!ready}
-            onLoad={() => setLoadedUrl(image.url)}
             onError={() => setFailed(true)}
           />
         )}
         {!ready && (
           <div className="moment-preview-transition" role="status">
-            <span className={failed ? '' : 'moment-preview-orbit'} aria-hidden="true" />
+            <span className="moment-preview-orbit" aria-hidden="true" />
             {failed ? m.moment.failed : m.moment.drawing}
           </div>
         )}

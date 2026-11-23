@@ -87,7 +87,7 @@ it('keeps a stable preview slot, hides stale exports, and ignores an out-of-orde
   fireEvent.click(screen.getByRole('button', { name: 'Illustrated' }));
   expect(slot).toHaveAttribute('aria-busy', 'true');
   expect(document.querySelector('.moment-preview')).toHaveAttribute('src', 'blob:test-1');
-  expect(document.querySelector('.moment-preview')).toHaveClass('is-stale');
+  expect(document.querySelector('.moment-preview')).toHaveAttribute('aria-hidden', 'true');
   expect(screen.getByRole('status')).toHaveTextContent('Drawing');
   expect(screen.queryByRole('img', { name: /New York/ })).not.toBeInTheDocument();
   expect(screen.queryByRole('link', { name: 'Save image' })).not.toBeInTheDocument();
