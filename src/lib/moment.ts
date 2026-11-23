@@ -1,6 +1,7 @@
 import type { LocationInfo, SkyState, WeatherSelection, WeatherValues } from '../types';
 import { CONSTELLATIONS, type PatternId } from '../domain/stars';
 import type { SkyBrightness } from '../domain/starVisibility';
+import { presentedWeather } from './explorationState';
 import type { CameraView, LayerSettings } from './persistence';
 import type { SkyObject } from './exploration';
 
@@ -23,6 +24,20 @@ export interface MomentSnapshot {
   subject?: MomentSubject;
 }
 export type MomentSubject = { kind: 'object'; object: SkyObject } | { kind: 'pattern'; id: PatternId };
+
+/**
+ * A postcard-only view of the original moment. It intentionally does not change
+ * the explorer, weather source, custom conditions, or #sky= sharing contract.
+ * The live sky still follows real daytime and its selected weather.
+ */
+export function momentImageSnapshot(snapshot: MomentSnapshot, clearSky: boolean): MomentSnapshot {
+  if (!clearSky) return snapshot;
+  return {
+    ...snapshot,
+    weather: presentedWeather(snapshot.weather, true),
+    provenance: { kind: 'clear' },
+  };
+}
 
 /** Where the conditions in a moment come from, for the provenance line on the image. */
 export type MomentProvenance =
