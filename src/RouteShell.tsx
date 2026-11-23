@@ -22,6 +22,10 @@ const Explorer = lazy(async () => {
 
 type Route = 'create' | 'explore';
 type ExplorerHandoff = Pick<MemorialTime, 'location' | 'utc'>;
+type ExplorerReturn = {
+  url: string;
+  handoff: ExplorerHandoff | null;
+};
 
 export function routeForHash(hash: string): Route {
   return hash === '#create' ? 'create' : 'explore';
@@ -34,7 +38,7 @@ export default function RouteShell({ diagnostics = false }: { diagnostics?: bool
   const [handoff, setHandoff] = useState<ExplorerHandoff | null>(null);
   const savedDraft = useRef<SkyCreatorDraft | null>(null);
   // Restoring the prior view must not serialize private creator details.
-  const priorExplorer = useRef<{ url: string; handoff: ExplorerHandoff | null } | null>(null);
+  const priorExplorer = useRef<ExplorerReturn | null>(null);
   const saveDraft = useCallback((value: SkyCreatorDraft) => {
     savedDraft.current = value;
   }, []);
@@ -55,12 +59,11 @@ export default function RouteShell({ diagnostics = false }: { diagnostics?: bool
 
   const openCreator = useCallback(() => {
     if (window.location.hash !== '#create') {
-      const isCreatorExplorer =
-        window.history.state?.elsewhereCreatorExplorer === true &&
-        !window.location.hash.startsWith('#sky=');
+      const isCreatorExplorer = window.history.state?.elsewhereCreatorExplorer === true;
+      const hasSharedLink = window.location.hash.startsWith('#sky=');
       priorExplorer.current = {
         url: window.location.pathname + window.location.search + window.location.hash,
-        handoff: isCreatorExplorer ? handoff : null,
+        handoff: isCreatorExplorer && !hasSharedLink ? handoff : null,
       };
       window.history.pushState({ elsewhereCreator: true }, '', '#create');
     }
@@ -79,8 +82,11 @@ export default function RouteShell({ diagnostics = false }: { diagnostics?: bool
     // Restore an existing shared URL unchanged; a newly created moment remains
     // memory-only and is never serialized into history.state or the URL.
     let returnUrl = window.location.pathname + window.location.search;
-    if (!event && previous) returnUrl = previous.url;
-    window.history.pushState({ elsewhereCreatorExplorer: nextHandoff !== null }, '', returnUrl);
+    if (!event && previous) {
+      returnUrl = previous.url;
+    }
+    const nextState = { elsewhereCreatorExplorer: nextHandoff !== null };
+    window.history.pushState(nextState, '', returnUrl);
     setExplorerVisit((value) => value + 1);
     setRoute('explore');
   }, []);
