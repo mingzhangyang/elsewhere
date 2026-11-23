@@ -117,7 +117,8 @@ export default function MemorialTimeForm({
       onInvalidatedRef.current?.();
       setFeedback(null);
     }
-    const draft = initialDraft ?? (initialInputOnce.current ? memorialFieldsToDraft(initialInputOnce.current) : null);
+    const draft =
+      initialDraft ?? (initialInputOnce.current ? memorialFieldsToDraft(initialInputOnce.current) : null);
     if (!draft) {
       if (replaced) setFields(initialFields());
       return;

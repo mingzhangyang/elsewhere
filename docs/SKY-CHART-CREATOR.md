@@ -33,6 +33,7 @@ The reverse action returns to `#create`, re-renders the form with the last in-ta
 ## Validation and evidence
 
 New tests:
+
 - `tests/skyCreatorDraft.test.ts`: URL navigation and grapheme boundaries.
 - `tests/skyArtworkCreator.test.tsx`: mock-controlled readiness, revision invalidation, retry, reusing scientific snapshots and unmount disposal. They are **unit tests**, not HYG or native browser proof.
 - `tests/browser/sky-artwork-creator.spec.ts`: real direct-load isolation and network/WebGL telemetry, real selected-city time, true HYG snapshot, preview drawing, download gesture, return from explorer, a reference-time Chinese flow, and a nonexistent DST clock error. The spec requests screenshot attachments for the form, two palettes, download, explorer, returned draft and error.

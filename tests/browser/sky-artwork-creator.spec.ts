@@ -6,7 +6,9 @@ async function selectCity(page: import('@playwright/test').Page, name: string) {
   await page.getByRole('option', { name: new RegExp(name) }).click();
 }
 
-test('direct #create keeps explorer, weather, HYG and WebGL off the critical path', async ({ page }, testInfo) => {
+test('direct #create keeps explorer, weather, HYG and WebGL off the critical path', async ({
+  page,
+}, testInfo) => {
   await page.addInitScript(() => {
     const monitor = { webgl: 0, weather: 0 };
     Object.defineProperty(window, '__creatorMonitor', { value: monitor });
@@ -44,7 +46,9 @@ test('direct #create keeps explorer, weather, HYG and WebGL off the critical pat
   expect(evidence.scene).toBe(0);
   // The dormant 2D preview canvas is intentional; it must not create a WebGL context.
   expect(evidence.canvas).toBe(1);
-  expect([...urls, ...evidence.resources].filter((url) => /open-meteo|three-|stars-[\w-]+\.json/.test(url))).toEqual([]);
+  expect(
+    [...urls, ...evidence.resources].filter((url) => /open-meteo|three-|stars-[\w-]+\.json/.test(url)),
+  ).toEqual([]);
   if (testInfo.project.name === 'chromium' || testInfo.project.name === 'mobile-chromium') {
     await testInfo.attach('sm3-c-form-' + testInfo.project.name + '.png', {
       body: await page.screenshot({ fullPage: true, animations: 'disabled' }),
@@ -53,7 +57,9 @@ test('direct #create keeps explorer, weather, HYG and WebGL off the critical pat
   }
 });
 
-test('real HYG artwork, typography, PNG, same instant explorer and draft return', async ({ page }, testInfo) => {
+test('real HYG artwork, typography, PNG, same instant explorer and draft return', async ({
+  page,
+}, testInfo) => {
   test.setTimeout(90000);
   await page.goto('/#create');
   await selectCity(page, 'New York');
@@ -65,10 +71,12 @@ test('real HYG artwork, typography, PNG, same instant explorer and draft return'
   });
   const canvas = page.getByTestId('sky-chart-preview');
   await expect(canvas).toBeVisible();
-  expect(await canvas.evaluate((element) => {
-    const bitmap = element as HTMLCanvasElement;
-    return [bitmap.width, bitmap.height, bitmap.getContext('2d')?.getImageData(600, 498, 1, 1).data[3]];
-  })).toEqual([1200, 1500, 255]);
+  expect(
+    await canvas.evaluate((element) => {
+      const bitmap = element as HTMLCanvasElement;
+      return [bitmap.width, bitmap.height, bitmap.getContext('2d')?.getImageData(600, 498, 1, 1).data[3]];
+    }),
+  ).toEqual([1200, 1500, 255]);
   await page.getByLabel(/^Title/).fill('A fictional Sunday ✨');
   await page.getByLabel(/^A note to remember/).fill('The stars remember a little imaginary miracle.');
   await expect(page.getByText('Your image is ready to save, share or explore.')).toBeVisible({
@@ -122,9 +130,16 @@ test('Chinese reference time and DST error retain their scientific meanings', as
   await page.goto('/#create');
   await page.getByRole('button', { name: 'Switch to Simplified Chinese' }).click();
   await expect(page.getByRole('heading', { name: '星光记得这一刻' })).toBeVisible();
-  await page.getByRole('button', { name: '选择城市' }).first().click().catch(async () => {
-    await page.getByRole('button', { name: /Choose a city|选择地点|选择城市/ }).first().click();
-  });
+  await page
+    .getByRole('button', { name: '选择城市' })
+    .first()
+    .click()
+    .catch(async () => {
+      await page
+        .getByRole('button', { name: /Choose a city|选择地点|选择城市/ })
+        .first()
+        .click();
+    });
   await page.getByRole('option', { name: /New York|纽约/ }).click();
   await page.getByLabel('公历日期').fill('2026-06-21');
   await page.getByRole('radio', { name: '不知道具体时间' }).check();

@@ -3,8 +3,7 @@ import type { Locale } from './locale';
 /** The memorial creator is not in the explorer startup path; keep its copy out of global catalogs. */
 const en = {
   title: 'Choose a moment',
-  intro:
-    'Enter a date and the event city’s local time to make a star map of that moment.',
+  intro: 'Enter a date and the event city’s local time to make a star map of that moment.',
   city: 'Event city',
   zone: ({ timeZone }: { timeZone: string }) => `Time zone: ${timeZone}`,
   chooseCityHint: 'Select a city from the suggestions or search results.',
@@ -61,13 +60,15 @@ const en = {
   retry: 'Try again',
   catalogError: 'The star catalog could not be loaded. Your inputs are safe. Check the connection and retry.',
   generationError: 'This star map could not be prepared. Your inputs are safe. Please retry.',
-  downloadRequested: 'PNG download requested. Check your browser downloads or Files app; this does not confirm a Photos save.',
+  downloadRequested:
+    'PNG download requested. Check your browser downloads or Files app; this does not confirm a Photos save.',
   imageOpened: 'The PNG was opened for saving. Use your browser or system save action.',
   shareCompleted: 'The system share sheet finished. Delivery to another app is not confirmed.',
   shareError: 'Image sharing was not available. You can still save the PNG.',
   downloadError: 'The browser could not start the PNG save. Try again.',
   referenceNotice: 'Reference time is only a calculation assumption, not an exact event time.',
-  scienceNotice: 'Scientific diagram: daylight, weather and naked-eye visibility are not simulated in the artwork.',
+  scienceNotice:
+    'Scientific diagram: daylight, weather and naked-eye visibility are not simulated in the artwork.',
   languageToggle: '中文',
   languageSwitchLabel: 'Switch to Simplified Chinese',
 };

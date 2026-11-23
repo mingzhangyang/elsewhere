@@ -36,13 +36,20 @@ const probes = vi.hoisted(() => ({
 }));
 
 vi.mock('../src/components/MemorialTimeForm', () => ({
-  default: ({ onResolved, onInvalidated }: {
+  default: ({
+    onResolved,
+    onInvalidated,
+  }: {
     onResolved: (time: MemorialTime) => void;
     onInvalidated: () => void;
   }) => (
     <div>
-      <button type="button" onClick={() => onResolved(testEvent)}>Generate imaginary sky</button>
-      <button type="button" onClick={onInvalidated}>Change moment</button>
+      <button type="button" onClick={() => onResolved(testEvent)}>
+        Generate imaginary sky
+      </button>
+      <button type="button" onClick={onInvalidated}>
+        Change moment
+      </button>
     </div>
   ),
 }));
@@ -101,7 +108,9 @@ beforeEach(async () => {
     title: input.title || 'The sky remembers',
     phrase: input.phrase,
   }));
-  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ canvas: {} } as CanvasRenderingContext2D);
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+    canvas: {},
+  } as CanvasRenderingContext2D);
   await act(() => setLanguage('en'));
 });
 
@@ -171,7 +180,9 @@ describe('SM3-C creator state and resource ownership', () => {
 
   it('preserves inputs for a retry and cancels resources when unmounted', async () => {
     probes.generate.mockRejectedValueOnce(new Error('Network unavailable'));
-    const view = render(<SkyArtworkCreator initialDraft={null} onDraftChange={vi.fn()} onExplore={vi.fn()} />);
+    const view = render(
+      <SkyArtworkCreator initialDraft={null} onDraftChange={vi.fn()} onExplore={vi.fn()} />,
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Generate imaginary sky' }));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Try again' })).toBeVisible());
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));

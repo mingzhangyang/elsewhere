@@ -73,8 +73,7 @@ export default function RouteShell({ diagnostics = false }: { diagnostics?: bool
   }, []);
 
   const activeHandoff =
-    window.history.state?.elsewhereCreatorExplorer === true &&
-    !window.location.hash.startsWith('#sky=')
+    window.history.state?.elsewhereCreatorExplorer === true && !window.location.hash.startsWith('#sky=')
       ? handoff
       : null;
 
@@ -87,11 +86,7 @@ export default function RouteShell({ diagnostics = false }: { diagnostics?: bool
       }
     >
       {route === 'create' ? (
-        <Creator
-          initialDraft={savedDraft.current}
-          onDraftChange={saveDraft}
-          onExplore={openExplorer}
-        />
+        <Creator initialDraft={savedDraft.current} onDraftChange={saveDraft} onExplore={openExplorer} />
       ) : (
         <Explorer
           key={activeHandoff ? `creator-${explorerVisit}` : `explorer-${explorerVisit}`}

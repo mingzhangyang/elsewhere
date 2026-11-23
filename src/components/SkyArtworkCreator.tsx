@@ -22,7 +22,9 @@ type Ready = {
   share: SkyArtworkShareCapability;
 };
 type Delivery = typeof import('../lib/skyArtworkDelivery');
-type SnapshotCoordinator = ReturnType<typeof import('../services/skyChartSnapshot').createSkyChartSnapshotCoordinator>;
+type SnapshotCoordinator = ReturnType<
+  typeof import('../services/skyChartSnapshot').createSkyChartSnapshotCoordinator
+>;
 
 const EMPTY: SkyCreatorDraft = { title: '', phrase: '', theme: 'midnight' };
 
@@ -299,7 +301,12 @@ export default function SkyArtworkCreator({
           elsewhere<span>.</span>
         </a>
         <div className="creator-navigation">
-          <button type="button" className="creator-quiet" onClick={toggleLanguage} aria-label={t.languageSwitchLabel}>
+          <button
+            type="button"
+            className="creator-quiet"
+            onClick={toggleLanguage}
+            aria-label={t.languageSwitchLabel}
+          >
             {t.languageToggle}
           </button>
           <button type="button" className="creator-quiet" onClick={() => onExplore()}>
@@ -358,11 +365,19 @@ export default function SkyArtworkCreator({
           <h2 id="creator-edit-title">{t.editingHeading}</h2>
           <label className="creator-field">
             <span>{t.titleLabel}</span>
-            <input type="text" value={draft.title} onChange={(event) => updateText('title', event.target.value)} />
+            <input
+              type="text"
+              value={draft.title}
+              onChange={(event) => updateText('title', event.target.value)}
+            />
           </label>
           <label className="creator-field">
             <span>{t.phraseLabel}</span>
-            <textarea rows={3} value={draft.phrase} onChange={(event) => updateText('phrase', event.target.value)} />
+            <textarea
+              rows={3}
+              value={draft.phrase}
+              onChange={(event) => updateText('phrase', event.target.value)}
+            />
           </label>
           <fieldset className="creator-themes">
             <legend>{t.themeLabel}</legend>
@@ -409,7 +424,11 @@ export default function SkyArtworkCreator({
               {t.exploreThisSky}
             </button>
           </div>
-          {notice && <p role="status" aria-live="polite" className="creator-status">{notice}</p>}
+          {notice && (
+            <p role="status" aria-live="polite" className="creator-status">
+              {notice}
+            </p>
+          )}
           <p className="creator-disclaimer">
             {science?.event.kind === 'reference' && <span>{t.referenceNotice} </span>}
             {t.scienceNotice}

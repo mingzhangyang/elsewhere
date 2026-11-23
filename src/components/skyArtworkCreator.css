@@ -5,8 +5,7 @@
   color: #edf1fc;
   background:
     radial-gradient(ellipse 75% 460px at 70% 4%, #3e325f65, transparent),
-    radial-gradient(ellipse 55% 520px at 10% 52%, #152b4859, transparent),
-    #080e17;
+    radial-gradient(ellipse 55% 520px at 10% 52%, #152b4859, transparent), #080e17;
   padding-bottom: max(40px, env(safe-area-inset-bottom));
 }
 
@@ -128,8 +127,7 @@
   border-radius: 9px;
   overflow: hidden;
   background:
-    radial-gradient(ellipse at 50% 37%, #4c3d63, transparent 56%),
-    linear-gradient(145deg, #121e3b, #111425);
+    radial-gradient(ellipse at 50% 37%, #4c3d63, transparent 56%), linear-gradient(145deg, #121e3b, #111425);
 }
 
 .creator-art-canvas {
