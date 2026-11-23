@@ -334,11 +334,8 @@ it('renders celestial names above transparent clouds without bypassing foregroun
   cloud.material.dispose();
 });
 
-it('retains bright-sky and cloud labels through 85% cover but hides names at full overcast', () => {
-  // Labels follow the viewer setting except at full, opaque overcast.
-  const labelFlags = (cover: number) => ({ stars: true, labels: cover < 100, constellations: true });
-  expect(labelFlags(85).labels).toBe(true);
-  expect(labelFlags(100).labels).toBe(false);
+it('keeps celestial sprite resources and constellation lines stable when labels are disabled', () => {
+  const enabled = { stars: true, labels: true, constellations: true };
   const scene = new THREE.Scene();
   const sky = calculateSky(NEW_YORK, new Date('2026-11-13T04:00Z'));
   const layers = createCelestialLayers(
@@ -356,14 +353,14 @@ it('retains bright-sky and cloud labels through 85% cover but hides names at ful
   const camera = new THREE.PerspectiveCamera(66, 1280 / 800, 0.1, 5000);
   camera.lookAt(new THREE.Vector3(1, 0.6, -0.2));
   camera.updateMatrixWorld();
-  layers.update(sky.stars, labelFlags(85), 1, bodies);
+  layers.update(sky.stars, enabled, 1, bodies);
   layers.layout(camera, 1280, 800);
   expect(sprites.some((sprite) => sprite.visible)).toBe(true);
   const spriteIds = sprites.map((sprite) => sprite.uuid);
-  layers.update(sky.stars, labelFlags(100), 1, bodies);
+  layers.update(sky.stars, { ...enabled, labels: false }, 1, bodies);
   layers.layout(camera, 1280, 800);
   expect(sprites.every((sprite) => !sprite.visible)).toBe(true);
-  // Cloud opacity does not hide or recreate constellation lines or any text textures.
+  // A label-layer setting change does not recreate constellation lines or text textures.
   expect(scene.children.some((object) => object instanceof THREE.LineSegments && object.visible)).toBe(true);
   expect(sprites.map((sprite) => sprite.uuid)).toEqual(spriteIds);
   layers.dispose();
