@@ -125,12 +125,12 @@ it('keeps a stable preview slot, hides stale exports, and ignores an out-of-orde
 
 it('keeps the previous preview and loading animation until the replacement decodes', async () => {
   let finishDecode = () => {};
+  const decodePending = new Promise<void>((resolve) => {
+    finishDecode = resolve;
+  });
   Object.defineProperty(HTMLImageElement.prototype, 'decode', {
     configurable: true,
-    value: vi
-      .fn()
-      .mockResolvedValueOnce(undefined)
-      .mockImplementationOnce(() => new Promise<void>((resolve) => (finishDecode = resolve))),
+    value: vi.fn().mockResolvedValueOnce(undefined).mockReturnValueOnce(decodePending),
   });
   render(<MomentImage snapshot={snapshot} capture={capture} link="" />);
   await settle();
@@ -153,13 +153,12 @@ it('keeps the previous preview and loading animation until the replacement decod
 });
 
 it('keeps the old image on decode failure and recovers on a later redraw', async () => {
+  const decode = vi.fn().mockResolvedValue(undefined);
+  decode.mockResolvedValueOnce(undefined);
+  decode.mockRejectedValueOnce(new Error('corrupt PNG'));
   Object.defineProperty(HTMLImageElement.prototype, 'decode', {
     configurable: true,
-    value: vi
-      .fn()
-      .mockResolvedValue(undefined)
-      .mockResolvedValueOnce(undefined)
-      .mockRejectedValueOnce(new Error('corrupt PNG')),
+    value: decode,
   });
   render(<MomentImage snapshot={snapshot} capture={capture} link="" />);
   await settle();
@@ -195,11 +194,12 @@ it('revokes a staged image if its load fails or the dialog unmounts', async () =
 
 it('invalidates a candidate whose decode resolves after a newer redraw', async () => {
   let finishDecode = () => {};
+  const decodePending = new Promise<void>((resolve) => {
+    finishDecode = resolve;
+  });
   Object.defineProperty(HTMLImageElement.prototype, 'decode', {
     configurable: true,
-    value: vi
-      .fn()
-      .mockImplementationOnce(() => new Promise<void>((resolve) => (finishDecode = resolve))),
+    value: vi.fn().mockReturnValueOnce(decodePending),
   });
   const { unmount } = render(<MomentImage snapshot={snapshot} capture={capture} link="" />);
   await settle();

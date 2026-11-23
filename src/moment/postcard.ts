@@ -114,13 +114,13 @@ export function drawPostcard({
   const ink = '#1d2433',
     soft = '#4a5468',
     faint = '#6b7385';
-  const line = (
-    text: string,
-    size = 26,
-    weight = 500,
-    colour = ink,
-    gap = 8,
-  ): TextLine => ({ text, size, weight, colour, gap });
+  const line = (text: string, size = 26, weight = 500, colour = ink, gap = 8): TextLine => ({
+    text,
+    size,
+    weight,
+    colour,
+    gap,
+  });
   const lines: TextLine[] = [
     line(place.name, 56, 700),
     ...(place.country ? [line(place.country, 26, 500, soft, 14)] : []),

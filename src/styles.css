@@ -1682,6 +1682,8 @@ dialog:not([open]) {
   flex: 1;
   text-decoration: none;
 }
+/* Preserve the inline SVG mask without reformatting its data URI. */
+/* prettier-ignore */
 .moment-download-icon {
   display: inline-block;
   flex: 0 0 17px;
