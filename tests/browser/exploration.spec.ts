@@ -224,6 +224,7 @@ test('mobile redraw keeps image choices and scroll position stable', async ({ pa
   const slot = dialog.locator('.moment-preview-slot');
   const options = dialog.locator('.moment-options');
   const image = dialog.getByRole('img', { name: 'Keepsake image of the sky over New York' });
+  const preview = slot.locator('.moment-preview');
   await expect(image).toBeVisible();
   await options.scrollIntoViewIfNeeded();
   const initial = await options.boundingBox();
@@ -233,15 +234,17 @@ test('mobile redraw keeps image choices and scroll position stable', async ({ pa
   expect(slotBox).not.toBeNull();
 
   for (const label of ['Illustrated', 'Sea']) {
-    const previous = await image.getAttribute('src');
+    const previous = await preview.getAttribute('src');
     await dialog.getByRole('button', { name: label, exact: true }).click();
     await expect(slot).toHaveAttribute('aria-busy', 'true');
     expect((await options.boundingBox())!.y).toBeCloseTo(initial!.y, 0);
     expect((await slot.boundingBox())!.height).toBeCloseTo(slotBox!.height, 0);
     expect(await dialog.evaluate((el) => el.scrollTop)).toBeCloseTo(scroll, 0);
-    await expect(image).toBeVisible();
-    await expect.poll(() => image.getAttribute('src')).not.toBe(previous);
+    // The stale preview is still drawn but intentionally hidden from assistive technology.
+    await expect(preview).toBeVisible();
+    await expect.poll(() => preview.getAttribute('src')).not.toBe(previous);
     await expect(slot).toHaveAttribute('aria-busy', 'false');
+    await expect(image).toBeVisible();
     expect((await options.boundingBox())!.y).toBeCloseTo(initial!.y, 0);
     expect((await slot.boundingBox())!.height).toBeCloseTo(slotBox!.height, 0);
     expect(await dialog.evaluate((el) => el.scrollTop)).toBeCloseTo(scroll, 0);

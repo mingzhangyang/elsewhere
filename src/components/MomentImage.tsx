@@ -34,26 +34,24 @@ export default function MomentImage({
   const [style, setStyle] = useState<MomentStyle>('realistic');
   const [horizon, setHorizon] = useState<HorizonVariant>('ridge');
   const [clearSkyImage, setClearSkyImage] = useState(true);
-  const choices = useMemo(
-    () => [momentImageSnapshot(snapshot, clearSkyImage), style, horizon, clearSkyImage, i18n] as const,
-    [snapshot, style, horizon, clearSkyImage, i18n],
+  const imageSnapshot = useMemo(
+    () => momentImageSnapshot(snapshot, clearSkyImage),
+    [snapshot, clearSkyImage],
   );
-  const [image, setImage] = useState<{ url: string; blob: Blob; choices: typeof choices } | null>(null);
+  const [image, setImage] = useState<{ url: string; blob: Blob } | null>(null);
   const [failed, setFailed] = useState(false);
+  const [drawing, setDrawing] = useState(true);
   const request = useRef(0);
   const shown = useRef<string | null>(null);
   const latest = useRef(capture);
-  const current = image?.choices === choices ? image : null;
-  const ready = !!current && !failed;
   latest.current = capture;
+  const ready = !!image && !drawing && !failed;
   useEffect(() => {
-    const [imageSnapshot, style, horizon, clearSkyImage, i18n] = choices;
-    const { m } = i18n;
-    const copy = momentImageCopy[i18n.locale];
-    // Keep the old image dimmed in a fixed slot, but never expose it for saving or sharing.
-    // The key also hides stale exports immediately, before this effect runs.
+    // Only the latest request is shown; a slower earlier one is discarded.
     const ticket = ++request.current;
     setFailed(false);
+    // Keep the previous image visible while the selected variant is redrawn.
+    setDrawing(true);
     const place = isDeviceLocation(imageSnapshot.location)
       ? m.moment.devicePlace
       : placeLabel(imageSnapshot.location, i18n).name;
@@ -97,26 +95,31 @@ export default function MomentImage({
       .then(
         (blob) => {
           if (ticket !== request.current) return;
-          if (!blob) return setFailed(true);
+          if (!blob) {
+            setDrawing(false);
+            return setFailed(true);
+          }
+          const oldUrl = shown.current;
           const url = URL.createObjectURL(blob);
           shown.current = url;
-          setImage({ url, blob, choices });
+          setImage({ url, blob });
+          setDrawing(false);
+          if (oldUrl) URL.revokeObjectURL(oldUrl);
         },
-        () => ticket === request.current && setFailed(true),
+        () => {
+          if (ticket === request.current) {
+            setDrawing(false);
+            setFailed(true);
+          }
+        },
       );
-  }, [choices]);
+  }, [imageSnapshot, style, horizon, clearSkyImage, i18n, m, copy]);
   useEffect(
     () => () => {
-      // Revoke the old image only after React has replaced it in the preview.
-      if (image && image.url !== shown.current) URL.revokeObjectURL(image.url);
-    },
-    [image],
-  );
-  useEffect(
-    () => () => {
-      // Cancel in-flight work and release even URLs allocated just before unmount.
+      // Work still pending when the dialog closes is discarded before it allocates a URL.
       request.current++;
       if (shown.current) URL.revokeObjectURL(shown.current);
+      shown.current = null;
     },
     [],
   );
@@ -124,7 +127,7 @@ export default function MomentImage({
   // The moment's own civil date, as printed on the image, not the UTC one.
   const date = getZonedParts(snapshot.instant, snapshot.location.timezone).date;
   const file =
-    ready && current ? new File([current.blob], `elsewhere-sky-${date}.png`, { type: 'image/png' }) : null;
+    ready && image ? new File([image.blob], `elsewhere-sky-${date}.png`, { type: 'image/png' }) : null;
   const canSend = !!file && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] });
   const place = isDeviceLocation(snapshot.location)
     ? m.moment.devicePlace
@@ -136,18 +139,20 @@ export default function MomentImage({
         <input
           type="checkbox"
           checked={clearSkyImage}
-          onChange={(event) => setClearSkyImage(event.target.checked)}
+          onChange={(event) => {
+            setDrawing(true);
+            setClearSkyImage(event.target.checked);
+          }}
         />
         {copy.clearSkyImage}
       </label>
-      <div className="moment-preview-slot" aria-busy={!ready && !failed}>
+      <div className="moment-preview-slot" aria-busy={drawing}>
         {image && (
           <img
             className="moment-preview"
             src={image.url}
             alt={m.moment.alt({ place })}
             aria-hidden={!ready}
-            onError={() => setFailed(true)}
           />
         )}
         {!ready && (
@@ -160,22 +165,36 @@ export default function MomentImage({
       <div className="moment-options">
         <div role="group" aria-label={m.moment.style} className="segmented">
           {MOMENT_STYLES.map((value) => (
-            <button key={value} aria-pressed={style === value} onClick={() => setStyle(value)}>
+            <button
+              key={value}
+              aria-pressed={style === value}
+              onClick={() => {
+                if (style !== value) setDrawing(true);
+                setStyle(value);
+              }}
+            >
               {m.moment.styles[value]}
             </button>
           ))}
         </div>
         <div role="group" aria-label={m.moment.horizon} className="segmented four">
           {HORIZON_VARIANTS.map((value) => (
-            <button key={value} aria-pressed={horizon === value} onClick={() => setHorizon(value)}>
+            <button
+              key={value}
+              aria-pressed={horizon === value}
+              onClick={() => {
+                if (horizon !== value) setDrawing(true);
+                setHorizon(value);
+              }}
+            >
               {m.moment.horizons[value]}
             </button>
           ))}
         </div>
       </div>
       <div className="moment-actions">
-        {ready && current && (
-          <a className="secondary-button" href={current.url} download={file!.name}>
+        {ready && image && (
+          <a className="secondary-button" href={image.url} download={file!.name}>
             <Download size={17} />
             {m.moment.save}
           </a>
