@@ -176,43 +176,10 @@ export function cirrus(
   ctx.restore();
 }
 
-/** Seeded bilinear noise: one coherent cloud deck, without hard bands or tiled rows. */
-function deckNoise(u: number, v: number, cellsX: number, cellsY: number, seed: number): number {
-  const x = u * cellsX;
-  const y = v * cellsY;
-  const ix = Math.floor(x);
-  const iy = Math.floor(y);
-  const fx = x - ix;
-  const fy = y - iy;
-  const sx = fx * fx * (3 - 2 * fx);
-  const sy = fy * fy * (3 - 2 * fy);
-  const hash = (a: number, b: number) => {
-    let h = (Math.imul(a, 374761393) + Math.imul(b, 668265263) + seed) | 0;
-    h = Math.imul(h ^ (h >>> 13), 1274126177);
-    return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
-  };
-  const top = lerp(hash(ix, iy), hash(ix + 1, iy), sx);
-  const bottom = lerp(hash(ix, iy + 1), hash(ix + 1, iy + 1), sx);
-  return lerp(top, bottom, sy);
-}
-
-/** Continuous coverage approaches a dense, still textured deck at 100%, not three open strips. */
-export function sampleOvercastDeck(
-  u: number,
-  v: number,
-  seed: number,
-  amount: number,
-): { alpha: number; tone: number } {
+/** Full-overcast coverage is a continuous layer; lighter cover keeps gaps between veils. */
+export function overcastDeckOpacity(amount: number): number {
   const t = clamp01((clamp01(amount) - 0.74) / 0.26);
-  const coverage = t * t * (3 - 2 * t);
-  const variation =
-    (deckNoise(u, v, 3, 2, seed) - 0.5) * 0.55 +
-    (deckNoise(u, v, 10, 7, seed + 13) - 0.5) * 0.3 +
-    (deckNoise(u, v, 23, 18, seed + 31) - 0.5) * 0.15;
-  return {
-    alpha: coverage * (0.94 + 0.075 * variation),
-    tone: clamp01(0.5 + variation * 1.4),
-  };
+  return 0.94 * t * t * (3 - 2 * t);
 }
 
 /** Overcast: a coherent diffuse cloud deck above the formerly sparse atmospheric veils. */
@@ -230,45 +197,26 @@ export function cloudSheet(
   const span = bottom - top;
   const bands = 1 + Math.round(clamp01(amount) * 2);
   const shadow = mix(palette.cloudBody, palette.cloudShadow, 0.35 + 0.25 * light.backlit);
-  if (amount > 0.74) {
-    const seed = (random() * 0xffffffff) >>> 0;
-    const offscreen =
-      typeof document !== 'undefined' && typeof ctx.canvas?.width === 'number'
-        ? document.createElement('canvas')
-        : null;
-    const c = offscreen?.getContext('2d');
-    if (offscreen && c) {
-      offscreen.width = Math.max(24, Math.min(160, Math.ceil(width / 10)));
-      offscreen.height = Math.max(16, Math.min(160, Math.ceil(span / 10)));
-      const image = c.createImageData(offscreen.width, offscreen.height);
-      const pixels = image.data;
-      let n = 0;
-      for (let j = 0; j < offscreen.height; j++) {
-        const v = (j + 0.5) / offscreen.height;
-        for (let i = 0; i < offscreen.width; i++) {
-          const u = (i + 0.5) / offscreen.width;
-          const { alpha, tone } = sampleOvercastDeck(u, v, seed, amount);
-          const directed = clamp01(tone + (u - 0.5) * light.x * 0.12 + (v - 0.5) * light.y * 0.12);
-          const colour = mix(shadow, palette.cloudLight, 0.15 + directed * 0.38);
-          for (let ch = 0; ch < 3; ch++) pixels[n++] = colour[ch];
-          pixels[n++] = alpha * 255;
-        }
-      }
-      c.putImageData(image, 0, 0);
-      ctx.save();
-      ctx.imageSmoothingEnabled = true;
-      ctx.drawImage(offscreen, 0, top, width, span);
-      ctx.restore();
-    } else {
-      // Recording canvases still express the dense deck for non-browser tests.
-      ctx.save();
-      ctx.fillStyle = css(
-        mix(shadow, palette.cloudLight, 0.38),
-        sampleOvercastDeck(0.5, 0.5, seed, amount).alpha,
-      );
-      ctx.fillRect(0, top, width, span);
-      ctx.restore();
-    }
+  const deckAlpha = overcastDeckOpacity(amount);
+  if (deckAlpha > 0) {
+    // The continuous colour wash is broken by the existing seeded, irregular painted veils.
+    // The postcard's pigment finish supplies finer grain without a second per-pixel noise field.
+    const horizonLit = clamp01((light.y + 1) * 0.5);
+    const topTint = mix(shadow, palette.cloudLight, 0.46 - horizonLit * 0.2);
+    const bottomTint = mix(shadow, palette.cloudLight, 0.26 + horizonLit * 0.2);
+    const gradient = ctx.createLinearGradient(
+      width * (0.5 - light.x * 0.18),
+      top,
+      width * (0.5 + light.x * 0.18),
+      bottom,
+    );
+    gradient.addColorStop(0, css(topTint, deckAlpha * 0.98));
+    gradient.addColorStop(0.48, css(shadow, deckAlpha));
+    gradient.addColorStop(1, css(bottomTint, deckAlpha * 0.96));
+    ctx.save();
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, top, width, span);
+    ctx.restore();
   }
   for (let i = 0; i < bands; i++) {
     const t = (i + 0.45 + (random() - 0.5) * 0.28) / bands;
