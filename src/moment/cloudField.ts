@@ -102,7 +102,9 @@ export function rasterCloudOpacity(field: CloudField, columns: number, rows: num
     for (let j = 0; j < rows; j++) {
       const dy = (-1.9 + (j + 0.5) * stepY - my) / ry;
       const vertical = Math.exp(-1.75 * dy * dy);
-      for (let i = 0; i < columns; i++) clear[j * columns + i] *= 1 - horizontal[i] * vertical;
+      for (let i = 0; i < columns; i++) {
+        clear[j * columns + i] *= 1 - horizontal[i] * vertical;
+      }
     }
   }
   const opacity = new Uint8Array(clear.length);
@@ -174,7 +176,8 @@ export function paintCloudField(
   const rows = offscreen.height;
   // Preserve the same seeded density on the final pixel grid, then shade its 2D gradients.
   const densities = rasterCloudOpacity(field, columns, rows);
-  const base = mix(mix(palette.cloudShadow, palette.cloudBody, 0.52), light.underColour, light.under * 0.25);
+  const shade = mix(palette.cloudShadow, palette.cloudBody, 0.52);
+  const base = mix(shade, light.underColour, light.under * 0.25);
   const phase = field.seed * 0.000001;
   let n = 0;
   for (let j = 0; j < rows; j++) {

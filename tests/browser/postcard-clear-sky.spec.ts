@@ -162,7 +162,9 @@ test('a true overcast deck covers the full canvas without opaque flat slabs', as
       for (let y = 16; y < 800; y += 16) {
         for (let x = 16; x < 1200; x += 16) {
           const i = (y * 1200 + x) * 4;
-          const r = data[i], g = data[i + 1], b = data[i + 2];
+          const r = data[i],
+            g = data[i + 1],
+            b = data[i + 2];
           if (r < 5 && g < 50 && b > 220) exposed++;
           shades.add([r >> 3, g >> 3, b >> 3].join(','));
           count++;
