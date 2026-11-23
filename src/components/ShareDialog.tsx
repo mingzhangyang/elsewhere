@@ -143,13 +143,18 @@ const ShareDialog = forwardRef<ShareDialogHandle, Props>(function ShareDialog(
             (imageShown ? (
               <Suspense
                 fallback={
-                  <p className="form-status" role="status">{m.moment.drawing}</p>
+                  <p className="form-status" role="status">
+                    {m.moment.drawing}
+                  </p>
                 }
               >
                 <MomentImage snapshot={request.snapshot} capture={capture} link={link} />
               </Suspense>
             ) : (
-              <button className="secondary-button share-image-placeholder" onClick={() => setImageShown(true)}>
+              <button
+                className="secondary-button share-image-placeholder"
+                onClick={() => setImageShown(true)}
+              >
                 <ImageIcon size={24} />
                 {m.moment.make}
               </button>
