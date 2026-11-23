@@ -135,6 +135,9 @@ export function drawPostcard({
       colour: ink,
       gap: 22,
     },
+    ...(snapshot.provenance.kind === 'clear'
+      ? [{ text: m.moment.clearSkyBadge, size: 25, weight: 700, colour: '#335b73', gap: 16 }]
+      : []),
     {
       text: subjectName
         ? m.moment.subject({ name: subjectName, direction, degrees: heading })
