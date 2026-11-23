@@ -11,7 +11,13 @@ test('postcard defaults to clear weather in both styles without changing the exp
     const labels: string[] = [];
     Object.defineProperty(window, '__postcardClearLabels', { value: labels });
     const original = CanvasRenderingContext2D.prototype.fillText;
-    CanvasRenderingContext2D.prototype.fillText = function (text, x, y, maxWidth) {
+    CanvasRenderingContext2D.prototype.fillText = function (
+      this: CanvasRenderingContext2D,
+      text: string,
+      x: number,
+      y: number,
+      maxWidth?: number,
+    ) {
       if (text.includes('Clear Sky')) labels.push(text);
       if (maxWidth === undefined) return original.call(this, text, x, y);
       return original.call(this, text, x, y, maxWidth);
