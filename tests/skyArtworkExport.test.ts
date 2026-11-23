@@ -475,6 +475,7 @@ describe('SM3-B ownership, concurrency, download and share adapters', () => {
     output.release();
   });
 
+  // prettier-ignore
   it('requests a noopener image tab without using a window.open handle or revoking early', async () => {
     const output = await exportSkyChartPng(options());
     const revoked = vi.fn();
@@ -504,6 +505,7 @@ describe('SM3-B ownership, concurrency, download and share adapters', () => {
     expect(revoked).toHaveBeenCalledOnce();
   });
 
+  // prettier-ignore
   it('revokes the fallback URL if opening the image throws', async () => {
     const output = await exportSkyChartPng(options());
     const revoked = vi.fn();

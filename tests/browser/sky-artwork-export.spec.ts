@@ -309,6 +309,7 @@ test('browser download requests original PNG from a genuine button click, and sh
   expect(download.suggestedFilename()).toBe('elsewhere-sky-2026-06-21.png');
 });
 
+// prettier-ignore
 test('no-download fallback opens a noopener PNG tab', async ({ page, context }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium', 'Desktop Chromium only.');
   await page.goto('/?scenario=day');
