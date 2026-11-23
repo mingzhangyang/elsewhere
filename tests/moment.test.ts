@@ -10,6 +10,7 @@ import {
   type HorizonVariant,
 } from '../src/moment/scenery';
 import { wrap } from '../src/moment/postcard';
+import { momentImageSnapshot } from '../src/moment/imageWeather';
 import { landscapeSeason } from '../src/moment/seasons';
 import { landscapeLight } from '../src/moment/landscapeArt';
 import { drawIllustration } from '../src/moment/illustration';
@@ -20,7 +21,6 @@ import {
   arrivalStart,
   centeredPattern,
   momentProvenance,
-  momentImageSnapshot,
   patternCenter,
   subjectField,
 } from '../src/lib/moment';
