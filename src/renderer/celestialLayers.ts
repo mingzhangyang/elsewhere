@@ -26,14 +26,6 @@ export interface BodyLabelState {
 /** Below this altitude, in degrees, a planet's label would crowd the horizon. */
 const BODY_LABEL_MIN_ALTITUDE = 2;
 
-/** Cloud dome is 20; keep text above clouds but below foreground precipitation (30). */
-export const CELESTIAL_LABEL_RENDER_ORDER = 21;
-
-/** Text is UI, not emitted light. Fade only at near-total overcast to avoid floating names. */
-export function cloudLabelOpacity(cloudCover: number): number {
-  return 1 - THREE.MathUtils.smoothstep(cloudCover, 90, 100);
-}
-
 /** How labels name stars and line patterns, in the interface language. */
 export interface LabelNames {
   star: (star: Star) => string;
@@ -90,34 +82,28 @@ export function createCelestialLayers(
     flags: { stars: boolean; labels: boolean; constellations: boolean },
     opacity: number,
     bodyStates: readonly BodyLabelState[] = [],
-    cloudOpacity = 1,
   ) {
-    const labelOpacity = opacity * cloudOpacity;
-    const labelsShown = flags.labels && cloudOpacity > 0.01;
     bodyLabels.forEach(({ sprite }, i) => {
       const body = bodyStates[i];
       // Planets are not part of the stars layer; like the Sun and Moon they are always drawn.
       sprite.visible =
-        !!body &&
-        body.altitude > BODY_LABEL_MIN_ALTITUDE &&
-        labelsShown &&
-        body.opacity > 0.05;
-      sprite.material.opacity = Math.min(1, (body?.opacity ?? 0) * 1.4) * cloudOpacity;
+        !!body && body.altitude > BODY_LABEL_MIN_ALTITUDE && flags.labels && body.opacity > 0.05;
+      sprite.material.opacity = Math.min(1, (body?.opacity ?? 0) * 1.4);
       sprite.userData.eligible = sprite.visible;
     });
     for (const entry of labels) {
       const star = starAt(stars, entry);
       const label = entry.sprite;
-      label.visible = !!star && star.altitude > 5 && labelsShown && flags.stars && labelOpacity > 0.01;
-      label.material.opacity = labelOpacity;
+      label.visible = !!star && star.altitude > 5 && flags.labels && flags.stars && opacity > 0.01;
+      label.material.opacity = opacity;
       label.userData.eligible = label.visible;
     }
     patternsShown = flags.constellations && opacity > 0.01;
     for (const { lines, label } of patterns) {
       lines.visible = patternsShown;
       lines.material.opacity = opacity * 0.36;
-      label.material.opacity = labelOpacity;
-      label.userData.patternLabel = labelsShown && patternsShown;
+      label.material.opacity = opacity;
+      label.userData.patternLabel = flags.constellations && flags.labels && patternsShown;
     }
     // At rest, each star and body is where its horizontal position says.
     place(
@@ -182,7 +168,8 @@ export function createCelestialLayers(
     ...labels.map((entry) => entry.sprite),
     ...patterns.map((p) => p.label),
   ];
-  for (const sprite of sprites) sprite.renderOrder = CELESTIAL_LABEL_RENDER_ORDER;
+  // UI text goes above clouds (20) but retains depth testing; rain renders at 30.
+  for (const sprite of sprites) sprite.renderOrder = 21;
   const world = new THREE.Vector3();
   const projected = new THREE.Vector3();
   /**

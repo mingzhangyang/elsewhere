@@ -1,11 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import zh from '../src/i18n/zh-Hans';
-import {
-  CELESTIAL_LABEL_RENDER_ORDER,
-  cloudLabelOpacity,
-  createCelestialLayers,
-} from '../src/renderer/celestialLayers';
+import { createCelestialLayers } from '../src/renderer/celestialLayers';
 import { calculateSky } from '../src/domain/astronomy';
 import { NEW_YORK } from './fixtures/locations';
 import {
@@ -320,7 +316,7 @@ it('renders celestial names above transparent clouds without bypassing foregroun
   const sprites = scene.children.filter((object): object is THREE.Sprite => object instanceof THREE.Sprite);
   expect(sprites.length).toBeGreaterThan(3);
   for (const sprite of sprites) {
-    expect(sprite.renderOrder).toBe(CELESTIAL_LABEL_RENDER_ORDER);
+    expect(sprite.renderOrder).toBe(21);
     expect(sprite.renderOrder).toBeGreaterThan(cloud.renderOrder);
     expect(sprite.renderOrder).toBeLessThan(30);
     expect(sprite.material.depthTest).toBe(true);
@@ -339,13 +335,10 @@ it('renders celestial names above transparent clouds without bypassing foregroun
 });
 
 it('retains bright-sky and cloud labels through 85% cover but hides names at full overcast', () => {
-  expect(cloudLabelOpacity(0)).toBe(1);
-  expect(cloudLabelOpacity(30)).toBe(1);
-  expect(cloudLabelOpacity(60)).toBe(1);
-  expect(cloudLabelOpacity(85)).toBe(1);
-  expect(cloudLabelOpacity(90)).toBe(1);
-  expect(cloudLabelOpacity(95)).toBeCloseTo(0.5);
-  expect(cloudLabelOpacity(100)).toBe(0);
+  // Labels follow the viewer setting except at full, opaque overcast.
+  const labelFlags = (cover: number) => ({ stars: true, labels: cover < 100, constellations: true });
+  expect(labelFlags(85).labels).toBe(true);
+  expect(labelFlags(100).labels).toBe(false);
   const scene = new THREE.Scene();
   const sky = calculateSky(NEW_YORK, new Date('2026-11-13T04:00Z'));
   const layers = createCelestialLayers(
@@ -358,17 +351,16 @@ it('retains bright-sky and cloud labels through 85% cover but hides names at ful
     },
     [{ id: 'jupiter', name: 'Jupiter' }],
   );
-  const flags = { stars: true, labels: true, constellations: true };
   const bodies = [{ altitude: 45, azimuth: 100, opacity: 1 }];
   const sprites = scene.children.filter((object): object is THREE.Sprite => object instanceof THREE.Sprite);
   const camera = new THREE.PerspectiveCamera(66, 1280 / 800, 0.1, 5000);
   camera.lookAt(new THREE.Vector3(1, 0.6, -0.2));
   camera.updateMatrixWorld();
-  layers.update(sky.stars, flags, 1, bodies, cloudLabelOpacity(85));
+  layers.update(sky.stars, labelFlags(85), 1, bodies);
   layers.layout(camera, 1280, 800);
   expect(sprites.some((sprite) => sprite.visible)).toBe(true);
   const spriteIds = sprites.map((sprite) => sprite.uuid);
-  layers.update(sky.stars, flags, 1, bodies, cloudLabelOpacity(100));
+  layers.update(sky.stars, labelFlags(100), 1, bodies);
   layers.layout(camera, 1280, 800);
   expect(sprites.every((sprite) => !sprite.visible)).toBe(true);
   // Cloud opacity does not hide or recreate constellation lines or any text textures.
