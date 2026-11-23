@@ -262,11 +262,10 @@ test('real HYG snapshot can be encoded as PNG without recomputing star positions
   });
 });
 
-test('browser download requests original PNG and native sharing reports cancel separately', async ({
+test('browser download requests original PNG from a genuine button click, and share cancel is distinct', async ({
   page,
 }) => {
   await page.goto('/?scenario=day');
-  const download = page.waitForEvent('download');
   const behavior = await page.evaluate(async () => {
     const { SkyArtworkPng } = await import('../../src/lib/skyArtworkExport.ts');
     const { downloadSkyArtwork, shareSkyArtwork, skyArtworkShareCapability } = await import(
@@ -289,11 +288,23 @@ test('browser download requests original PNG and native sharing reports cancel s
     };
     const capability = skyArtworkShareCapability(file, native);
     const share = await shareSkyArtwork(file, native);
-    const result = downloadSkyArtwork(file);
-    return { capability, share, status: result.status };
+    const button = document.createElement('button');
+    button.id = 'sm3-b-gesture-download';
+    button.textContent = 'Download PNG';
+    button.addEventListener('click', () => {
+      button.dataset.status = downloadSkyArtwork(file).status;
+    });
+    document.body.append(button);
+    return { capability, share };
   });
   expect(behavior.capability).toBe('files');
   expect(behavior.share).toBe('cancelled');
-  expect(behavior.status).toBe('download-requested');
-  expect((await download).suggestedFilename()).toBe('elsewhere-sky-2026-06-21.png');
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: 'Download PNG' }).click(),
+  ]);
+  expect((await page.locator('#sm3-b-gesture-download').getAttribute('data-status'))).toBe(
+    'download-requested',
+  );
+  expect(download.suggestedFilename()).toBe('elsewhere-sky-2026-06-21.png');
 });
