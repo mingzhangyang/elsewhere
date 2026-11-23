@@ -10,6 +10,7 @@ import { drawIllustration, lettering, type ToCanvas } from './illustration';
 import { noise1 } from './paint';
 import { HORIZON_STEP, horizonAltitude, type HorizonVariant } from './scenery';
 import { seededRandom } from '../lib/random';
+import { momentImageCopy } from './imageCopy';
 
 /**
  * The keepsake image of a sky moment (ROADMAP phase 3 prototype), composed on a 2D canvas: the sky
@@ -136,7 +137,7 @@ export function drawPostcard({
       gap: 22,
     },
     ...(snapshot.provenance.kind === 'clear'
-      ? [{ text: m.moment.clearSkyBadge, size: 25, weight: 700, colour: '#335b73', gap: 16 }]
+      ? [{ text: momentImageCopy[i18n.locale].clearSkyBadge, size: 25, weight: 700, colour: '#335b73', gap: 16 }]
       : []),
     {
       text: subjectName

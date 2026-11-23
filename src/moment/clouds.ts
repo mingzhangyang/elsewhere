@@ -103,17 +103,48 @@ export function cumulus(
   const shade = mix(palette.cloudBody, palette.cloudShadow, 0.4);
   const upper: Point[] = [];
   const lower: Point[] = [];
-  const bulges = [0, 0.25, 0.54, 0.66, 0.91, 1, 0.8, 0.57, 0.28, 0];
-  for (let i = 0; i < bulges.length; i++) {
-    const t = i / (bulges.length - 1);
+  // Several asymmetric rounded crowns share one silhouette, rather than forming one mountain peak.
+  // Neighbouring saddles sit well above the base: the banks stay connected, not rows of circles.
+  const lobeCount = 3 + Math.floor(random() * 2);
+  const peaks = Array.from({ length: lobeCount }, (_, i) => {
+    const t = (i + 0.5 + (random() - 0.5) * 0.4) / lobeCount;
+    return {
+      t,
+      rise: height * (0.62 + random() * 0.38) * Math.pow(Math.sin(Math.PI * t), 0.38),
+    };
+  });
+  const anchors = [{ t: 0, rise: 0 }];
+  for (let i = 0; i < peaks.length; i++) {
+    anchors.push(peaks[i]);
+    if (i < peaks.length - 1) {
+      const t = (peaks[i].t + peaks[i + 1].t) / 2 + (random() - 0.5) * 0.015;
+      anchors.push({
+        t,
+        rise: Math.min(peaks[i].rise, peaks[i + 1].rise) * (0.62 + random() * 0.1),
+      });
+    }
+  }
+  anchors.push({ t: 1, rise: 0 });
+  for (let i = 0; i <= 32; i++) {
+    const t = i / 32;
     const px = x + half * (2 * t - 1) + lean * Math.sin(t * Math.PI);
-    const rise = height * bulges[i] * (0.85 + random() * 0.25);
+    let section = 0;
+    while (section < anchors.length - 2 && t > anchors[section + 1].t) section++;
+    const a = anchors[section];
+    const b = anchors[section + 1];
+    const u = (t - a.t) / (b.t - a.t);
+    const smooth = u * u * (3 - 2 * u);
+    const torn = height * Math.sin(Math.PI * t) * (random() - 0.5) * 0.026;
+    const rise = a.rise + (b.rise - a.rise) * smooth + torn;
     upper.push({ x: px, y: base - rise });
   }
-  for (let i = 6; i >= 0; i--) {
-    const t = i / 6;
+  for (let i = 8; i >= 0; i--) {
+    const t = i / 8;
     const px = x + half * (2 * t - 1);
-    lower.push({ x: px, y: base + size * (0.04 + 0.05 * Math.sin(t * Math.PI) * (random() - 0.5)) });
+    lower.push({
+      x: px,
+      y: base + size * (0.035 + 0.022 * Math.sin(t * 3 * Math.PI) + 0.025 * (random() - 0.5)),
+    });
   }
 
   const top = base - height * 1.15;

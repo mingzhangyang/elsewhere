@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Download, Share2 } from 'lucide-react';
 import type { MomentSnapshot } from '../lib/moment';
 import { momentImageSnapshot } from '../moment/imageWeather';
+import { momentImageCopy } from '../moment/imageCopy';
 import type { SkyCapture, SkyCaptureOptions } from '../renderer/createSkyRenderer';
 import { useI18n } from '../i18n';
 import { placeLabel } from '../i18n/names';
@@ -29,6 +30,7 @@ export default function MomentImage({
 }) {
   const i18n = useI18n();
   const { m } = i18n;
+  const copy = momentImageCopy[i18n.locale];
   const [style, setStyle] = useState<MomentStyle>('realistic');
   const [horizon, setHorizon] = useState<HorizonVariant>('ridge');
   const [clearSkyImage, setClearSkyImage] = useState(true);
@@ -60,7 +62,7 @@ export default function MomentImage({
             imageSnapshot.sky.sun.azimuth,
           )
         : null;
-    Promise.all([labelFontReady(place + m.moment.attribution + m.moment.clearSkyBadge + m.phases[imageSnapshot.sky.moon.phase]), artwork])
+    Promise.all([labelFontReady(place + m.moment.attribution + copy.clearSkyBadge + m.phases[imageSnapshot.sky.moon.phase]), artwork])
       .then(
         ([, landscapeArt]) =>
           new Promise<Blob | null>((resolve) => {
@@ -93,7 +95,7 @@ export default function MomentImage({
         },
         () => ticket === request.current && setFailed(true),
       );
-  }, [imageSnapshot, style, horizon, clearSkyImage, i18n, m]);
+  }, [imageSnapshot, style, horizon, clearSkyImage, i18n, m, copy]);
   useEffect(
     () => () => {
       // Work still pending when the dialog closes is discarded before it allocates a URL.
@@ -121,7 +123,7 @@ export default function MomentImage({
           checked={clearSkyImage}
           onChange={(event) => setClearSkyImage(event.target.checked)}
         />
-        {m.moment.clearSkyImage}
+        {copy.clearSkyImage}
       </label>
       <div className="moment-options">
         <div role="group" aria-label={m.moment.style} className="segmented">

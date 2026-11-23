@@ -56,6 +56,34 @@ describe('illustrated postcard watercolor cloud treatment', () => {
     expect(first.operations.some((x) => x.startsWith('createLinearGradient'))).toBe(true);
   });
 
+  it('draws multiple rounded and asymmetric cumulus crowns rather than a single mountain peak', () => {
+    const outlines = [1, 86, 163, 2026].map((seed) => {
+      const record = recordingCanvas();
+      cumulus(record.canvas, 480, 320, 105, palette, light, seededRandom(seed), 2);
+      const start = record.operations.indexOf('beginPath:');
+      const end = record.operations.indexOf('closePath:', start);
+      // The first closed outline controls the full joined crown (33 points) and its underside.
+      const crown = record.operations
+        .slice(start, end)
+        .filter((op) => op.startsWith('quadraticCurveTo:'))
+        .slice(0, 33)
+        .map((op) => Number(op.split(':')[1].split(',')[1]));
+      const crests = crown.flatMap((y, i) =>
+        i >= 2 &&
+        i < crown.length - 2 &&
+        y < crown[i - 1] &&
+        y <= crown[i + 1] &&
+        y < Math.min(crown[i - 2], crown[i + 2]) - 2.4
+          ? [i]
+          : [],
+      );
+      expect(crests.length, `seed ${seed}`).toBeGreaterThanOrEqual(2);
+      expect(record.stackDepth()).toBe(0);
+      return crown.join(',');
+    });
+    expect(new Set(outlines).size).toBe(outlines.length);
+  });
+
   it('uses translucent, nonparallel veils rather than a row of shaded spheres', () => {
     const record = recordingCanvas();
     const random = seededRandom(86);
