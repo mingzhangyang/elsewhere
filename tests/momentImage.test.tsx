@@ -36,11 +36,13 @@ vi.mock('../src/moment/landscapeArt', () => ({
 const { default: MomentImage } = await import('../src/components/MomentImage');
 
 let created: string[] = [];
+let revoked: string[] = [];
 beforeAll(() => setLanguage('en'));
 beforeEach(() => {
   pending.length = 0;
   postcardInputs.length = 0;
   created = [];
+  revoked = [];
   let n = 0;
   vi.stubGlobal('URL', {
     ...URL,
@@ -49,7 +51,7 @@ beforeEach(() => {
       created.push(url);
       return url;
     },
-    revokeObjectURL: () => {},
+    revokeObjectURL: (url: string) => revoked.push(url),
   });
 });
 
@@ -65,9 +67,11 @@ const capture = () => ({ image: document.createElement('canvas'), target: null }
 const settle = () => act(async () => {});
 const release = async (index: number) => {
   await act(async () => pending[index](new Blob(['png'], { type: 'image/png' })));
+  const preview = document.querySelector<HTMLImageElement>('.moment-preview');
+  if (preview) fireEvent.load(preview);
 };
 
-it('hides the previous image while another variant draws, and ignores a stale result', async () => {
+it('keeps a stable preview slot, hides stale exports, and ignores an out-of-order result', async () => {
   render(<MomentImage snapshot={snapshot} capture={capture} link="https://example.test/#sky" />);
   await settle();
   await release(0);
@@ -78,7 +82,13 @@ it('hides the previous image while another variant draws, and ignores a stale re
     'elsewhere-sky-2026-01-09.png',
   );
 
+  const slot = document.querySelector('.moment-preview-slot');
+  expect(slot).toHaveAttribute('aria-busy', 'false');
   fireEvent.click(screen.getByRole('button', { name: 'Illustrated' }));
+  expect(slot).toHaveAttribute('aria-busy', 'true');
+  expect(document.querySelector('.moment-preview')).toHaveAttribute('src', 'blob:test-1');
+  expect(document.querySelector('.moment-preview')).toHaveClass('is-stale');
+  expect(screen.getByRole('status')).toHaveTextContent('Drawing');
   expect(screen.queryByRole('img', { name: /New York/ })).not.toBeInTheDocument();
   expect(screen.queryByRole('link', { name: 'Save image' })).not.toBeInTheDocument();
   await settle();
@@ -90,6 +100,8 @@ it('hides the previous image while another variant draws, and ignores a stale re
   expect(created).toEqual(['blob:test-1']);
   await release(2);
   expect(screen.getByRole('img', { name: /New York/ })).toHaveAttribute('src', 'blob:test-2');
+  expect(slot).toHaveAttribute('aria-busy', 'false');
+  expect(revoked).toContain('blob:test-1');
 });
 
 it('allocates nothing for an image that finishes after the dialog closed', async () => {

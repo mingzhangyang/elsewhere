@@ -1556,12 +1556,94 @@ dialog:not([open]) {
   height: 20px;
   accent-color: var(--gold);
 }
-.moment-preview {
-  display: block;
+.moment-preview-slot {
+  position: relative;
+  isolation: isolate;
   width: 100%;
-  height: auto;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 10px;
+  background: radial-gradient(ellipse at 45% 35%, #314b6b, transparent 64%), #091322;
+}
+.moment-preview-slot::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(1px 1px at 17% 22%, #dfd6ba, transparent),
+    radial-gradient(2px 2px at 74% 13%, #f2e2c0, transparent),
+    radial-gradient(1px 1px at 82% 65%, #c4d6ee, transparent),
+    radial-gradient(2px 2px at 29% 78%, #c5d6e9, transparent),
+    radial-gradient(1px 1px at 55% 44%, #f7e2b6, transparent);
+  pointer-events: none;
+}
+.moment-preview {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: opacity 350ms ease, filter 350ms ease;
+}
+.moment-preview.is-stale {
+  opacity: 0.25;
+  filter: blur(3px) saturate(0.7);
+}
+.moment-preview-transition {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  padding: 22px;
+  background: radial-gradient(ellipse at center, #1b304599, #09132233 75%);
+  color: #e3eafa;
+  font-size: var(--text-sm);
+  text-align: center;
+  pointer-events: none;
+}
+.moment-preview-orbit {
+  position: relative;
+  display: block;
+  width: 76px;
+  height: 76px;
+  margin-bottom: 22px;
+  border: 1px solid #c5d9eb73;
+  border-top-color: #f6d7a4;
+  border-radius: 50%;
+  box-shadow: 0 0 0 13px #98b9df0b, 0 0 42px #8fbbf13b;
+  animation: moment-preview-orbit 4s linear infinite;
+}
+.moment-preview-orbit::before {
+  content: '';
+  position: absolute;
+  inset: 12px;
+  border: 1px dashed #b4cde16e;
+  border-radius: 50%;
+}
+.moment-preview-orbit::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ffe3ab;
+  box-shadow: 0 0 16px 4px #e5bb7c9e;
+}
+@keyframes moment-preview-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .moment-preview,
+  .moment-preview-orbit {
+    animation: none;
+    transition: none;
+  }
 }
 .moment-options {
   display: grid;
@@ -1583,6 +1665,7 @@ dialog:not([open]) {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  min-height: 44px;
   margin-top: 12px;
 }
 .moment-actions .secondary-button {

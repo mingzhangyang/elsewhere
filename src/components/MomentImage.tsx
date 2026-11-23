@@ -38,21 +38,26 @@ export default function MomentImage({
     () => momentImageSnapshot(snapshot, clearSkyImage),
     [snapshot, clearSkyImage],
   );
-  const [image, setImage] = useState<{ url: string; blob: Blob } | null>(null);
-  const [failed, setFailed] = useState(false);
+  const choices = useMemo(
+    () => ({ imageSnapshot, style, horizon, clearSkyImage, i18n, m, copy }),
+    [imageSnapshot, style, horizon, clearSkyImage, i18n, m, copy],
+  );
+  const [image, setImage] = useState<{ url: string; blob: Blob; choices: typeof choices } | null>(null);
+  const [failedChoices, setFailedChoices] = useState<typeof choices | null>(null);
+  const [loadedUrl, setLoadedUrl] = useState<string | null>(null);
   const request = useRef(0);
-  const shown = useRef<string | null>(null);
+  const urls = useRef(new Set<string>());
   const latest = useRef(capture);
+  const current = image?.choices === choices ? image : null;
+  const failed = failedChoices === choices;
+  const ready = !!current && loadedUrl === current.url;
   latest.current = capture;
   useEffect(() => {
-    // Only the latest request is shown; a slower earlier one is discarded.
+    const { imageSnapshot, style, horizon, clearSkyImage, i18n, m, copy } = choices;
+    // Keep the old image dimmed in a fixed slot, but never expose it for saving or sharing.
+    // The key also hides stale exports immediately, before this effect runs.
     const ticket = ++request.current;
-    setFailed(false);
-    // The previous image goes at once: it no longer matches the choices shown, and must not be saved
-    // or sent as if it did.
-    if (shown.current) URL.revokeObjectURL(shown.current);
-    shown.current = null;
-    setImage(null);
+    setFailedChoices(null);
     const place = isDeviceLocation(imageSnapshot.location)
       ? m.moment.devicePlace
       : placeLabel(imageSnapshot.location, i18n).name;
@@ -96,27 +101,35 @@ export default function MomentImage({
       .then(
         (blob) => {
           if (ticket !== request.current) return;
-          if (!blob) return setFailed(true);
+          if (!blob) return setFailedChoices(choices);
           const url = URL.createObjectURL(blob);
-          shown.current = url;
-          setImage({ url, blob });
+          urls.current.add(url);
+          setImage({ url, blob, choices });
         },
-        () => ticket === request.current && setFailed(true),
+        () => ticket === request.current && setFailedChoices(choices),
       );
-  }, [imageSnapshot, style, horizon, clearSkyImage, i18n, m, copy]);
+  }, [choices]);
   useEffect(
     () => () => {
-      // Work still pending when the dialog closes is discarded before it allocates a URL.
+      // Revoke the old image only after React has replaced it in the preview.
+      if (image && urls.current.delete(image.url)) URL.revokeObjectURL(image.url);
+    },
+    [image],
+  );
+  useEffect(
+    () => () => {
+      // Cancel in-flight work and release even URLs allocated just before unmount.
       request.current++;
-      if (shown.current) URL.revokeObjectURL(shown.current);
-      shown.current = null;
+      for (const url of urls.current) URL.revokeObjectURL(url);
+      urls.current.clear();
     },
     [],
   );
 
   // The moment's own civil date, as printed on the image, not the UTC one.
   const date = getZonedParts(snapshot.instant, snapshot.location.timezone).date;
-  const file = image && new File([image.blob], `elsewhere-sky-${date}.png`, { type: 'image/png' });
+  const file =
+    ready && current ? new File([current.blob], `elsewhere-sky-${date}.png`, { type: 'image/png' }) : null;
   const canSend = !!file && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] });
   const place = isDeviceLocation(snapshot.location)
     ? m.moment.devicePlace
@@ -132,17 +145,24 @@ export default function MomentImage({
         />
         {copy.clearSkyImage}
       </label>
-      {failed ? (
-        <p className="form-status" role="status">
-          {m.moment.failed}
-        </p>
-      ) : image ? (
-        <img className="moment-preview" src={image.url} alt={m.moment.alt({ place })} />
-      ) : (
-        <p className="form-status" role="status">
-          {m.moment.drawing}
-        </p>
-      )}
+      <div className="moment-preview-slot" aria-busy={!ready && !failed}>
+        {image && (
+          <img
+            className={ready ? 'moment-preview is-ready' : 'moment-preview is-stale'}
+            src={image.url}
+            alt={m.moment.alt({ place })}
+            aria-hidden={!ready}
+            onLoad={() => setLoadedUrl(image.url)}
+            onError={() => setFailedChoices(image.choices)}
+          />
+        )}
+        {!ready && (
+          <div className="moment-preview-transition" role="status">
+            {!failed && <span className="moment-preview-orbit" aria-hidden="true" />}
+            <span>{failed ? m.moment.failed : m.moment.drawing}</span>
+          </div>
+        )}
+      </div>
       <div className="moment-options">
         <div role="group" aria-label={m.moment.style} className="segmented">
           {MOMENT_STYLES.map((value) => (
@@ -159,23 +179,25 @@ export default function MomentImage({
           ))}
         </div>
       </div>
-      {image && !failed && (
-        <div className="moment-actions">
-          <a className="secondary-button" href={image.url} download={file!.name}>
-            <Download size={17} />
-            {m.moment.save}
-          </a>
-          {canSend && (
-            <button
-              className="secondary-button"
-              onClick={() => navigator.share({ files: [file!], text: link }).catch(() => {})}
-            >
-              <Share2 size={17} />
-              {m.moment.send}
-            </button>
-          )}
-        </div>
-      )}
+      <div className="moment-actions">
+        {ready && current && (
+          <>
+            <a className="secondary-button" href={current.url} download={file!.name}>
+              <Download size={17} />
+              {m.moment.save}
+            </a>
+            {canSend && (
+              <button
+                className="secondary-button"
+                onClick={() => navigator.share({ files: [file!], text: link }).catch(() => {})}
+              >
+                <Share2 size={17} />
+                {m.moment.send}
+              </button>
+            )}
+          </>
+        )}
+      </div>
     </section>
   );
 }
