@@ -213,3 +213,28 @@ Linux, Node 22, Playwright 1.65 with the preinstalled Chromium (software GL). 39
 - Recording-only contexts use a gradient fallback; neither path touches the live sky or astronomy.
 - The Cloud Field unit tests check reproducibility, soft transparent edges and balanced Canvas state.
 - Browser artwork screenshots must still be reviewed manually for visual quality.
+
+## Bundle budget governance (PR #35)
+
+\`npm run validate\` runs the built-in Node tests for \`scripts/build-budget.mjs\`,
+builds the production files, and invokes the existing \`scripts/check-build.mjs\`.
+The same script still tests service-worker installation, offline asset recovery,
+the \`Vary: Origin\` policy, navigation fallbacks and API exclusions.
+
+The report lists **exact byte counts**, not rounded kB: all JS and JSON chunks
+(including dynamic imports and \`stars.json\`), startup static imports plus the
+larger language graph, individual language bundles, the largest raw JS file,
+the hashed Moon image, dynamic import edges, and per-module deltas from the
+committed PR #34 baseline in \`scripts/build-budget-baseline.json\`.
+Name comparisons ignore content hashes only; **no bytes are excluded**.
+The baseline was measured from the successful PR #34 CI \`elsewhere-preview\`
+artifact (same source tree as main merge \`1c08f892\`), with
+\`gzipSync\` default compression on emitted bytes.
+
+Strict existing gates remain total JS/JSON gzip < 500,000 B, startup gzip
+< 115,000 B, each language gzip < 15,000 B, largest raw JS chunk < 500,000 B,
+Moon image < 600,000 B, and hashed immutable production assets.
+Nonblocking warnings start at total gzip > 480,000 B or largest raw chunk
+> 480,000 B; growth over 5,000 B from the recorded baseline is also warned.
+Re-baseline only after documenting and reviewing actual production output changes.
+

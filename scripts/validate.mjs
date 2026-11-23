@@ -23,6 +23,12 @@ for (const [name, pkg, entry, args] of [
   if (result.error) throw result.error;
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
+const budgetTests = spawnSync(process.execPath, ['--test', 'scripts/build-budget.test.mjs'], {
+  stdio: 'inherit',
+});
+if (budgetTests.error) throw budgetTests.error;
+if (budgetTests.status !== 0) process.exit(budgetTests.status ?? 1);
+
 const checked = spawnSync(process.execPath, ['scripts/check-build.mjs'], { stdio: 'inherit' });
 if (checked.error) throw checked.error;
 if (checked.status !== 0) process.exit(checked.status ?? 1);
