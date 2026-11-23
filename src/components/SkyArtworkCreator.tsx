@@ -68,21 +68,24 @@ export default function SkyArtworkCreator({
     [],
   );
 
-  const revoke = useCallback((timeChanged: boolean) => {
-    revision.current += 1;
-    exportCoordinator.current?.cancel();
-    setReady(null);
-    setPreviewRevision(null);
-    setNotice(null);
-    if (timeChanged) {
-      snapshotCoordinator.current?.invalidate();
-      lastResolved.current = null;
-      setScience(null);
-      setStage('invalid');
-    } else {
-      setStage('generating');
-    }
-  }, []);
+  const revoke = useCallback(
+    (timeChanged: boolean) => {
+      revision.current += 1;
+      exportCoordinator.current?.cancel();
+      setReady(null);
+      setPreviewRevision(null);
+      setNotice(null);
+      if (timeChanged) {
+        snapshotCoordinator.current?.invalidate();
+        lastResolved.current = null;
+        setScience(null);
+        setStage('invalid');
+      } else {
+        setStage(science ? 'generating' : 'editing');
+      }
+    },
+    [science],
+  );
 
   const handleDraftChange = useCallback((time: MemorialTimeFields) => {
     setDraft((previous) => ({ ...previous, time }));
@@ -146,6 +149,7 @@ export default function SkyArtworkCreator({
     if (!science) return;
     const ticket = revision.current;
     let cancelled = false;
+    let exportTimer: ReturnType<typeof setTimeout> | undefined;
     exportCoordinator.current?.cancel();
     setReady(null);
     setPreviewRevision(null);
@@ -180,6 +184,11 @@ export default function SkyArtworkCreator({
       if (cancelled || ticket !== revision.current) return;
       setPreviewRevision(ticket);
       setStage('exporting');
+      // The painter updates on every edit; heavy PNG encoding begins only after typing pauses.
+      await new Promise<void>((resolve) => {
+        exportTimer = setTimeout(resolve, 350);
+      });
+      if (cancelled || ticket !== revision.current) return;
       const coordinator = exportCoordinator.current ?? encoder.createSkyArtworkExportCoordinator();
       exportCoordinator.current = coordinator;
       const png = await coordinator.export(artwork, { prepareFonts: async () => fonts });
@@ -205,6 +214,7 @@ export default function SkyArtworkCreator({
     });
     return () => {
       cancelled = true;
+      if (exportTimer !== undefined) clearTimeout(exportTimer);
       exportCoordinator.current?.cancel();
     };
   }, [science, draft.title, draft.phrase, draft.theme, locale]);
