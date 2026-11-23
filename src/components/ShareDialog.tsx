@@ -125,14 +125,21 @@ const ShareDialog = forwardRef<ShareDialogHandle, Props>(function ShareDialog(
             <div className="share-location-settings">
               <p className="privacy-note">
                 {precise
-                  ? m.share.device({ latitude: shared.location.latitude, longitude: shared.location.longitude })
+                  ? m.share.device({
+                      latitude: shared.location.latitude,
+                      longitude: shared.location.longitude,
+                    })
                   : m.share.deviceRounded({
                       latitude: shared.location.latitude,
                       longitude: shared.location.longitude,
                     })}
               </p>
               <label className="share-precise">
-                <input type="checkbox" checked={precise} onChange={(event) => setPrecise(event.target.checked)} />
+                <input
+                  type="checkbox"
+                  checked={precise}
+                  onChange={(event) => setPrecise(event.target.checked)}
+                />
                 {m.share.precise}
               </label>
             </div>
@@ -143,7 +150,9 @@ const ShareDialog = forwardRef<ShareDialogHandle, Props>(function ShareDialog(
             (imageShown ? (
               <Suspense
                 fallback={
-                  <p className="form-status" role="status">{m.moment.drawing}</p>
+                  <p className="form-status" role="status">
+                    {m.moment.drawing}
+                  </p>
                 }
               >
                 <MomentImage snapshot={request.snapshot} capture={capture} link={link} />
