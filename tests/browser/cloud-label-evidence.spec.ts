@@ -49,9 +49,7 @@ for (const { name, scenario, width, height } of [
     await page.goto(skyUrl(scenario, instant));
     const sky = page.getByRole('img', { name: /^Sky view\./ });
     await expect(sky).toBeVisible();
-    expect(
-      await page.evaluate(() => !!document.createElement('canvas').getContext('webgl')),
-    ).toBe(true);
+    expect(await page.evaluate(() => !!document.createElement('canvas').getContext('webgl'))).toBe(true);
     // Verify the star catalog and names are ready before capturing the canvas.
     await page.getByRole('button', { name: 'Objects', exact: true }).click();
     await page.getByRole('searchbox', { name: 'Find an object' }).fill('Vega');
