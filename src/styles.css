@@ -1409,6 +1409,22 @@ dialog:not([open]) {
   width: 1040px;
   max-height: calc(100dvh - 32px);
   overflow-y: auto;
+  /* A quiet, narrow rail that belongs to the midnight-blue dialog, not the browser chrome. */
+  scrollbar-width: thin;
+  scrollbar-color: #55758f transparent;
+}
+.share-dialog::-webkit-scrollbar {
+  width: 6px;
+}
+.share-dialog::-webkit-scrollbar-track {
+  background: transparent;
+}
+.share-dialog::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #55758f;
+}
+.share-dialog::-webkit-scrollbar-thumb:hover {
+  background: #86a4c0;
 }
 .share-dialog .dialog-heading {
   padding: 22px 28px 20px;

@@ -195,6 +195,15 @@ test('the share dialog uses two desktop columns and stacks them on mobile', asyn
   expect(mobileRight).not.toBeNull();
   expect(mobileRight!.y).toBeGreaterThanOrEqual(mobileLeft!.y + mobileLeft!.height - 2);
   expect(mobileRight!.x).toBeCloseTo(mobileLeft!.x, 0);
+
+  // Short mobile viewports scroll inside the dialog, using the slim dark-sky scrollbar.
+  await page.setViewportSize({ width: 390, height: 480 });
+  await expect(dialog).toHaveCSS('scrollbar-width', 'thin');
+  expect(await dialog.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+  await dialog.evaluate((el) => {
+    el.scrollTop = el.scrollHeight;
+  });
+  expect(await dialog.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
 });
 
 test('the share dialog draws a keepsake image in each style and horizon', async ({ page }) => {
