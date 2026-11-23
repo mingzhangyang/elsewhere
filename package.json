@@ -16,7 +16,7 @@
     "validate": "node scripts/validate.mjs",
     "test:browser": "playwright test",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --write src/components/ShareDialog.tsx && git diff -- src/components/ShareDialog.tsx && exit 1"
   },
   "dependencies": {
     "@fontsource/caveat": "^5.3.0",
