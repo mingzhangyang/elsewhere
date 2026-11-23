@@ -186,11 +186,9 @@ export function paintCloudField(
       const u = -2.33 + (i + 0.5) * (4.66 / columns);
       const opacity = densities[j * columns + i] / 255;
       const gradientX =
-        densities[j * columns + Math.min(columns - 1, i + 1)] -
-        densities[j * columns + Math.max(0, i - 1)];
+        densities[j * columns + Math.min(columns - 1, i + 1)] - densities[j * columns + Math.max(0, i - 1)];
       const gradientY =
-        densities[Math.min(rows - 1, j + 1) * columns + i] -
-        densities[Math.max(0, j - 1) * columns + i];
+        densities[Math.min(rows - 1, j + 1) * columns + i] - densities[Math.max(0, j - 1) * columns + i];
       const pigment = wash(u * 0.9, v * 0.9, phase);
       const lit = cloudFieldLuminance(u, v, opacity, pigment, gradientX / 255, gradientY / 255, light);
       for (let ch = 0; ch < 3; ch++) {
