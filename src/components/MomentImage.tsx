@@ -1,7 +1,7 @@
 import { landscapeSeason } from '../moment/seasons';
 import { loadLandscapeArt } from '../moment/landscapeArt';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Download, Share2 } from 'lucide-react';
+import { Share2 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import type { MomentSnapshot } from '../lib/moment';
 import { momentImageSnapshot } from '../moment/imageWeather';
@@ -198,7 +198,7 @@ export default function MomentImage({
       <div className="moment-actions">
         {ready && image && (
           <a className="secondary-button" href={image.url} download={file!.name}>
-            <Download size={17} />
+            <span className="moment-download-icon" aria-hidden="true" />
             {m.moment.save}
           </a>
         )}
