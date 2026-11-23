@@ -1,0 +1,133 @@
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { memorialMessages } from './i18n/memorial';
+import { useI18n } from './i18n';
+import type { MemorialTime } from './lib/memorialTime';
+import type { SkyCreatorDraft } from './lib/skyCreatorDraft';
+import type { AppProps } from './App';
+
+// Route props are optional; an absent handoff must not erase dev scenario fixtures.
+// Explicit creator handoffs still override any scenario location/time.
+export function mergeExplorerProps(scenario: AppProps, route: AppProps): AppProps {
+  return {
+    ...scenario,
+    ...route,
+    initialLocation: route.initialLocation ?? scenario.initialLocation,
+    initialTime: route.initialTime ?? scenario.initialTime,
+    weatherLoader: route.weatherLoader ?? scenario.weatherLoader,
+  };
+}
+
+const Creator = lazy(() => import('./components/SkyArtworkCreator'));
+
+// Neither App, Three.js, the renderer, the HYG catalog, nor weather enters #create's
+// static import graph. Preserve the dev scenarios for existing explorer browser tests.
+const Explorer = lazy(async () => {
+  const [module, dev] = await Promise.all([
+    import('./App'),
+    import.meta.env.DEV ? import('./dev/scenarios') : Promise.resolve(null),
+  ]);
+  const scenario = dev?.scenarioProps(new URLSearchParams(window.location.search).get('scenario')) ?? {};
+  return {
+    default: (props: AppProps) => <module.default {...mergeExplorerProps(scenario, props)} />,
+  };
+});
+
+type Route = 'create' | 'explore';
+type ExplorerHandoff = Pick<MemorialTime, 'location' | 'utc'>;
+type ExplorerReturn = {
+  url: string;
+  handoff: ExplorerHandoff | null;
+};
+
+export function routeForHash(hash: string): Route {
+  return hash === '#create' ? 'create' : 'explore';
+}
+
+export default function RouteShell({ diagnostics = false }: { diagnostics?: boolean }) {
+  const { locale } = useI18n();
+  const t = memorialMessages(locale);
+  const [route, setRoute] = useState<Route>(() => routeForHash(window.location.hash));
+  const [handoff, setHandoff] = useState<ExplorerHandoff | null>(null);
+  const savedDraft = useRef<SkyCreatorDraft | null>(null);
+  // Restoring the prior view must not serialize private creator details.
+  const priorExplorer = useRef<ExplorerReturn | null>(null);
+  const saveDraft = useCallback((value: SkyCreatorDraft) => {
+    savedDraft.current = value;
+  }, []);
+  const [explorerVisit, setExplorerVisit] = useState(0);
+
+  useEffect(() => {
+    const navigate = () => {
+      setRoute(routeForHash(window.location.hash));
+      setExplorerVisit((value) => value + 1);
+    };
+    window.addEventListener('popstate', navigate);
+    window.addEventListener('hashchange', navigate);
+    return () => {
+      window.removeEventListener('popstate', navigate);
+      window.removeEventListener('hashchange', navigate);
+    };
+  }, []);
+
+  const openCreator = useCallback(() => {
+    if (window.location.hash !== '#create') {
+      const isCreatorExplorer = window.history.state?.elsewhereCreatorExplorer === true;
+      const hasSharedLink = window.location.hash.startsWith('#sky=');
+      priorExplorer.current = {
+        url: window.location.pathname + window.location.search + window.location.hash,
+        handoff: isCreatorExplorer && !hasSharedLink ? handoff : null,
+      };
+      window.history.pushState({ elsewhereCreator: true }, '', '#create');
+    }
+    setRoute('create');
+  }, [handoff]);
+
+  const openExplorer = useCallback((event?: MemorialTime) => {
+    const previous = event ? null : priorExplorer.current;
+    let nextHandoff: ExplorerHandoff | null = null;
+    if (event) {
+      nextHandoff = { location: event.location, utc: event.utc };
+    } else if (previous) {
+      nextHandoff = previous.handoff;
+    }
+    setHandoff(nextHandoff);
+    // Restore an existing shared URL unchanged; a newly created moment remains
+    // memory-only and is never serialized into history.state or the URL.
+    let returnUrl = window.location.pathname + window.location.search;
+    if (!event && previous) {
+      returnUrl = previous.url;
+    }
+    const nextState = { elsewhereCreatorExplorer: nextHandoff !== null };
+    window.history.pushState(nextState, '', returnUrl);
+    setExplorerVisit((value) => value + 1);
+    setRoute('explore');
+  }, []);
+
+  const activeHandoff =
+    window.history.state?.elsewhereCreatorExplorer === true && !window.location.hash.startsWith('#sky=')
+      ? handoff
+      : null;
+
+  return (
+    <Suspense
+      fallback={
+        <main className="creator-loading" role="status">
+          {t.loadingPage}
+        </main>
+      }
+    >
+      {route === 'create' ? (
+        <Creator initialDraft={savedDraft.current} onDraftChange={saveDraft} onExplore={openExplorer} />
+      ) : (
+        <Explorer
+          key={activeHandoff ? `creator-${explorerVisit}` : `explorer-${explorerVisit}`}
+          initialLocation={activeHandoff?.location}
+          initialTime={activeHandoff ? new Date(activeHandoff.utc) : undefined}
+          diagnostics={diagnostics}
+          onCreate={openCreator}
+          onReturnToCreator={savedDraft.current ? openCreator : undefined}
+        />
+      )}
+    </Suspense>
+  );
+}

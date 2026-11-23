@@ -293,6 +293,10 @@ P0和SM5不依赖服务端短链或聊天软件的个性化预览卡。URL片段
 
 测试记录使用虚构样例或参加者自愿选择的数据，只记录场景类别、操作表现和匿名反馈。截图及测试夹具不保存真实完整出生资料。图片按实际使用的数据保留必要署名；新画风、字体或资源应沿用项目的来源登记流程。
 
+## SM3-C implementation notes (PR pending verification)
+
+The lightweight #create host, inline creator, in-tab draft and explore/return handoff are implemented in the SM3-C branch, **not yet accepted**. The new flow reuses SM1 civil-time / DST validation, SM2-C HYG snapshots, SM3-A Canvas and SM3-B PNG export. See [SKY-CHART-CREATOR.md](SKY-CHART-CREATOR.md) for routes, state lifecycle, browser tests and remaining SM4 acceptance. No SM5 work or persistent personal-data link has been implemented. S06 projected Moon bright-limb direction remains incomplete. CI, browser screenshots and build budget must be verified before changing the phase status.
+
 ## 10 分阶段路线图
 
 以阶段验收组织实施，不预设日历交付承诺。S表示较小的独立工作，M表示包含多个关联模块的工作；相对大小在实施前根据当时基线修订。SM0至SM4交付可完整试用的P0，SM5根据试用结果决定投入，SM6为可选择的后续方向。

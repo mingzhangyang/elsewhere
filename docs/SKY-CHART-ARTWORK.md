@@ -1,6 +1,6 @@
 # Sky Moments SM3-A — artwork model and Canvas 2D painter
 
-Status: **SM3-A vector artwork + SM3-B PNG export and browser delivery adapters**. No creator route, artwork-link protocol, OS album-save confirmation or changes to existing postcards. All export and handwriting resources are loaded on demand; explorer startup does not import them.
+Status: **SM3-A vector artwork + SM3-B PNG export + SM3-C in-branch creator route (pending validation)**. No artwork-link protocol, OS album-save confirmation or changes to existing postcards. Explorer startup does not import creator resources; direct #create does not import explorer resources. See [SKY-CHART-CREATOR.md](SKY-CHART-CREATOR.md) for state-machine, draft, renderer, PNG and explorer handoff contracts.
 
 This document supplements SKY-CHART-SNAPSHOT.md, SKY-MOMENT-TIME-FIXTURES.md, SCIENCE.md and SKY-MOMENTS-PLAN.md.
 
@@ -110,3 +110,7 @@ For download, `downloadSkyArtwork` checks whether the anchor supports `download`
 - `tests/browser/sky-artwork-export.spec.ts`: actual browser PNG encoding/decoding of fictional English midnight and Chinese paper event images, preview comparison, actual HYG snapshot output, PNG download and cancelled share. PNG screenshots are CI artifacts; browser/font antialiasing differences use sample tolerances rather than global strict pixel equality.
 - Existing SM1/SM2/SM3-A regressions, postcards, production size and offline validation remain part of `npm run validate`; Playwright includes Chromium, Firefox, WebKit and emulated Pixel. Actual phone Safari, Android browsers, OS Photos/Files save receipts and third-party share targets remain **SM4**, not claimed as tested.
 - The **S06 lunar projected illuminated-limb orientation** and S07 broader independent science checks remain open. SM3-B does not alter astronomical formulas or claim a physically rendered night sky.
+
+## SM3-C creator and preview integration
+
+The new `#create` route uses a lightweight `RouteShell`. Only once a civil time is resolved does it dynamically import SM2-C HYG and astronomy; existing SM3-A preparation, layout and drawing run into the 1200×1500 preview Canvas, and SM3-B independently encodes the matching artwork. Editable text and theme changes re-render the same snapshot, without re-running astronomy. A version gate prevents pending or obsolete exports being saved. Saving is a download request rather than an album-save guarantee, and OS file sharing is only invoked inside a user gesture with a pre-created File. On exploration the same UTC instant and observer are passed to `App` and the existing real-daylight rules apply. Returning to #create restores the current-tab draft after revalidation; it does not trust the previous PNG. The full execution/test boundary and pending S06/SM4 work are in [SKY-CHART-CREATOR.md](SKY-CHART-CREATOR.md).
