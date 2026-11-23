@@ -308,3 +308,85 @@ test('browser download requests original PNG from a genuine button click, and sh
   );
   expect(download.suggestedFilename()).toBe('elsewhere-sky-2026-06-21.png');
 });
+
+test('no-download fallback requests a real noopener PNG tab from a user click', async ({
+  page,
+  context,
+  browserName,
+}) => {
+  test.skip(
+    browserName !== 'chromium',
+    'The native Blob image tab is verified in Chromium; adapters are covered separately.',
+  );
+  await page.goto('/?scenario=day');
+  await page.evaluate(async () => {
+    const { SkyArtworkPng } = await import('../../src/lib/skyArtworkExport.ts');
+    const { downloadSkyArtwork } = await import('../../src/lib/skyArtworkDelivery.ts');
+    const canvas = document.createElement('canvas');
+    canvas.width = 12;
+    canvas.height = 15;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas unsupported');
+    ctx.fillStyle = '#193659';
+    ctx.fillRect(0, 0, 12, 15);
+    const blob = await new Promise<Blob>((resolve, reject) =>
+      canvas.toBlob((result) => (result ? resolve(result) : reject(new Error('No PNG'))), 'image/png'),
+    );
+    const output = new SkyArtworkPng(blob, 'elsewhere-sky-2026-06-21.png', 12, 15, 4);
+    const state = window as Window & {
+      __sm3bFallback?: ReturnType<typeof downloadSkyArtwork>;
+      __sm3bDispose?: () => void;
+    };
+    state.__sm3bDispose = () => output.release();
+    const button = document.createElement('button');
+    button.id = 'sm3-b-gesture-manual-save';
+    button.textContent = 'Open PNG for manual save';
+    button.addEventListener('click', () => {
+      // Exercise the *default* capability check with a native DOM anchor.
+      // In the test only, simulate a browser without the HTMLAnchorElement.download IDL property.
+      const property = Object.getOwnPropertyDescriptor(HTMLAnchorElement.prototype, 'download');
+      if (!property?.configurable) throw new Error('Cannot simulate unsupported download attribute');
+      Reflect.deleteProperty(HTMLAnchorElement.prototype, 'download');
+      try {
+        const handoff = downloadSkyArtwork(output, {
+          deferRelease: () => undefined,
+        });
+        state.__sm3bFallback = handoff;
+        button.dataset.status = handoff.status;
+      } finally {
+        Object.defineProperty(HTMLAnchorElement.prototype, 'download', property);
+      }
+    });
+    document.body.append(button);
+  });
+  const [imageTab] = await Promise.all([
+    context.waitForEvent('page'),
+    page.getByRole('button', { name: 'Open PNG for manual save' }).click(),
+  ]);
+  await imageTab.waitForLoadState();
+  expect(imageTab.url()).toContain('blob:');
+  expect(await imageTab.evaluate(() => window.opener === null)).toBe(true);
+  const dimensions = await imageTab.locator('img').evaluate((image: HTMLImageElement) => [
+    image.naturalWidth,
+    image.naturalHeight,
+  ]);
+  expect(dimensions).toEqual([12, 15]);
+  expect(await page.locator('#sm3-b-gesture-manual-save').getAttribute('data-status')).toBe(
+    'open-requested',
+  );
+  const lease = await page.evaluate(async () => {
+    const state = window as Window & {
+      __sm3bFallback?: { url: string; release(): void };
+      __sm3bDispose?: () => void;
+    };
+    if (!state.__sm3bFallback) throw new Error('Missing manual-save handoff');
+    const response = await fetch(state.__sm3bFallback.url);
+    const size = (await response.blob()).size;
+    state.__sm3bFallback.release();
+    state.__sm3bDispose?.();
+    return { ok: response.ok, size };
+  });
+  expect(lease.ok).toBe(true);
+  expect(lease.size).toBeGreaterThan(0);
+  await imageTab.close();
+});

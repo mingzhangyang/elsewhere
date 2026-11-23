@@ -85,7 +85,7 @@ export interface SkyArtworkDownloadPort {
 
 export interface SkyArtworkDownloadResult {
   /** Download requested != saved to Files or Photos. */
-  readonly status: 'download-requested' | 'image-opened';
+  readonly status: 'download-requested' | 'open-requested';
   readonly url: string;
   /** Explicit early cleanup for abandoned navigation or a disposed test host. */
   release(): void;
@@ -130,15 +130,24 @@ export function downloadSkyArtwork(
       anchor.click();
       status = 'download-requested';
     } else {
-      const opened =
-        port.openImage?.(url) ?? (typeof window !== 'undefined' && !!window.open(url, '_blank', 'noopener'));
-      if (!opened) {
-        throw new SkyArtworkExportError(
-          'download-unavailable',
-          'Image download and opening are unavailable.',
-        );
+      // A noopener window can open successfully while window.open() returns null.
+      // Use an anchor and report the request, not unobservable navigation success.
+      anchor.href = url;
+      anchor.target = '_blank';
+      anchor.rel = 'noopener';
+      if (port.openImage) {
+        if (!port.openImage(url)) {
+          throw new SkyArtworkExportError(
+            'download-unavailable',
+            'Image download and opening are unavailable.',
+          );
+        }
+      } else {
+        if (port.append) port.append(anchor);
+        else document.body.append(anchor);
+        anchor.click();
       }
-      status = 'image-opened';
+      status = 'open-requested';
     }
     const deferRelease =
       port.deferRelease ??

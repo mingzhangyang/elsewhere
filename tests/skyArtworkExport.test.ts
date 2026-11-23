@@ -470,8 +470,62 @@ describe('SM3-B ownership, concurrency, download and share adapters', () => {
       urls: { createObjectURL: () => 'blob:example', revokeObjectURL: vi.fn() },
       deferRelease: (release) => release(),
     });
-    expect(result.status).toBe('image-opened');
+    expect(result.status).toBe('open-requested');
     expect(opened).toHaveBeenCalledWith('blob:example');
+    output.release();
+  });
+
+  it('requests a noopener image tab without using a window.open handle or revoking early', async () => {
+    const output = await exportSkyChartPng(options());
+    const revoked = vi.fn();
+    const clicked = vi.fn();
+    const appended = vi.fn();
+    const anchor = { href: '', target: '', rel: '', click: clicked, remove: vi.fn() };
+    const deferred: Array<() => void> = [];
+    const result = downloadSkyArtwork(output, {
+      createAnchor: () => anchor as unknown as HTMLAnchorElement,
+      append: appended,
+      urls: { createObjectURL: () => 'blob:manual-save', revokeObjectURL: revoked },
+      deferRelease: (release) => {
+        deferred.push(release);
+      },
+    });
+    expect(result.status).toBe('open-requested');
+    expect([anchor.href, anchor.target, anchor.rel]).toEqual([
+      'blob:manual-save',
+      '_blank',
+      'noopener',
+    ]);
+    expect(appended).toHaveBeenCalledWith(anchor);
+    expect(clicked).toHaveBeenCalledOnce();
+    expect(revoked).not.toHaveBeenCalled();
+    output.release();
+    expect(revoked).not.toHaveBeenCalled();
+    deferred[0]();
+    result.release();
+    expect(revoked).toHaveBeenCalledOnce();
+  });
+
+  it('revokes the fallback URL if opening the image throws', async () => {
+    const output = await exportSkyChartPng(options());
+    const revoked = vi.fn();
+    const anchor = {
+      href: '',
+      target: '',
+      rel: '',
+      remove: vi.fn(),
+      click: () => {
+        throw new Error('Navigation failed');
+      },
+    };
+    expect(() =>
+      downloadSkyArtwork(output, {
+        createAnchor: () => anchor as unknown as HTMLAnchorElement,
+        append: vi.fn(),
+        urls: { createObjectURL: () => 'blob:blocked-popup', revokeObjectURL: revoked },
+      }),
+    ).toThrow(SkyArtworkExportError);
+    expect(revoked).toHaveBeenCalledOnce();
     output.release();
   });
 
