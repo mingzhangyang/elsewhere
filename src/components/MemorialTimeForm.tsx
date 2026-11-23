@@ -75,6 +75,7 @@ export default function MemorialTimeForm({
   onDraftChange,
   onResolved,
   onInvalidated,
+  submitMode = 'check',
 }: {
   /** Existing SM1 restoration API (also used outside the creator). */
   initialDraft?: MemorialTimeDraft;
@@ -83,6 +84,7 @@ export default function MemorialTimeForm({
   onDraftChange?: (fields: MemorialTimeFields) => void;
   onResolved: (value: MemorialTime) => void;
   onInvalidated?: () => void;
+  submitMode?: 'check' | 'create';
 }) {
   const { locale } = useI18n();
   const t = memorialMessages(locale);
@@ -323,7 +325,7 @@ export default function MemorialTimeForm({
           className="primary-button memorial-submit"
           disabled={feedback?.type === 'loading'}
         >
-          {t.submit}
+          {submitMode === 'create' ? t.createSubmit : t.submit}
         </button>
       </form>
     </section>
