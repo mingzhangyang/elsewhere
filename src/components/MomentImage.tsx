@@ -2,6 +2,7 @@ import { landscapeSeason } from '../moment/seasons';
 import { loadLandscapeArt } from '../moment/landscapeArt';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Download, Share2 } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import type { MomentSnapshot } from '../lib/moment';
 import { momentImageSnapshot } from '../moment/imageWeather';
 import { momentImageCopy } from '../moment/imageCopy';
@@ -23,10 +24,12 @@ export default function MomentImage({
   snapshot,
   capture,
   link,
+  controlsTarget,
 }: {
   snapshot: MomentSnapshot;
   capture: (options: SkyCaptureOptions) => SkyCapture | null;
   link: string;
+  controlsTarget?: HTMLElement | null;
 }) {
   const i18n = useI18n();
   const { m } = i18n;
@@ -132,8 +135,8 @@ export default function MomentImage({
   const place = isDeviceLocation(snapshot.location)
     ? m.moment.devicePlace
     : placeLabel(snapshot.location, i18n).name;
-  return (
-    <section className="moment-image" aria-labelledby="moment-title" style={{ fontFamily: FONT }}>
+  const controls = (
+    <div className="moment-image-controls" style={{ fontFamily: FONT }}>
       <h3 id="moment-title">{copy.section}</h3>
       <label className="moment-clear-sky">
         <input
@@ -146,22 +149,6 @@ export default function MomentImage({
         />
         {copy.clearSkyImage}
       </label>
-      <div className="moment-preview-slot" aria-busy={drawing}>
-        {image && (
-          <img
-            className="moment-preview"
-            src={image.url}
-            alt={m.moment.alt({ place })}
-            aria-hidden={!ready}
-          />
-        )}
-        {!ready && (
-          <div className="moment-preview-transition" role="status">
-            <span className="moment-preview-orbit" aria-hidden="true" />
-            {failed ? m.moment.failed : m.moment.drawing}
-          </div>
-        )}
-      </div>
       <div className="moment-options">
         <div role="group" aria-label={m.moment.style} className="segmented">
           {MOMENT_STYLES.map((value) => (
@@ -207,6 +194,27 @@ export default function MomentImage({
             <Share2 size={17} />
             {m.moment.send}
           </button>
+        )}
+      </div>
+    </div>
+  );
+  return (
+    <section className="moment-image" aria-labelledby="moment-title" style={{ fontFamily: FONT }}>
+      {controlsTarget ? createPortal(controls, controlsTarget) : controls}
+      <div className="moment-preview-slot" aria-busy={drawing}>
+        {image && (
+          <img
+            className="moment-preview"
+            src={image.url}
+            alt={m.moment.alt({ place })}
+            aria-hidden={!ready}
+          />
+        )}
+        {!ready && (
+          <div className="moment-preview-transition" role="status">
+            <span className="moment-preview-orbit" aria-hidden="true" />
+            {failed ? m.moment.failed : m.moment.drawing}
+          </div>
         )}
       </div>
     </section>

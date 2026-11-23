@@ -5,6 +5,26 @@ import ShareDialog, { type ShareDialogHandle, type ShareRequest } from '../src/c
 import { setLanguage } from '../src/i18n';
 import { normalizeLocation, PRESETS } from '../src/lib/locations';
 
+vi.mock('../src/components/MomentImage', async () => {
+  const { createPortal } = await import('react-dom');
+  return {
+    default: ({ controlsTarget }: { controlsTarget?: HTMLElement | null }) => {
+      const controls = (
+        <div className="moment-image-controls" data-testid="image-controls">
+          <button>Illustrated</button>
+          <button>Save image</button>
+        </div>
+      );
+      return (
+        <section className="moment-image">
+          {controlsTarget ? createPortal(controls, controlsTarget) : controls}
+          <div className="moment-preview-slot" aria-busy="true" />
+        </section>
+      );
+    },
+  };
+});
+
 beforeAll(() => setLanguage('en'));
 
 const device = normalizeLocation({
@@ -62,7 +82,7 @@ it('a copy still in flight when the link changes is not confirmed for the new li
   expect(copyButton()).toHaveTextContent('Copy link');
 });
 
-it('separates link sharing from the lazy image preview without changing the shared link', () => {
+it('automatically shows a preview and puts image controls beside link controls', async () => {
   openDialog();
   const dialog = screen.getByRole('dialog', { name: 'Share this sky' });
   const linkPanel = dialog.querySelector('.share-link-panel');
@@ -71,6 +91,11 @@ it('separates link sharing from the lazy image preview without changing the shar
   expect(linkPanel).toContainElement(screen.getByRole('textbox', { name: 'Sky link' }));
   expect(linkPanel).toContainElement(copyButton());
   expect(linkPanel).toContainElement(exact());
-  expect(imagePanel).toContainElement(screen.getByRole('button', { name: 'Make an image' }));
+  expect(imagePanel?.querySelector('.moment-preview-slot')).toBeInTheDocument();
   expect(imagePanel).not.toContainElement(screen.getByRole('textbox', { name: 'Sky link' }));
+  expect(imagePanel).not.toContainElement(screen.queryByRole('button', { name: 'Illustrated' }));
+  expect(dialog).not.toContainElement(screen.queryByRole('button', { name: 'Make an image' }));
+  const imageControls = await screen.findByTestId('image-controls');
+  expect(linkPanel).toContainElement(imageControls);
+  expect(linkPanel).toContainElement(screen.getByRole('button', { name: 'Save image' }));
 });

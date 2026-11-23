@@ -179,7 +179,11 @@ test('the share dialog uses two desktop columns and stacks them on mobile', asyn
   const linkPanel = dialog.locator('.share-link-panel');
   const imagePanel = dialog.locator('.share-image-panel');
   await expect(linkPanel.getByRole('textbox', { name: 'Sky link' })).toBeVisible();
-  await expect(imagePanel.getByRole('button', { name: 'Make an image' })).toBeVisible();
+  await expect(imagePanel.locator('.moment-preview-slot')).toBeVisible();
+  await expect(linkPanel.locator('.moment-options')).toBeVisible();
+  await expect(linkPanel.getByRole('checkbox', { name: /Clear Sky for image/ })).toBeChecked();
+  await expect(imagePanel.locator('.moment-options')).toHaveCount(0);
+  await expect(imagePanel.getByRole('img', { name: /Keepsake image of the sky/ })).toBeVisible();
 
   const desktopLeft = await linkPanel.boundingBox();
   const desktopRight = await imagePanel.boundingBox();
@@ -193,7 +197,7 @@ test('the share dialog uses two desktop columns and stacks them on mobile', asyn
   const mobileRight = await imagePanel.boundingBox();
   expect(mobileLeft).not.toBeNull();
   expect(mobileRight).not.toBeNull();
-  expect(mobileRight!.y).toBeGreaterThanOrEqual(mobileLeft!.y + mobileLeft!.height - 2);
+  expect(mobileLeft!.y).toBeGreaterThanOrEqual(mobileRight!.y + mobileRight!.height - 2);
   expect(mobileRight!.x).toBeCloseTo(mobileLeft!.x, 0);
 
   // Short mobile viewports scroll inside the dialog, using the slim dark-sky scrollbar.
@@ -220,8 +224,9 @@ test('mobile redraw keeps image choices and scroll position stable', async ({ pa
   await page.goto('/?scenario=jupiter');
   await page.getByRole('button', { name: 'Share this sky', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Share this sky' });
-  await dialog.getByRole('button', { name: 'Make an image' }).click();
   const slot = dialog.locator('.moment-preview-slot');
+  await expect(slot).toBeVisible();
+  await expect(slot.locator('.moment-preview-orbit')).toBeVisible();
   const options = dialog.locator('.moment-options');
   const image = dialog.getByRole('img', { name: 'Keepsake image of the sky over New York' });
   const preview = slot.locator('.moment-preview');
@@ -265,7 +270,6 @@ test('the share dialog draws a keepsake image in each style and horizon', async 
   expect(decodeURIComponent(await dialog.getByRole('textbox', { name: 'Sky link' }).inputValue())).toContain(
     '"subject":"jupiter"',
   );
-  await dialog.getByRole('button', { name: 'Make an image' }).click();
   const image = dialog.getByRole('img', { name: 'Keepsake image of the sky over New York' });
   /** The image's size and the share of its sky area that is not plain black. */
   const inspect = () =>

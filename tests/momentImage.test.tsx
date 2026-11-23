@@ -71,6 +71,21 @@ const release = async (index: number) => {
   if (preview) fireEvent.load(preview);
 };
 
+it('places image controls in the supplied sidebar without moving the preview', async () => {
+  const sidebar = document.createElement('div');
+  document.body.appendChild(sidebar);
+  const { container, unmount } = render(
+    <MomentImage snapshot={snapshot} capture={capture} link="" controlsTarget={sidebar} />,
+  );
+  await settle();
+  expect(sidebar).toContainElement(screen.getByRole('checkbox', { name: /Clear Sky for image/ }));
+  expect(sidebar).toContainElement(screen.getByRole('button', { name: 'Illustrated' }));
+  expect(container.querySelector('.moment-options')).not.toBeInTheDocument();
+  expect(container.querySelector('.moment-preview-slot')).toHaveAttribute('aria-busy', 'true');
+  unmount();
+  sidebar.remove();
+});
+
 it('keeps a stable preview slot, hides stale exports, and ignores an out-of-order result', async () => {
   render(<MomentImage snapshot={snapshot} capture={capture} link="https://example.test/#sky" />);
   await settle();

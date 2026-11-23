@@ -1514,22 +1514,16 @@ dialog:not([open]) {
   height: 20px;
   accent-color: var(--gold);
 }
-.share-image-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  min-height: 320px;
-  padding: 28px;
-  border: 1px dashed #58718a;
-  border-radius: 12px;
-  background: radial-gradient(ellipse at 50% 25%, #24385482, transparent 75%), #0a1728;
-  color: #baccdd;
-  text-align: center;
+.share-image-controls {
+  margin-top: 26px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
 }
-.share-image-placeholder > svg {
-  color: var(--gold);
+.share-image-controls:empty {
+  min-height: 1px;
+}
+.share-link-panel .moment-options {
+  grid-template-columns: minmax(0, 1fr);
 }
 .share-image-panel .moment-image {
   margin: 0;
@@ -1680,7 +1674,7 @@ dialog:not([open]) {
   flex: 1;
   text-decoration: none;
 }
-.share-image-panel .moment-actions a.secondary-button {
+.share-link-panel .moment-actions a.secondary-button {
   border-color: #dfc39c80;
   background: var(--gold);
   color: #17202c;
@@ -1692,6 +1686,9 @@ dialog:not([open]) {
   }
   .share-link-panel {
     border-right: 0;
+  }
+  .share-image-panel {
+    order: -1;
     border-bottom: 1px solid var(--line);
   }
 }
@@ -1708,10 +1705,6 @@ dialog:not([open]) {
   }
   .moment-options {
     grid-template-columns: minmax(0, 1fr);
-  }
-  .share-image-placeholder {
-    min-height: 230px;
-    padding: 20px;
   }
 }
 .notice {
