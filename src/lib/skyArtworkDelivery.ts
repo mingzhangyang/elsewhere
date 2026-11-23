@@ -108,11 +108,7 @@ export function downloadSkyArtwork(
     throw new SkyArtworkExportError('download-unavailable', 'No browser download environment.');
   }
   const urls = port.urls ?? (typeof URL === 'undefined' ? undefined : URL);
-  if (
-    !urls ||
-    typeof urls.createObjectURL !== 'function' ||
-    typeof urls.revokeObjectURL !== 'function'
-  ) {
+  if (!urls || typeof urls.createObjectURL !== 'function' || typeof urls.revokeObjectURL !== 'function') {
     throw new SkyArtworkExportError('download-unavailable', 'Blob URL download is unavailable.');
   }
   let cleanup: (() => void) | undefined;
