@@ -1,7 +1,11 @@
 import { act, createRef } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeAll, expect, it, vi } from 'vitest';
-import ShareDialog, { type ShareDialogHandle, type ShareRequest } from '../src/components/ShareDialog';
+import ShareDialog, {
+  MomentUnavailable,
+  type ShareDialogHandle,
+  type ShareRequest,
+} from '../src/components/ShareDialog';
 import { setLanguage } from '../src/i18n';
 import { normalizeLocation, PRESETS } from '../src/lib/locations';
 
@@ -98,4 +102,12 @@ it('automatically shows a preview and puts image controls beside link controls',
   const imageControls = await screen.findByTestId('image-controls');
   expect(linkPanel).toContainElement(imageControls);
   expect(linkPanel).toContainElement(screen.getByRole('button', { name: 'Save image' }));
+});
+
+it('keeps the fixed-size preview slot when the lazy image module fails', () => {
+  const { container } = render(<MomentUnavailable />);
+  const slot = container.querySelector('.moment-preview-slot');
+  expect(slot).toBeInTheDocument();
+  expect(slot).toHaveAttribute('aria-busy', 'false');
+  expect(slot?.querySelector('.moment-preview-transition')).toHaveAttribute('role', 'status');
 });

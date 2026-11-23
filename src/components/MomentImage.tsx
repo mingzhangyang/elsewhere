@@ -15,6 +15,9 @@ import { drawPostcard, FONT, MOMENT_STYLES, type MomentStyle } from '../moment/p
 import { HORIZON_VARIANTS, type HorizonVariant } from '../moment/scenery';
 import { getZonedParts } from '../domain/time';
 
+type PreviewImage = { url: string; blob: Blob };
+type PendingPreview = PreviewImage & { ticket: number };
+
 /**
  * The keepsake image in the share dialog (ROADMAP phase 3 prototype), loaded only when asked for.
  * Two variant pairs for the test sessions: realistic or illustrated, and the ridge or a scenery
@@ -41,17 +44,24 @@ export default function MomentImage({
     () => momentImageSnapshot(snapshot, clearSkyImage),
     [snapshot, clearSkyImage],
   );
-  const [image, setImage] = useState<{ url: string; blob: Blob } | null>(null);
+  const [image, setImage] = useState<PreviewImage | null>(null);
+  const [pendingImage, setPendingImage] = useState<PendingPreview | null>(null);
   const [failed, setFailed] = useState(false);
   const [drawing, setDrawing] = useState(true);
   const request = useRef(0);
   const shown = useRef<string | null>(null);
+  const pendingUrl = useRef<string | null>(null);
+  const retired = useRef<string[]>([]);
   const latest = useRef(capture);
   latest.current = capture;
   const ready = !!image && !drawing && !failed;
   useEffect(() => {
     // Only the latest request is shown; a slower earlier one is discarded.
     const ticket = ++request.current;
+    // A superseded decode must never replace the visible bitmap or leak its object URL.
+    if (pendingUrl.current) URL.revokeObjectURL(pendingUrl.current);
+    pendingUrl.current = null;
+    setPendingImage(null);
     setFailed(false);
     // Keep the previous image visible while the selected variant is redrawn.
     setDrawing(true);
@@ -102,12 +112,10 @@ export default function MomentImage({
             setDrawing(false);
             return setFailed(true);
           }
-          const oldUrl = shown.current;
           const url = URL.createObjectURL(blob);
-          shown.current = url;
-          setImage({ url, blob });
-          setDrawing(false);
-          if (oldUrl) URL.revokeObjectURL(oldUrl);
+          pendingUrl.current = url;
+          // toBlob is not image-ready: the staged <img> must load and decode first.
+          setPendingImage({ url, blob, ticket });
         },
         () => {
           if (ticket === request.current) {
@@ -121,11 +129,45 @@ export default function MomentImage({
     () => () => {
       // Work still pending when the dialog closes is discarded before it allocates a URL.
       request.current++;
+      if (pendingUrl.current) URL.revokeObjectURL(pendingUrl.current);
       if (shown.current) URL.revokeObjectURL(shown.current);
+      for (const url of retired.current) URL.revokeObjectURL(url);
+      pendingUrl.current = null;
       shown.current = null;
+      retired.current = [];
     },
     [],
   );
+  useEffect(() => {
+    // Revoke the old preview only after React has committed the decoded replacement.
+    for (const url of retired.current.splice(0)) URL.revokeObjectURL(url);
+  }, [image]);
+
+  const failPending = (candidate: PendingPreview) => {
+    if (candidate.ticket !== request.current || pendingUrl.current !== candidate.url) return;
+    pendingUrl.current = null;
+    URL.revokeObjectURL(candidate.url);
+    setPendingImage(null);
+    setDrawing(false);
+    setFailed(true);
+  };
+  const showPending = (candidate: PendingPreview, element: HTMLImageElement) => {
+    // onLoad alone does not ensure the bitmap can be painted on slower devices.
+    void Promise.resolve()
+      .then(() => element.decode?.())
+      .then(
+        () => {
+          if (candidate.ticket !== request.current || pendingUrl.current !== candidate.url) return;
+          pendingUrl.current = null;
+          if (shown.current) retired.current.push(shown.current);
+          shown.current = candidate.url;
+          setImage({ url: candidate.url, blob: candidate.blob });
+          setPendingImage(null);
+          setDrawing(false);
+        },
+        () => failPending(candidate),
+      );
+  };
 
   // The moment's own civil date, as printed on the image, not the UTC one.
   const date = getZonedParts(snapshot.instant, snapshot.location.timezone).date;
@@ -208,6 +250,16 @@ export default function MomentImage({
             src={image.url}
             alt={m.moment.alt({ place })}
             aria-hidden={!ready}
+          />
+        )}
+        {pendingImage && (
+          <img
+            className="moment-preview-staged"
+            src={pendingImage.url}
+            alt=""
+            aria-hidden="true"
+            onLoad={(event) => showPending(pendingImage, event.currentTarget)}
+            onError={() => failPending(pendingImage)}
           />
         )}
         {!ready && (
