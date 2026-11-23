@@ -303,7 +303,7 @@ test('browser download requests original PNG from a genuine button click, and sh
     page.waitForEvent('download'),
     page.getByRole('button', { name: 'Download PNG' }).click(),
   ]);
-  expect((await page.locator('#sm3-b-gesture-download').getAttribute('data-status'))).toBe(
+  expect(await page.locator('#sm3-b-gesture-download').getAttribute('data-status')).toBe(
     'download-requested',
   );
   expect(download.suggestedFilename()).toBe('elsewhere-sky-2026-06-21.png');
