@@ -184,3 +184,14 @@ Linux, Node 22, Playwright 1.65 with the preinstalled Chromium (software GL). 39
 - **Title.** Over a bright cloud the place line and eyebrow fell to about 1.2:1 between glyph outline and background. A tight, layered text shadow and a brighter place line raise this to about 3.1–3.4:1 over pure white, without a scrim.
 - **Pixel checks.** `tests/browser/sky-pixels.spec.ts` samples the rendered canvas: the zoomed crescent's unlit side against the sky beside it, and each title line over a forced white backdrop. Both cases fail on the previous code.
 - **Not done.** No physical GPU or phone; cloud shading cost rose from about 10 to about 15 noise lookups per pixel and has not been measured on a midrange device.
+
+
+### Share-menu postcard: default Clear Sky (separate fix, pending CI/browser validation)
+
+The **Make an image / 生成图片** action now starts with **Clear Sky for image** checked, regardless of whether the explorer is currently under real clouds, user-custom weather or an already clear view. Both illustrated and realistic postcards use `momentImageSnapshot(snapshot, true)`, which reuses the existing `presentedWeather` clear-sky contract to zero cloud cover/layers, haze and precipitation without changing the event instant, celestial positions, visibility-by-daylight, the live scene or source weather. An unchecked option restores original captured weather for the postcard.
+
+For realistic postcards, the current WebGL renderer temporarily applies the image-only weather via `SkyCaptureOptions.weather`; a `finally` block restores the original render state even when snapshot/canvas capture fails. The illustrated postcard reads the same image-only snapshot directly. Both still use their existing projection, horizon and PNG pipeline.
+
+A bilingual, visible **Clear Sky mode / Clear Sky 模式** line is painted onto the actual PNG canvas below the event time when the clear-sky provenance is active. The checkbox explicitly says the choice affects **the picture only**, not the live sky or the `#sky=` link. Weather provenance reports that clouds were hidden rather than implying that conditions at the event were observed as clear. Daylight is not bypassed: a daytime screenshot is still a bright daytime scene, not artificially visible night stars.
+
+Regressions: `tests/moment.test.ts` proves the original snapshot and source/UTC remain unchanged; `tests/momentImage.test.tsx` covers default-on, both styles, off/on behavior and invalidating obsolete PNG output; `tests/browser/postcard-clear-sky.spec.ts` compares default clear versus actual overcast captures, verifies the PNG label through real Canvas drawing, checks that the link/live source did not change and attaches screenshot evidence. **Do not mark this as passed until the relevant CI/browser jobs complete.** This change does not merge or alter the separately open SM3-C PR.
