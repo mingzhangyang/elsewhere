@@ -300,6 +300,37 @@ button:hover:not(:disabled) {
   z-index: 1;
   background: linear-gradient(180deg, #03091566 0%, transparent 38%, transparent 60%, #040a1370 100%);
 }
+/* An unobtrusive but discoverable direct link to the separate #create host. */
+.sky-create-actions {
+  display: flex;
+  align-items: flex-start;
+  margin-top: 10px;
+  pointer-events: auto;
+}
+
+.sky-create-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  max-width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #e9c69786;
+  border-radius: 999px;
+  background: #151e37ed;
+  color: #f9e5cc;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.25;
+  text-decoration: none;
+  text-shadow: none;
+  box-shadow: 0 4px 20px #0006;
+}
+
+.sky-create-link:hover {
+  background: #252e4d;
+}
+
 .sky-context {
   position: absolute;
   z-index: 2;

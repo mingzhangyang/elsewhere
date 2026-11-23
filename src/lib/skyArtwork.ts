@@ -65,9 +65,11 @@ export function skyArtworkGraphemeCount(text: string): number {
 function plainText(value: unknown, max: number, label: string): string {
   if (value === undefined) return '';
   if (typeof value !== 'string') throw new TypeError(label + ' must be plain text.');
-  // No invisible controls, bidi overrides or HTML handling. Newlines are whitespace, not markup.
+  // Textarea line breaks and tabs are whitespace in an artwork, not markup.
+  const normalized = value.replace(/[\t\n\r]/gu, ' ');
+  // Reject every other control and bidi override rather than hiding them.
   if (
-    [...value].some((character) => {
+    [...normalized].some((character) => {
       const point = character.codePointAt(0)!;
       return (
         point < 0x20 ||
@@ -79,7 +81,7 @@ function plainText(value: unknown, max: number, label: string): string {
   ) {
     throw new RangeError(label + ' contains unsupported control characters.');
   }
-  const clean = value.normalize('NFC').replace(/\s+/gu, ' ').trim();
+  const clean = normalized.normalize('NFC').replace(/\s+/gu, ' ').trim();
   if (skyArtworkGraphemeCount(clean) > max) {
     throw new RangeError(label + ' exceeds ' + max + ' visible characters.');
   }
