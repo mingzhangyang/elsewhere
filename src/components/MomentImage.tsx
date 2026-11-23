@@ -123,7 +123,7 @@ export default function MomentImage({
     : placeLabel(snapshot.location, i18n).name;
   return (
     <section className="moment-image" aria-labelledby="moment-title" style={{ fontFamily: FONT }}>
-      <h3 id="moment-title">{copy.section}</h3>
+      <h3 id="moment-title">{m.share.imageHeading}</h3>
       <p className="moment-note">{copy.note}</p>
       <label className="moment-clear-sky">
         <input
@@ -133,22 +133,6 @@ export default function MomentImage({
         />
         {copy.clearSkyImage}
       </label>
-      <div className="moment-options">
-        <div role="group" aria-label={m.moment.style} className="segmented">
-          {MOMENT_STYLES.map((value) => (
-            <button key={value} aria-pressed={style === value} onClick={() => setStyle(value)}>
-              {m.moment.styles[value]}
-            </button>
-          ))}
-        </div>
-        <div role="group" aria-label={m.moment.horizon} className="segmented four">
-          {HORIZON_VARIANTS.map((value) => (
-            <button key={value} aria-pressed={horizon === value} onClick={() => setHorizon(value)}>
-              {m.moment.horizons[value]}
-            </button>
-          ))}
-        </div>
-      </div>
       {failed ? (
         <p className="form-status" role="status">
           {m.moment.failed}
@@ -160,6 +144,28 @@ export default function MomentImage({
           {m.moment.drawing}
         </p>
       )}
+      <div className="moment-options">
+        <div className="moment-option">
+          <span className="moment-option-caption">{m.moment.style}</span>
+          <div role="group" aria-label={m.moment.style} className="segmented">
+            {MOMENT_STYLES.map((value) => (
+              <button key={value} aria-pressed={style === value} onClick={() => setStyle(value)}>
+                {m.moment.styles[value]}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="moment-option">
+          <span className="moment-option-caption">{m.moment.horizon}</span>
+          <div role="group" aria-label={m.moment.horizon} className="segmented four">
+            {HORIZON_VARIANTS.map((value) => (
+              <button key={value} aria-pressed={horizon === value} onClick={() => setHorizon(value)}>
+                {m.moment.horizons[value]}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
       {image && !failed && (
         <div className="moment-actions">
           <a className="secondary-button" href={image.url} download={file!.name}>

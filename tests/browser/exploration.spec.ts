@@ -170,6 +170,33 @@ test('with reduced motion, a link with a subject opens on it without turning', a
   await expect(compass(page)).toHaveAccessibleName(/Facing S, 180 degrees/);
 });
 
+test('the share dialog uses two desktop columns and stacks them on mobile', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/?scenario=jupiter');
+  await page.getByRole('button', { name: 'Share this sky', exact: true }).click();
+
+  const dialog = page.getByRole('dialog', { name: 'Share this sky' });
+  const linkPanel = dialog.locator('.share-link-panel');
+  const imagePanel = dialog.locator('.share-image-panel');
+  await expect(linkPanel.getByRole('textbox', { name: 'Sky link' })).toBeVisible();
+  await expect(imagePanel.getByRole('button', { name: 'Make an image' })).toBeVisible();
+
+  const desktopLeft = await linkPanel.boundingBox();
+  const desktopRight = await imagePanel.boundingBox();
+  expect(desktopLeft).not.toBeNull();
+  expect(desktopRight).not.toBeNull();
+  expect(desktopRight!.x).toBeGreaterThanOrEqual(desktopLeft!.x + desktopLeft!.width - 2);
+  expect(desktopRight!.width).toBeGreaterThan(desktopLeft!.width);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobileLeft = await linkPanel.boundingBox();
+  const mobileRight = await imagePanel.boundingBox();
+  expect(mobileLeft).not.toBeNull();
+  expect(mobileRight).not.toBeNull();
+  expect(mobileRight!.y).toBeGreaterThanOrEqual(mobileLeft!.y + mobileLeft!.height - 2);
+  expect(mobileRight!.x).toBeCloseTo(mobileLeft!.x, 0);
+});
+
 test('the share dialog draws a keepsake image in each style and horizon', async ({ page }) => {
   await page.goto('/?scenario=jupiter');
   await page.getByRole('button', { name: 'Objects', exact: true }).click();

@@ -534,6 +534,11 @@ const en = {
     searchLanguage: 'en',
   },
   share: {
+    linkSection: 'Link sharing',
+    linkHeading: 'Share this moment',
+    imageSection: 'Keepsake image',
+    imageHeading: 'Keepsake image preview',
+    imagePrompt: 'Create a picture of this moment to preview it here, then choose a style and save it.',
     eyebrow: 'Keep a moment',
     title: 'Share this sky',
     close: 'Close sharing',
