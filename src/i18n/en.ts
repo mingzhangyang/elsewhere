@@ -552,8 +552,9 @@ const en = {
   },
   /** The keepsake image of a moment (ROADMAP phase 3 prototype). */
   moment: {
-    section: 'Keepsake image',
     make: 'Make an image',
+    drawing: 'Drawing the image…',
+    failed: 'The image could not be drawn. Try another style.',
     style: 'Style',
     styles: { realistic: 'Realistic', illustrated: 'Illustrated' },
     horizon: 'Horizon',

@@ -123,7 +123,7 @@ export default function MomentImage({
     : placeLabel(snapshot.location, i18n).name;
   return (
     <section className="moment-image" aria-labelledby="moment-title" style={{ fontFamily: FONT }}>
-      <h3 id="moment-title">{m.moment.section}</h3>
+      <h3 id="moment-title">{copy.section}</h3>
       <p className="moment-note">{copy.note}</p>
       <label className="moment-clear-sky">
         <input
@@ -151,13 +151,13 @@ export default function MomentImage({
       </div>
       {failed ? (
         <p className="form-status" role="status">
-          {copy.failed}
+          {m.moment.failed}
         </p>
       ) : image ? (
         <img className="moment-preview" src={image.url} alt={m.moment.alt({ place })} />
       ) : (
         <p className="form-status" role="status">
-          {copy.drawing}
+          {m.moment.drawing}
         </p>
       )}
       {image && !failed && (

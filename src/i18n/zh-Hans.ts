@@ -615,8 +615,9 @@ const zh: Messages = {
     copy: '复制链接',
   },
   moment: {
-    section: '纪念图片',
     make: '生成图片',
+    drawing: '正在绘制图片…',
+    failed: '图片无法绘制。请换一种风格再试。',
     style: '风格',
     styles: { realistic: '写实', illustrated: '插画' },
     horizon: '地平线',
