@@ -1536,12 +1536,6 @@ dialog:not([open]) {
   padding: 0;
   border: 0;
 }
-.moment-note {
-  margin: 0 0 12px;
-  color: var(--muted);
-  font-size: var(--text-sm);
-  line-height: 1.6;
-}
 .moment-clear-sky {
   display: flex;
   align-items: center;
