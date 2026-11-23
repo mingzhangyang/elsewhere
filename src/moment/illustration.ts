@@ -563,9 +563,9 @@ export function drawIllustration(
     }
     return null;
   };
-  // Total reported cover matters even when only high cloud is populated. At near-100% cover a
-  // continuous translucent deck must cover the sky; the separate bands provide internal detail.
-  const sheetAmount = Math.max(cover, clamp01((lowShare + mid - 0.8) * 2.5));
+  // Use reported total cover for the deck. Summing layers would turn partly cloudy weather
+  // into full overcast whenever multiple cloud layers overlap.
+  const sheetAmount = cover;
   if (sheetAmount > 0.35)
     cloudSheet(
       ctx,

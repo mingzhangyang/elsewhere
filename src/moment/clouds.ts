@@ -201,18 +201,10 @@ export function cloudSheet(
   if (deckAlpha > 0) {
     // The continuous colour wash is broken by the existing seeded, irregular painted veils.
     // The postcard's pigment finish supplies finer grain without a second per-pixel noise field.
-    const horizonLit = clamp01((light.y + 1) * 0.5);
-    const topTint = mix(shadow, palette.cloudLight, 0.46 - horizonLit * 0.2);
-    const bottomTint = mix(shadow, palette.cloudLight, 0.26 + horizonLit * 0.2);
-    const gradient = ctx.createLinearGradient(
-      width * (0.5 - light.x * 0.18),
-      top,
-      width * (0.5 + light.x * 0.18),
-      bottom,
-    );
-    gradient.addColorStop(0, css(topTint, deckAlpha * 0.98));
-    gradient.addColorStop(0.48, css(shadow, deckAlpha));
-    gradient.addColorStop(1, css(bottomTint, deckAlpha * 0.96));
+    const gradient = ctx.createLinearGradient(0, top, light.x * width * 0.2, bottom);
+    gradient.addColorStop(0, css(palette.cloudLight, deckAlpha * 0.98));
+    gradient.addColorStop(0.5, css(shadow, deckAlpha));
+    gradient.addColorStop(1, css(palette.cloudBody, deckAlpha * 0.96));
     ctx.save();
     ctx.fillStyle = gradient;
     ctx.fillRect(0, top, width, span);
