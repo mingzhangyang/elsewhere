@@ -615,8 +615,6 @@ const zh: Messages = {
     copy: '复制链接',
   },
   moment: {
-    section: '纪念图片',
-    note: '原型：一张这一刻的图片，可以和链接一起发出。',
     make: '生成图片',
     drawing: '正在绘制图片…',
     failed: '图片无法绘制。请换一种风格再试。',

@@ -1453,6 +1453,26 @@ dialog:not([open]) {
   font-size: var(--text-sm);
   color: var(--muted);
 }
+.moment-clear-sky {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  margin: 4px 0 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--gold-edge);
+  border-radius: 10px;
+  background: var(--gold-wash);
+  color: var(--text);
+  font-size: var(--text-md);
+  line-height: 1.45;
+}
+.moment-clear-sky input {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  accent-color: var(--gold);
+}
 .moment-options {
   display: grid;
   gap: 8px;

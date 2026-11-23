@@ -1,34 +1,90 @@
-import { type Palette, type Rgb, TAU, clamp01, css, deepen, glowAt, lerp, mark, mix } from './paint';
+import { type Palette, type Rgb, clamp01, css, lerp, mark, mix, washAt } from './paint';
+import { paintCloudField } from './cloudField';
 
 /**
- * Clouds painted like gouache: heaped masses with many small billows, each billow catching the
- * light on the side that faces it and falling into shadow behind, a shaded base, and a bright rim
- * when the light stands behind the cloud. How many there are follows the cloud cover; their shapes
- * and places are illustrative.
+ * Atmospheric watercolour clouds for postcard illustrations. The shape vocabulary is deliberately
+ * continuous and low-frequency: broad veils, torn horizontal edges and a small number of joined
+ * cloud banks, not rows of separately shaded circles. Source cover still controls how much cloud
+ * is painted; no invented star or planet positions enter this layer.
  */
 
-/** Where the light is, as seen from a cloud: a unit vector in canvas pixels, and how far behind it. */
+/** Direction of the Sun/Moon on the canvas and whether its light comes from behind/below a cloud. */
 export interface CloudLight {
   x: number;
   y: number;
-  /** 0: lit from the front or above; 1: the light is right behind the cloud. */
   backlit: number;
-  /** Light from below, 0 to 1: a low Sun on the cloud's belly, or a town's lights at night. */
   under: number;
   underColour: Rgb;
 }
 
-interface Billow {
+interface Point {
   x: number;
   y: number;
-  rx: number;
-  ry: number;
-  turn: number;
+}
+
+function midpoint(a: Point, b: Point): Point {
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
 }
 
 /**
- * A cumulus cloud standing on a flat base at `y`, about `size` tall per tier.
- * `tiers` 1 is a fair-weather puff, 3 a towering summer cloud.
+ * One closed, gently torn silhouette. The broad undulations are connected with quadratic curves,
+ * including the underside. A single path means no visible spherical seams or repeated ball shapes.
+ */
+function smoothCloudPath(ctx: CanvasRenderingContext2D, upper: Point[], lower: Point[]) {
+  const all = [...upper, ...lower];
+  const first = midpoint(all[all.length - 1], all[0]);
+  ctx.moveTo(first.x, first.y);
+  for (let i = 0; i < all.length; i++) {
+    const next = midpoint(all[i], all[(i + 1) % all.length]);
+    ctx.quadraticCurveTo(all[i].x, all[i].y, next.x, next.y);
+  }
+  ctx.closePath();
+}
+
+/** A translucent, irregularly tapered horizontal wash, not an opaque line or repeated ellipse. */
+function veil(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  length: number,
+  depth: number,
+  body: Rgb,
+  highlight: Rgb,
+  random: () => number,
+  alpha: number,
+  slope = 0,
+) {
+  if (length <= 0 || depth <= 0 || alpha <= 0.005) return;
+  const upper: Point[] = [];
+  const lower: Point[] = [];
+  for (let i = 0; i <= 9; i++) {
+    const t = i / 9;
+    const envelope = Math.pow(Math.max(0, Math.sin(t * Math.PI)), 0.48);
+    const center = y + slope * length * (t - 0.5);
+    const jitter = (random() - 0.5) * depth * 0.22;
+    const px = x + length * (t - 0.5);
+    upper.push({ x: px, y: center - depth * envelope * (0.5 + random() * 0.2) + jitter });
+    lower.unshift({ x: px, y: center + depth * envelope * (0.26 + random() * 0.16) + jitter });
+  }
+  const gradient = ctx.createLinearGradient(0, y - depth, 0, y + depth);
+  gradient.addColorStop(0, css(highlight, 0));
+  gradient.addColorStop(0.35, css(highlight, alpha * 0.65));
+  gradient.addColorStop(0.58, css(body, alpha));
+  gradient.addColorStop(1, css(body, 0));
+  ctx.save();
+  ctx.fillStyle = gradient;
+  ctx.shadowColor = css(body, alpha * 0.24);
+  ctx.shadowBlur = depth * 0.28;
+  ctx.beginPath();
+  smoothCloudPath(ctx, upper, lower);
+  ctx.fill();
+  ctx.restore();
+}
+
+/**
+ * Cumulus now comes from a seeded, two-dimensional transparency field instead of an elevation
+ * silhouette. Its pigment density, lit surface and softened edge are drawn in the lazy postcard
+ * canvas. The live 3D weather renderer is not involved.
  */
 export function cumulus(
   ctx: CanvasRenderingContext2D,
@@ -40,185 +96,10 @@ export function cumulus(
   random: () => number,
   tiers = 1,
 ) {
-  const masses: Billow[] = [];
-  const add = (bx: number, by: number, r: number) =>
-    masses.push({
-      x: bx,
-      y: by,
-      rx: r * (1.1 + random() * 0.3),
-      ry: r * (0.84 + random() * 0.14),
-      turn: (random() - 0.5) * 0.4,
-    });
-  const half = size * (1.25 + random() * 0.55 + tiers * 0.14);
-  const lean = (random() - 0.5) * 1.2;
-  // One long low slab for the base (part of the outline, not lit as a billow), and a row of rounder
-  // masses standing in it, fullest in the middle; the base line cuts through them all, so the
-  // cloud sits on one flat bottom.
-  const slab: Billow = { x, y: y - size * 0.1, rx: half * 0.9, ry: size * 0.22, turn: 0 };
-  const count = 3 + Math.floor(random() * 3);
-  for (let i = 0; i < count; i++) {
-    const t = count > 1 ? i / (count - 1) : 0.5;
-    const middle = 1 - Math.abs(t - 0.5) * 2;
-    const r = Math.max(size * (0.24 + 0.2 * middle + random() * 0.1), (half * 0.62) / count);
-    add(x + (t - 0.5) * 2 * half * 0.7 + (random() - 0.5) * size * 0.12, y - r * 0.4, r);
-  }
-  // Heaped tiers, each narrower, leaning to one side.
-  for (let tier = 1; tier <= tiers; tier++) {
-    const n = Math.max(1, 4 - tier - (random() < 0.4 ? 1 : 0));
-    const centre = x + lean * half * 0.3 * tier;
-    const spread = half * (0.62 - 0.16 * tier);
-    for (let k = 0; k < n; k++) {
-      const r = size * (0.42 - 0.05 * tier + random() * 0.14);
-      add(
-        centre + (n > 1 ? (k / (n - 1) - 0.5) * 2 * spread : 0) + (random() - 0.5) * size * 0.2,
-        y - size * (0.42 + 0.42 * (tier - 1) + random() * 0.16) - r * 0.2,
-        r,
-      );
-    }
-  }
-  // Billows budding from the upper edge of every mass, and smaller ones from those: the
-  // cauliflower outline, never two the same size.
-  const billows: Billow[] = [...masses];
-  const bud = (m: Billow, share: number) => {
-    const a = -Math.PI / 2 + (random() - 0.5) * 2.5;
-    const r = m.rx * share * (0.7 + random() * 0.6);
-    const b = {
-      x: m.x + Math.cos(a) * m.rx * 0.82,
-      y: m.y + Math.sin(a) * m.ry * 0.82,
-      rx: r * (1.05 + random() * 0.3),
-      ry: r * 0.88,
-      turn: (random() - 0.5) * 0.8,
-    };
-    billows.push(b);
-    return b;
-  };
-  for (const m of masses) {
-    const buds = 2 + Math.floor(random() * 3);
-    for (let k = 0; k < buds; k++) {
-      const b = bud(m, 0.42);
-      if (random() < 0.6) bud(b, 0.5);
-    }
-  }
-  const base = y;
-  const top = Math.min(...billows.map((b) => b.y - b.ry));
-  const outline = (grow: number) => {
-    ctx.beginPath();
-    for (const b of [slab, ...billows]) {
-      ctx.moveTo(b.x + (b.rx + grow) * Math.cos(b.turn), b.y + (b.rx + grow) * Math.sin(b.turn));
-      ctx.ellipse(b.x, b.y, b.rx + grow, b.ry + grow, b.turn, 0, TAU);
-    }
-  };
-  const lit = mix(palette.cloudLight, palette.glow, 0.35 * light.backlit);
-  const shade = mix(palette.cloudBody, palette.cloudShadow, 0.6);
-  ctx.save();
-  // A flat base, as cumulus has, with a slight bow.
-  ctx.beginPath();
-  ctx.moveTo(x - half * 2.2, top - size);
-  ctx.lineTo(x + half * 2.2, top - size);
-  ctx.lineTo(x + half * 2.2, base - size * 0.02);
-  ctx.quadraticCurveTo(x, base + size * 0.04, x - half * 2.2, base - size * 0.02);
-  ctx.closePath();
-  ctx.clip();
-  // With the light behind it, the cloud's edge burns bright all round.
-  if (light.backlit > 0.12) {
-    ctx.fillStyle = css(lit, light.backlit);
-    ctx.shadowColor = css(lit, 0.8 * light.backlit);
-    ctx.shadowBlur = size * 0.22 * light.backlit;
-    outline(size * 0.035 * light.backlit);
-    ctx.fill();
-  }
-  // The body: light above, shaded toward the base, with a softened painted edge.
-  const body = ctx.createLinearGradient(0, top, 0, base);
-  const crown = mix(palette.cloudBody, palette.cloudLight, 0.6 * (1 - light.backlit));
-  body.addColorStop(0, css(mix(crown, palette.cloudShadow, 0.45 * light.backlit)));
-  body.addColorStop(0.55, css(mix(palette.cloudBody, palette.cloudShadow, 0.15 + 0.5 * light.backlit)));
-  body.addColorStop(1, css(mix(palette.cloudShadow, deepen(palette.cloudShadow, 0.2), light.backlit)));
-  ctx.shadowColor = css(mix(palette.cloudBody, lit, 0.5), 0.4);
-  ctx.shadowBlur = size * 0.03;
-  ctx.fillStyle = body;
-  outline(0);
-  ctx.fill();
-  ctx.shadowBlur = 0;
-  ctx.shadowColor = 'rgba(0,0,0,0)';
-  outline(0);
-  ctx.clip();
-  // Each billow, from the side nearest the light to the farthest: soft shade gathers behind it, and
-  // its lit face is a crisp edge that melts away across it, so the next billow reads against it.
-  const order = [...billows].sort((a, b) => b.x * light.x + b.y * light.y - (a.x * light.x + a.y * light.y));
-  const strength = lerp(0.95, 0.2, light.backlit);
-  const largest = Math.max(...billows.map((b) => b.rx));
-  for (const b of order) {
-    const r = Math.max(b.rx, b.ry);
-    // Small buds shape the outline; the big masses carry the light.
-    const weight = strength * (0.55 + 0.45 * Math.min(1, (b.rx / largest) * 1.6));
-    glowAt(ctx, b.x - light.x * r * 0.75, b.y - light.y * r * 0.75, r * 1.05, shade, 0.3);
-    const g = ctx.createLinearGradient(
-      b.x + light.x * r,
-      b.y + light.y * r,
-      b.x - light.x * r * 0.25,
-      b.y - light.y * r * 0.25,
-    );
-    g.addColorStop(0, css(lit, weight));
-    g.addColorStop(0.35, css(lit, weight * 0.7));
-    g.addColorStop(1, css(lit, 0));
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.ellipse(b.x, b.y, b.rx, b.ry, b.turn, 0, TAU);
-    ctx.fill();
-  }
-  // The underside: in shade by day, glowing when a low Sun (or a town at night) lights it from below.
-  const under = ctx.createLinearGradient(0, base - size * 0.4, 0, base);
-  under.addColorStop(0, css(palette.cloudShadow, 0));
-  under.addColorStop(1, css(palette.cloudShadow, 0.75));
-  ctx.fillStyle = under;
-  ctx.fillRect(x - half * 2.2, base - size * 0.4, half * 4.4, size * 0.5);
-  if (light.under > 0.02) {
-    const warm = ctx.createLinearGradient(0, base - size * 0.34, 0, base);
-    warm.addColorStop(0, css(light.underColour, 0));
-    warm.addColorStop(1, css(light.underColour, 0.75 * light.under));
-    ctx.fillStyle = warm;
-    ctx.fillRect(x - half * 2.2, base - size * 0.34, half * 4.4, size * 0.4);
-  }
-  ctx.restore();
-  // Loose brush marks trailing from the base and a shred or two drifting off: a painted edge.
-  ctx.save();
-  ctx.fillStyle = css(
-    light.under > 0.02 ? mix(palette.cloudShadow, light.underColour, 0.5 * light.under) : shade,
-    0.55,
-  );
-  ctx.beginPath();
-  for (let i = 0; i < 5; i++)
-    mark(
-      ctx,
-      x + (random() - 0.5) * half * 1.7,
-      base + size * (random() * 0.03),
-      half * (0.5 + random() * 0.9),
-      size * (0.025 + random() * 0.03),
-      0,
-      0,
-    );
-  ctx.fill();
-  ctx.fillStyle = css(mix(palette.cloudBody, lit, 0.6), 0.4);
-  ctx.shadowColor = css(mix(palette.cloudBody, lit, 0.6), 0.5);
-  ctx.shadowBlur = size * 0.06;
-  ctx.beginPath();
-  for (let i = 0; i < 3; i++) {
-    const side = random() < 0.5 ? -1 : 1;
-    mark(
-      ctx,
-      x + side * half * (1.0 + random() * 0.35),
-      y - size * (0.08 + random() * 0.45),
-      size * (0.25 + random() * 0.3),
-      size * (0.03 + random() * 0.04),
-      (random() - 0.5) * 0.3,
-      -size * 0.02,
-    );
-  }
-  ctx.fill();
-  ctx.restore();
+  paintCloudField(ctx, x, y, size, palette, light, random, tiers);
 }
 
-/** Low stratus: long tapered bars near the horizon, stacked, edged with light on the lit side. */
+/** Near-horizon stratus: thin horizontal washes with broken, nonparallel feathered edges. */
 export function stratus(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -229,35 +110,19 @@ export function stratus(
   random: () => number,
   unit: number,
 ) {
-  const bars = 2 + Math.floor(random() * 3);
-  for (let i = 0; i < bars; i++) {
-    const bx = x + (random() - 0.5) * length * 0.5,
-      by = y + (i - bars / 2) * (9 + random() * 7) * unit,
-      l = length * (0.45 + random() * 0.6),
-      t = (6 + random() * 9) * unit;
-    const bar = mix(palette.cloudBody, palette.cloudShadow, 0.3 + 0.3 * light.backlit);
-    ctx.shadowColor = css(bar, 0.6);
-    ctx.shadowBlur = t * 1.4;
-    ctx.fillStyle = css(bar, 0.6);
-    ctx.beginPath();
-    mark(ctx, bx, by, l, t, 0, 0);
-    mark(ctx, bx + l * 0.2, by + t * 0.5, l * 0.5, t * 0.6, 0, 0);
-    ctx.fill();
-    // The edge that faces the light: below when the Sun is low, above otherwise.
-    const edge = mix(palette.cloudLight, palette.glow, 0.5 * light.backlit);
-    ctx.fillStyle = css(edge, 0.6);
-    ctx.beginPath();
-    const side = light.y > 0.15 ? 1 : -1;
-    mark(ctx, bx + light.x * l * 0.06, by + side * t * 0.34, l * 0.84, t * 0.5, 0, side * t * 0.12);
-    ctx.shadowColor = css(edge, 0.6);
-    ctx.shadowBlur = t * 0.9;
-    ctx.fill();
+  const body = mix(palette.cloudBody, palette.cloudShadow, 0.36);
+  const edge = mix(palette.cloudLight, palette.glow, 0.3 * light.backlit);
+  const bands = 1 + Math.floor(random() * 2);
+  for (let i = 0; i < bands; i++) {
+    const oy = (i - (bands - 1) / 2) * (13 + random() * 12) * unit;
+    const l = length * (0.72 + random() * 0.5);
+    const t = (8 + random() * 7) * unit;
+    const cx = x + (random() - 0.5) * length * 0.24;
+    veil(ctx, cx, y + oy, l, t * 1.45, body, edge, random, 0.42, (random() - 0.5) * 0.04);
   }
-  ctx.shadowBlur = 0;
-  ctx.shadowColor = 'rgba(0,0,0,0)';
 }
 
-/** Altocumulus: a rippled field of small puffs in loose rows, each lit on the side of the light. */
+/** Mid-level fields are interrupted ribbons, not an evenly spaced matrix of round puffs. */
 export function altocumulus(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -267,30 +132,18 @@ export function altocumulus(
   light: CloudLight,
   random: () => number,
 ) {
-  const rows = 3 + Math.floor(random() * 2);
-  const slant = (random() - 0.5) * 0.5;
-  const shade: Rgb = mix(palette.cloudBody, palette.cloudShadow, 0.3 + 0.4 * light.backlit);
-  const lit: Rgb = mix(palette.cloudLight, palette.glow, 0.4 * light.backlit);
-  for (let row = 0; row < rows; row++) {
-    const n = 4 + Math.floor(random() * 4);
-    for (let i = 0; i < n; i++) {
-      const u = (i - n / 2) * size * 1.25 + (random() - 0.5) * size * 0.5,
-        px = x + u + row * size * 0.4,
-        py = y + (row - rows / 2) * size * 0.72 + u * slant * 0.3 + (random() - 0.5) * size * 0.2,
-        r = size * (0.3 + random() * 0.26);
-      ctx.fillStyle = css(shade, 0.7);
-      ctx.beginPath();
-      ctx.ellipse(px, py, r * 1.5, r * 0.8, slant * 0.3, 0, TAU);
-      ctx.fill();
-      ctx.fillStyle = css(lit, 0.85);
-      ctx.beginPath();
-      ctx.ellipse(px + light.x * r * 0.3, py + light.y * r * 0.28, r * 1.2, r * 0.52, slant * 0.3, 0, TAU);
-      ctx.fill();
-    }
+  const body = mix(palette.cloudBody, palette.cloudShadow, 0.25 + 0.25 * light.backlit);
+  const edge = mix(palette.cloudLight, palette.glow, 0.28 * light.backlit);
+  const slope = (random() - 0.5) * 0.12;
+  for (let row = 0; row < 2; row++) {
+    const cy = y + (row - 0.5) * size * 1.2;
+    const shift = (random() - 0.5) * size * 2;
+    const length = size * (4.6 + random() * 3.6);
+    veil(ctx, x + shift, cy, length, size * (0.55 + random() * 0.28), body, edge, random, 0.25, slope);
   }
 }
 
-/** Cirrus: a sheaf of long feathered strokes swept one way, hooked at the windward end. */
+/** High cirrus: sparse and low-contrast trailing ink-washes, never a comb of hard parallel lines. */
 export function cirrus(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -300,29 +153,36 @@ export function cirrus(
   light: CloudLight,
   random: () => number,
 ) {
-  const tilt = (random() - 0.5) * 0.45;
-  const colour = mix(palette.cloudLight, palette.glow, 0.5 * light.backlit);
-  for (let i = 0; i < 9; i++) {
-    const l = length * (0.4 + random() * 0.7),
-      ox = (random() - 0.5) * length * 0.4,
-      oy = (random() - 0.5) * length * 0.14;
-    ctx.fillStyle = css(colour, 0.16 + random() * 0.26);
-    ctx.beginPath();
+  const tint = mix(palette.cloudLight, palette.glow, 0.3 * light.backlit);
+  const angle = (random() - 0.5) * 0.2;
+  washAt(ctx, x, y, length * 0.035, 9, tint, 0.1);
+  ctx.save();
+  ctx.fillStyle = css(tint, 0.16);
+  ctx.beginPath();
+  for (let i = 0; i < 5; i++) {
+    const l = length * (0.32 + random() * 0.65);
+    const ox = (random() - 0.5) * length * 0.45;
     mark(
       ctx,
       x + ox,
-      y + oy + ox * Math.sin(tilt),
+      y + (random() - 0.5) * length * 0.12 + ox * Math.sin(angle),
       l,
-      length * (0.006 + random() * 0.012),
-      tilt,
-      -l * (0.03 + random() * 0.05),
+      length * (0.003 + random() * 0.005),
+      angle + (random() - 0.5) * 0.08,
+      -l * (0.02 + random() * 0.05),
     );
-    ctx.fill();
   }
-  glowAt(ctx, x, y, length * 0.3, colour, 0.06);
+  ctx.fill();
+  ctx.restore();
 }
 
-/** A sheet of cloud for a mostly overcast sky: broad soft bands that leave gaps of sky between. */
+/** Full-overcast coverage is a continuous layer; lighter cover keeps gaps between veils. */
+export function overcastDeckOpacity(amount: number): number {
+  const t = clamp01((clamp01(amount) - 0.74) / 0.26);
+  return 0.94 * t * t * (3 - 2 * t);
+}
+
+/** Overcast: a coherent diffuse cloud deck above the formerly sparse atmospheric veils. */
 export function cloudSheet(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -333,20 +193,40 @@ export function cloudSheet(
   random: () => number,
   amount: number,
 ) {
-  const bands = Math.round(5 + amount * 9);
+  if (bottom <= top || amount <= 0) return;
+  const span = bottom - top;
+  const bands = 1 + Math.round(clamp01(amount) * 2);
+  const shadow = mix(palette.cloudBody, palette.cloudShadow, 0.35 + 0.25 * light.backlit);
+  const deckAlpha = overcastDeckOpacity(amount);
+  if (deckAlpha > 0) {
+    // The continuous colour wash is broken by the existing seeded, irregular painted veils.
+    // The postcard's pigment finish supplies finer grain without a second per-pixel noise field.
+    const gradient = ctx.createLinearGradient(0, top, light.x * width * 0.2, bottom);
+    gradient.addColorStop(0, css(palette.cloudLight, deckAlpha * 0.98));
+    gradient.addColorStop(0.5, css(shadow, deckAlpha));
+    gradient.addColorStop(1, css(palette.cloudBody, deckAlpha * 0.96));
+    ctx.save();
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, top, width, span);
+    ctx.restore();
+  }
   for (let i = 0; i < bands; i++) {
-    const t = random();
-    const y = lerp(top, bottom, t * t);
-    const l = width * (0.5 + random() * 0.7);
-    const thick = (bottom - top) * (0.035 + 0.05 * (1 - t) + random() * 0.02);
-    const x = random() * width;
-    ctx.fillStyle = css(mix(palette.cloudBody, palette.cloudShadow, 0.25 + random() * 0.4), 0.3 * amount);
-    ctx.beginPath();
-    mark(ctx, x, y, l, thick, (random() - 0.5) * 0.06, 0);
-    ctx.fill();
-    ctx.fillStyle = css(palette.cloudLight, clamp01(0.16 * amount * (1 - light.backlit * 0.5)));
-    ctx.beginPath();
-    mark(ctx, x + light.x * l * 0.05, y - thick * 0.45, l * 0.8, thick * 0.4, 0, -thick * 0.1);
-    ctx.fill();
+    const t = (i + 0.45 + (random() - 0.5) * 0.28) / bands;
+    const cy = lerp(top, bottom, t);
+    const depth = span * (0.11 + random() * 0.09);
+    const length = width * (0.85 + random() * 0.48);
+    const cx = width * (0.3 + random() * 0.4);
+    veil(
+      ctx,
+      cx,
+      cy,
+      length,
+      depth,
+      shadow,
+      palette.cloudLight,
+      random,
+      clamp01(0.1 + 0.3 * amount),
+      (random() - 0.5) * 0.045,
+    );
   }
 }

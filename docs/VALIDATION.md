@@ -184,3 +184,32 @@ Linux, Node 22, Playwright 1.65 with the preinstalled Chromium (software GL). 39
 - **Title.** Over a bright cloud the place line and eyebrow fell to about 1.2:1 between glyph outline and background. A tight, layered text shadow and a brighter place line raise this to about 3.1–3.4:1 over pure white, without a scrim.
 - **Pixel checks.** `tests/browser/sky-pixels.spec.ts` samples the rendered canvas: the zoomed crescent's unlit side against the sky beside it, and each title line over a forced white backdrop. Both cases fail on the previous code.
 - **Not done.** No physical GPU or phone; cloud shading cost rose from about 10 to about 15 noise lookups per pixel and has not been measured on a midrange device.
+
+### Share-menu postcard: default Clear Sky
+
+- **Default:** Both illustrated and realistic postcards start with Clear Sky enabled.
+- **Scope:** The choice affects only the image, not the live weather or shared link.
+- **Science:** The instant, astronomy, daylight visibility and location remain unchanged.
+- **Capture:** Realistic WebGL uses temporary image-only weather and restores live weather in `finally`.
+- **Disclosure:** The PNG prints the localized Clear Sky label and identifies removed cloud cover.
+- **Choice:** Unticking Clear Sky uses the original captured weather for the postcard.
+- **Tests:** `tests/moment.test.ts`, `tests/momentImage.test.tsx` and the Playwright postcard test.
+- **Limits:** Device save/share and screenshot aesthetics still require separate visual qualification.
+
+### Cloudy watercolor postcard refinement
+
+- **Cumulus:** Joined, uneven cloud banks use seed-deterministic, asymmetric rounded crowns.
+- **Other clouds:** Mid-level ribbons, high cirrus and overcast veils remain translucent and restrained.
+- **Composition:** Fewer cloud masses preserve space around the light, Sun, Moon and stars.
+- **Unchanged:** Live WebGL, weather provenance, science projection and real sky states.
+- **Tests:** `tests/cloudArtwork.test.ts` checks contours and Canvas state.
+- **Screenshots:** Playwright captures wind, rain, sunset and overcast with Clear Sky unchecked.
+- **Review gate:** Inspect the final browser PNGs before accepting artistic quality.
+
+### PR #31: density-field watercolor clouds
+
+- Cumulus uses overlapping seeded cloud masses, multi-scale noise, soft alpha and local pigment lighting.
+- Each cloud renders to a small offscreen Canvas 2D bitmap and is smoothed into the postcard.
+- Recording-only contexts use a gradient fallback; neither path touches the live sky or astronomy.
+- The Cloud Field unit tests check reproducibility, soft transparent edges and balanced Canvas state.
+- Browser artwork screenshots must still be reviewed manually for visual quality.

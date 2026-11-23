@@ -3,6 +3,7 @@ import type {
   RenderInput,
   RenderCallbacks,
   SkyCapture,
+  SkyCaptureOptions,
   SkyLabels,
   SkyRenderer,
 } from '../renderer/createSkyRenderer';
@@ -19,7 +20,7 @@ export interface SkySceneHandle {
   zoom: (factor: number) => void;
   simulateContextLoss: () => void;
   /** The sky as drawn now, for a sky-moment image; null until the renderer has started. */
-  capture: (options: { ridge: boolean }) => SkyCapture | null;
+  capture: (options: SkyCaptureOptions) => SkyCapture | null;
   /** The sky view's size in CSS pixels. */
   size: () => { width: number; height: number } | null;
 }

@@ -5,6 +5,8 @@ import { offlinePlugin } from './scripts/offline-plugin';
 export default defineConfig({
   plugins: [react(), offlinePlugin()],
   build: {
+    // Baseline browsers support native modulepreload; avoid a redundant startup polyfill.
+    modulePreload: { polyfill: false },
     rollupOptions: {
       output: {
         // Stable, separately cached pieces that download in parallel with the app.

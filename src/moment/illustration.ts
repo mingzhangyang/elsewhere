@@ -53,14 +53,10 @@ export interface IllustrationText {
   pattern: (id: PatternId) => string;
 }
 
+const STAR_TINTS = [hex('#d2e2ff'), hex('#fff8e6'), hex('#ffe2ac'), hex('#ffbe94')];
+const STAR_WHITE = hex('#ffffff');
 const starTint = (colorIndex: number | null | undefined): Rgb =>
-  colorIndex == null || colorIndex < 0.05
-    ? hex('#d2e2ff')
-    : colorIndex < 0.6
-      ? hex('#fff8e6')
-      : colorIndex < 1.1
-        ? hex('#ffe2ac')
-        : hex('#ffbe94');
+  STAR_TINTS[colorIndex == null || colorIndex < 0.05 ? 0 : colorIndex < 0.6 ? 1 : colorIndex < 1.1 ? 2 : 3];
 
 /**
  * A star as a brush would touch it in: a soft halo, a small uneven dot of paint and, for the bright
@@ -78,7 +74,7 @@ function paintStar(
 ) {
   const r = Math.max(1.05, (5.4 - magnitude) * 1.12) * unit;
   const turn = (quirk - 0.5) * 0.5;
-  const white = hex('#ffffff');
+  const white = STAR_WHITE;
   if (magnitude < 1.6) {
     glowAt(ctx, x, y, r * 9, tint, 0.26 * alpha);
     glowAt(ctx, x, y, r * 3.2, white, 0.3 * alpha);
@@ -563,7 +559,9 @@ export function drawIllustration(
     }
     return null;
   };
-  if (lowShare + mid > 0.8)
+  // Use reported total cover for the deck. Summing layers would turn partly cloudy weather
+  // into full overcast whenever multiple cloud layers overlap.
+  if (cover > 0.35)
     cloudSheet(
       ctx,
       width,
@@ -572,9 +570,9 @@ export function drawIllustration(
       cloudPalette,
       lightOn(width / 2, horizonY * 0.4),
       random,
-      clamp01((lowShare + mid - 0.8) * 2.5),
+      cover,
     );
-  for (let i = 0, n = Math.round(high * 7); i < n; i++) {
+  for (let i = 0, n = Math.round(high * 5); i < n; i++) {
     // Strokes up to 1.1 lengths long, spread 0.4 lengths across and 0.14 lengths up and down.
     const p = place(28, 75, (scale) => ({
       half: 480 * scale * 0.8,
@@ -583,7 +581,7 @@ export function drawIllustration(
     }));
     if (p) cirrus(ctx, p.x, p.y, 480 * p.scale, cloudPalette, lightOn(p.x, p.y), random);
   }
-  for (let i = 0, n = Math.round(mid * 6); i < n; i++) {
+  for (let i = 0, n = Math.round(mid * 4); i < n; i++) {
     // Up to four rows of up to seven puffs, 1.25 sizes apart, rows 0.72 sizes apart.
     const p = place(14, 40, (scale) => ({
       half: 34 * scale * 6,
@@ -592,22 +590,24 @@ export function drawIllustration(
     }));
     if (p) altocumulus(ctx, p.x, p.y, 34 * p.scale, cloudPalette, lightOn(p.x, p.y), random);
   }
-  for (let i = 0, n = Math.round(lowShare * 6); i < n; i++) {
+  for (let i = 0, n = Math.round(lowShare * 3); i < n; i++) {
     const length = (260 + random() * 420) * unit;
     // Bars up to 1.05 lengths long, set up to a quarter length off centre, stacked about 40 units.
     const p = place(1.2, 7, () => ({ half: length * 0.8, up: 45 * unit, down: 45 * unit }));
     if (p) stratus(ctx, p.x, p.y, length, cloudPalette, lightOn(p.x, p.y), random, unit);
   }
   const heaps: (Point & { size: number; tiers: number; alt: number })[] = [];
-  for (let i = 0, n = Math.round(lowShare * 10); i < n; i++) {
-    const tiers = random() < 0.3 + lowShare * 0.4 ? 3 : random() < 0.55 ? 2 : 1;
-    const grow = 0.75 + random() * 0.55;
-    // Masses up to 2.2 sizes to each side of the centre, trailing shreds to 3.2; tiers 0.42 sizes high.
-    const p = place(3, 24, (scale) => {
-      const size = 118 * grow * scale;
-      return { half: size * 3.2, up: size * (1.2 + 0.5 * tiers), down: size * 0.2 };
+  for (let i = 0, n = Math.round(lowShare * 6); i < n; i++) {
+    // Fewer, connected cloud banks preserve gaps for twilight and bright celestial objects.
+    // Tiers shape the crown, not separate spherical volumes.
+    const tiers = random() < 0.45 ? 2 : 1;
+    const grow = 0.78 + random() * 0.42;
+    const p = place(3, 21, (scale) => {
+      const size = 108 * grow * scale;
+      // Density-field wisps spread on both sides and below the former hard silhouette.
+      return { half: size * 2.33, up: size * 1.9, down: size * 0.64 };
     });
-    if (p) heaps.push({ x: p.x, y: p.y, alt: p.alt, size: 118 * grow * p.scale, tiers });
+    if (p) heaps.push({ x: p.x, y: p.y, alt: p.alt, size: 108 * grow * p.scale, tiers });
   }
   // Farther (lower) clouds first, so nearer ones overlap them.
   heaps.sort((a, b) => a.alt - b.alt);

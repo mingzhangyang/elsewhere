@@ -10,6 +10,7 @@ import { drawIllustration, lettering, type ToCanvas } from './illustration';
 import { noise1 } from './paint';
 import { HORIZON_STEP, horizonAltitude, type HorizonVariant } from './scenery';
 import { seededRandom } from '../lib/random';
+import { momentImageCopy } from './imageCopy';
 
 /**
  * The keepsake image of a sky moment (ROADMAP phase 3 prototype), composed on a 2D canvas: the sky
@@ -45,19 +46,12 @@ export function skyHeight(aspect: number): number {
   return Math.round(Math.min(1500, Math.max(800, POSTCARD_WIDTH / aspect)));
 }
 
-/** Chinese characters and punctuation, which may break anywhere (as character ranges for a RegExp). */
-const WIDE = [
-  [0x2e80, 0x9fff],
-  [0x3000, 0x303f],
-  [0xff00, 0xffef],
-]
-  .map(([from, to]) => `${String.fromCharCode(from)}-${String.fromCharCode(to)}`)
-  .join('');
+/** CJK/fullwidth tokenization, compiled once rather than per line. U+3000–303F lies within U+2E80–9FFF. */
+const WRAP_TOKENS = /[\u2e80-\u9fff\uff00-\uffef]|[^\s\u2e80-\u9fff\uff00-\uffef]+|\s+/g;
 
 /** Splits text into lines no wider than `width`, between words or, in Chinese, between characters. */
 export function wrap(ctx: CanvasRenderingContext2D, text: string, width: number): string[] {
-  const wide = WIDE;
-  const tokens = text.match(new RegExp(`[${wide}]|[^\\s${wide}]+|\\s+`, 'g')) ?? [];
+  const tokens = text.match(WRAP_TOKENS) ?? [];
   const lines: string[] = [];
   let line = '';
   for (const token of tokens) {
@@ -135,6 +129,17 @@ export function drawPostcard({
       colour: ink,
       gap: 22,
     },
+    ...(snapshot.provenance.kind === 'clear'
+      ? [
+          {
+            text: momentImageCopy[i18n.locale].clearSkyBadge,
+            size: 25,
+            weight: 700,
+            colour: '#335b73',
+            gap: 16,
+          },
+        ]
+      : []),
     {
       text: subjectName
         ? m.moment.subject({ name: subjectName, direction, degrees: heading })
@@ -399,21 +404,29 @@ function pigmentWash(): HTMLCanvasElement {
     values: Array.from({ length: cells * cells }, random),
   }));
   const smooth = (t: number) => t * t * (3 - 2 * t);
+  const weights = [0.55, 0.3, 0.15];
   for (let y = 0; y < size; y++)
     for (let x = 0; x < size; x++) {
       let v = 0;
-      octaves.forEach(({ cells, values }, o) => {
-        const fx = (x / size) * cells,
-          fy = (y / size) * cells;
-        const x0 = Math.floor(fx),
-          y0 = Math.floor(fy);
-        const at = (i: number, j: number) => values[(j % cells) * cells + (i % cells)];
-        const u = smooth(fx - x0),
-          w = smooth(fy - y0);
-        const top = at(x0, y0) + (at(x0 + 1, y0) - at(x0, y0)) * u,
-          bottom = at(x0, y0 + 1) + (at(x0 + 1, y0 + 1) - at(x0, y0 + 1)) * u;
-        v += (top + (bottom - top) * w - 0.5) * [0.55, 0.3, 0.15][o];
-      });
+      for (let o = 0; o < octaves.length; o++) {
+        const { cells, values } = octaves[o];
+        const fx = (x / size) * cells;
+        const fy = (y / size) * cells;
+        const x0 = Math.floor(fx);
+        const y0 = Math.floor(fy);
+        const u = smooth(fx - x0);
+        const w = smooth(fy - y0);
+        const row = y0 * cells;
+        const next = ((y0 + 1) % cells) * cells;
+        const x1 = (x0 + 1) % cells;
+        const a = values[row + x0];
+        const b = values[row + x1];
+        const c = values[next + x0];
+        const d = values[next + x1];
+        const top = a + (b - a) * u;
+        const bottom = c + (d - c) * u;
+        v += (top + (bottom - top) * w - 0.5) * weights[o];
+      }
       const i = (y * size + x) * 4;
       image.data[i] = image.data[i + 1] = image.data[i + 2] = 128 + v * 190;
       image.data[i + 3] = 255;

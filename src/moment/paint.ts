@@ -121,8 +121,8 @@ export function noise1(seed: number) {
   return (x: number) => {
     const i = Math.floor(x),
       f = x - i;
-    const a = values[((i % 256) + 256) % 256],
-      b = values[(((i + 1) % 256) + 256) % 256];
+    const a = values[i & 255],
+      b = values[(i + 1) & 255];
     return a + (b - a) * f * f * (3 - 2 * f);
   };
 }
@@ -192,12 +192,12 @@ export function blob(
     const k = 1 + (random() - 0.5) * 2 * wobble;
     ring.push({ x: cx + Math.cos(a) * rx * k, y: cy + Math.sin(a) * ry * k });
   }
-  const mid = (a: Point, b: Point) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
-  const start = mid(ring[points - 1], ring[0]);
-  ctx.moveTo(start.x, start.y);
+  const last = ring[points - 1];
+  ctx.moveTo((last.x + ring[0].x) / 2, (last.y + ring[0].y) / 2);
   for (let i = 0; i < points; i++) {
-    const m = mid(ring[i], ring[(i + 1) % points]);
-    ctx.quadraticCurveTo(ring[i].x, ring[i].y, m.x, m.y);
+    const a = ring[i];
+    const b = ring[(i + 1) % points];
+    ctx.quadraticCurveTo(a.x, a.y, (a.x + b.x) / 2, (a.y + b.y) / 2);
   }
   ctx.closePath();
 }
@@ -217,12 +217,15 @@ export function mark(
 ) {
   const c = Math.cos(angle),
     s = Math.sin(angle);
-  const at = (u: number, v: number): [number, number] => [x + u * c - v * s, y + u * s + v * c];
   const half = length / 2;
-  const [ax, ay] = at(-half, 0),
-    [bx, by] = at(half, 0),
-    [tx, ty] = at(0, bow - thickness),
-    [ux, uy] = at(0, bow + thickness);
+  const ax = x - half * c,
+    ay = y - half * s;
+  const bx = x + half * c,
+    by = y + half * s;
+  const tx = x - (bow - thickness) * s,
+    ty = y + (bow - thickness) * c;
+  const ux = x - (bow + thickness) * s,
+    uy = y + (bow + thickness) * c;
   ctx.moveTo(ax, ay);
   ctx.quadraticCurveTo(tx, ty, bx, by);
   ctx.quadraticCurveTo(ux, uy, ax, ay);

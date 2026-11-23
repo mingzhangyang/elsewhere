@@ -10,6 +10,7 @@ import {
   type HorizonVariant,
 } from '../src/moment/scenery';
 import { wrap } from '../src/moment/postcard';
+import { momentImageSnapshot } from '../src/moment/imageWeather';
 import { landscapeSeason } from '../src/moment/seasons';
 import { landscapeLight } from '../src/moment/landscapeArt';
 import { drawIllustration } from '../src/moment/illustration';
@@ -427,4 +428,47 @@ describe('the illustrated sky follows the layers and visibility', () => {
       expect(clouds.length).toBeGreaterThan(10);
       expect(Math.max(...clouds)).toBeLessThan(disc);
     });
+});
+
+it('uses image-only Clear Sky weather without changing the science, source, or #sky= protocol', () => {
+  const weather = {
+    ...defaultWeatherValues(),
+    cloudCover: 100,
+    cloudLow: 95,
+    cloudMid: 90,
+    cloudHigh: 75,
+    haze: 80,
+    precipitation: 12,
+    weatherCode: 63,
+  };
+  const event = {
+    sky: calculateSky(NEW_YORK, new Date('2026-11-13T04:00:00Z')),
+    location: NEW_YORK,
+    instant: new Date('2026-11-13T04:00:00Z'),
+    weather,
+    provenance: { kind: 'source', source: 'forecast' },
+    view: { heading: 180, altitude: 18, fov: 66 },
+    aspect: 1.6,
+    layers: { stars: true, lines: false, labels: true },
+    skyBrightness: 'dark',
+  } as const;
+  const clear = momentImageSnapshot(event, true);
+  expect(clear).not.toBe(event);
+  expect(clear.sky).toBe(event.sky);
+  expect(clear.instant).toBe(event.instant);
+  expect(clear.location).toBe(event.location);
+  expect(clear.weather).toMatchObject({
+    cloudCover: 0,
+    cloudLow: 0,
+    cloudMid: 0,
+    cloudHigh: 0,
+    haze: 0,
+    precipitation: 0,
+    weatherCode: 0,
+  });
+  expect(clear.provenance).toEqual({ kind: 'clear' });
+  expect(event.weather.cloudCover).toBe(100);
+  expect(event.weather.precipitation).toBe(12);
+  expect(event.provenance).toEqual({ kind: 'source', source: 'forecast' });
+  expect(momentImageSnapshot(event, false)).toBe(event);
 });

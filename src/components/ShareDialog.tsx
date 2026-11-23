@@ -2,7 +2,7 @@ import { forwardRef, lazy, Suspense, useImperativeHandle, useMemo, useRef, useSt
 import { Check, ImageIcon, Share2, X } from 'lucide-react';
 import type { AppNotice } from '../types';
 import type { MomentSnapshot } from '../lib/moment';
-import type { SkyCapture } from '../renderer/createSkyRenderer';
+import type { SkyCapture, SkyCaptureOptions } from '../renderer/createSkyRenderer';
 import { cityLevel, explorationUrl, type Exploration } from '../lib/persistence';
 import { isDeviceLocation } from '../lib/locations';
 import { useI18n } from '../i18n';
@@ -33,7 +33,7 @@ export interface ShareDialogHandle {
 interface Props {
   includesCustomWeather: boolean;
   onNotice: (notice: AppNotice) => void;
-  capture: (options: { ridge: boolean }) => SkyCapture | null;
+  capture: (options: SkyCaptureOptions) => SkyCapture | null;
 }
 
 const ShareDialog = forwardRef<ShareDialogHandle, Props>(function ShareDialog(
