@@ -15,43 +15,39 @@ const light: CloudLight = {
 function recordingCanvas() {
   const operations: string[] = [];
   let depth = 0;
-  const canvas = new Proxy(
-    {},
-    {
-      get: (_target, name) => {
-        if (name === 'createLinearGradient' || name === 'createRadialGradient')
-          return () => {
-            operations.push(String(name));
-            return {
-              addColorStop: (at: number, color: string) => operations.push('stop:' + at + ':' + color),
-            };
+  const handler: ProxyHandler<object> = {
+    get: (_target, name) => {
+      if (name === 'createLinearGradient' || name === 'createRadialGradient') {
+        return () => {
+          operations.push(String(name));
+          return {
+            addColorStop: (at: number, color: string) => operations.push('stop:' + at + ':' + color),
           };
-        if (name === 'save')
-          return () => {
-            depth++;
-            operations.push('save');
-          };
-        if (name === 'restore')
-          return () => {
-            depth--;
-            operations.push('restore');
-          };
-        return (...args: unknown[]) => {
-          operations.push(
-            String(name) +
-              ':' +
-              args
-                .map((a) => (typeof a === 'number' ? a.toFixed(3) : String(a)))
-                .join(','),
-          );
         };
-      },
-      set: (_target, name, value) => {
-        operations.push(String(name) + '=' + String(value));
-        return true;
-      },
+      }
+      if (name === 'save') {
+        return () => {
+          depth++;
+          operations.push('save');
+        };
+      }
+      if (name === 'restore') {
+        return () => {
+          depth--;
+          operations.push('restore');
+        };
+      }
+      return (...args: unknown[]) => {
+        const parts = args.map((value) => (typeof value === 'number' ? value.toFixed(3) : String(value)));
+        operations.push(String(name) + ':' + parts.join(','));
+      };
     },
-  ) as CanvasRenderingContext2D;
+    set: (_target, name, value) => {
+      operations.push(String(name) + '=' + String(value));
+      return true;
+    },
+  };
+  const canvas = new Proxy({}, handler) as CanvasRenderingContext2D;
   return { canvas, operations, stackDepth: () => depth };
 }
 
@@ -85,15 +81,12 @@ describe('illustrated postcard watercolor cloud treatment', () => {
         .filter((op) => op.startsWith('quadraticCurveTo:'))
         .slice(0, 33)
         .map((op) => Number(op.split(':')[1].split(',')[1]));
-      const crests = crown.flatMap((y, i) =>
-        i >= 2 &&
-        i < crown.length - 2 &&
-        y < crown[i - 1] &&
-        y <= crown[i + 1] &&
-        y < Math.min(crown[i - 2], crown[i + 2]) - 2.4
-          ? [i]
-          : [],
-      );
+      const crests: number[] = [];
+      for (let i = 2; i < crown.length - 2; i++) {
+        const y = crown[i];
+        const substantial = y < Math.min(crown[i - 2], crown[i + 2]) - 2.4;
+        if (substantial && y < crown[i - 1] && y <= crown[i + 1]) crests.push(i);
+      }
       expect(crests.length, `seed ${seed}`).toBeGreaterThanOrEqual(2);
       expect(record.stackDepth()).toBe(0);
       return crown.join(',');

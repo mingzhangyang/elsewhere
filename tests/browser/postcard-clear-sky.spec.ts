@@ -1,10 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-/**
- * Real browser, real canvas and WebGL screenshot with fictional weather.
- * The full overcast sky is intentionally unsuitable for an attractive postcard.
- * The saved image gets a clear-only override; the explorer stays overcast.
- */
+/** Browser-encoded postcards use synthetic weather without changing the explorer. */
 test('postcard defaults to Clear Sky without changing the explorer', async ({ page }, info) => {
   test.setTimeout(90000);
   await page.addInitScript(() => {
@@ -23,25 +19,30 @@ test('postcard defaults to Clear Sky without changing the explorer', async ({ pa
       return original.call(this, text, x, y, maxWidth);
     };
   });
+
   await page.goto('/?scenario=overcast');
   const source = page.locator('.source-pill');
   await expect(source).toBeVisible();
   const originalSource = await source.innerText();
+
   await page.getByRole('button', { name: 'Share this sky' }).click();
   const dialog = page.getByRole('dialog', { name: 'Share this sky' });
   const originalLink = await dialog.getByRole('textbox', { name: 'Sky link' }).inputValue();
   await dialog.getByRole('button', { name: 'Make an image' }).click();
   const option = dialog.getByRole('checkbox', { name: /Clear Sky for image/ });
   await expect(option).toBeChecked();
+
   const image = dialog.getByRole('img', { name: /Keepsake image of the sky over/ });
   await expect(image).toBeVisible({ timeout: 30000 });
   const labelCount = () =>
-    page.evaluate(
-      () => (window as unknown as { __postcardClearLabels: string[] }).__postcardClearLabels.length,
-    );
+    page.evaluate(() => {
+      const state = window as unknown as { __postcardClearLabels: string[] };
+      return state.__postcardClearLabels.length;
+    });
   await expect.poll(labelCount).toBeGreaterThan(0);
-  const signature = async () => {
-    return image.evaluate(async (element: HTMLImageElement) => {
+
+  const signature = () =>
+    image.evaluate(async (element: HTMLImageElement) => {
       await element.decode();
       const canvas = document.createElement('canvas');
       canvas.width = 80;
@@ -53,7 +54,7 @@ test('postcard defaults to Clear Sky without changing the explorer', async ({ pa
       for (let i = 0; i < data.length; i += 4) sum += data[i] + data[i + 1] + data[i + 2];
       return { sum, src: element.src };
     });
-  };
+
   const clear = await signature();
   await info.attach('postcard-clear-realistic-' + info.project.name + '.png', {
     body: await image.screenshot({ animations: 'disabled' }),
@@ -61,13 +62,14 @@ test('postcard defaults to Clear Sky without changing the explorer', async ({ pa
   });
 
   await option.uncheck();
-  await expect.poll(async () => (await image.getAttribute('src'))).not.toBe(clear.src);
+  await expect.poll(() => image.getAttribute('src')).not.toBe(clear.src);
   const clouds = await signature();
   expect(clouds.sum).not.toBe(clear.sum);
   await info.attach('postcard-original-overcast-' + info.project.name + '.png', {
     body: await image.screenshot({ animations: 'disabled' }),
     contentType: 'image/png',
   });
+
   await option.check();
   await dialog.getByRole('button', { name: 'Illustrated' }).click();
   await expect(image).toBeVisible();
@@ -76,6 +78,7 @@ test('postcard defaults to Clear Sky without changing the explorer', async ({ pa
     body: await image.screenshot({ animations: 'disabled' }),
     contentType: 'image/png',
   });
+
   expect(await source.innerText()).toBe(originalSource);
   expect(await dialog.getByRole('textbox', { name: 'Sky link' }).inputValue()).toBe(originalLink);
   await dialog.getByRole('button', { name: 'Close sharing' }).click();
@@ -83,10 +86,7 @@ test('postcard defaults to Clear Sky without changing the explorer', async ({ pa
   expect(await source.innerText()).toBe(originalSource);
 });
 
-/**
- * Real, non-mocked watercolor postcard evidence with clear mode deliberately disabled.
- * Weather is synthetic and fictional; test images are not claims about historical weather.
- */
+/** Real Canvas illustration samples; the four weather fixtures are fictional. */
 test('painted clouds cover wind, rain, sunset and overcast', async ({ page }, info) => {
   test.setTimeout(120000);
   for (const scenario of ['windy', 'overcast', 'sunset', 'rain']) {
@@ -94,10 +94,12 @@ test('painted clouds cover wind, rain, sunset and overcast', async ({ page }, in
     await page.getByRole('button', { name: 'Share this sky', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: 'Share this sky' });
     await dialog.getByRole('button', { name: 'Make an image' }).click();
+
     const clearSky = dialog.getByRole('checkbox', { name: /Clear Sky for image/ });
     await expect(clearSky).toBeChecked();
     await clearSky.uncheck();
     await dialog.getByRole('button', { name: 'Illustrated', exact: true }).click();
+
     const image = dialog.getByRole('img', { name: /Keepsake image of the sky over/ });
     await expect(image).toBeVisible({ timeout: 30000 });
     const bitmap = await image.evaluate(async (element: HTMLImageElement) => {
@@ -114,6 +116,7 @@ test('painted clouds cover wind, rain, sunset and overcast', async ({ page }, in
       }
       return { width: element.naturalWidth, shades: shades.size };
     });
+
     expect(bitmap.width).toBe(1200);
     expect(bitmap.shades).toBeGreaterThan(18);
     if (info.project.name === 'chromium' || info.project.name === 'mobile-chromium') {

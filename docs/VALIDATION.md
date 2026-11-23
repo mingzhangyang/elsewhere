@@ -185,18 +185,23 @@ Linux, Node 22, Playwright 1.65 with the preinstalled Chromium (software GL). 39
 - **Pixel checks.** `tests/browser/sky-pixels.spec.ts` samples the rendered canvas: the zoomed crescent's unlit side against the sky beside it, and each title line over a forced white backdrop. Both cases fail on the previous code.
 - **Not done.** No physical GPU or phone; cloud shading cost rose from about 10 to about 15 noise lookups per pixel and has not been measured on a midrange device.
 
-### Share-menu postcard: default Clear Sky (separate fix, pending CI/browser validation)
+### Share-menu postcard: default Clear Sky
 
-The **Make an image / 生成图片** action now starts with **Clear Sky for image** checked, regardless of whether the explorer is currently under real clouds, user-custom weather or an already clear view. Both illustrated and realistic postcards use `momentImageSnapshot(snapshot, true)`, which reuses the existing `presentedWeather` clear-sky contract to zero cloud cover/layers, haze and precipitation without changing the event instant, celestial positions, visibility-by-daylight, the live scene or source weather. An unchecked option restores original captured weather for the postcard.
+- **Default:** Both illustrated and realistic postcards start with Clear Sky enabled.
+- **Scope:** The choice affects only the image, not the live weather or shared link.
+- **Science:** The instant, astronomy, daylight visibility and location remain unchanged.
+- **Capture:** Realistic WebGL uses temporary image-only weather and restores live weather in `finally`.
+- **Disclosure:** The PNG prints the localized Clear Sky label and identifies removed cloud cover.
+- **Choice:** Unticking Clear Sky uses the original captured weather for the postcard.
+- **Tests:** `tests/moment.test.ts`, `tests/momentImage.test.tsx` and the Playwright postcard test.
+- **Limits:** Device save/share and screenshot aesthetics still require separate visual qualification.
 
-For realistic postcards, the current WebGL renderer temporarily applies the image-only weather via `SkyCaptureOptions.weather`; a `finally` block restores the original render state even when snapshot/canvas capture fails. The illustrated postcard reads the same image-only snapshot directly. Both still use their existing projection, horizon and PNG pipeline.
+### Cloudy watercolor postcard refinement
 
-A bilingual, visible **Clear Sky mode / Clear Sky 模式** line is painted onto the actual PNG canvas below the event time when the clear-sky provenance is active. The checkbox explicitly says the choice affects **the picture only**, not the live sky or the `#sky=` link. Weather provenance reports that clouds were hidden rather than implying that conditions at the event were observed as clear. Daylight is not bypassed: a daytime screenshot is still a bright daytime scene, not artificially visible night stars.
-
-Regressions: `tests/moment.test.ts` proves the original snapshot and source/UTC remain unchanged; `tests/momentImage.test.tsx` covers default-on, both styles, off/on behavior and invalidating obsolete PNG output; `tests/browser/postcard-clear-sky.spec.ts` compares default clear versus actual overcast captures, verifies the PNG label through real Canvas drawing, checks that the link/live source did not change and attaches screenshot evidence. **Do not mark this as passed until the relevant CI/browser jobs complete.** This change does not merge or alter the separately open SM3-C PR.
-
-### Cloudy watercolor postcard refinement (same PR as Clear Sky default)
-
-The postcard's weather checkbox remains switchable: opting out of **Clear Sky** must still produce a usable *illustrated* keepsake. `src/moment/clouds.ts` therefore now paints a few continuous cloud-bank silhouettes, feathered translucent stratus/altocumulus ribbons, restrained cirrus and soft overcast veils. It avoids rows of separately lit circular cloud balls, opaque slabs and repeated parallel stripes. `src/moment/illustration.ts` reduces the number and size of cloud masses and preserves negative space around the stars and evening light. Seeding, locations, physical Sun/Moon positions and horizon/science projection remain unchanged. These are 2D postcard-only edits, **not** changes to live WebGL weather or the Sky Moments chart.
-
-`tests/cloudArtwork.test.ts` covers seeded drawing determinism, smooth joined paths, bounded veil complexity, clear weather and balanced Canvas state. `tests/browser/postcard-clear-sky.spec.ts` additionally requests actual nonmocked screenshot attachments for windy, rainy, sunset and overcast illustrations with Clear Sky **unchecked**, on desktop and emulated phone Chromium; other browser projects execute the rendering checks too. Artistic quality still requires inspection of produced screenshots, and should not be marked accepted until CI evidence is available.
+- **Cumulus:** Joined, uneven cloud banks use seed-deterministic, asymmetric rounded crowns.
+- **Other clouds:** Mid-level ribbons, high cirrus and overcast veils remain translucent and restrained.
+- **Composition:** Fewer cloud masses preserve space around the light, Sun, Moon and stars.
+- **Unchanged:** Live WebGL, weather provenance, science projection and real sky states.
+- **Tests:** `tests/cloudArtwork.test.ts` checks contours and Canvas state.
+- **Screenshots:** Playwright captures wind, rain, sunset and overcast with Clear Sky unchecked.
+- **Review gate:** Inspect the final browser PNGs before accepting artistic quality.
