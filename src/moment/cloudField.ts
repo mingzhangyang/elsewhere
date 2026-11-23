@@ -57,6 +57,33 @@ export function sampleCloudField(field: CloudField, u: number, v: number): numbe
   return t * t * (3 - 2 * t);
 }
 
+/**
+ * The cloud field uses the projected 2D direction of the real Sun/Moon. A density edge faces
+ * away from increasing opacity; the upper edge faces skyward, and the lower edge faces groundward.
+ * A fixed top-light term would incorrectly light those edges identically at dusk and dawn.
+ */
+export function cloudFieldLuminance(
+  u: number,
+  v: number,
+  opacity: number,
+  pigment: number,
+  gradientX: number,
+  gradientY: number,
+  light: WatercolourCloudLight,
+): number {
+  const normalSize = Math.hypot(gradientX, gradientY) + 0.07;
+  const facingLight = (-gradientX * light.x - gradientY * light.y) / normalSize;
+  return clamp01(
+    0.47 +
+      v * light.y * 0.23 -
+      u * light.x * 0.1 +
+      facingLight * 0.13 +
+      pigment * 0.055 +
+      (opacity - 0.5) * 0.23 -
+      light.backlit * 0.12,
+  );
+}
+
 /** Rasterize a small translucent pigment field, then smooth it onto the full postcard. */
 export function paintCloudField(
   ctx: CanvasRenderingContext2D,
@@ -96,18 +123,34 @@ export function paintCloudField(
   offscreen.height = Math.max(8, Math.ceil(height / step));
   const image = c.createImageData(offscreen.width, offscreen.height);
   const pixels = image.data;
+  const columns = offscreen.width;
+  const rows = offscreen.height;
+  // Sample once; adjacent alpha differences give field-surface normals without resampling every
+  // mass for every colour channel. The 2D light vector then illuminates both the sides and crown.
+  const densities = new Float32Array(columns * rows);
+  for (let j = 0; j < rows; j++) {
+    const v = -1.9 + (j + 0.5) * (2.54 / rows);
+    for (let i = 0; i < columns; i++) {
+      const u = -2.33 + (i + 0.5) * (4.66 / columns);
+      densities[j * columns + i] = sampleCloudField(field, u, v);
+    }
+  }
   const base = mix(mix(palette.cloudShadow, palette.cloudBody, 0.52), light.underColour, light.under * 0.25);
   const phase = field.seed * 0.000001;
   let n = 0;
-  for (let j = 0; j < offscreen.height; j++) {
-    const v = -1.9 + (j + 0.5) * (2.54 / offscreen.height);
-    for (let i = 0; i < offscreen.width; i++) {
-      const u = -2.33 + (i + 0.5) * (4.66 / offscreen.width);
-      const opacity = sampleCloudField(field, u, v);
+  for (let j = 0; j < rows; j++) {
+    const v = -1.9 + (j + 0.5) * (2.54 / rows);
+    for (let i = 0; i < columns; i++) {
+      const u = -2.33 + (i + 0.5) * (4.66 / columns);
+      const opacity = densities[j * columns + i];
+      const gradientX =
+        densities[j * columns + Math.min(columns - 1, i + 1)] -
+        densities[j * columns + Math.max(0, i - 1)];
+      const gradientY =
+        densities[Math.min(rows - 1, j + 1) * columns + i] -
+        densities[Math.max(0, j - 1) * columns + i];
       const pigment = wash(u * 0.9, v * 0.9, phase);
-      const lit = clamp01(
-        0.47 - v * 0.23 - u * light.x * 0.1 + pigment * 0.055 + (opacity - 0.5) * 0.23 - light.backlit * 0.12,
-      );
+      const lit = cloudFieldLuminance(u, v, opacity, pigment, gradientX, gradientY, light);
       for (let ch = 0; ch < 3; ch++) {
         pixels[n++] = lerp(base[ch], palette.cloudLight[ch], lit);
       }

@@ -563,8 +563,10 @@ export function drawIllustration(
     }
     return null;
   };
-  // Overcast is atmospheric veiling rather than an opaque stack of overlapping blobs.
-  if (lowShare + mid > 0.8)
+  // Total reported cover matters even when only high cloud is populated. At near-100% cover a
+  // continuous translucent deck must cover the sky; the separate bands provide internal detail.
+  const sheetAmount = Math.max(cover, clamp01((lowShare + mid - 0.8) * 2.5));
+  if (sheetAmount > 0.35)
     cloudSheet(
       ctx,
       width,
@@ -573,7 +575,7 @@ export function drawIllustration(
       cloudPalette,
       lightOn(width / 2, horizonY * 0.4),
       random,
-      clamp01((lowShare + mid - 0.8) * 2.5),
+      sheetAmount,
     );
   for (let i = 0, n = Math.round(high * 5); i < n; i++) {
     // Strokes up to 1.1 lengths long, spread 0.4 lengths across and 0.14 lengths up and down.

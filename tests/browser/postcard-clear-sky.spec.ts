@@ -130,3 +130,49 @@ test('painted clouds cover wind, rain, sunset and overcast', async ({ page }, in
     await dialog.getByRole('button', { name: 'Close sharing' }).click();
   }
 });
+
+/** Real Chromium Canvas pixel qualification: 100% cover cannot leave raw sky-sized gaps. */
+test('a true overcast deck covers the full canvas without opaque flat slabs', async ({ page }, info) => {
+  test.skip(info.project.name !== 'chromium', 'Chromium pixel qualification');
+  await page.goto('/?scenario=overcast');
+  const result = await page.evaluate(async () => {
+    const modules = ['/src/moment/clouds.ts', '/src/moment/paint.ts', '/src/lib/random.ts'];
+    const [clouds, paint, random] = await Promise.all(modules.map((url) => import(/* @vite-ignore */ url)));
+    const read = (amount: number) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1200;
+      canvas.height = 800;
+      const ctx = canvas.getContext('2d')!;
+      ctx.fillStyle = 'rgb(0,45,235)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      clouds.cloudSheet(
+        ctx,
+        canvas.width,
+        0,
+        canvas.height,
+        paint.paletteFor(-5, amount),
+        { x: 0.3, y: -0.95, backlit: 0.2, under: 0.1, underColour: [250, 180, 125] },
+        random.seededRandom(163),
+        amount,
+      );
+      const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      let exposed = 0;
+      const shades = new Set<string>();
+      let count = 0;
+      for (let y = 16; y < 800; y += 16) {
+        for (let x = 16; x < 1200; x += 16) {
+          const i = (y * 1200 + x) * 4;
+          const r = data[i], g = data[i + 1], b = data[i + 2];
+          if (r < 5 && g < 50 && b > 220) exposed++;
+          shades.add([r >> 3, g >> 3, b >> 3].join(','));
+          count++;
+        }
+      }
+      return { exposedFraction: exposed / count, shades: shades.size };
+    };
+    return { full: read(1), partial: read(0.6) };
+  });
+  expect(result.full.exposedFraction).toBeLessThan(0.02);
+  expect(result.partial.exposedFraction).toBeGreaterThan(0.2);
+  expect(result.full.shades).toBeGreaterThan(15);
+});

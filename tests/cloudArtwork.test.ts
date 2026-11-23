@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { seededRandom } from '../src/lib/random';
-import { altocumulus, cirrus, cloudSheet, cumulus, stratus } from '../src/moment/clouds';
-import { createCloudField, sampleCloudField } from '../src/moment/cloudField';
+import { altocumulus, cirrus, cloudSheet, cumulus, sampleOvercastDeck, stratus } from '../src/moment/clouds';
+import { cloudFieldLuminance, createCloudField, sampleCloudField } from '../src/moment/cloudField';
 import { paletteFor } from '../src/moment/paint';
 import type { CloudLight } from '../src/moment/clouds';
 
@@ -100,12 +100,46 @@ describe('illustrated postcard watercolor cloud treatment', () => {
     const record = recordingCanvas();
     const random = seededRandom(163);
     cirrus(record.canvas, 550, 165, 390, palette, light, random);
-    const beforeSheet = record.operations.filter((x) => x.startsWith('fill:')).length;
+    const fills = () =>
+      record.operations.filter((x) => x.startsWith('fill:') || x.startsWith('fillRect:')).length;
+    const beforeSheet = fills();
     cloudSheet(record.canvas, 1200, 0, 780, palette, light, random, 1);
-    const afterSheet = record.operations.filter((x) => x.startsWith('fill:')).length;
+    const afterSheet = fills();
     expect(record.stackDepth()).toBe(0);
-    expect(afterSheet - beforeSheet).toBeLessThanOrEqual(3);
-    expect(afterSheet - beforeSheet).toBeGreaterThan(0);
+    expect(afterSheet - beforeSheet).toBe(4); // one continuous deck + three translucent veils
+  });
+
+  it('covers the full sky in true overcast while retaining varying translucent pigment', () => {
+    const full = [];
+    for (let y = 0; y < 24; y++) {
+      for (let x = 0; x < 48; x++) {
+        const u = (x + 0.5) / 48;
+        const v = (y + 0.5) / 24;
+        full.push(sampleOvercastDeck(u, v, 2026, 1));
+        const partial = sampleOvercastDeck(u, v, 2026, 0.86);
+        expect(partial.alpha).toBeGreaterThan(0);
+        expect(partial.alpha).toBeLessThan(full[full.length - 1].alpha);
+      }
+    }
+    expect(Math.min(...full.map((p) => p.alpha))).toBeGreaterThan(0.9);
+    expect(Math.max(...full.map((p) => p.alpha))).toBeLessThan(0.99);
+    expect(new Set(full.map((p) => p.tone.toFixed(3))).size).toBeGreaterThan(40);
+    expect(sampleOvercastDeck(0.5, 0.5, 2026, 0.6).alpha).toBe(0);
+    const toneA = sampleOvercastDeck(0.35, 0.4, 2026, 1).tone;
+    const toneB = sampleOvercastDeck(0.35, 0.4, 163, 1).tone;
+    expect(toneA).not.toBe(toneB);
+  });
+
+  it('shades the crown and underside using the vertical component of light', () => {
+    const above = { ...light, x: 0, y: -1, backlit: 0 };
+    const below = { ...light, x: 0, y: 1, backlit: 0 };
+    const upperFromAbove = cloudFieldLuminance(0, -0.8, 0.6, 0, 0, 0.35, above);
+    const upperFromBelow = cloudFieldLuminance(0, -0.8, 0.6, 0, 0, 0.35, below);
+    const lowerFromAbove = cloudFieldLuminance(0, 0.3, 0.6, 0, 0, -0.35, above);
+    const lowerFromBelow = cloudFieldLuminance(0, 0.3, 0.6, 0, 0, -0.35, below);
+    expect(upperFromAbove).toBeGreaterThan(upperFromBelow);
+    expect(lowerFromBelow).toBeGreaterThan(lowerFromAbove);
+    expect(upperFromAbove).not.toBe(upperFromBelow);
   });
 
   it('does not paint an overcast veil when weather is clear', () => {
