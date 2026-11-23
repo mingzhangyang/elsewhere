@@ -143,9 +143,7 @@ const ShareDialog = forwardRef<ShareDialogHandle, Props>(function ShareDialog(
             (imageShown ? (
               <Suspense
                 fallback={
-                  <p className="form-status" role="status">
-                    {m.moment.drawing}
-                  </p>
+                  <p className="form-status" role="status">{m.moment.drawing}</p>
                 }
               >
                 <MomentImage snapshot={request.snapshot} capture={capture} link={link} />
