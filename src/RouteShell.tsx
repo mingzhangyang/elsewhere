@@ -55,14 +55,12 @@ export default function RouteShell({ diagnostics = false }: { diagnostics?: bool
 
   const openCreator = useCallback(() => {
     if (window.location.hash !== '#create') {
-      const previousHandoff =
+      const isCreatorExplorer =
         window.history.state?.elsewhereCreatorExplorer === true &&
-        !window.location.hash.startsWith('#sky=')
-          ? handoff
-          : null;
+        !window.location.hash.startsWith('#sky=');
       priorExplorer.current = {
         url: window.location.pathname + window.location.search + window.location.hash,
-        handoff: previousHandoff,
+        handoff: isCreatorExplorer ? handoff : null,
       };
       window.history.pushState({ elsewhereCreator: true }, '', '#create');
     }
@@ -71,17 +69,18 @@ export default function RouteShell({ diagnostics = false }: { diagnostics?: bool
 
   const openExplorer = useCallback((event?: MemorialTime) => {
     const previous = event ? null : priorExplorer.current;
-    const nextHandoff = event ? { location: event.location, utc: event.utc } : (previous?.handoff ?? null);
+    let nextHandoff: ExplorerHandoff | null = null;
+    if (event) {
+      nextHandoff = { location: event.location, utc: event.utc };
+    } else if (previous) {
+      nextHandoff = previous.handoff;
+    }
     setHandoff(nextHandoff);
     // Restore an existing shared URL unchanged; a newly created moment remains
     // memory-only and is never serialized into history.state or the URL.
-    window.history.pushState(
-      { elsewhereCreatorExplorer: nextHandoff !== null },
-      '',
-      event
-        ? window.location.pathname + window.location.search
-        : (previous?.url ?? window.location.pathname + window.location.search),
-    );
+    let returnUrl = window.location.pathname + window.location.search;
+    if (!event && previous) returnUrl = previous.url;
+    window.history.pushState({ elsewhereCreatorExplorer: nextHandoff !== null }, '', returnUrl);
     setExplorerVisit((value) => value + 1);
     setRoute('explore');
   }, []);
