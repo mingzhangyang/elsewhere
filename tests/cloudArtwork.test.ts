@@ -1,7 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { seededRandom } from '../src/lib/random';
 import { altocumulus, cirrus, cloudSheet, cumulus, overcastDeckOpacity, stratus } from '../src/moment/clouds';
-import { cloudFieldLuminance, createCloudField, sampleCloudField } from '../src/moment/cloudField';
+import {
+  cloudFieldLuminance,
+  createCloudField,
+  rasterCloudOpacity,
+  sampleCloudField,
+} from '../src/moment/cloudField';
 import { paletteFor } from '../src/moment/paint';
 import type { CloudLight } from '../src/moment/clouds';
 
@@ -68,6 +73,33 @@ describe('illustrated postcard watercolor cloud treatment', () => {
     const samples = Array.from({ length: 30 }, (_, i) => sampleCloudField(first, -2.1 + i * 0.14, -0.8));
     expect(new Set(samples.map((a) => a.toFixed(3))).size).toBeGreaterThan(15);
     expect(samples.every((alpha) => Number.isFinite(alpha) && alpha >= 0 && alpha <= 1)).toBe(true);
+  });
+
+  it('rasterizes seeded clouds with the same continuous density and bounded interpolation error', () => {
+    const columns = 177;
+    const rows = 98;
+    for (const seed of [163, 2026, 78121]) {
+      const field = createCloudField(seededRandom(seed), 2);
+      const exponential = vi.spyOn(Math, 'exp');
+      const raster = rasterCloudOpacity(field, columns, rows);
+      expect(exponential).toHaveBeenCalledTimes(field.masses.length * (columns + rows));
+      exponential.mockRestore();
+      expect(raster).toEqual(rasterCloudOpacity(field, columns, rows));
+      let maxError = 0;
+      let totalError = 0;
+      for (let j = 0; j < rows; j++) {
+        const v = -1.9 + (j + 0.5) * (2.54 / rows);
+        for (let i = 0; i < columns; i++) {
+          const u = -2.33 + (i + 0.5) * (4.66 / columns);
+          const expected = sampleCloudField(field, u, v);
+          const error = Math.abs(raster[j * columns + i] / 255 - expected);
+          maxError = Math.max(maxError, error);
+          totalError += error;
+        }
+      }
+      expect(maxError).toBeLessThan(0.07);
+      expect(totalError / raster.length).toBeLessThan(0.005);
+    }
   });
 
   it('keeps the recording-context fallback soft and the Canvas stack balanced', () => {

@@ -84,6 +84,49 @@ export function cloudFieldLuminance(
   );
 }
 
+/**
+ * Separable Gaussian rasterizer for postcards. One exponent per mass and grid row/column
+ * replaces one exponent per mass at every pixel. Interpolating the seeded 2D displacement
+ * preserves the wobbly cloud outline while avoiding repeated Gaussian evaluation.
+ */
+export function rasterCloudOpacity(field: CloudField, columns: number, rows: number): Uint8Array {
+  const stepX = 4.66 / columns;
+  const stepY = 2.54 / rows;
+  const clear = new Float32Array(columns * rows).fill(1);
+  for (const [mx, my, rx, ry, strength] of field.masses) {
+    const horizontal = new Float32Array(columns);
+    for (let i = 0; i < columns; i++) {
+      const dx = (-2.33 + (i + 0.5) * stepX - mx) / rx;
+      horizontal[i] = strength * Math.exp(-1.75 * dx * dx);
+    }
+    for (let j = 0; j < rows; j++) {
+      const dy = (-1.9 + (j + 0.5) * stepY - my) / ry;
+      const vertical = Math.exp(-1.75 * dy * dy);
+      for (let i = 0; i < columns; i++) clear[j * columns + i] *= 1 - horizontal[i] * vertical;
+    }
+  }
+  const opacity = new Uint8Array(clear.length);
+  const phase = field.seed * 0.000001;
+  for (let j = 0; j < rows; j++) {
+    const v = -1.9 + (j + 0.5) * stepY;
+    for (let i = 0; i < columns; i++) {
+      const u = -2.33 + (i + 0.5) * stepX;
+      const drift = wash(u, v, phase) * 0.07;
+      const x = Math.max(0, Math.min(columns - 1, i + drift / stepX));
+      const y = Math.max(0, Math.min(rows - 1, j - drift / stepY));
+      const xi = Math.floor(x), yi = Math.floor(y);
+      const x1 = Math.min(columns - 1, xi + 1), y1 = Math.min(rows - 1, yi + 1);
+      const tx = x - xi, ty = y - yi;
+      const top = lerp(clear[yi * columns + xi], clear[yi * columns + x1], tx);
+      const bottom = lerp(clear[y1 * columns + xi], clear[y1 * columns + x1], tx);
+      const edge = 1 - lerp(top, bottom, ty) + wash(u * 1.8, v * 1.8, phase + 11) * 0.08;
+      const t = clamp01((edge - 0.25) / 0.64);
+      opacity[j * columns + i] = Math.round(255 * t * t * (3 - 2 * t));
+    }
+  }
+  return opacity;
+}
+
 /** Rasterize a small translucent pigment field, then smooth it onto the full postcard. */
 export function paintCloudField(
   ctx: CanvasRenderingContext2D,
@@ -125,16 +168,8 @@ export function paintCloudField(
   const pixels = image.data;
   const columns = offscreen.width;
   const rows = offscreen.height;
-  // Sample once; adjacent alpha differences give field-surface normals without resampling every
-  // mass for every colour channel. The 2D light vector then illuminates both the sides and crown.
-  const densities = new Float32Array(columns * rows);
-  for (let j = 0; j < rows; j++) {
-    const v = -1.9 + (j + 0.5) * (2.54 / rows);
-    for (let i = 0; i < columns; i++) {
-      const u = -2.33 + (i + 0.5) * (4.66 / columns);
-      densities[j * columns + i] = sampleCloudField(field, u, v);
-    }
-  }
+  // Preserve the same seeded density on the final pixel grid, then shade its 2D gradients.
+  const densities = rasterCloudOpacity(field, columns, rows);
   const base = mix(mix(palette.cloudShadow, palette.cloudBody, 0.52), light.underColour, light.under * 0.25);
   const phase = field.seed * 0.000001;
   let n = 0;
@@ -142,7 +177,7 @@ export function paintCloudField(
     const v = -1.9 + (j + 0.5) * (2.54 / rows);
     for (let i = 0; i < columns; i++) {
       const u = -2.33 + (i + 0.5) * (4.66 / columns);
-      const opacity = densities[j * columns + i];
+      const opacity = densities[j * columns + i] / 255;
       const gradientX =
         densities[j * columns + Math.min(columns - 1, i + 1)] -
         densities[j * columns + Math.max(0, i - 1)];
@@ -150,7 +185,7 @@ export function paintCloudField(
         densities[Math.min(rows - 1, j + 1) * columns + i] -
         densities[Math.max(0, j - 1) * columns + i];
       const pigment = wash(u * 0.9, v * 0.9, phase);
-      const lit = cloudFieldLuminance(u, v, opacity, pigment, gradientX, gradientY, light);
+      const lit = cloudFieldLuminance(u, v, opacity, pigment, gradientX / 255, gradientY / 255, light);
       for (let ch = 0; ch < 3; ch++) {
         pixels[n++] = lerp(base[ch], palette.cloudLight[ch], lit);
       }

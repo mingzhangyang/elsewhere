@@ -565,8 +565,7 @@ export function drawIllustration(
   };
   // Use reported total cover for the deck. Summing layers would turn partly cloudy weather
   // into full overcast whenever multiple cloud layers overlap.
-  const sheetAmount = cover;
-  if (sheetAmount > 0.35)
+  if (cover > 0.35)
     cloudSheet(
       ctx,
       width,
@@ -575,7 +574,7 @@ export function drawIllustration(
       cloudPalette,
       lightOn(width / 2, horizonY * 0.4),
       random,
-      sheetAmount,
+      cover,
     );
   for (let i = 0, n = Math.round(high * 5); i < n; i++) {
     // Strokes up to 1.1 lengths long, spread 0.4 lengths across and 0.14 lengths up and down.
