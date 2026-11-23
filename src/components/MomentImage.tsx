@@ -1,9 +1,9 @@
 import { landscapeSeason } from '../moment/seasons';
 import { loadLandscapeArt } from '../moment/landscapeArt';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Download, Share2 } from 'lucide-react';
-import type { MomentSnapshot } from '../lib/moment';
-import type { SkyCapture } from '../renderer/createSkyRenderer';
+import { momentImageSnapshot, type MomentSnapshot } from '../lib/moment';
+import type { SkyCapture, SkyCaptureOptions } from '../renderer/createSkyRenderer';
 import { useI18n } from '../i18n';
 import { placeLabel } from '../i18n/names';
 import { isDeviceLocation } from '../lib/locations';
@@ -23,13 +23,15 @@ export default function MomentImage({
   link,
 }: {
   snapshot: MomentSnapshot;
-  capture: (options: { ridge: boolean }) => SkyCapture | null;
+  capture: (options: SkyCaptureOptions) => SkyCapture | null;
   link: string;
 }) {
   const i18n = useI18n();
   const { m } = i18n;
   const [style, setStyle] = useState<MomentStyle>('realistic');
   const [horizon, setHorizon] = useState<HorizonVariant>('ridge');
+  const [clearSkyImage, setClearSkyImage] = useState(true);
+  const imageSnapshot = useMemo(() => momentImageSnapshot(snapshot, clearSkyImage), [snapshot, clearSkyImage]);
   const [image, setImage] = useState<{ url: string; blob: Blob } | null>(null);
   const [failed, setFailed] = useState(false);
   const request = useRef(0);
@@ -45,26 +47,32 @@ export default function MomentImage({
     if (shown.current) URL.revokeObjectURL(shown.current);
     shown.current = null;
     setImage(null);
-    const place = isDeviceLocation(snapshot.location)
+    const place = isDeviceLocation(imageSnapshot.location)
       ? m.moment.devicePlace
-      : placeLabel(snapshot.location, i18n).name;
+      : placeLabel(imageSnapshot.location, i18n).name;
     const artwork =
       style === 'illustrated' && horizon !== 'ridge'
         ? loadLandscapeArt(
             horizon,
-            landscapeSeason(snapshot),
-            snapshot.sky.sunAltitude,
-            snapshot.sky.sun.azimuth,
+            landscapeSeason(imageSnapshot),
+            imageSnapshot.sky.sunAltitude,
+            imageSnapshot.sky.sun.azimuth,
           )
         : null;
-    Promise.all([labelFontReady(place + m.moment.attribution + m.phases[snapshot.sky.moon.phase]), artwork])
+    Promise.all([labelFontReady(place + m.moment.attribution + m.moment.clearSkyBadge + m.phases[imageSnapshot.sky.moon.phase]), artwork])
       .then(
         ([, landscapeArt]) =>
           new Promise<Blob | null>((resolve) => {
-            const frame = style === 'realistic' ? latest.current({ ridge: horizon === 'ridge' }) : null;
+            const frame =
+              style === 'realistic'
+                ? latest.current({
+                    ridge: horizon === 'ridge',
+                    ...(clearSkyImage ? { weather: imageSnapshot.weather } : {}),
+                  })
+                : null;
             if (style === 'realistic' && !frame) return resolve(null);
             drawPostcard({
-              snapshot,
+              snapshot: imageSnapshot,
               style,
               horizon,
               capture: frame,
@@ -84,7 +92,7 @@ export default function MomentImage({
         },
         () => ticket === request.current && setFailed(true),
       );
-  }, [snapshot, style, horizon, i18n, m]);
+  }, [imageSnapshot, style, horizon, clearSkyImage, i18n, m]);
   useEffect(
     () => () => {
       // Work still pending when the dialog closes is discarded before it allocates a URL.
@@ -106,6 +114,14 @@ export default function MomentImage({
     <section className="moment-image" aria-labelledby="moment-title" style={{ fontFamily: FONT }}>
       <h3 id="moment-title">{m.moment.section}</h3>
       <p className="moment-note">{m.moment.note}</p>
+      <label className="moment-clear-sky">
+        <input
+          type="checkbox"
+          checked={clearSkyImage}
+          onChange={(event) => setClearSkyImage(event.target.checked)}
+        />
+        {m.moment.clearSkyImage}
+      </label>
       <div className="moment-options">
         <div role="group" aria-label={m.moment.style} className="segmented">
           {MOMENT_STYLES.map((value) => (
