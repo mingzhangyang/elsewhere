@@ -4,7 +4,7 @@ import type { BodyId, Planet, PlanetId, SkyState, Star, WeatherValues } from '..
 import type { PatternId } from '../domain/stars';
 import { PLANETS } from '../domain/planets';
 import type { CameraView, Preferences } from '../lib/persistence';
-import { createCelestialLayers, type ScreenBox } from './celestialLayers';
+import { cloudLabelOpacity, createCelestialLayers, type ScreenBox } from './celestialLayers';
 import { seededRandom } from '../lib/random';
 // Bundled through Vite so its URL carries a content hash and can be cached as immutable.
 import moonMapUrl from '../assets/moon-lroc.jpg?url';
@@ -209,6 +209,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
         depthWrite: false,
       }),
     );
+    // Text labels are renderOrder 21. Depth testing remains enabled against opaque terrain/Moon.
     cloudDome.renderOrder = 20;
     scene.add(cloudDome);
 
@@ -796,6 +797,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
             azimuth: planet.azimuth,
             opacity: planetAlphas[i] * visibilityFactor,
           })),
+          cloudLabelOpacity(nextWeather.cloudCover),
         );
         const snowing = [71, 73, 75, 77, 85, 86].includes(nextWeather.weatherCode);
         rainMaterial.opacity =

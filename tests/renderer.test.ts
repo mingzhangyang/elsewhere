@@ -1,7 +1,11 @@
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import zh from '../src/i18n/zh-Hans';
-import { createCelestialLayers } from '../src/renderer/celestialLayers';
+import {
+  CELESTIAL_LABEL_RENDER_ORDER,
+  cloudLabelOpacity,
+  createCelestialLayers,
+} from '../src/renderer/celestialLayers';
 import { calculateSky } from '../src/domain/astronomy';
 import { NEW_YORK } from './fixtures/locations';
 import {
@@ -296,4 +300,79 @@ describe('labels in another language', () => {
     }
     expect(shown).toBeGreaterThan(5);
   });
+});
+
+it('renders celestial names above transparent clouds without bypassing foreground depth', () => {
+  const scene = new THREE.Scene();
+  const cloud = new THREE.Mesh(
+    new THREE.SphereGeometry(10),
+    new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false }),
+  );
+  cloud.renderOrder = 20;
+  scene.add(cloud);
+  const sky = calculateSky(NEW_YORK, new Date('2026-11-13T04:00Z'));
+  const layers = createCelestialLayers(
+    scene,
+    sky.stars,
+    () => new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false })),
+    [{ id: 'jupiter', name: 'Jupiter' }],
+  );
+  const sprites = scene.children.filter((object): object is THREE.Sprite => object instanceof THREE.Sprite);
+  expect(sprites.length).toBeGreaterThan(3);
+  for (const sprite of sprites) {
+    expect(sprite.renderOrder).toBe(CELESTIAL_LABEL_RENDER_ORDER);
+    expect(sprite.renderOrder).toBeGreaterThan(cloud.renderOrder);
+    expect(sprite.renderOrder).toBeLessThan(30);
+    expect(sprite.material.depthTest).toBe(true);
+    expect(sprite.material.depthWrite).toBe(false);
+  }
+  // Constellation geometry is not text: keep its original physical draw order.
+  expect(
+    scene.children
+      .filter((object) => object instanceof THREE.LineSegments)
+      .every((line) => line.renderOrder === 0),
+  ).toBe(true);
+  layers.dispose();
+  scene.remove(cloud);
+  cloud.geometry.dispose();
+  cloud.material.dispose();
+});
+
+it('retains bright-sky and cloud labels through 85% cover but hides names at full overcast', () => {
+  expect(cloudLabelOpacity(0)).toBe(1);
+  expect(cloudLabelOpacity(30)).toBe(1);
+  expect(cloudLabelOpacity(60)).toBe(1);
+  expect(cloudLabelOpacity(85)).toBe(1);
+  expect(cloudLabelOpacity(90)).toBe(1);
+  expect(cloudLabelOpacity(95)).toBeCloseTo(0.5);
+  expect(cloudLabelOpacity(100)).toBe(0);
+  const scene = new THREE.Scene();
+  const sky = calculateSky(NEW_YORK, new Date('2026-11-13T04:00Z'));
+  const layers = createCelestialLayers(
+    scene,
+    sky.stars,
+    () => {
+      const sprite = new THREE.Sprite(new THREE.SpriteMaterial());
+      sprite.userData.aspect = 3;
+      return sprite;
+    },
+    [{ id: 'jupiter', name: 'Jupiter' }],
+  );
+  const flags = { stars: true, labels: true, constellations: true };
+  const bodies = [{ altitude: 45, azimuth: 100, opacity: 1 }];
+  const sprites = scene.children.filter((object): object is THREE.Sprite => object instanceof THREE.Sprite);
+  const camera = new THREE.PerspectiveCamera(66, 1280 / 800, 0.1, 5000);
+  camera.lookAt(new THREE.Vector3(1, 0.6, -0.2));
+  camera.updateMatrixWorld();
+  layers.update(sky.stars, flags, 1, bodies, cloudLabelOpacity(85));
+  layers.layout(camera, 1280, 800);
+  expect(sprites.some((sprite) => sprite.visible)).toBe(true);
+  const spriteIds = sprites.map((sprite) => sprite.uuid);
+  layers.update(sky.stars, flags, 1, bodies, cloudLabelOpacity(100));
+  layers.layout(camera, 1280, 800);
+  expect(sprites.every((sprite) => !sprite.visible)).toBe(true);
+  // Cloud opacity does not hide or recreate constellation lines or any text textures.
+  expect(scene.children.some((object) => object instanceof THREE.LineSegments && object.visible)).toBe(true);
+  expect(sprites.map((sprite) => sprite.uuid)).toEqual(spriteIds);
+  layers.dispose();
 });
