@@ -617,6 +617,8 @@ const zh: Messages = {
   moment: {
     section: '纪念图片',
     note: '原型：一张这一刻的图片，可以和链接一起发出。',
+    clearSkyImage: '图片使用晴朗天空（默认；不改变实时天空或分享链接）',
+    clearSkyBadge: 'Clear Sky 模式 · 已移除云层',
     make: '生成图片',
     drawing: '正在绘制图片…',
     failed: '图片无法绘制。请换一种风格再试。',
