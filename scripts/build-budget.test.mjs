@@ -4,7 +4,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { test } from 'node:test';
-import { analyzeBuild, assertBuildBudgets, buildBudgetChanges, formatBuildReport, BUILD_LIMITS } from './build-budget.mjs';
+import {
+  analyzeBuild,
+  assertBuildBudgets,
+  buildBudgetChanges,
+  formatBuildReport,
+  BUILD_LIMITS,
+} from './build-budget.mjs';
 
 async function fixture(order) {
   const directory = await mkdtemp(join(tmpdir(), 'elsewhere-budget-'));
@@ -21,7 +27,10 @@ async function fixture(order) {
   for (const name of order ? Object.keys(files).reverse() : Object.keys(files)) {
     await writeFile(join(directory, 'assets', name), files[name]);
   }
-  await writeFile(join(directory, 'index.html'), '<script type="module" src="/assets/index-aaa11111.js"></script>');
+  await writeFile(
+    join(directory, 'index.html'),
+    '<script type="module" src="/assets/index-aaa11111.js"></script>',
+  );
   return { directory, files };
 }
 
@@ -34,7 +43,12 @@ test('all emitted dynamic JS and star data count toward total, but not startup',
       .filter((name) => name.endsWith('.js') || name.endsWith('.json'))
       .reduce((sum, name) => sum + zip(name), 0);
     assert.equal(report.totalGzip, expectedTotal);
-    assert.equal(report.startupGzip, zip('index-aaa11111.js') + zip('shared-bbb22222.js') + Math.max(zip('en-ddd44444.js'), zip('zh-Hans-eee55555.js')));
+    assert.equal(
+      report.startupGzip,
+      zip('index-aaa11111.js') +
+        zip('shared-bbb22222.js') +
+        Math.max(zip('en-ddd44444.js'), zip('zh-Hans-eee55555.js')),
+    );
     assert(!report.entryStaticChunks.includes('lazy-ccc33333.js'));
     assert(report.dynamic.some((edge) => edge.target === 'lazy-ccc33333.js'));
     assert(report.chunks.some((asset) => asset.kind === 'data' && asset.name === 'stars-fff66666.json'));

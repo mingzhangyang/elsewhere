@@ -16,7 +16,8 @@ export function decodeStarColumns(data: unknown): CatalogRow[] {
     throw new Error('Invalid star catalog: inconsistent column lengths.');
   }
   const number = (value: unknown, factor: number) => {
-    const decoded = typeof value === 'string' ? Number(value) : typeof value === 'number' ? value / factor : NaN;
+    const decoded =
+      typeof value === 'string' ? Number(value) : typeof value === 'number' ? value / factor : NaN;
     if (!Number.isFinite(decoded)) throw new Error('Invalid star catalog numeric value.');
     return decoded;
   };

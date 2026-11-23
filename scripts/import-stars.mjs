@@ -51,9 +51,7 @@ const columns = scales.map((scale, column) =>
     const value = row[column];
     if (column < 2 || value === null) return value;
     const integer = Math.round(value * scale);
-    return Number.isSafeInteger(integer) && Object.is(integer / scale, value)
-      ? integer
-      : String(value);
+    return Number.isSafeInteger(integer) && Object.is(integer / scale, value) ? integer : String(value);
   }),
 );
 await writeFile(new URL('../src/data/stars.json', import.meta.url), JSON.stringify(columns) + '\n');

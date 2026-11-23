@@ -216,38 +216,37 @@ Linux, Node 22, Playwright 1.65 with the preinstalled Chromium (software GL). 39
 
 ## Bundle budget governance (PR #35)
 
-\`npm run validate\` runs the built-in Node tests for \`scripts/build-budget.mjs\`,
-builds the production files, and invokes the existing \`scripts/check-build.mjs\`.
+`npm run validate` runs the built-in Node tests for `scripts/build-budget.mjs`,
+builds the production files, and invokes the existing `scripts/check-build.mjs`.
 The same script still tests service-worker installation, offline asset recovery,
-the \`Vary: Origin\` policy, navigation fallbacks and API exclusions.
+the `Vary: Origin` policy, navigation fallbacks and API exclusions.
 
 The report lists **exact byte counts**, not rounded kB: all JS and JSON chunks
-(including dynamic imports and \`stars.json\`), startup static imports plus the
+(including dynamic imports and `stars.json`), startup static imports plus the
 larger language graph, individual language bundles, the largest raw JS file,
 the hashed Moon image, dynamic import edges, and per-module deltas from the
-committed PR #34 baseline in \`scripts/build-budget-baseline.json\`.
+committed PR #34 baseline in `scripts/build-budget-baseline.json`.
 Name comparisons ignore content hashes only; **no bytes are excluded**.
-The baseline was measured from the successful PR #34 CI \`elsewhere-preview\`
-artifact (same source tree as main merge \`1c08f892\`), with
-\`gzipSync\` default compression on emitted bytes.
+The baseline was measured from the successful PR #34 CI `elsewhere-preview`
+artifact (same source tree as main merge `1c08f892`), with
+`gzipSync` default compression on emitted bytes.
 
 Strict existing gates remain total JS/JSON gzip < 500,000 B, startup gzip
 < 115,000 B, each language gzip < 15,000 B, largest raw JS chunk < 500,000 B,
 Moon image < 600,000 B, and hashed immutable production assets.
-Nonblocking warnings start at total gzip > 480,000 B or largest raw chunk
-> 480,000 B; growth over 5,000 B from the recorded baseline is also warned.
-Re-baseline only after documenting and reviewing actual production output changes.
+Nonblocking warnings start if total gzip exceeds 480,000 B or the largest
+raw JS chunk exceeds 480,000 B. Growth over 5,000 B from the recorded baseline
+is also warned. Re-baseline only after documenting and reviewing actual changes.
 
 ### Lossless star catalog packaging (#35)
 
-\`src/data/stars.json\` retains all **5,070** HYG v4.1 stars (347 named), in the
+`src/data/stars.json` retains all **5,070** HYG v4.1 stars (347 named), in the
 original magnitude order. The import script now writes eight columns instead of
 5,070 row arrays. Decimal numbers are stored as scaled integers **only if** the
 full JavaScript double round-trips exactly; coordinates needing eight decimal
 places remain decimal strings. The browser fetches the hashed JSON asset and
 decodes the columns before the existing retryable catalog installation. Its
 network, offline cache, star identifiers, astrometry and reference fixtures
-are unchanged. \`tests/starCatalogEncoding.test.ts\` compares the SHA-256 of
+are unchanged. `tests/starCatalogEncoding.test.ts` compares the SHA-256 of
 the complete decoded row-major catalog to the pre-optimization source digest
-\`0d079f39f6ae31ead9dd9968d8974801266934272b7013f4fe7b3baf83c1e172\`.
-
+`0d079f39f6ae31ead9dd9968d8974801266934272b7013f4fe7b3baf83c1e172`.

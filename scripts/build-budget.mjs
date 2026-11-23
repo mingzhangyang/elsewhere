@@ -73,17 +73,20 @@ export async function analyzeBuild(directory = 'dist') {
     };
   });
   const startupGzip = startupBaseGzip + Math.max(0, ...languages.map((lang) => lang.startupIncrementGzip));
-  const dynamic = jsChunks.flatMap((asset) =>
-    dynamicImports(assets.get(asset.name).code).map((target) => ({
-      importer: asset.logicalName,
-      target,
-      gzipBytes: assets.get(target)?.gzipBytes ?? null,
-    })),
-  ).sort((a, b) => a.importer.localeCompare(b.importer) || a.target.localeCompare(b.target));
+  const dynamic = jsChunks
+    .flatMap((asset) =>
+      dynamicImports(assets.get(asset.name).code).map((target) => ({
+        importer: asset.logicalName,
+        target,
+        gzipBytes: assets.get(target)?.gzipBytes ?? null,
+      })),
+    )
+    .sort((a, b) => a.importer.localeCompare(b.importer) || a.target.localeCompare(b.target));
   const moon = assetNames.find((name) => /^moon-lroc-[\w-]{8}\.jpg$/.test(name));
   const moonRaw = moon ? (await readFile(join(directory, 'assets', moon))).length : null;
   const byModule = {};
-  for (const chunk of chunks) byModule[chunk.logicalName] = (byModule[chunk.logicalName] ?? 0) + chunk.gzipBytes;
+  for (const chunk of chunks)
+    byModule[chunk.logicalName] = (byModule[chunk.logicalName] ?? 0) + chunk.gzipBytes;
 
   return {
     assetNames,
@@ -109,14 +112,26 @@ export async function analyzeBuild(directory = 'dist') {
 
 /** Keep the existing strict (<, not <=) budget and offline/cache invariants. */
 export async function assertBuildBudgets(report, directory = 'dist') {
-  assert(report.totalGzip < BUILD_LIMITS.totalGzip, 'Total JS and data gzip ' + report.totalGzip + ' exceeds ' + BUILD_LIMITS.totalGzip);
-  assert(report.largest.rawBytes < BUILD_LIMITS.chunkRaw, 'Largest JS chunk ' + report.largest.rawBytes + ' exceeds ' + BUILD_LIMITS.chunkRaw);
-  assert(report.startupGzip < BUILD_LIMITS.startupGzip, 'Startup JavaScript ' + report.startupGzip + ' exceeds ' + BUILD_LIMITS.startupGzip);
+  assert(
+    report.totalGzip < BUILD_LIMITS.totalGzip,
+    'Total JS and data gzip ' + report.totalGzip + ' exceeds ' + BUILD_LIMITS.totalGzip,
+  );
+  assert(
+    report.largest.rawBytes < BUILD_LIMITS.chunkRaw,
+    'Largest JS chunk ' + report.largest.rawBytes + ' exceeds ' + BUILD_LIMITS.chunkRaw,
+  );
+  assert(
+    report.startupGzip < BUILD_LIMITS.startupGzip,
+    'Startup JavaScript ' + report.startupGzip + ' exceeds ' + BUILD_LIMITS.startupGzip,
+  );
   assert.equal(report.languages.length, 2, 'Each language must be its own chunk');
   const entry = await readFile(join(directory, 'assets', report.entry), 'utf8');
   assert(!/from\s*["']\.\/three-/.test(entry), 'three.js must not load at startup');
   for (const language of report.languages) {
-    assert(language.gzipBytes < BUILD_LIMITS.languageGzip, language.name + ' is ' + language.gzipBytes + ' bytes gzip, over ' + BUILD_LIMITS.languageGzip);
+    assert(
+      language.gzipBytes < BUILD_LIMITS.languageGzip,
+      language.name + ' is ' + language.gzipBytes + ' bytes gzip, over ' + BUILD_LIMITS.languageGzip,
+    );
   }
   for (const name of report.entryStaticChunks) {
     const code = await readFile(join(directory, 'assets', name), 'utf8');
@@ -130,7 +145,10 @@ export async function assertBuildBudgets(report, directory = 'dist') {
   }
   for (const asset of report.chunks.filter((item) => item.kind === 'javascript')) {
     const code = await readFile(join(directory, 'assets', asset.name), 'utf8');
-    assert(!code.includes('Deterministic unavailable-weather scenario'), 'Development fixtures leaked into production');
+    assert(
+      !code.includes('Deterministic unavailable-weather scenario'),
+      'Development fixtures leaked into production',
+    );
     assert(!code.includes('Simulate graphics loss'), 'Development controls leaked into production');
   }
 }
@@ -140,7 +158,12 @@ export function buildBudgetChanges(report, baseline) {
   const old = baseline.byModule ?? {};
   const current = report.byModule;
   return [...new Set([...Object.keys(old), ...Object.keys(current)])]
-    .map((name) => ({ name, before: old[name] ?? 0, after: current[name] ?? 0, change: (current[name] ?? 0) - (old[name] ?? 0) }))
+    .map((name) => ({
+      name,
+      before: old[name] ?? 0,
+      after: current[name] ?? 0,
+      change: (current[name] ?? 0) - (old[name] ?? 0),
+    }))
     .filter((item) => item.change !== 0)
     .sort((a, b) => b.change - a.change || a.name.localeCompare(b.name));
 }
@@ -148,17 +171,40 @@ export function buildBudgetChanges(report, baseline) {
 export function formatBuildReport(report, baseline) {
   const rows = [
     'Build budget report (exact bytes; gzipSync default settings; JS and JSON in dist/assets)',
-    'TOTAL_JS_DATA_GZIP ' + report.totalGzip + ' / ' + BUILD_LIMITS.totalGzip + ' (remaining ' + report.remaining.totalGzip + ')',
-    'STARTUP_JS_GZIP ' + report.startupGzip + ' / ' + BUILD_LIMITS.startupGzip + ' (remaining ' + report.remaining.startupGzip + ')',
-    'LARGEST_JS_RAW ' + report.largest.rawBytes + ' / ' + BUILD_LIMITS.chunkRaw + ' (remaining ' + report.remaining.chunkRaw + '): ' + report.largest.name,
+    'TOTAL_JS_DATA_GZIP ' +
+      report.totalGzip +
+      ' / ' +
+      BUILD_LIMITS.totalGzip +
+      ' (remaining ' +
+      report.remaining.totalGzip +
+      ')',
+    'STARTUP_JS_GZIP ' +
+      report.startupGzip +
+      ' / ' +
+      BUILD_LIMITS.startupGzip +
+      ' (remaining ' +
+      report.remaining.startupGzip +
+      ')',
+    'LARGEST_JS_RAW ' +
+      report.largest.rawBytes +
+      ' / ' +
+      BUILD_LIMITS.chunkRaw +
+      ' (remaining ' +
+      report.remaining.chunkRaw +
+      '): ' +
+      report.largest.name,
     'MOON_RAW ' + report.moonRaw + ' / ' + BUILD_LIMITS.moonRaw + ': ' + report.moon,
     'ENTRY_STATIC ' + report.entryStaticChunks.join(', '),
     'LANGUAGES (own gzip / additional startup static graph gzip)',
-    ...report.languages.map((lang) => '  ' + lang.name + ': ' + lang.gzipBytes + ' / ' + lang.startupIncrementGzip),
+    ...report.languages.map(
+      (lang) => '  ' + lang.name + ': ' + lang.gzipBytes + ' / ' + lang.startupIncrementGzip,
+    ),
     'CHUNKS (gzip / raw; all JS and JSON counted)',
     ...report.chunks.map((chunk) => '  ' + chunk.name + ': ' + chunk.gzipBytes + ' / ' + chunk.rawBytes),
     'DYNAMIC_IMPORT_EDGES (target gzip, not additional to total)',
-    ...(report.dynamic.length ? report.dynamic.map((item) => '  ' + item.importer + ' -> ' + item.target + ': ' + item.gzipBytes) : ['  none']),
+    ...(report.dynamic.length
+      ? report.dynamic.map((item) => '  ' + item.importer + ' -> ' + item.target + ': ' + item.gzipBytes)
+      : ['  none']),
   ];
   if (baseline) {
     rows.push('BASELINE ' + baseline.source + ' (' + baseline.commit + ')');
@@ -167,7 +213,13 @@ export function formatBuildReport(report, baseline) {
     rows.push('  LARGEST_RAW_DELTA ' + (report.largest.rawBytes - baseline.largestRaw));
     rows.push('MODULE_DELTAS (gzip bytes; positive first, including new/removed modules)');
     const changes = buildBudgetChanges(report, baseline);
-    rows.push(...(changes.length ? changes.map((item) => '  ' + item.name + ': ' + item.change + ' (' + item.before + ' -> ' + item.after + ')') : ['  none']));
+    rows.push(
+      ...(changes.length
+        ? changes.map(
+            (item) => '  ' + item.name + ': ' + item.change + ' (' + item.before + ' -> ' + item.after + ')',
+          )
+        : ['  none']),
+    );
     if (report.totalGzip - baseline.totalGzip > BUILD_WARNINGS.growthGzip)
       rows.push('WARNING: total growth from baseline exceeds ' + BUILD_WARNINGS.growthGzip + ' B');
   }

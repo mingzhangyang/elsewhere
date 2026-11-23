@@ -24,12 +24,6 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci
-      # Temporary formatting patch capture for #35; will be removed before final validation.
-      - name: Print Prettier patch for #35
-        if: matrix.os == 'ubuntu-latest' && matrix.node == 24
-        run: |
-          npx prettier --write docs/VALIDATION.md scripts/build-budget.mjs scripts/build-budget.test.mjs scripts/import-stars.mjs src/domain/starCatalogEncoding.ts
-          git diff -- docs/VALIDATION.md scripts/build-budget.mjs scripts/build-budget.test.mjs scripts/import-stars.mjs src/domain/starCatalogEncoding.ts
       - run: npm run validate
       - run: npm run format:check
       - run: node --test scripts/check-audit.test.mjs
