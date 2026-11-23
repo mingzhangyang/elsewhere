@@ -9,6 +9,10 @@ export function scenarioProps(name: string | null): AppProps {
     {
       day: { time: '2026-11-12T17:00:00Z', cloudCover: 15, precipitation: 0, code: 1 },
       night: { time: '2026-11-13T04:00:00Z', cloudCover: 0, precipitation: 0, code: 0 },
+      // Stable nocturnal cloud fixtures for real WebGL name-label evidence.
+      night30: { time: '2026-11-13T04:00:00Z', cloudCover: 30, precipitation: 0, code: 2 },
+      night60: { time: '2026-11-13T04:00:00Z', cloudCover: 60, precipitation: 0, code: 2 },
+      night85: { time: '2026-11-13T04:00:00Z', cloudCover: 85, precipitation: 0, code: 3 },
       rain: { time: '2026-11-12T17:00:00Z', cloudCover: 95, precipitation: 5, code: 63 },
       snow: { time: '2026-12-21T17:00:00Z', cloudCover: 100, precipitation: 3, code: 73 },
       overcast: { time: '2026-11-13T04:00:00Z', cloudCover: 100, precipitation: 0, code: 3 },
