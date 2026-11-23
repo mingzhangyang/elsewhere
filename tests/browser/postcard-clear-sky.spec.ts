@@ -78,3 +78,47 @@ test('postcard defaults to clear weather in both styles without changing the exp
   await expect(source).toBeVisible();
   expect(await source.innerText()).toBe(originalSource);
 });
+
+
+/**
+ * Real, non-mocked watercolor postcard evidence with clear mode deliberately disabled.
+ * Weather is synthetic and fictional; test images are not claims about historical weather.
+ */
+test('cloudy illustration stays a layered painting across overcast, wind, rain and sunset', async ({ page }, info) => {
+  test.setTimeout(120000);
+  for (const scenario of ['windy', 'overcast', 'sunset', 'rain']) {
+    await page.goto('/?scenario=' + scenario);
+    await page.getByRole('button', { name: 'Share this sky', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Share this sky' });
+    await dialog.getByRole('button', { name: 'Make an image' }).click();
+    const clearSky = dialog.getByRole('checkbox', { name: /Clear Sky for image/ });
+    await expect(clearSky).toBeChecked();
+    await clearSky.uncheck();
+    await dialog.getByRole('button', { name: 'Illustrated', exact: true }).click();
+    const image = dialog.getByRole('img', { name: /Keepsake image of the sky over/ });
+    await expect(image).toBeVisible({ timeout: 30000 });
+    const bitmap = await image.evaluate(async (element: HTMLImageElement) => {
+      await element.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = 120;
+      canvas.height = 80;
+      const context = canvas.getContext('2d')!;
+      context.drawImage(element, 0, 0, element.naturalWidth, 600, 0, 0, 120, 80);
+      const pixels = context.getImageData(0, 0, 120, 80).data;
+      const shades = new Set<string>();
+      for (let i = 0; i < pixels.length; i += 4) {
+        shades.add([pixels[i] >> 4, pixels[i + 1] >> 4, pixels[i + 2] >> 4].join(','));
+      }
+      return { width: element.naturalWidth, shades: shades.size };
+    });
+    expect(bitmap.width).toBe(1200);
+    expect(bitmap.shades).toBeGreaterThan(18);
+    if (info.project.name === 'chromium' || info.project.name === 'mobile-chromium') {
+      await info.attach('watercolor-clouds-' + scenario + '-' + info.project.name + '.png', {
+        body: await image.screenshot({ animations: 'disabled' }),
+        contentType: 'image/png',
+      });
+    }
+    await dialog.getByRole('button', { name: 'Close sharing' }).click();
+  }
+});
