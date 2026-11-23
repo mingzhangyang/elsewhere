@@ -202,3 +202,18 @@ describe('illustrated postcard watercolor cloud treatment', () => {
     expect(record.operations).toEqual([]);
   });
 });
+
+/** Temporary formatter diagnostic; removed after capturing the exact Prettier output. */
+it('prints exact cloud-field formatting diagnostics', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const prettier = await import('prettier');
+  const original = await readFile('src/moment/cloudField.ts', 'utf8');
+  const formatted = await prettier.format(original, {
+    parser: 'typescript',
+    singleQuote: true,
+    trailingComma: 'all',
+    printWidth: 110,
+  });
+  if (formatted !== original)
+    console.log('CLOUD_FIELD_FORMATTED_BASE64=' + Buffer.from(formatted).toString('base64'));
+});
