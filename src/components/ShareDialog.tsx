@@ -14,11 +14,9 @@ const MomentImage = lazy(() => import('./MomentImage').catch(() => ({ default: M
 function MomentUnavailable() {
   const { m } = useI18n();
   return (
-    <div className="moment-preview-slot" aria-busy="false">
-      <div className="moment-preview-transition" role="status">
-        {m.moment.failed}
-      </div>
-    </div>
+    <p className="form-status" role="status">
+      {m.moment.failed}
+    </p>
   );
 }
 
@@ -96,7 +94,12 @@ const ShareDialog = forwardRef<ShareDialogHandle, Props>(function ShareDialog(
     }
   };
   return (
-    <dialog ref={dialog} className="share-dialog" aria-labelledby="share-title" onClose={() => setRequest(null)}>
+    <dialog
+      ref={dialog}
+      className="share-dialog"
+      aria-labelledby="share-title"
+      onClose={() => setRequest(null)}
+    >
       <div className="dialog-heading">
         <div>
           <p className="eyebrow">{m.share.eyebrow}</p>
