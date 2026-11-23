@@ -160,9 +160,11 @@ describe('SM3-A artwork model and SM1 civil-time contract', () => {
     expect(literal.title).not.toContain('&lt;');
   });
 
-  it('rejects controls and bidi overrides rather than interpreting or hiding them', () => {
+  it('normalizes multiline notes while rejecting other controls and bidi overrides', () => {
+    const artwork = createSkyArtwork(artworkInput({ phrase: 'Stars\nacross\r\nthe\tquiet sky' }));
+    expect(artwork.phrase).toBe('Stars across the quiet sky');
     expect(() => createSkyArtwork(artworkInput({ phrase: 'abc\u202edef' }))).toThrow();
-    expect(() => createSkyArtwork(artworkInput({ phrase: 'a\nb' }))).toThrow();
+    expect(() => createSkyArtwork(artworkInput({ phrase: 'a\u0000b' }))).toThrow();
     expect(() => createSkyArtwork(artworkInput({ title: 42 as never }))).toThrow(TypeError);
   });
 

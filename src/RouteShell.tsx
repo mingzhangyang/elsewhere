@@ -33,6 +33,8 @@ export default function RouteShell({ diagnostics = false }: { diagnostics?: bool
   const [route, setRoute] = useState<Route>(() => routeForHash(window.location.hash));
   const [handoff, setHandoff] = useState<ExplorerHandoff | null>(null);
   const savedDraft = useRef<SkyCreatorDraft | null>(null);
+  // Restoring the prior view must not serialize private creator details.
+  const priorExplorer = useRef<{ url: string; handoff: ExplorerHandoff | null } | null>(null);
   const saveDraft = useCallback((value: SkyCreatorDraft) => {
     savedDraft.current = value;
   }, []);
@@ -53,20 +55,34 @@ export default function RouteShell({ diagnostics = false }: { diagnostics?: bool
 
   const openCreator = useCallback(() => {
     if (window.location.hash !== '#create') {
+      const previousHandoff =
+        window.history.state?.elsewhereCreatorExplorer === true &&
+        !window.location.hash.startsWith('#sky=')
+          ? handoff
+          : null;
+      priorExplorer.current = {
+        url: window.location.pathname + window.location.search + window.location.hash,
+        handoff: previousHandoff,
+      };
       window.history.pushState({ elsewhereCreator: true }, '', '#create');
     }
     setRoute('create');
-  }, []);
+  }, [handoff]);
 
   const openExplorer = useCallback((event?: MemorialTime) => {
-    if (event) setHandoff({ location: event.location, utc: event.utc });
-    else setHandoff(null);
-    // History may retain a return path, but neither URL nor history.state stores
-    // the event's location, time, title or phrase.
+    const previous = event ? null : priorExplorer.current;
+    const nextHandoff = event
+      ? { location: event.location, utc: event.utc }
+      : (previous?.handoff ?? null);
+    setHandoff(nextHandoff);
+    // Restore an existing shared URL unchanged; a newly created moment remains
+    // memory-only and is never serialized into history.state or the URL.
     window.history.pushState(
-      { elsewhereCreatorExplorer: Boolean(event) },
+      { elsewhereCreatorExplorer: nextHandoff !== null },
       '',
-      window.location.pathname + window.location.search,
+      event
+        ? window.location.pathname + window.location.search
+        : (previous?.url ?? window.location.pathname + window.location.search),
     );
     setExplorerVisit((value) => value + 1);
     setRoute('explore');

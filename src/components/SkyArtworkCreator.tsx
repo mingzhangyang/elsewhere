@@ -48,6 +48,9 @@ export default function SkyArtworkCreator({
   const [notice, setNotice] = useState<string | null>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const revision = useRef(0);
+  // Moment calculation has a separate ticket from presentation/PNG revisions.
+  const timeRevision = useRef(0);
+  const snapshotLoading = useRef(false);
   const snapshotCoordinator = useRef<SnapshotCoordinator | null>(null);
   const exportCoordinator = useRef<SkyArtworkExportCoordinator | null>(null);
   const delivery = useRef<Delivery | null>(null);
@@ -64,6 +67,8 @@ export default function SkyArtworkCreator({
   useEffect(
     () => () => {
       revision.current += 1;
+      timeRevision.current += 1;
+      snapshotLoading.current = false;
       snapshotCoordinator.current?.invalidate();
       exportCoordinator.current?.dispose();
     },
@@ -78,12 +83,14 @@ export default function SkyArtworkCreator({
       setPreviewRevision(null);
       setNotice(null);
       if (timeChanged) {
+        timeRevision.current += 1;
+        snapshotLoading.current = false;
         snapshotCoordinator.current?.invalidate();
         lastResolved.current = null;
         setScience(null);
         setStage('invalid');
       } else {
-        setStage(science ? 'generating' : 'editing');
+        setStage(science ? 'generating' : snapshotLoading.current ? 'loading' : 'editing');
       }
     },
     [science],
@@ -107,7 +114,9 @@ export default function SkyArtworkCreator({
   };
 
   const generate = useCallback(async (event: MemorialTime) => {
-    const ticket = ++revision.current;
+    const ticket = ++timeRevision.current;
+    revision.current += 1;
+    snapshotLoading.current = true;
     lastResolved.current = event;
     snapshotCoordinator.current?.invalidate();
     exportCoordinator.current?.cancel();
@@ -119,13 +128,13 @@ export default function SkyArtworkCreator({
     try {
       // SM2-C imports the astronomy engine only after the user submits valid civil time.
       const { createSkyChartSnapshotCoordinator } = await import('../services/skyChartSnapshot');
-      if (ticket !== revision.current) return;
+      if (ticket !== timeRevision.current) return;
       const coordinator = snapshotCoordinator.current ?? createSkyChartSnapshotCoordinator();
       snapshotCoordinator.current = coordinator;
       const result = await coordinator.generate({ time: event }, (status: SkyChartSnapshotStatus) => {
-        if (ticket === revision.current && status.status === 'loading') setStage('loading');
+        if (ticket === timeRevision.current && status.status === 'loading') setStage('loading');
       });
-      if (ticket !== revision.current || result.status === 'stale') return;
+      if (ticket !== timeRevision.current || result.status === 'stale') return;
       if (result.status !== 'ready') {
         setErrorKind(
           result.status === 'error' && (result.code === 'catalog-load' || result.code === 'catalog-data')
@@ -135,13 +144,15 @@ export default function SkyArtworkCreator({
         setStage('error');
         return;
       }
-      setScience({ event, snapshot: result.snapshot, revision: ticket });
+      setScience({ event, snapshot: result.snapshot, revision: revision.current });
       setStage('generating');
     } catch {
-      if (ticket === revision.current) {
+      if (ticket === timeRevision.current) {
         setErrorKind('generation');
         setStage('error');
       }
+    } finally {
+      if (ticket === timeRevision.current) snapshotLoading.current = false;
     }
   }, []);
 

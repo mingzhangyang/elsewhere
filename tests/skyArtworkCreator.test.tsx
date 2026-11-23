@@ -163,6 +163,38 @@ describe('SM3-C creator state and resource ownership', () => {
     });
   });
 
+  it('adopts a pending snapshot after presentation edits without resubmitting time', async () => {
+    const slow = pending<typeof readyStatus>();
+    probes.generate.mockReturnValueOnce(slow.promise);
+    render(<SkyArtworkCreator initialDraft={null} onDraftChange={vi.fn()} onExplore={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Generate imaginary sky' }));
+    await waitFor(() => expect(probes.generate).toHaveBeenCalledTimes(1));
+    const invalidations = probes.invalidate.mock.calls.length;
+    fireEvent.change(screen.getByRole('textbox', { name: /^Title/ }), {
+      target: { value: 'A revised imaginary sky' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: /^A note to remember/ }), {
+      target: { value: 'First line\nsecond line' },
+    });
+    fireEvent.click(screen.getByRole('radio', { name: /Rose paper/ }));
+    expect(probes.invalidate).toHaveBeenCalledTimes(invalidations);
+    expect(
+      screen.getByText('Loading the real star catalog and calculating positions…'),
+    ).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Save PNG' })).toBeDisabled();
+    await act(async () => {
+      slow.resolve(readyStatus);
+      await slow.promise;
+    });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save PNG' })).toBeEnabled());
+    expect(probes.generate).toHaveBeenCalledTimes(1);
+    expect(probes.model.mock.lastCall?.[0]).toMatchObject({
+      title: 'A revised imaginary sky',
+      phrase: 'First line\nsecond line',
+      theme: 'paper',
+    });
+  });
+
   it('ignores an old snapshot that resolves after the user edits the time', async () => {
     const slow = pending<typeof readyStatus>();
     probes.generate.mockReturnValueOnce(slow.promise);

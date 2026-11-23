@@ -78,7 +78,7 @@ test('real HYG artwork, typography, PNG, same instant explorer and draft return'
     }),
   ).toEqual([1200, 1500, 255]);
   await page.getByLabel(/^Title/).fill('A fictional Sunday ✨');
-  await page.getByLabel(/^A note to remember/).fill('The stars remember a little imaginary miracle.');
+  await page.getByLabel(/^A note to remember/).fill('The stars remember\nan imaginary miracle.');
   await expect(page.getByText('Your image is ready to save, share or explore.')).toBeVisible({
     timeout: 45000,
   });
@@ -115,7 +115,7 @@ test('real HYG artwork, typography, PNG, same instant explorer and draft return'
   await expect(page.getByRole('button', { name: 'Change location, New York' })).toBeVisible();
   await expect(page.getByLabel(/^Title/)).toHaveValue('A fictional Sunday ✨');
   await expect(page.getByLabel(/^A note to remember/)).toHaveValue(
-    'The stars remember a little imaginary miracle.',
+    'The stars remember\nan imaginary miracle.',
   );
   await expect(page.getByRole('radio', { name: /Rose paper/ })).toBeChecked();
   await expect(page.getByRole('button', { name: 'Save PNG' })).toBeDisabled();
@@ -167,4 +167,39 @@ test('Chinese reference time and DST error retain their scientific meanings', as
     body: await page.screenshot({ animations: 'disabled' }),
     contentType: 'image/png',
   });
+});
+
+test('back to sky restores the shared URL, UTC, location and camera', async ({ page }) => {
+  const shared =
+    '/#sky=' +
+    encodeURIComponent(
+      JSON.stringify({
+        version: 1,
+        location: {
+          id: 'new-york',
+          name: 'New York',
+          country: 'United States',
+          latitude: 40.7128,
+          longitude: -74.006,
+          elevation: 10,
+          timezone: 'America/New_York',
+        },
+        instant: '2026-01-10T05:00:00.000Z',
+        camera: { heading: 180, altitude: 40, fov: 50 },
+        layers: { stars: true, lines: false, labels: true },
+        custom: null,
+        clearSky: true,
+      }),
+    );
+  await page.goto(shared);
+  await expect(page.getByRole('heading', { name: 'New York', exact: true })).toBeVisible();
+  await expect(page.getByRole('img', { name: /Facing S, 180 degrees/ })).toBeVisible();
+  const originalHash = new URL(page.url()).hash;
+  await page.getByRole('link', { name: 'Make my sky' }).click();
+  await expect(page.getByRole('heading', { name: 'The sky remembers' })).toBeVisible();
+  await expect(page).toHaveURL(/#create$/);
+  await page.getByRole('button', { name: 'Back to the sky' }).click();
+  await expect.poll(() => new URL(page.url()).hash).toBe(originalHash);
+  await expect(page.getByRole('heading', { name: 'New York', exact: true })).toBeVisible();
+  await expect(page.getByRole('img', { name: /Facing S, 180 degrees/ })).toBeVisible();
 });
