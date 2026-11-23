@@ -96,11 +96,7 @@ export function paintCloudField(
   offscreen.height = Math.max(8, Math.ceil(height / step));
   const image = c.createImageData(offscreen.width, offscreen.height);
   const pixels = image.data;
-  const base = mix(
-    mix(palette.cloudShadow, palette.cloudBody, 0.52),
-    light.underColour,
-    light.under * 0.3,
-  );
+  const base = mix(palette.cloudShadow, palette.cloudBody, 0.52);
   const phase = field.seed * 0.000001;
   let n = 0;
   for (let j = 0; j < offscreen.height; j++) {
