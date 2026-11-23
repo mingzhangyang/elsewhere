@@ -11,14 +11,14 @@ test('direct #create keeps explorer, weather, HYG and WebGL off the critical pat
     const monitor = { webgl: 0, weather: 0 };
     Object.defineProperty(window, '__creatorMonitor', { value: monitor });
     const original = HTMLCanvasElement.prototype.getContext;
-    HTMLCanvasElement.prototype.getContext = function (...args) {
+    HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, ...args) {
       if (args[0] === 'webgl' || args[0] === 'webgl2' || args[0] === 'experimental-webgl') {
         monitor.webgl += 1;
       }
       return Reflect.apply(original, this, args);
     } as typeof original;
     const originalFetch = window.fetch;
-    window.fetch = function (...args) {
+    window.fetch = function (this: Window, ...args) {
       if (String(args[0]).includes('open-meteo.com')) monitor.weather += 1;
       return Reflect.apply(originalFetch, this, args);
     } as typeof originalFetch;
