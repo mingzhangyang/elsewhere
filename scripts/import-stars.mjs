@@ -42,5 +42,17 @@ const rows = lines
     Number(s.pmdec),
   ])
   .sort((a, b) => a[4] - b[4] || a[0] - b[0]);
-await writeFile(new URL('../src/data/stars.json', import.meta.url), JSON.stringify(rows) + '\n');
+// Store identical IEEE-754 values in columns to improve gzip locality. A number only
+// becomes a scaled integer when division restores the exact original double; higher
+// precision values are kept as decimal strings (never rounded away).
+const scales = [1, 1, 1000000, 1000000, 100, 1000, 100, 100];
+const columns = scales.map((scale, column) =>
+  rows.map((row) => {
+    const value = row[column];
+    if (column < 2 || value === null) return value;
+    const integer = Math.round(value * scale);
+    return Number.isSafeInteger(integer) && Object.is(integer / scale, value) ? integer : String(value);
+  }),
+);
+await writeFile(new URL('../src/data/stars.json', import.meta.url), JSON.stringify(columns) + '\n');
 console.log(`${rows.length} HYG v4.1 stars, magnitude <= 6.0, J2000 epoch/equinox; CC BY-SA 4.0.`);

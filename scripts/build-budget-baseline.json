@@ -1,0 +1,30 @@
+{
+  "source": "PR #34 final successful CI artifact (caf927ea), merged as #34",
+  "commit": "1c08f8927f200e463ee163e67852c431e63b6457",
+  "totalGzip": 499872,
+  "startupGzip": 66585,
+  "largestRaw": 480520,
+  "byModule": {
+    "App.js": 20017,
+    "LocationPicker.js": 3860,
+    "MomentImage.js": 21173,
+    "SkyArtworkCreator.js": 6437,
+    "astronomy.js": 30554,
+    "createSkyRenderer.js": 16051,
+    "en.js": 7388,
+    "format.js": 395,
+    "index.esm.js": 44669,
+    "index.js": 55908,
+    "ridge.js": 225,
+    "skyArtwork.js": 2740,
+    "skyArtworkDelivery.js": 1045,
+    "skyArtworkExport.js": 2930,
+    "skyChart.js": 4323,
+    "skyChartSnapshot.js": 3870,
+    "starCatalog.js": 307,
+    "stars.json": 118266,
+    "three.js": 119764,
+    "tz.js": 29668,
+    "zh-Hans.js": 10282
+  }
+}
