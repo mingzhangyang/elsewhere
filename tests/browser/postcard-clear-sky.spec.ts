@@ -30,7 +30,8 @@ test('postcard defaults to Clear Sky without changing the explorer', async ({ pa
   await page.getByRole('button', { name: 'Share this sky' }).click();
   const dialog = page.getByRole('dialog', { name: 'Share this sky' });
   const originalLink = await dialog.getByRole('textbox', { name: 'Sky link' }).inputValue();
-  await dialog.getByRole('button', { name: 'Make an image' }).click();
+  // The modal starts generating automatically. Await controls from its lazy image module.
+  await expect(dialog.locator('.moment-preview-slot')).toBeVisible();
   const option = dialog.getByRole('checkbox', { name: /Clear Sky for image/ });
   await expect(option).toBeChecked();
 
@@ -96,7 +97,8 @@ test('painted clouds cover wind, rain, sunset and overcast', async ({ page }, in
     await page.goto('/?scenario=' + scenario);
     await page.getByRole('button', { name: 'Share this sky', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: 'Share this sky' });
-    await dialog.getByRole('button', { name: 'Make an image' }).click();
+    // A fixed-size preview is present before the asynchronous PNG completes.
+    await expect(dialog.locator('.moment-preview-slot')).toBeVisible();
 
     const clearSky = dialog.getByRole('checkbox', { name: /Clear Sky for image/ });
     await expect(clearSky).toBeChecked();

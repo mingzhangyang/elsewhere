@@ -84,7 +84,9 @@ test.describe('in Chinese', () => {
       await page.getByRole('button', { name: '关闭地点选择' }).click();
       await page.getByRole('button', { name: '分享这片天空', exact: true }).click();
       await check('share');
-      await page.getByRole('button', { name: '生成图片' }).click();
+      // The keepsake now renders automatically as the share modal opens.
+      const shareDialog = page.getByRole('dialog', { name: '分享这片天空' });
+      await expect(shareDialog.locator('.moment-preview-slot')).toBeVisible();
       await expect(page.getByRole('img', { name: '纽约上空的纪念图片' })).toBeVisible();
       await check('keepsake-image');
     });

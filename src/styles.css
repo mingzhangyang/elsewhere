@@ -1514,22 +1514,16 @@ dialog:not([open]) {
   height: 20px;
   accent-color: var(--gold);
 }
-.share-image-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  min-height: 320px;
-  padding: 28px;
-  border: 1px dashed #58718a;
-  border-radius: 12px;
-  background: radial-gradient(ellipse at 50% 25%, #24385482, transparent 75%), #0a1728;
-  color: #baccdd;
-  text-align: center;
+.share-image-controls {
+  margin-top: 26px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
 }
-.share-image-placeholder > svg {
-  color: var(--gold);
+.share-image-controls:empty {
+  min-height: 1px;
+}
+.share-link-panel .moment-options {
+  grid-template-columns: minmax(0, 1fr);
 }
 .share-image-panel .moment-image {
   margin: 0;
@@ -1588,6 +1582,14 @@ dialog:not([open]) {
   transition:
     opacity 350ms ease,
     filter 350ms ease;
+}
+.moment-preview-staged {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  visibility: hidden;
+  pointer-events: none;
 }
 .moment-preview[aria-hidden='true'] {
   opacity: 0.25;
@@ -1680,7 +1682,18 @@ dialog:not([open]) {
   flex: 1;
   text-decoration: none;
 }
-.share-image-panel .moment-actions a.secondary-button {
+/* Preserve the inline SVG mask without reformatting its data URI. */
+/* prettier-ignore */
+.moment-download-icon {
+  display: inline-block;
+  flex: 0 0 17px;
+  width: 17px;
+  height: 17px;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3Cpath d='M12 15V3'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3Cpath d='M12 15V3'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.share-link-panel .moment-actions a.secondary-button {
   border-color: #dfc39c80;
   background: var(--gold);
   color: #17202c;
@@ -1692,6 +1705,9 @@ dialog:not([open]) {
   }
   .share-link-panel {
     border-right: 0;
+  }
+  .share-image-panel {
+    order: -1;
     border-bottom: 1px solid var(--line);
   }
 }
@@ -1708,10 +1724,6 @@ dialog:not([open]) {
   }
   .moment-options {
     grid-template-columns: minmax(0, 1fr);
-  }
-  .share-image-placeholder {
-    min-height: 230px;
-    padding: 20px;
   }
 }
 .notice {

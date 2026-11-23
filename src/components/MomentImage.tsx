@@ -1,7 +1,8 @@
 import { landscapeSeason } from '../moment/seasons';
 import { loadLandscapeArt } from '../moment/landscapeArt';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Download, Share2 } from 'lucide-react';
+import { Share2 } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import type { MomentSnapshot } from '../lib/moment';
 import { momentImageSnapshot } from '../moment/imageWeather';
 import { momentImageCopy } from '../moment/imageCopy';
@@ -14,6 +15,8 @@ import { drawPostcard, FONT, MOMENT_STYLES, type MomentStyle } from '../moment/p
 import { HORIZON_VARIANTS, type HorizonVariant } from '../moment/scenery';
 import { getZonedParts } from '../domain/time';
 
+type PreviewImage = { url: string; blob: Blob };
+
 /**
  * The keepsake image in the share dialog (ROADMAP phase 3 prototype), loaded only when asked for.
  * Two variant pairs for the test sessions: realistic or illustrated, and the ridge or a scenery
@@ -23,14 +26,19 @@ export default function MomentImage({
   snapshot,
   capture,
   link,
+  controlsTarget,
 }: {
   snapshot: MomentSnapshot;
   capture: (options: SkyCaptureOptions) => SkyCapture | null;
   link: string;
+  controlsTarget?: HTMLElement | null;
 }) {
   const i18n = useI18n();
   const { m } = i18n;
   const copy = momentImageCopy[i18n.locale];
+  const place = isDeviceLocation(snapshot.location)
+    ? m.moment.devicePlace
+    : placeLabel(snapshot.location, i18n).name;
   const [style, setStyle] = useState<MomentStyle>('realistic');
   const [horizon, setHorizon] = useState<HorizonVariant>('ridge');
   const [clearSkyImage, setClearSkyImage] = useState(true);
@@ -38,23 +46,23 @@ export default function MomentImage({
     () => momentImageSnapshot(snapshot, clearSkyImage),
     [snapshot, clearSkyImage],
   );
-  const [image, setImage] = useState<{ url: string; blob: Blob } | null>(null);
-  const [failed, setFailed] = useState(false);
-  const [drawing, setDrawing] = useState(true);
+  const [image, setImage] = useState<PreviewImage | null>(null);
+  const [pendingImage, setPendingImage] = useState<PreviewImage | null>(null);
+  const [status, setStatus] = useState<'drawing' | 'failed' | 'ready'>('drawing');
   const request = useRef(0);
-  const shown = useRef<string | null>(null);
+  const pendingUrl = useRef<string | null>(null);
   const latest = useRef(capture);
   latest.current = capture;
-  const ready = !!image && !drawing && !failed;
+  const ready = !!image && status === 'ready';
   useEffect(() => {
     // Only the latest request is shown; a slower earlier one is discarded.
     const ticket = ++request.current;
-    setFailed(false);
+    // A superseded decode must never replace the visible bitmap or leak its object URL.
+    if (pendingUrl.current) URL.revokeObjectURL(pendingUrl.current);
+    pendingUrl.current = null;
+    setPendingImage(null);
     // Keep the previous image visible while the selected variant is redrawn.
-    setDrawing(true);
-    const place = isDeviceLocation(imageSnapshot.location)
-      ? m.moment.devicePlace
-      : placeLabel(imageSnapshot.location, i18n).name;
+    setStatus('drawing');
     const artwork =
       style === 'illustrated' && horizon !== 'ridge'
         ? loadLandscapeArt(
@@ -95,73 +103,68 @@ export default function MomentImage({
       .then(
         (blob) => {
           if (ticket !== request.current) return;
-          if (!blob) {
-            setDrawing(false);
-            return setFailed(true);
-          }
-          const oldUrl = shown.current;
+          if (!blob) return setStatus('failed');
           const url = URL.createObjectURL(blob);
-          shown.current = url;
-          setImage({ url, blob });
-          setDrawing(false);
-          if (oldUrl) URL.revokeObjectURL(oldUrl);
+          pendingUrl.current = url;
+          // toBlob is not image-ready: the staged <img> must load and decode first.
+          setPendingImage({ url, blob });
         },
         () => {
-          if (ticket === request.current) {
-            setDrawing(false);
-            setFailed(true);
-          }
+          if (ticket === request.current) setStatus('failed');
         },
       );
-  }, [imageSnapshot, style, horizon, clearSkyImage, i18n, m, copy]);
+  }, [imageSnapshot, style, horizon, clearSkyImage, i18n, m, copy, place]);
   useEffect(
     () => () => {
-      // Work still pending when the dialog closes is discarded before it allocates a URL.
       request.current++;
-      if (shown.current) URL.revokeObjectURL(shown.current);
-      shown.current = null;
+      if (pendingUrl.current) URL.revokeObjectURL(pendingUrl.current);
     },
     [],
   );
+  // The previous bitmap is released after React commits its decoded replacement.
+  useEffect(
+    () => () => {
+      if (image) URL.revokeObjectURL(image.url);
+    },
+    [image],
+  );
+
+  const finishPending = (candidate: PreviewImage, ok: boolean) => {
+    if (pendingUrl.current !== candidate.url) return;
+    pendingUrl.current = null;
+    setPendingImage(null);
+    setStatus(ok ? 'ready' : 'failed');
+    if (ok) setImage({ url: candidate.url, blob: candidate.blob });
+    else URL.revokeObjectURL(candidate.url);
+  };
+  const showPending = (candidate: PreviewImage, element: HTMLImageElement) => {
+    void Promise.resolve()
+      .then(() => element.decode?.())
+      .then(
+        () => finishPending(candidate, true),
+        () => finishPending(candidate, false),
+      );
+  };
 
   // The moment's own civil date, as printed on the image, not the UTC one.
   const date = getZonedParts(snapshot.instant, snapshot.location.timezone).date;
   const file =
     ready && image ? new File([image.blob], `elsewhere-sky-${date}.png`, { type: 'image/png' }) : null;
   const canSend = !!file && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] });
-  const place = isDeviceLocation(snapshot.location)
-    ? m.moment.devicePlace
-    : placeLabel(snapshot.location, i18n).name;
-  return (
-    <section className="moment-image" aria-labelledby="moment-title" style={{ fontFamily: FONT }}>
+  const controls = (
+    <div className="moment-image-controls" style={{ fontFamily: FONT }}>
       <h3 id="moment-title">{copy.section}</h3>
       <label className="moment-clear-sky">
         <input
           type="checkbox"
           checked={clearSkyImage}
           onChange={(event) => {
-            setDrawing(true);
+            setStatus('drawing');
             setClearSkyImage(event.target.checked);
           }}
         />
         {copy.clearSkyImage}
       </label>
-      <div className="moment-preview-slot" aria-busy={drawing}>
-        {image && (
-          <img
-            className="moment-preview"
-            src={image.url}
-            alt={m.moment.alt({ place })}
-            aria-hidden={!ready}
-          />
-        )}
-        {!ready && (
-          <div className="moment-preview-transition" role="status">
-            <span className="moment-preview-orbit" aria-hidden="true" />
-            {failed ? m.moment.failed : m.moment.drawing}
-          </div>
-        )}
-      </div>
       <div className="moment-options">
         <div role="group" aria-label={m.moment.style} className="segmented">
           {MOMENT_STYLES.map((value) => (
@@ -169,7 +172,7 @@ export default function MomentImage({
               key={value}
               aria-pressed={style === value}
               onClick={() => {
-                if (style !== value) setDrawing(true);
+                if (style !== value) setStatus('drawing');
                 setStyle(value);
               }}
             >
@@ -183,7 +186,7 @@ export default function MomentImage({
               key={value}
               aria-pressed={horizon === value}
               onClick={() => {
-                if (horizon !== value) setDrawing(true);
+                if (horizon !== value) setStatus('drawing');
                 setHorizon(value);
               }}
             >
@@ -195,7 +198,7 @@ export default function MomentImage({
       <div className="moment-actions">
         {ready && image && (
           <a className="secondary-button" href={image.url} download={file!.name}>
-            <Download size={17} />
+            <span className="moment-download-icon" aria-hidden="true" />
             {m.moment.save}
           </a>
         )}
@@ -207,6 +210,37 @@ export default function MomentImage({
             <Share2 size={17} />
             {m.moment.send}
           </button>
+        )}
+      </div>
+    </div>
+  );
+  return (
+    <section className="moment-image" aria-labelledby="moment-title" style={{ fontFamily: FONT }}>
+      {controlsTarget ? createPortal(controls, controlsTarget) : controls}
+      <div className="moment-preview-slot" aria-busy={status === 'drawing'}>
+        {image && (
+          <img
+            className="moment-preview"
+            src={image.url}
+            alt={m.moment.alt({ place })}
+            aria-hidden={!ready}
+          />
+        )}
+        {pendingImage && (
+          <img
+            className="moment-preview-staged"
+            src={pendingImage.url}
+            alt=""
+            aria-hidden="true"
+            onLoad={(event) => showPending(pendingImage, event.currentTarget)}
+            onError={() => finishPending(pendingImage, false)}
+          />
+        )}
+        {!ready && (
+          <div className="moment-preview-transition" role="status">
+            <span className="moment-preview-orbit" aria-hidden="true" />
+            {status === 'failed' ? m.moment.failed : m.moment.drawing}
+          </div>
         )}
       </div>
     </section>

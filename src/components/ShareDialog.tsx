@@ -1,5 +1,5 @@
 import { forwardRef, lazy, Suspense, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import { Check, ImageIcon, Share2, X } from 'lucide-react';
+import { Check, Share2, X } from 'lucide-react';
 import type { AppNotice } from '../types';
 import type { MomentSnapshot } from '../lib/moment';
 import type { SkyCapture, SkyCaptureOptions } from '../renderer/createSkyRenderer';
@@ -8,15 +8,17 @@ import { isDeviceLocation } from '../lib/locations';
 import { useI18n } from '../i18n';
 import { objectName } from '../i18n/names';
 
-// The keepsake image and its drawing code load only when someone asks for an image. A failed
-// download (offline, a replaced deployment) says so in the dialog rather than breaking the app.
+// Load the image drawing code when the share dialog opens, not on the main exploration screen.
+// An interrupted chunk download still leaves the dialog usable.
 const MomentImage = lazy(() => import('./MomentImage').catch(() => ({ default: MomentUnavailable })));
-function MomentUnavailable() {
+export function MomentUnavailable() {
   const { m } = useI18n();
   return (
-    <p className="form-status" role="status">
-      {m.moment.failed}
-    </p>
+    <div className="moment-preview-slot" aria-busy="false">
+      <div className="moment-preview-transition" role="status">
+        {m.moment.failed}
+      </div>
+    </div>
   );
 }
 
@@ -50,7 +52,7 @@ const ShareDialog = forwardRef<ShareDialogHandle, Props>(function ShareDialog(
   // The link last written to the clipboard: "Copied" shows only while it is the link on screen, so
   // unticking "exact location" after copying never leaves a precise link looking like the rounded one.
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
-  const [imageShown, setImageShown] = useState(false);
+  const controls = useRef<HTMLDivElement>(null);
   useImperativeHandle(
     ref,
     () => ({
@@ -58,7 +60,6 @@ const ShareDialog = forwardRef<ShareDialogHandle, Props>(function ShareDialog(
         setRequest(next);
         setPrecise(false);
         setCopiedLink(null);
-        setImageShown(false);
         dialog.current?.showModal();
       },
     }),
@@ -95,7 +96,12 @@ const ShareDialog = forwardRef<ShareDialogHandle, Props>(function ShareDialog(
     }
   };
   return (
-    <dialog ref={dialog} className="share-dialog" aria-labelledby="share-title">
+    <dialog
+      ref={dialog}
+      className="share-dialog"
+      aria-labelledby="share-title"
+      onClose={() => setRequest(null)}
+    >
       <div className="dialog-heading">
         <div>
           <p className="eyebrow">{m.share.eyebrow}</p>
@@ -144,28 +150,28 @@ const ShareDialog = forwardRef<ShareDialogHandle, Props>(function ShareDialog(
               </label>
             </div>
           )}
+          <div ref={controls} className="share-image-controls" />
         </section>
         <section className="share-image-panel">
-          {request &&
-            (imageShown ? (
-              <Suspense
-                fallback={
-                  <p className="form-status" role="status">
+          {request && (
+            <Suspense
+              fallback={
+                <div className="moment-preview-slot" aria-busy="true">
+                  <div className="moment-preview-transition" role="status">
+                    <span className="moment-preview-orbit" aria-hidden="true" />
                     {m.moment.drawing}
-                  </p>
-                }
-              >
-                <MomentImage snapshot={request.snapshot} capture={capture} link={link} />
-              </Suspense>
-            ) : (
-              <button
-                className="secondary-button share-image-placeholder"
-                onClick={() => setImageShown(true)}
-              >
-                <ImageIcon size={24} />
-                {m.moment.make}
-              </button>
-            ))}
+                  </div>
+                </div>
+              }
+            >
+              <MomentImage
+                snapshot={request.snapshot}
+                capture={capture}
+                link={link}
+                controlsTarget={controls.current}
+              />
+            </Suspense>
+          )}
         </section>
       </div>
     </dialog>

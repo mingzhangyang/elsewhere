@@ -114,76 +114,65 @@ export function drawPostcard({
   const ink = '#1d2433',
     soft = '#4a5468',
     faint = '#6b7385';
+  const line = (text: string, size = 26, weight = 500, colour = ink, gap = 8): TextLine => ({
+    text,
+    size,
+    weight,
+    colour,
+    gap,
+  });
   const lines: TextLine[] = [
-    { text: place.name, size: 56, weight: 700, colour: ink, gap: 8 },
-    ...(place.country ? [{ text: place.country, size: 26, weight: 500, colour: soft, gap: 14 }] : []),
-    {
-      text:
-        m.moment.when({
-          date: m.f.date(instant, zone),
-          time: m.f.time(instant, zone),
-          zone: m.f.zone(zone, instant),
-        }) + (style === 'illustrated' ? ` · ${m.moment.illustration}` : ''),
-      size: 28,
-      weight: 600,
-      colour: ink,
-      gap: 22,
-    },
+    line(place.name, 56, 700),
+    ...(place.country ? [line(place.country, 26, 500, soft, 14)] : []),
+    line(
+      m.moment.when({
+        date: m.f.date(instant, zone),
+        time: m.f.time(instant, zone),
+        zone: m.f.zone(zone, instant),
+      }) + (style === 'illustrated' ? ` · ${m.moment.illustration}` : ''),
+      28,
+      600,
+      ink,
+      22,
+    ),
     ...(snapshot.provenance.kind === 'clear'
-      ? [
-          {
-            text: momentImageCopy[i18n.locale].clearSkyBadge,
-            size: 25,
-            weight: 700,
-            colour: '#335b73',
-            gap: 16,
-          },
-        ]
+      ? [line(momentImageCopy[i18n.locale].clearSkyBadge, 25, 700, '#335b73', 16)]
       : []),
-    {
-      text: subjectName
+    line(
+      subjectName
         ? m.moment.subject({ name: subjectName, direction, degrees: heading })
         : m.moment.facing({ direction, degrees: heading }),
-      size: 26,
-      weight: 500,
-      colour: ink,
-      gap: 8,
-    },
-    {
-      text: m.moment.moon({
+    ),
+    line(
+      m.moment.moon({
         phase: m.phases[sky.moon.phase],
         illumination: sky.moon.illumination * 100,
         up: sky.moon.visible,
       }),
-      size: 26,
-      weight: 500,
-      colour: ink,
-      gap: 8,
-    },
-    {
-      text:
-        snapshot.provenance.kind === 'none'
-          ? m.moment.noWeather
-          : m.moment.conditions({
-              condition: weatherDescription(snapshot.weather.weatherCode, m),
-              cloud: snapshot.weather.cloudCover,
-            }),
-      size: 26,
-      weight: 500,
-      colour: ink,
-      gap: 22,
-    },
-    {
-      text: m.moment.sentences([
+    ),
+    line(
+      snapshot.provenance.kind === 'none'
+        ? m.moment.noWeather
+        : m.moment.conditions({
+            condition: weatherDescription(snapshot.weather.weatherCode, m),
+            cloud: snapshot.weather.cloudCover,
+          }),
+      26,
+      500,
+      ink,
+      22,
+    ),
+    line(
+      m.moment.sentences([
         m.moment.provenance(snapshot.provenance),
         m.moment.method({ illustrated: style === 'illustrated' }),
       ]),
-      size: 20,
-      weight: 400,
-      colour: soft,
-      gap: 10,
-    },
-    { text: m.moment.attribution, size: 19, weight: 400, colour: faint, gap: 0 },
+      20,
+      400,
+      soft,
+      10,
+    ),
+    line(m.moment.attribution, 19, 400, faint, 0),
   ];
   const canvas = document.createElement('canvas');
   canvas.width = width;
