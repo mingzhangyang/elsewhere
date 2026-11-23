@@ -168,6 +168,8 @@ export function createCelestialLayers(
     ...labels.map((entry) => entry.sprite),
     ...patterns.map((p) => p.label),
   ];
+  // UI text goes above clouds (20) but retains depth testing; rain renders at 30.
+  for (const sprite of sprites) sprite.renderOrder = 21;
   const world = new THREE.Vector3();
   const projected = new THREE.Vector3();
   /**

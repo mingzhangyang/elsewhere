@@ -789,7 +789,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
 
         celestialLayers.update(
           nextSky.stars,
-          flags,
+          { ...flags, labels: flags.labels && nextWeather.cloudCover < 100 },
           nightVisibility * visibilityFactor,
           nextSky.planets.map((planet, i) => ({
             altitude: planet.altitude,

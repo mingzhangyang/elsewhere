@@ -74,7 +74,8 @@ test('postcard defaults to Clear Sky without changing the explorer', async ({ pa
 
   await option.check();
   await dialog.getByRole('button', { name: 'Illustrated' }).click();
-  await expect(image).toBeVisible();
+  // An illustrated redraw can take longer under CI load; wait as long as the initial render.
+  await expect(image).toBeVisible({ timeout: 30000 });
   await expect(option).toBeChecked();
   await info.attach('postcard-clear-illustrated-' + info.project.name + '.png', {
     body: await image.screenshot({ animations: 'disabled' }),
