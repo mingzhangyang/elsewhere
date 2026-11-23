@@ -238,3 +238,16 @@ Nonblocking warnings start at total gzip > 480,000 B or largest raw chunk
 > 480,000 B; growth over 5,000 B from the recorded baseline is also warned.
 Re-baseline only after documenting and reviewing actual production output changes.
 
+### Lossless star catalog packaging (#35)
+
+\`src/data/stars.json\` retains all **5,070** HYG v4.1 stars (347 named), in the
+original magnitude order. The import script now writes eight columns instead of
+5,070 row arrays. Decimal numbers are stored as scaled integers **only if** the
+full JavaScript double round-trips exactly; coordinates needing eight decimal
+places remain decimal strings. The browser fetches the hashed JSON asset and
+decodes the columns before the existing retryable catalog installation. Its
+network, offline cache, star identifiers, astrometry and reference fixtures
+are unchanged. \`tests/starCatalogEncoding.test.ts\` compares the SHA-256 of
+the complete decoded row-major catalog to the pre-optimization source digest
+\`0d079f39f6ae31ead9dd9968d8974801266934272b7013f4fe7b3baf83c1e172\`.
+

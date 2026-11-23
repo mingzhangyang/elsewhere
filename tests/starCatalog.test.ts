@@ -1,8 +1,10 @@
 import { readFile } from 'node:fs/promises';
 import { expect, it, vi } from 'vitest';
 import type { CatalogRow } from '../src/domain/stars';
+import { decodeStarColumns } from '../src/domain/starCatalogEncoding';
 
-const rows = async (): Promise<CatalogRow[]> => JSON.parse(await readFile('src/data/stars.json', 'utf8'));
+const rows = async (): Promise<CatalogRow[]> =>
+  decodeStarColumns(JSON.parse(await readFile('src/data/stars.json', 'utf8')));
 
 // A fresh module: the shared test setup has already installed the catalog in the usual one.
 it('starts over after a failed download or a catalog that cannot be installed', async () => {

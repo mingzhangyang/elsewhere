@@ -1,5 +1,6 @@
 import catalogUrl from '../data/stars.json?url';
 import { loadStarCatalog, type CatalogRow } from '../domain/stars';
+import { decodeStarColumns } from '../domain/starCatalogEncoding';
 
 /**
  * The catalog is fetched as data rather than imported as a module: browsers may remember a failed
@@ -9,9 +10,7 @@ import { loadStarCatalog, type CatalogRow } from '../domain/stars';
 export async function fetchStarCatalog(): Promise<CatalogRow[]> {
   const response = await fetch(catalogUrl);
   if (!response.ok) throw new Error(`Star catalog request failed (${response.status}).`);
-  const rows: unknown = await response.json();
-  if (!Array.isArray(rows) || !rows.length) throw new Error('Star catalog is empty or invalid.');
-  return rows as CatalogRow[];
+  return decodeStarColumns(await response.json());
 }
 
 export const loadStars = () => loadStarCatalog(fetchStarCatalog);

@@ -15,7 +15,7 @@ export interface CatalogStar {
   pmra: number;
   pmdec: number;
 }
-/** One HYG row as stored in src/data/stars.json. */
+/** One decoded HYG row; the shipped JSON stores exactly the same values column-wise. */
 export type CatalogRow = (string | number | null)[];
 
 /** The line patterns drawn on the sky; the interface names them in its language. */
@@ -28,7 +28,7 @@ export interface Constellation {
 }
 
 /**
- * The catalog is about 120 kB compressed, so it loads after the first screen rather than before it.
+ * The catalog is about 96 kB compressed, so it loads after the first screen rather than before it.
  * Until `loadStarCatalog()` resolves, these are empty and the sky shows the Sun and Moon only. They
  * are live bindings: importers see the catalog once it arrives.
  */
