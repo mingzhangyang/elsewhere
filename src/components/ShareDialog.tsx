@@ -106,8 +106,7 @@ const ShareDialog = forwardRef<ShareDialogHandle, Props>(function ShareDialog(
         </button>
       </div>
       <div className="share-layout">
-        <section className="share-link-panel" aria-labelledby="share-link-title">
-          <h3 id="share-link-title">{m.share.field}</h3>
+        <section className="share-link-panel" aria-label={m.share.field}>
           <p className="share-description">
             {m.moment.sentences([
               m.share.includes({ focus: subjectName, customWeather: includesCustomWeather }),
@@ -144,16 +143,13 @@ const ShareDialog = forwardRef<ShareDialogHandle, Props>(function ShareDialog(
             (imageShown ? (
               <Suspense
                 fallback={
-                  <div className="share-image-placeholder" role="status">
-                    {m.moment.drawing}
-                  </div>
+                  <p className="form-status" role="status">{m.moment.drawing}</p>
                 }
               >
                 <MomentImage snapshot={request.snapshot} capture={capture} link={link} />
               </Suspense>
             ) : (
               <div className="share-image-placeholder">
-                <ImageIcon size={36} aria-hidden="true" />
                 <button className="secondary-button moment-make" onClick={() => setImageShown(true)}>
                   <ImageIcon size={17} />
                   {m.moment.make}
