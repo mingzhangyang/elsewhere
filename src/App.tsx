@@ -60,21 +60,27 @@ import {
 import type { RenderStats } from './renderer/performance';
 import { currentLanguage, resolveLocale, setLanguage, useI18n, type LanguageSetting } from './i18n';
 import { objectName, placeLabel } from './i18n/names';
+import { memorialMessages } from './i18n/memorial';
 
 export interface AppProps {
   initialLocation?: LocationInfo;
   initialTime?: Date;
   weatherLoader?: typeof fetchWeatherForDate;
   diagnostics?: boolean;
+  onCreate?: () => void;
+  onReturnToCreator?: () => void;
 }
 export default function App({
   initialLocation,
   initialTime,
   weatherLoader = fetchWeatherForDate,
   diagnostics = false,
+  onCreate,
+  onReturnToCreator,
 }: AppProps) {
   const i18n = useI18n();
   const { m } = i18n;
+  const creatorText = memorialMessages(i18n.locale);
   const [launch] = useState(() => ({
     preferences: loadPreferences(),
     shared:
@@ -426,6 +432,28 @@ export default function App({
             {!clearSky && !custom && !selection.values ? m.atmosphere.neutral : ''}
             <ArrowUpRight size={13} />
           </button>
+          <div className="sky-create-actions">
+            {onReturnToCreator ? (
+              <button className="sky-create-link" type="button" onClick={onReturnToCreator}>
+                <Sparkles size={17} aria-hidden="true" />
+                {creatorText.returnToArtwork}
+              </button>
+            ) : (
+              <a
+                className="sky-create-link"
+                href="#create"
+                onClick={(event) => {
+                  if (onCreate) {
+                    event.preventDefault();
+                    onCreate();
+                  }
+                }}
+              >
+                <Sparkles size={17} aria-hidden="true" />
+                {creatorText.createEntry}
+              </a>
+            )}
+          </div>
           {/* Only when no panel or object card already offers its own Restore button. */}
           {clearSky && !panel && !focusedVisibility && (
             <button className="restore-atmosphere" onClick={() => setClearSky(false)}>
