@@ -34,7 +34,10 @@ export default function MomentImage({
   const [style, setStyle] = useState<MomentStyle>('realistic');
   const [horizon, setHorizon] = useState<HorizonVariant>('ridge');
   const [clearSkyImage, setClearSkyImage] = useState(true);
-  const imageSnapshot = useMemo(() => momentImageSnapshot(snapshot, clearSkyImage), [snapshot, clearSkyImage]);
+  const imageSnapshot = useMemo(
+    () => momentImageSnapshot(snapshot, clearSkyImage),
+    [snapshot, clearSkyImage],
+  );
   const [image, setImage] = useState<{ url: string; blob: Blob } | null>(null);
   const [failed, setFailed] = useState(false);
   const request = useRef(0);
@@ -62,7 +65,12 @@ export default function MomentImage({
             imageSnapshot.sky.sun.azimuth,
           )
         : null;
-    Promise.all([labelFontReady(place + m.moment.attribution + copy.clearSkyBadge + m.phases[imageSnapshot.sky.moon.phase]), artwork])
+    Promise.all([
+      labelFontReady(
+        place + m.moment.attribution + copy.clearSkyBadge + m.phases[imageSnapshot.sky.moon.phase],
+      ),
+      artwork,
+    ])
       .then(
         ([, landscapeArt]) =>
           new Promise<Blob | null>((resolve) => {

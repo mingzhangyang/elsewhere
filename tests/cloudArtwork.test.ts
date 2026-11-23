@@ -15,26 +15,43 @@ const light: CloudLight = {
 function recordingCanvas() {
   const operations: string[] = [];
   let depth = 0;
-  const canvas = new Proxy({}, {
-    get: (_target, name) => {
-      if (name === 'createLinearGradient' || name === 'createRadialGradient')
-        return () => {
-          operations.push(String(name));
-          return { addColorStop: (at: number, color: string) => operations.push('stop:' + at + ':' + color) };
+  const canvas = new Proxy(
+    {},
+    {
+      get: (_target, name) => {
+        if (name === 'createLinearGradient' || name === 'createRadialGradient')
+          return () => {
+            operations.push(String(name));
+            return {
+              addColorStop: (at: number, color: string) => operations.push('stop:' + at + ':' + color),
+            };
+          };
+        if (name === 'save')
+          return () => {
+            depth++;
+            operations.push('save');
+          };
+        if (name === 'restore')
+          return () => {
+            depth--;
+            operations.push('restore');
+          };
+        return (...args: unknown[]) => {
+          operations.push(
+            String(name) +
+              ':' +
+              args
+                .map((a) => (typeof a === 'number' ? a.toFixed(3) : String(a)))
+                .join(','),
+          );
         };
-      if (name === 'save')
-        return () => { depth++; operations.push('save'); };
-      if (name === 'restore')
-        return () => { depth--; operations.push('restore'); };
-      return (...args: unknown[]) => {
-        operations.push(String(name) + ':' + args.map((a) => typeof a === 'number' ? a.toFixed(3) : String(a)).join(','));
-      };
+      },
+      set: (_target, name, value) => {
+        operations.push(String(name) + '=' + String(value));
+        return true;
+      },
     },
-    set: (_target, name, value) => {
-      operations.push(String(name) + '=' + String(value));
-      return true;
-    },
-  }) as CanvasRenderingContext2D;
+  ) as CanvasRenderingContext2D;
   return { canvas, operations, stackDepth: () => depth };
 }
 

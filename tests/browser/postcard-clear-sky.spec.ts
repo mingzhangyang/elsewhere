@@ -5,7 +5,7 @@ import { expect, test } from '@playwright/test';
  * The full overcast sky is intentionally unsuitable for an attractive postcard.
  * The saved image gets a clear-only override; the explorer stays overcast.
  */
-test('postcard defaults to clear weather in both styles without changing the explorer', async ({ page }, info) => {
+test('postcard defaults to Clear Sky without changing the explorer', async ({ page }, info) => {
   test.setTimeout(90000);
   await page.addInitScript(() => {
     const labels: string[] = [];
@@ -35,21 +35,25 @@ test('postcard defaults to clear weather in both styles without changing the exp
   await expect(option).toBeChecked();
   const image = dialog.getByRole('img', { name: /Keepsake image of the sky over/ });
   await expect(image).toBeVisible({ timeout: 30000 });
-  await expect.poll(async () => page.evaluate(() =>
-    (window as unknown as { __postcardClearLabels: string[] }).__postcardClearLabels.length,
-  )).toBeGreaterThan(0);
-  const signature = async () => image.evaluate(async (element: HTMLImageElement) => {
-    await element.decode();
-    const canvas = document.createElement('canvas');
-    canvas.width = 80;
-    canvas.height = 80;
-    const context = canvas.getContext('2d')!;
-    context.drawImage(element, 0, 0, element.naturalWidth, 650, 0, 0, 80, 80);
-    const data = context.getImageData(0, 0, 80, 80).data;
-    let sum = 0;
-    for (let i = 0; i < data.length; i += 4) sum += data[i] + data[i + 1] + data[i + 2];
-    return { sum, src: element.src };
-  });
+  const labelCount = () =>
+    page.evaluate(
+      () => (window as unknown as { __postcardClearLabels: string[] }).__postcardClearLabels.length,
+    );
+  await expect.poll(labelCount).toBeGreaterThan(0);
+  const signature = async () => {
+    return image.evaluate(async (element: HTMLImageElement) => {
+      await element.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = 80;
+      canvas.height = 80;
+      const context = canvas.getContext('2d')!;
+      context.drawImage(element, 0, 0, element.naturalWidth, 650, 0, 0, 80, 80);
+      const data = context.getImageData(0, 0, 80, 80).data;
+      let sum = 0;
+      for (let i = 0; i < data.length; i += 4) sum += data[i] + data[i + 1] + data[i + 2];
+      return { sum, src: element.src };
+    });
+  };
   const clear = await signature();
   await info.attach('postcard-clear-realistic-' + info.project.name + '.png', {
     body: await image.screenshot({ animations: 'disabled' }),
@@ -79,12 +83,11 @@ test('postcard defaults to clear weather in both styles without changing the exp
   expect(await source.innerText()).toBe(originalSource);
 });
 
-
 /**
  * Real, non-mocked watercolor postcard evidence with clear mode deliberately disabled.
  * Weather is synthetic and fictional; test images are not claims about historical weather.
  */
-test('cloudy illustration stays a layered painting across overcast, wind, rain and sunset', async ({ page }, info) => {
+test('painted clouds cover wind, rain, sunset and overcast', async ({ page }, info) => {
   test.setTimeout(120000);
   for (const scenario of ['windy', 'overcast', 'sunset', 'rain']) {
     await page.goto('/?scenario=' + scenario);

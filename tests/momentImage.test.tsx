@@ -8,7 +8,12 @@ import type { SkyCaptureOptions } from '../src/renderer/createSkyRenderer';
 import { defaultWeatherValues } from '../src/domain/weather';
 
 // PNG encoding is held until each test releases it, to force slow and out-of-order results.
-const postcardInputs = vi.hoisted(() => [] as { style: string; weather: { cloudCover: number; precipitation: number }; provenance: string }[]);
+type PostcardInputRecord = {
+  style: string;
+  weather: { cloudCover: number; precipitation: number };
+  provenance: string;
+};
+const postcardInputs = vi.hoisted(() => [] as PostcardInputRecord[]);
 const pending: ((blob: Blob | null) => void)[] = [];
 vi.mock('../src/moment/postcard', () => ({
   FONT: 'sans-serif',
@@ -16,7 +21,10 @@ vi.mock('../src/moment/postcard', () => ({
   drawPostcard: (options: { style: string; snapshot: MomentSnapshot }) => {
     postcardInputs.push({
       style: options.style,
-      weather: { cloudCover: options.snapshot.weather.cloudCover, precipitation: options.snapshot.weather.precipitation },
+      weather: {
+        cloudCover: options.snapshot.weather.cloudCover,
+        precipitation: options.snapshot.weather.precipitation,
+      },
       provenance: options.snapshot.provenance.kind,
     });
     return { toBlob: (done: (blob: Blob | null) => void) => pending.push(done) };
@@ -92,7 +100,7 @@ it('allocates nothing for an image that finishes after the dialog closed', async
   expect(created).toEqual([]);
 });
 
-it('defaults both captured and illustrated postcards to Clear Sky, without modifying the source weather', async () => {
+it('uses Clear Sky in both styles without modifying source weather', async () => {
   const captured: SkyCaptureOptions[] = [];
   const captureWeather = (options: SkyCaptureOptions) => {
     captured.push(options);
@@ -102,7 +110,11 @@ it('defaults both captured and illustrated postcards to Clear Sky, without modif
   const clear = screen.getByRole('checkbox', { name: /Clear Sky for image/ });
   expect(clear).toBeChecked();
   await settle();
-  expect(postcardInputs[0]).toMatchObject({ style: 'realistic', weather: { cloudCover: 0, precipitation: 0 }, provenance: 'clear' });
+  expect(postcardInputs[0]).toMatchObject({
+    style: 'realistic',
+    weather: { cloudCover: 0, precipitation: 0 },
+    provenance: 'clear',
+  });
   expect(captured[0].weather).toMatchObject({ cloudCover: 0, precipitation: 0, weatherCode: 0 });
   // Source data is untouched even though the preview and the renderer capture use clear conditions.
   expect(snapshot.weather.cloudCover).toBe(95);
@@ -111,12 +123,20 @@ it('defaults both captured and illustrated postcards to Clear Sky, without modif
 
   fireEvent.click(screen.getByRole('button', { name: 'Illustrated' }));
   await settle();
-  expect(postcardInputs[1]).toMatchObject({ style: 'illustrated', weather: { cloudCover: 0 }, provenance: 'clear' });
+  expect(postcardInputs[1]).toMatchObject({
+    style: 'illustrated',
+    weather: { cloudCover: 0 },
+    provenance: 'clear',
+  });
 
   fireEvent.click(clear);
   await settle();
   expect(clear).not.toBeChecked();
-  expect(postcardInputs[2]).toMatchObject({ style: 'illustrated', weather: { cloudCover: 95, precipitation: 3 }, provenance: 'source' });
+  expect(postcardInputs[2]).toMatchObject({
+    style: 'illustrated',
+    weather: { cloudCover: 95, precipitation: 3 },
+    provenance: 'source',
+  });
   fireEvent.click(screen.getByRole('button', { name: 'Realistic' }));
   await settle();
   expect(captured.at(-1)?.weather).toBeUndefined();

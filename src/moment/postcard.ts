@@ -137,7 +137,15 @@ export function drawPostcard({
       gap: 22,
     },
     ...(snapshot.provenance.kind === 'clear'
-      ? [{ text: momentImageCopy[i18n.locale].clearSkyBadge, size: 25, weight: 700, colour: '#335b73', gap: 16 }]
+      ? [
+          {
+            text: momentImageCopy[i18n.locale].clearSkyBadge,
+            size: 25,
+            weight: 700,
+            colour: '#335b73',
+            gap: 16,
+          },
+        ]
       : []),
     {
       text: subjectName
