@@ -7,7 +7,7 @@ import {
   rasterCloudOpacity,
   sampleCloudField,
 } from '../src/moment/cloudField';
-import { paletteFor } from '../src/moment/paint';
+import { blob, mark, noise1, paletteFor } from '../src/moment/paint';
 import type { CloudLight } from '../src/moment/clouds';
 
 const light: CloudLight = {
@@ -60,6 +60,40 @@ function recordingCanvas() {
 const palette = paletteFor(-5, 0.9);
 
 describe('illustrated postcard watercolor cloud treatment', () => {
+  it('keeps brush paths deterministic without temporary midpoint or affine arrays', () => {
+    const a = recordingCanvas();
+    const b = recordingCanvas();
+    blob(a.canvas, 100, 90, 25, 17, seededRandom(2026), 0.22, 9);
+    blob(b.canvas, 100, 90, 25, 17, seededRandom(2026), 0.22, 9);
+    expect(a.operations).toEqual(b.operations);
+    expect(a.operations.filter((op) => op.startsWith('quadraticCurveTo:'))).toHaveLength(9);
+
+    const x = 100;
+    const y = 75;
+    const length = 30;
+    const thickness = 3;
+    const angle = Math.PI / 5;
+    const bow = -2;
+    const c = Math.cos(angle);
+    const sine = Math.sin(angle);
+    const half = length / 2;
+    const at = (u: number, v: number) => [x + u * c - v * sine, y + u * sine + v * c];
+    const p = recordingCanvas();
+    mark(p.canvas, x, y, length, thickness, angle, bow);
+    const formatted = (...values: number[]) => values.map((value) => value.toFixed(3)).join(',');
+    expect(p.operations).toEqual([
+      'moveTo:' + formatted(...at(-half, 0)),
+      'quadraticCurveTo:' + formatted(...at(0, bow - thickness), ...at(half, 0)),
+      'quadraticCurveTo:' + formatted(...at(0, bow + thickness), ...at(-half, 0)),
+    ]);
+  });
+
+  it('uses modulo-equivalent, branchless seeded noise across negative inputs', () => {
+    const noise = noise1(163);
+    for (const x of [-1000.25, -256.5, -1.75, 0.5, 255.25, 1000.75])
+      expect(noise(x)).toBeCloseTo(noise(x + 256), 10);
+  });
+
   it('uses deterministic feathered pigment rather than a sharp summit silhouette', () => {
     const first = createCloudField(seededRandom(2026), 2);
     const second = createCloudField(seededRandom(2026), 2);

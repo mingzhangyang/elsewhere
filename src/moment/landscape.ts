@@ -113,13 +113,15 @@ function landLayer(scene: LandScene, points: Point[], tone: LayerTone, random: (
   ctx.clip();
   // Slopes: ground that falls away toward the light is lit, ground that falls the other way is
   // shaded. Each stretch of the crest gets its own strength, so the light swells and fades along it.
-  const slopeAt = (i: number) => {
+  // Glazes revisit each segment 24 times; precompute slope once per point rather than
+  // dividing and looking up neighbors for each threshold pass.
+  const slopes = points.map((_, i) => {
     const a = points[Math.max(0, i - 2)],
       b = points[Math.min(points.length - 1, i + 3)];
     return ((b.y - a.y) / Math.max(1, b.x - a.x)) * lightX;
-  };
-  const facing = (i: number) => clamp01((slopeAt(i) + 0.03) * 4.5);
-  const away = (i: number) => clamp01((-slopeAt(i) - 0.03) * 4.5);
+  });
+  const facing = (i: number) => clamp01((slopes[i] + 0.03) * 4.5);
+  const away = (i: number) => clamp01((-slopes[i] - 0.03) * 4.5);
   for (const [pick, colour, alpha] of [
     [away, tone.shade, 0.5],
     [facing, tone.light, tone.lightAlpha],
