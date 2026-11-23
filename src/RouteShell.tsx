@@ -71,9 +71,7 @@ export default function RouteShell({ diagnostics = false }: { diagnostics?: bool
 
   const openExplorer = useCallback((event?: MemorialTime) => {
     const previous = event ? null : priorExplorer.current;
-    const nextHandoff = event
-      ? { location: event.location, utc: event.utc }
-      : (previous?.handoff ?? null);
+    const nextHandoff = event ? { location: event.location, utc: event.utc } : (previous?.handoff ?? null);
     setHandoff(nextHandoff);
     // Restore an existing shared URL unchanged; a newly created moment remains
     // memory-only and is never serialized into history.state or the URL.

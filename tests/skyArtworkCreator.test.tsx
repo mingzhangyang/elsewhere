@@ -178,9 +178,7 @@ describe('SM3-C creator state and resource ownership', () => {
     });
     fireEvent.click(screen.getByRole('radio', { name: /Rose paper/ }));
     expect(probes.invalidate).toHaveBeenCalledTimes(invalidations);
-    expect(
-      screen.getByText('Loading the real star catalog and calculating positions…'),
-    ).toBeVisible();
+    expect(screen.getByText('Loading the real star catalog and calculating positions…')).toBeVisible();
     expect(screen.getByRole('button', { name: 'Save PNG' })).toBeDisabled();
     await act(async () => {
       slow.resolve(readyStatus);
