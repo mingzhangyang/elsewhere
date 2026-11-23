@@ -65,9 +65,7 @@ describe('illustrated postcard watercolor cloud treatment', () => {
     expect(sampleCloudField(first, 0, -0.65)).toBeGreaterThan(0.55);
     expect(sampleCloudField(first, -2.33, -1.9)).toBeLessThan(0.01);
     expect(sampleCloudField(first, 2.33, 0.64)).toBeLessThan(0.01);
-    const samples = Array.from({ length: 30 }, (_, i) =>
-      sampleCloudField(first, -2.1 + i * 0.14, -0.8),
-    );
+    const samples = Array.from({ length: 30 }, (_, i) => sampleCloudField(first, -2.1 + i * 0.14, -0.8));
     expect(new Set(samples.map((a) => a.toFixed(3))).size).toBeGreaterThan(15);
     expect(samples.every((alpha) => Number.isFinite(alpha) && alpha >= 0 && alpha <= 1)).toBe(true);
   });

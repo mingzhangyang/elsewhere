@@ -105,9 +105,7 @@ export function paintCloudField(
       const u = -2.33 + (i + 0.5) * (4.66 / offscreen.width);
       const opacity = sampleCloudField(field, u, v);
       const pigment = wash(u * 0.9, v * 0.9, phase);
-      const lit = clamp01(
-        0.42 - v * 0.21 - u * light.x * 0.1 + pigment * 0.18 - light.backlit * 0.12,
-      );
+      const lit = clamp01(0.42 - v * 0.21 - u * light.x * 0.1 + pigment * 0.18 - light.backlit * 0.12);
       for (let ch = 0; ch < 3; ch++) {
         pixels[n++] = lerp(base[ch], palette.cloudLight[ch], lit);
       }
