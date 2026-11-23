@@ -1,8 +1,21 @@
 import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 
 const require = createRequire(import.meta.url);
+const filename = 'tests/browser/sky-artwork-export.spec.ts';
+const formatter = spawnSync(
+  process.execPath,
+  [join(dirname(require.resolve('prettier/package.json')), 'bin/prettier.cjs'), '--write', filename],
+  { stdio: 'inherit' },
+);
+if (formatter.status !== 0) process.exit(formatter.status ?? 1);
+const encoded = Buffer.from(readFileSync(filename)).toString('base64');
+for (let index = 0; index < encoded.length; index += 1024) {
+  console.log('SM3B-LAST-FMT|' + index + '|' + encoded.slice(index, index + 1024));
+}
+process.exit(1); // Temporary formatter probe; restored in final commit.
 const notices = spawnSync(process.execPath, ['scripts/generate-notices.mjs', '--check'], {
   stdio: 'inherit',
 });
