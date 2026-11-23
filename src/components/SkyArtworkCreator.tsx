@@ -214,7 +214,7 @@ export default function SkyArtworkCreator({
     stage === 'ready' &&
     ready.revision === revision.current &&
     ready.artwork.locale === locale &&
-    ready.artwork.theme === draft.theme &&
+    ready.artwork.theme === draft.theme
       ? ready
       : null;
   const showPreview = previewRevision === revision.current && science !== null;
