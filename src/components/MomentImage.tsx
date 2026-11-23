@@ -40,19 +40,18 @@ export default function MomentImage({
   );
   const [image, setImage] = useState<{ url: string; blob: Blob } | null>(null);
   const [failed, setFailed] = useState(false);
+  const [drawing, setDrawing] = useState(true);
   const request = useRef(0);
   const shown = useRef<string | null>(null);
   const latest = useRef(capture);
   latest.current = capture;
+  const ready = !!image && !drawing && !failed;
   useEffect(() => {
     // Only the latest request is shown; a slower earlier one is discarded.
     const ticket = ++request.current;
     setFailed(false);
-    // The previous image goes at once: it no longer matches the choices shown, and must not be saved
-    // or sent as if it did.
-    if (shown.current) URL.revokeObjectURL(shown.current);
-    shown.current = null;
-    setImage(null);
+    // Keep the previous image visible while the selected variant is redrawn.
+    setDrawing(true);
     const place = isDeviceLocation(imageSnapshot.location)
       ? m.moment.devicePlace
       : placeLabel(imageSnapshot.location, i18n).name;
@@ -96,12 +95,23 @@ export default function MomentImage({
       .then(
         (blob) => {
           if (ticket !== request.current) return;
-          if (!blob) return setFailed(true);
+          if (!blob) {
+            setDrawing(false);
+            return setFailed(true);
+          }
+          const oldUrl = shown.current;
           const url = URL.createObjectURL(blob);
           shown.current = url;
           setImage({ url, blob });
+          setDrawing(false);
+          if (oldUrl) URL.revokeObjectURL(oldUrl);
         },
-        () => ticket === request.current && setFailed(true),
+        () => {
+          if (ticket === request.current) {
+            setDrawing(false);
+            setFailed(true);
+          }
+        },
       );
   }, [imageSnapshot, style, horizon, clearSkyImage, i18n, m, copy]);
   useEffect(
@@ -116,7 +126,8 @@ export default function MomentImage({
 
   // The moment's own civil date, as printed on the image, not the UTC one.
   const date = getZonedParts(snapshot.instant, snapshot.location.timezone).date;
-  const file = image && new File([image.blob], `elsewhere-sky-${date}.png`, { type: 'image/png' });
+  const file =
+    ready && image ? new File([image.blob], `elsewhere-sky-${date}.png`, { type: 'image/png' }) : null;
   const canSend = !!file && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] });
   const place = isDeviceLocation(snapshot.location)
     ? m.moment.devicePlace
@@ -124,59 +135,80 @@ export default function MomentImage({
   return (
     <section className="moment-image" aria-labelledby="moment-title" style={{ fontFamily: FONT }}>
       <h3 id="moment-title">{copy.section}</h3>
-      <p className="moment-note">{copy.note}</p>
       <label className="moment-clear-sky">
         <input
           type="checkbox"
           checked={clearSkyImage}
-          onChange={(event) => setClearSkyImage(event.target.checked)}
+          onChange={(event) => {
+            setDrawing(true);
+            setClearSkyImage(event.target.checked);
+          }}
         />
         {copy.clearSkyImage}
       </label>
+      <div className="moment-preview-slot" aria-busy={drawing}>
+        {image && (
+          <img
+            className="moment-preview"
+            src={image.url}
+            alt={m.moment.alt({ place })}
+            aria-hidden={!ready}
+          />
+        )}
+        {!ready && (
+          <div className="moment-preview-transition" role="status">
+            <span className="moment-preview-orbit" aria-hidden="true" />
+            {failed ? m.moment.failed : m.moment.drawing}
+          </div>
+        )}
+      </div>
       <div className="moment-options">
         <div role="group" aria-label={m.moment.style} className="segmented">
           {MOMENT_STYLES.map((value) => (
-            <button key={value} aria-pressed={style === value} onClick={() => setStyle(value)}>
+            <button
+              key={value}
+              aria-pressed={style === value}
+              onClick={() => {
+                if (style !== value) setDrawing(true);
+                setStyle(value);
+              }}
+            >
               {m.moment.styles[value]}
             </button>
           ))}
         </div>
         <div role="group" aria-label={m.moment.horizon} className="segmented four">
           {HORIZON_VARIANTS.map((value) => (
-            <button key={value} aria-pressed={horizon === value} onClick={() => setHorizon(value)}>
+            <button
+              key={value}
+              aria-pressed={horizon === value}
+              onClick={() => {
+                if (horizon !== value) setDrawing(true);
+                setHorizon(value);
+              }}
+            >
               {m.moment.horizons[value]}
             </button>
           ))}
         </div>
       </div>
-      {failed ? (
-        <p className="form-status" role="status">
-          {m.moment.failed}
-        </p>
-      ) : image ? (
-        <img className="moment-preview" src={image.url} alt={m.moment.alt({ place })} />
-      ) : (
-        <p className="form-status" role="status">
-          {m.moment.drawing}
-        </p>
-      )}
-      {image && !failed && (
-        <div className="moment-actions">
+      <div className="moment-actions">
+        {ready && image && (
           <a className="secondary-button" href={image.url} download={file!.name}>
             <Download size={17} />
             {m.moment.save}
           </a>
-          {canSend && (
-            <button
-              className="secondary-button"
-              onClick={() => navigator.share({ files: [file!], text: link }).catch(() => {})}
-            >
-              <Share2 size={17} />
-              {m.moment.send}
-            </button>
-          )}
-        </div>
-      )}
+        )}
+        {canSend && (
+          <button
+            className="secondary-button"
+            onClick={() => navigator.share({ files: [file!], text: link }).catch(() => {})}
+          >
+            <Share2 size={17} />
+            {m.moment.send}
+          </button>
+        )}
+      </div>
     </section>
   );
 }

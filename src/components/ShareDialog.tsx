@@ -105,53 +105,69 @@ const ShareDialog = forwardRef<ShareDialogHandle, Props>(function ShareDialog(
           <X />
         </button>
       </div>
-      <p>
-        {m.moment.sentences([
-          m.share.includes({ focus: subjectName, customWeather: includesCustomWeather }),
-          ...(subjectName ? [m.share.arrival({ subject: subjectName })] : []),
-        ])}
-      </p>
-      {device && shared && (
-        <>
-          <p className="privacy-note">
-            {precise
-              ? m.share.device({ latitude: shared.location.latitude, longitude: shared.location.longitude })
-              : m.share.deviceRounded({
-                  latitude: shared.location.latitude,
-                  longitude: shared.location.longitude,
-                })}
+      <div className="share-layout">
+        <section className="share-link-panel" aria-label={m.share.field}>
+          <p className="share-description">
+            {m.moment.sentences([
+              m.share.includes({ focus: subjectName, customWeather: includesCustomWeather }),
+              ...(subjectName ? [m.share.arrival({ subject: subjectName })] : []),
+            ])}
           </p>
-          <label className="share-precise">
-            <input type="checkbox" checked={precise} onChange={(event) => setPrecise(event.target.checked)} />
-            {m.share.precise}
+          <label className="share-field">
+            {m.share.field}
+            <input ref={input} readOnly value={link} onFocus={(e) => e.target.select()} />
           </label>
-        </>
-      )}
-      <label className="share-field">
-        {m.share.field}
-        <input ref={input} readOnly value={link} onFocus={(e) => e.target.select()} />
-      </label>
-      <button className="primary-button full" onClick={copy}>
-        {copied ? <Check size={17} /> : <Share2 size={17} />}
-        {copied ? m.share.copied : m.share.copy}
-      </button>
-      {request &&
-        (imageShown ? (
-          <Suspense
-            fallback={
-              <p className="form-status" role="status">
-                {m.moment.drawing}
-              </p>
-            }
-          >
-            <MomentImage snapshot={request.snapshot} capture={capture} link={link} />
-          </Suspense>
-        ) : (
-          <button className="secondary-button full moment-make" onClick={() => setImageShown(true)}>
-            <ImageIcon size={17} />
-            {m.moment.make}
+          <button className="primary-button full" onClick={copy}>
+            {copied ? <Check size={17} /> : <Share2 size={17} />}
+            {copied ? m.share.copied : m.share.copy}
           </button>
-        ))}
+          {device && shared && (
+            <div className="share-location-settings">
+              <p className="privacy-note">
+                {precise
+                  ? m.share.device({
+                      latitude: shared.location.latitude,
+                      longitude: shared.location.longitude,
+                    })
+                  : m.share.deviceRounded({
+                      latitude: shared.location.latitude,
+                      longitude: shared.location.longitude,
+                    })}
+              </p>
+              <label className="share-precise">
+                <input
+                  type="checkbox"
+                  checked={precise}
+                  onChange={(event) => setPrecise(event.target.checked)}
+                />
+                {m.share.precise}
+              </label>
+            </div>
+          )}
+        </section>
+        <section className="share-image-panel">
+          {request &&
+            (imageShown ? (
+              <Suspense
+                fallback={
+                  <p className="form-status" role="status">
+                    {m.moment.drawing}
+                  </p>
+                }
+              >
+                <MomentImage snapshot={request.snapshot} capture={capture} link={link} />
+              </Suspense>
+            ) : (
+              <button
+                className="secondary-button share-image-placeholder"
+                onClick={() => setImageShown(true)}
+              >
+                <ImageIcon size={24} />
+                {m.moment.make}
+              </button>
+            ))}
+        </section>
+      </div>
     </dialog>
   );
 });

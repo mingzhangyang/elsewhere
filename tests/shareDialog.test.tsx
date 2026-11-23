@@ -61,3 +61,16 @@ it('a copy still in flight when the link changes is not confirmed for the new li
   await act(async () => finish());
   expect(copyButton()).toHaveTextContent('Copy link');
 });
+
+it('separates link sharing from the lazy image preview without changing the shared link', () => {
+  openDialog();
+  const dialog = screen.getByRole('dialog', { name: 'Share this sky' });
+  const linkPanel = dialog.querySelector('.share-link-panel');
+  const imagePanel = dialog.querySelector('.share-image-panel');
+
+  expect(linkPanel).toContainElement(screen.getByRole('textbox', { name: 'Sky link' }));
+  expect(linkPanel).toContainElement(copyButton());
+  expect(linkPanel).toContainElement(exact());
+  expect(imagePanel).toContainElement(screen.getByRole('button', { name: 'Make an image' }));
+  expect(imagePanel).not.toContainElement(screen.getByRole('textbox', { name: 'Sky link' }));
+});
