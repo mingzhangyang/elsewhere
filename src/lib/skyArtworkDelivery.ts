@@ -1,7 +1,6 @@
 import {
   SkyArtworkExportError,
   type SkyArtworkPng,
-  type SkyArtworkUrlLease,
   type SkyArtworkUrlPort,
 } from './skyArtworkExport';
 
@@ -56,7 +55,12 @@ export function shareSkyArtwork(
     if (error instanceof DOMException && error.name === 'AbortError') {
       return Promise.resolve('cancelled');
     }
-    throw new SkyArtworkExportError('share-rejected', 'Browser refused to open the share sheet.', false, error);
+    throw new SkyArtworkExportError(
+      'share-rejected',
+      'Browser refused to open the share sheet.',
+      false,
+      error,
+    );
   }
   return operation.then(
     () => 'shared' as const,
@@ -64,7 +68,12 @@ export function shareSkyArtwork(
       if (typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError') {
         return 'cancelled' as const;
       }
-      throw new SkyArtworkExportError('share-rejected', 'System image sharing failed or was denied.', false, error);
+      throw new SkyArtworkExportError(
+        'share-rejected',
+        'System image sharing failed or was denied.',
+        false,
+        error,
+      );
     },
   );
 }
@@ -87,9 +96,9 @@ export interface SkyArtworkDownloadResult {
 }
 
 /**
- * A temporary Object URL is leased from the output and automatically revoked
- * after a bounded handoff interval. Do not revoke synchronously after .click():
- * WebKit and mobile download handlers may consume the URL asynchronously.
+ * The browser download gets a separate Blob URL, independent of the output's
+ * preview leases. Replacing the artwork must not revoke a pending OS download.
+ * Do not revoke synchronously after .click(): mobile handlers may consume it later.
  */
 export function downloadSkyArtwork(
   output: SkyArtworkPng,
@@ -98,15 +107,30 @@ export function downloadSkyArtwork(
   if (typeof document === 'undefined' && !port.createAnchor) {
     throw new SkyArtworkExportError('download-unavailable', 'No browser download environment.');
   }
-  let lease: SkyArtworkUrlLease | null = null;
+  const urls = port.urls ?? (typeof URL === 'undefined' ? undefined : URL);
+  if (
+    !urls ||
+    typeof urls.createObjectURL !== 'function' ||
+    typeof urls.revokeObjectURL !== 'function'
+  ) {
+    throw new SkyArtworkExportError('download-unavailable', 'Blob URL download is unavailable.');
+  }
+  let cleanup: (() => void) | undefined;
   let anchor: HTMLAnchorElement | null = null;
   try {
-    lease = output.objectUrl(port.urls);
+    const url = urls.createObjectURL(output.blob);
+    let active = true;
+    const release = () => {
+      if (!active) return;
+      active = false;
+      urls.revokeObjectURL(url);
+    };
+    cleanup = release;
     anchor = port.createAnchor?.() ?? document.createElement('a');
     const supportsDownload = 'download' in anchor;
     let status: SkyArtworkDownloadResult['status'];
     if (supportsDownload) {
-      anchor.href = lease.url;
+      anchor.href = url;
       anchor.download = output.filename;
       anchor.rel = 'noopener';
       if (port.append) port.append(anchor);
@@ -115,24 +139,26 @@ export function downloadSkyArtwork(
       status = 'download-requested';
     } else {
       const opened =
-        port.openImage?.(lease.url) ??
-        (typeof window !== 'undefined' && !!window.open(lease.url, '_blank', 'noopener'));
+        port.openImage?.(url) ??
+        (typeof window !== 'undefined' && !!window.open(url, '_blank', 'noopener'));
       if (!opened) {
-        throw new SkyArtworkExportError('download-unavailable', 'Image download and opening are unavailable.');
+        throw new SkyArtworkExportError(
+          'download-unavailable',
+          'Image download and opening are unavailable.',
+        );
       }
       status = 'image-opened';
     }
-    const release = lease.release;
     const deferRelease =
       port.deferRelease ??
       ((callback: () => void) => {
-        // Delayed revocation is a handoff heuristic, not an OS save receipt.
+        // A bounded handoff is not an OS Files or Photos save receipt.
         setTimeout(callback, 60_000);
       });
     deferRelease(release);
-    return { status, url: lease.url, release };
+    return { status, url, release };
   } catch (error) {
-    lease?.release();
+    cleanup?.();
     if (error instanceof SkyArtworkExportError) throw error;
     throw new SkyArtworkExportError('download-failed', 'The browser refused the PNG download.', false, error);
   } finally {

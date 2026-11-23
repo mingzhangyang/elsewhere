@@ -86,10 +86,7 @@ const snapshot: SkyChartSnapshot = {
   ],
 };
 
-function artwork(
-  theme: 'midnight' | 'paper' = 'midnight',
-  locale: 'en' | 'zh-Hans' = 'en',
-): SkyArtwork {
+function artwork(theme: 'midnight' | 'paper' = 'midnight', locale: 'en' | 'zh-Hans' = 'en'): SkyArtwork {
   return createSkyArtwork({
     event,
     snapshot,
@@ -115,11 +112,13 @@ function png(width: number, height: number, type = 'image/png'): Blob {
   return new Blob([bytes], { type });
 }
 
-function fixtureCanvas(config: {
-  readonly encode?: (callback: BlobCallback, canvas: SkyArtworkCanvas) => void;
-  readonly noContext?: boolean;
-  readonly badPixels?: boolean;
-} = {}) {
+function fixtureCanvas(
+  config: {
+    readonly encode?: (callback: BlobCallback, canvas: SkyArtworkCanvas) => void;
+    readonly noContext?: boolean;
+    readonly badPixels?: boolean;
+  } = {},
+) {
   const canvases: SkyArtworkCanvas[] = [];
   const painted: string[][] = [];
   const createCanvas = (): SkyArtworkCanvas => {
@@ -179,10 +178,7 @@ function fixtureCanvas(config: {
   return { canvases, painted, createCanvas };
 }
 
-function options(
-  model = artwork(),
-  createCanvas = fixtureCanvas().createCanvas,
-): SkyArtworkExportOptions {
+function options(model = artwork(), createCanvas = fixtureCanvas().createCanvas): SkyArtworkExportOptions {
   return { artwork: model, createCanvas, prepareFonts: async () => fonts };
 }
 
@@ -193,8 +189,14 @@ async function expectCode(task: Promise<unknown>, code: SkyArtworkExportError['c
 describe('SM3-B vector PNG encoding and layout', () => {
   it('exports standard 1200 x 1500 MIME PNG with an owned File and explicit request ID', async () => {
     const mock = fixtureCanvas();
-    const output = await exportSkyChartPng({ ...options(artwork(), mock.createCanvas), requestId: 'revision-7' });
-    expect(SKY_CHART_PNG_SIZES).toEqual([{ width: 1200, height: 1500 }, { width: 960, height: 1200 }]);
+    const output = await exportSkyChartPng({
+      ...options(artwork(), mock.createCanvas),
+      requestId: 'revision-7',
+    });
+    expect(SKY_CHART_PNG_SIZES).toEqual([
+      { width: 1200, height: 1500 },
+      { width: 960, height: 1200 },
+    ]);
     expect([output.width, output.height, output.blob.type, output.filename, output.requestId]).toEqual([
       1200,
       1500,
@@ -211,21 +213,24 @@ describe('SM3-B vector PNG encoding and layout', () => {
     expect(() => output.blob).toThrow();
   });
 
-  it.each(['midnight', 'paper'] as const)('draws the existing %s theme and all scientific credits', async (theme) => {
-    const mock = fixtureCanvas();
-    const art = artwork(theme);
-    const before = JSON.stringify(art);
-    const output = await exportSkyChartPng(options(art, mock.createCanvas));
-    const strings = mock.painted[0].join(' ');
-    expect(strings).toContain('Astronomy Engine');
-    expect(strings).toContain('CC BY-SA 4.0');
-    expect(strings).toContain('Reference time');
-    expect(strings).toContain('Daytime diagram');
-    expect(strings).toContain('Our imaginary evening');
-    expect(strings).toContain('A fictional keepsake');
-    expect(JSON.stringify(art)).toBe(before);
-    output.release();
-  });
+  it.each(['midnight', 'paper'] as const)(
+    'draws the existing %s theme and all scientific credits',
+    async (theme) => {
+      const mock = fixtureCanvas();
+      const art = artwork(theme);
+      const before = JSON.stringify(art);
+      const output = await exportSkyChartPng(options(art, mock.createCanvas));
+      const strings = mock.painted[0].join(' ');
+      expect(strings).toContain('Astronomy Engine');
+      expect(strings).toContain('CC BY-SA 4.0');
+      expect(strings).toContain('Reference time');
+      expect(strings).toContain('Daytime diagram');
+      expect(strings).toContain('Our imaginary evening');
+      expect(strings).toContain('A fictional keepsake');
+      expect(JSON.stringify(art)).toBe(before);
+      output.release();
+    },
+  );
 
   it('preserves Chinese serif title, phrase, reference time, UTC offset and credits', async () => {
     const mock = fixtureCanvas();
@@ -257,12 +262,23 @@ describe('SM3-B vector PNG encoding and layout', () => {
     await exportSkyChartPng(options(artwork('midnight'), midnight.createCanvas));
     await exportSkyChartPng(options(artwork('paper'), paper.createCanvas));
     expect(midnight.painted[0]).toEqual(paper.painted[0]);
-    expect(snapshot.objects.map(({ x, y }) => [x, y])).toEqual([[0, -0.5], [-1, 0], [0.5, 0]]);
+    expect(snapshot.objects.map(({ x, y }) => [x, y])).toEqual([
+      [0, -0.5],
+      [-1, 0],
+      [0.5, 0],
+    ]);
   });
 
   it('keeps combining characters and emoji intact in literal fillText', async () => {
     const mock = fixtureCanvas();
-    const art = createSkyArtwork({ event, snapshot, locale: 'en', theme: 'midnight', title: 'Cafe\u0301 ☁️', phrase: 'Together 👩‍🚀 🌙' });
+    const art = createSkyArtwork({
+      event,
+      snapshot,
+      locale: 'en',
+      theme: 'midnight',
+      title: 'Cafe\u0301 ☁️',
+      phrase: 'Together 👩‍🚀 🌙',
+    });
     await exportSkyChartPng(options(art, mock.createCanvas));
     expect(mock.painted[0].join(' ')).toContain('Café');
     expect(mock.painted[0].join(' ')).toContain('👩‍🚀');
@@ -301,24 +317,38 @@ describe('SM3-B vector PNG encoding and layout', () => {
   });
 
   it('handles toBlob(null), then makes exactly one lower-res vector pass', async () => {
-    const mock = fixtureCanvas({ encode: (callback, canvas) => callback(canvas.width === 1200 ? null : png(960, 1200)) });
+    const mock = fixtureCanvas({
+      encode: (callback, canvas) => callback(canvas.width === 1200 ? null : png(960, 1200)),
+    });
     const output = await exportSkyChartPng(options(artwork(), mock.createCanvas));
     expect([output.width, output.height]).toEqual([960, 1200]);
     expect(mock.canvases).toHaveLength(2);
-    expect(mock.canvases.map((canvas) => [canvas.width, canvas.height])).toEqual([[0, 0], [0, 0]]);
+    expect(mock.canvases.map((canvas) => [canvas.width, canvas.height])).toEqual([
+      [0, 0],
+      [0, 0],
+    ]);
     expect(mock.painted[0]).toEqual(mock.painted[1]);
     output.release();
   });
 
   it('catches thrown encoding errors, clears both backing stores, and terminates after two tries', async () => {
-    const mock = fixtureCanvas({ encode: () => { throw new Error('encode failed'); } });
+    const mock = fixtureCanvas({
+      encode: () => {
+        throw new Error('encode failed');
+      },
+    });
     await expectCode(exportSkyChartPng(options(artwork(), mock.createCanvas)), 'png-encoding-failed');
     expect(mock.canvases).toHaveLength(2);
     expect(mock.canvases.every((canvas) => canvas.width === 0 && canvas.height === 0)).toBe(true);
   });
 
   it('rejects wrong MIME, empty, incorrect dimensions and corrupted PNG signature', async () => {
-    for (const bad of [new Blob(), png(1200, 1500, 'image/jpeg'), png(960, 1200), new Blob([new Uint8Array(65)], { type: 'image/png' })]) {
+    for (const bad of [
+      new Blob(),
+      png(1200, 1500, 'image/jpeg'),
+      png(960, 1200),
+      new Blob([new Uint8Array(65)], { type: 'image/png' }),
+    ]) {
       const mock = fixtureCanvas({ encode: (callback) => callback(bad) });
       await expectCode(exportSkyChartPng(options(artwork(), mock.createCanvas)), 'png-encoding-failed');
     }
@@ -328,7 +358,9 @@ describe('SM3-B vector PNG encoding and layout', () => {
     const noContext = fixtureCanvas({ noContext: true });
     await expectCode(exportSkyChartPng(options(artwork(), noContext.createCanvas)), 'canvas-unavailable');
     expect(noContext.canvases).toHaveLength(2);
-    const allocation = () => { throw new Error('out of memory'); };
+    const allocation = () => {
+      throw new Error('out of memory');
+    };
     await expectCode(exportSkyChartPng(options(artwork(), allocation)), 'canvas-unavailable');
   });
 
@@ -359,9 +391,16 @@ describe('SM3-B ownership, concurrency, download and share adapters', () => {
 
   it('discards an old native toBlob completion when newer artwork wins', async () => {
     let finish: BlobCallback | undefined;
-    const slow = fixtureCanvas({ encode: (callback) => { finish = callback; } });
+    const slow = fixtureCanvas({
+      encode: (callback) => {
+        finish = callback;
+      },
+    });
     const coordinator = createSkyArtworkExportCoordinator();
-    const a = coordinator.export(artwork(), { createCanvas: slow.createCanvas, prepareFonts: async () => fonts });
+    const a = coordinator.export(artwork(), {
+      createCanvas: slow.createCanvas,
+      prepareFonts: async () => fonts,
+    });
     // Allow the first request to enter the fake native encoder.
     await Promise.resolve();
     await Promise.resolve();
@@ -378,9 +417,16 @@ describe('SM3-B ownership, concurrency, download and share adapters', () => {
 
   it('honors AbortSignal even when the underlying encoder does not cancel', async () => {
     let finish: BlobCallback | undefined;
-    const mock = fixtureCanvas({ encode: (callback) => { finish = callback; } });
+    const mock = fixtureCanvas({
+      encode: (callback) => {
+        finish = callback;
+      },
+    });
     const controller = new AbortController();
-    const pending = exportSkyChartPng({ ...options(artwork(), mock.createCanvas), signal: controller.signal });
+    const pending = exportSkyChartPng({
+      ...options(artwork(), mock.createCanvas),
+      signal: controller.signal,
+    });
     await Promise.resolve();
     await Promise.resolve();
     controller.abort();
@@ -399,11 +445,15 @@ describe('SM3-B ownership, concurrency, download and share adapters', () => {
       createAnchor: () => anchor as unknown as HTMLAnchorElement,
       append: vi.fn(),
       urls: { createObjectURL: () => 'blob:test', revokeObjectURL: revoked },
-      deferRelease: (release) => { deferred.push(release); },
+      deferRelease: (release) => {
+        deferred.push(release);
+      },
     });
     expect(result.status).toBe('download-requested');
     expect(anchor.download).toBe('elsewhere-sky-2026-06-21.png');
     expect(clicked).toHaveBeenCalledOnce();
+    expect(revoked).not.toHaveBeenCalled();
+    output.release();
     expect(revoked).not.toHaveBeenCalled();
     deferred[0]();
     result.release();
@@ -428,7 +478,15 @@ describe('SM3-B ownership, concurrency, download and share adapters', () => {
   it('does not report a blocked download as a saved file', async () => {
     const output = await exportSkyChartPng(options());
     const revoke = vi.fn();
-    const anchor = { href: '', download: '', rel: '', remove: vi.fn(), click: () => { throw new Error('blocked'); } };
+    const anchor = {
+      href: '',
+      download: '',
+      rel: '',
+      remove: vi.fn(),
+      click: () => {
+        throw new Error('blocked');
+      },
+    };
     expect(() =>
       downloadSkyArtwork(output, {
         createAnchor: () => anchor as unknown as HTMLAnchorElement,
@@ -456,10 +514,16 @@ describe('SM3-B ownership, concurrency, download and share adapters', () => {
 
   it('does not report native share cancellation as success or a program failure', async () => {
     const output = await exportSkyChartPng(options());
-    const port = { canShare: () => true, share: () => Promise.reject(new DOMException('cancel', 'AbortError')) };
+    const port = {
+      canShare: () => true,
+      share: () => Promise.reject(new DOMException('cancel', 'AbortError')),
+    };
     expect(await shareSkyArtwork(output, port)).toBe('cancelled');
     await expectCode(
-      shareSkyArtwork(output, { canShare: () => true, share: () => Promise.reject(new DOMException('denied', 'NotAllowedError')) }),
+      shareSkyArtwork(output, {
+        canShare: () => true,
+        share: () => Promise.reject(new DOMException('denied', 'NotAllowedError')),
+      }),
       'share-rejected',
     );
     output.release();
@@ -469,6 +533,8 @@ describe('SM3-B ownership, concurrency, download and share adapters', () => {
     const output = await exportSkyChartPng(options());
     output.release();
     expect(() => output.file).toThrow();
-    expect(() => skyArtworkShareCapability(output, { canShare: () => true, share: async () => undefined })).toThrow();
+    expect(() =>
+      skyArtworkShareCapability(output, { canShare: () => true, share: async () => undefined }),
+    ).toThrow();
   });
 });

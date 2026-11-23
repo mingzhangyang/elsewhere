@@ -4,7 +4,9 @@ import { expect, test } from '@playwright/test';
  * SM3-B visual evidence only. No SM3-C route or UI is installed.
  * Fictional event times are deliberately different from UTC calendar dates.
  */
-test('encoded keepsakes preserve SM3-A layout, both themes and both languages', async ({ page }, testInfo) => {
+test('encoded keepsakes preserve SM3-A layout, both themes and both languages', async ({
+  page,
+}, testInfo) => {
   await page.goto('/?scenario=day');
   for (const [theme, locale] of [
     ['midnight', 'en'],
@@ -14,8 +16,12 @@ test('encoded keepsakes preserve SM3-A layout, both themes and both languages', 
       async ({ theme, locale }) => {
         const { createSkyArtwork } = await import('../../src/lib/skyArtwork.ts');
         const { exportSkyChartPng } = await import('../../src/lib/skyArtworkExport.ts');
-        const { canvasSkyChartTextMetrics, drawSkyChartArtwork, layoutSkyChartArtwork, prepareSkyChartFonts } =
-          await import('../../src/moment/skyChart.ts');
+        const {
+          canvasSkyChartTextMetrics,
+          drawSkyChartArtwork,
+          layoutSkyChartArtwork,
+          prepareSkyChartFonts,
+        } = await import('../../src/moment/skyChart.ts');
         const event = {
           state: 'resolved' as const,
           kind: 'reference' as const,
@@ -55,7 +61,15 @@ test('encoded keepsakes preserve SM3-A layout, both themes and both languages', 
             catalogHash: null,
           },
           objects: [
-            { kind: 'sun' as const, id: 'sun' as const, altitude: 45, azimuth: 0, x: 0, y: -0.5, distanceKm: 150000000 },
+            {
+              kind: 'sun' as const,
+              id: 'sun' as const,
+              altitude: 45,
+              azimuth: 0,
+              x: 0,
+              y: -0.5,
+              distanceKm: 150000000,
+            },
             {
               kind: 'moon' as const,
               id: 'moon' as const,
@@ -98,7 +112,11 @@ test('encoded keepsakes preserve SM3-A layout, both themes and both languages', 
         if (!previewCtx) throw new Error('Canvas 2D unavailable for preview.');
         const layout = layoutSkyChartArtwork(art, canvasSkyChartTextMetrics(previewCtx), fonts);
         drawSkyChartArtwork(previewCtx, layout, fonts);
-        const encoded = await exportSkyChartPng({ artwork: art, prepareFonts: async () => fonts, requestId: 'proof' });
+        const encoded = await exportSkyChartPng({
+          artwork: art,
+          prepareFonts: async () => fonts,
+          requestId: 'proof',
+        });
         const raw = new Uint8Array(await encoded.blob.slice(0, 24).arrayBuffer());
         const signature = [...raw.slice(0, 8)];
         const urlLease = encoded.objectUrl();
@@ -114,7 +132,12 @@ test('encoded keepsakes preserve SM3-A layout, both themes and both languages', 
         const ctx = decoded.getContext('2d');
         if (!ctx) throw new Error('Canvas 2D unavailable for PNG decode.');
         ctx.drawImage(image, 0, 0);
-        const points = [[0, 0], [600, 498], [600, 972], [600, 1453]] as const;
+        const points = [
+          [0, 0],
+          [600, 498],
+          [600, 972],
+          [600, 1453],
+        ] as const;
         const drift = points.map(([x, y]) => {
           const a = previewCtx.getImageData(x, y, 1, 1).data;
           const b = ctx.getImageData(x, y, 1, 1).data;
@@ -158,7 +181,9 @@ test('encoded keepsakes preserve SM3-A layout, both themes and both languages', 
     expect(proof.text).toContain('CC BY-SA 4.0');
     expect(proof.text).toContain('Astronomy Engine');
     expect(proof.text).toContain('21:15');
-    expect(proof.text).toContain('Reference time'.replace('Reference time', locale === 'en' ? 'Reference time' : '参考时刻'));
+    expect(proof.text).toContain(
+      'Reference time'.replace('Reference time', locale === 'en' ? 'Reference time' : '参考时刻'),
+    );
     expect(proof.compass).toEqual(locale === 'en' ? ['N', 'E', 'S', 'W'] : ['北', '东', '南', '西']);
     await testInfo.attach('sm3-b-export-' + theme + '-' + locale + '.png', {
       body: await page.locator('#sm3-b-png-proof').screenshot({ scale: 'css' }),
@@ -171,7 +196,9 @@ test('encoded keepsakes preserve SM3-A layout, both themes and both languages', 
   }
 });
 
-test('real HYG snapshot can be encoded as PNG without recomputing star positions', async ({ page }, testInfo) => {
+test('real HYG snapshot can be encoded as PNG without recomputing star positions', async ({
+  page,
+}, testInfo) => {
   await page.goto('/?scenario=day');
   const proof = await page.evaluate(async () => {
     const { createSkyChartSnapshotCoordinator } = await import('../../src/services/skyChartSnapshot.ts');
@@ -210,7 +237,9 @@ test('real HYG snapshot can be encoded as PNG without recomputing star positions
     const result = {
       dimensions: [image.naturalWidth, image.naturalHeight],
       stars: state.snapshot.objects.filter((obj) => obj.kind === 'star').length,
-      unchanged: JSON.stringify(source) === JSON.stringify(state.snapshot.objects.map((obj) => [obj.id, obj.x, obj.y])),
+      unchanged:
+        JSON.stringify(source) ===
+        JSON.stringify(state.snapshot.objects.map((obj) => [obj.id, obj.x, obj.y])),
       filename: output.filename,
     };
     (image as HTMLImageElement & { releaseArtwork?: () => void }).releaseArtwork = () => {
@@ -233,13 +262,16 @@ test('real HYG snapshot can be encoded as PNG without recomputing star positions
   });
 });
 
-test('browser download requests original PNG and native sharing reports cancel separately', async ({ page }) => {
+test('browser download requests original PNG and native sharing reports cancel separately', async ({
+  page,
+}) => {
   await page.goto('/?scenario=day');
   const download = page.waitForEvent('download');
   const behavior = await page.evaluate(async () => {
     const { SkyArtworkPng } = await import('../../src/lib/skyArtworkExport.ts');
-    const { downloadSkyArtwork, shareSkyArtwork, skyArtworkShareCapability } =
-      await import('../../src/lib/skyArtworkDelivery.ts');
+    const { downloadSkyArtwork, shareSkyArtwork, skyArtworkShareCapability } = await import(
+      '../../src/lib/skyArtworkDelivery.ts'
+    );
     const canvas = document.createElement('canvas');
     canvas.width = 12;
     canvas.height = 15;
@@ -248,7 +280,7 @@ test('browser download requests original PNG and native sharing reports cancel s
     ctx.fillStyle = '#193659';
     ctx.fillRect(0, 0, 12, 15);
     const blob = await new Promise<Blob>((resolve, reject) =>
-      canvas.toBlob((result) => result ? resolve(result) : reject(new Error('No PNG')), 'image/png'),
+      canvas.toBlob((result) => (result ? resolve(result) : reject(new Error('No PNG'))), 'image/png'),
     );
     const file = new SkyArtworkPng(blob, 'elsewhere-sky-2026-06-21.png', 12, 15, 4);
     const native = {

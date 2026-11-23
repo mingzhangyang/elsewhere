@@ -203,8 +203,18 @@ describe('SM3-A shared fixed layout and drawing', () => {
   });
 
   it('uses handwritten keepsake phrases without sacrificing fixed serif titles', () => {
-    const prepared = Object.freeze({ status: 'ready' as const, family: 'system-ui' as const, handwriting: 'caveat' as const });
-    const model = createSkyArtwork({ event, snapshot: fixture(), locale: 'en', theme: 'paper', phrase: 'Written in the stars' });
+    const prepared = Object.freeze({
+      status: 'ready' as const,
+      family: 'system-ui' as const,
+      handwriting: 'caveat' as const,
+    });
+    const model = createSkyArtwork({
+      event,
+      snapshot: fixture(),
+      locale: 'en',
+      theme: 'paper',
+      phrase: 'Written in the stars',
+    });
     const layout = layoutSkyChartArtwork(model, metrics, prepared);
     expect(layout.blocks[0].font).toContain('Georgia');
     expect(layout.blocks[4].font).toContain('Caveat');

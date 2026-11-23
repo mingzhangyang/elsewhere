@@ -30,6 +30,11 @@ export default defineConfig({
       testIgnore: ['**/offline.spec.ts', '**/language.spec.ts'],
     },
     {
+      name: 'mobile-webkit-sky-export',
+      use: { ...devices['iPhone 13'] },
+      testMatch: '**/sky-artwork-export.spec.ts',
+    },
+    {
       name: 'offline-chromium',
       use: { ...devices['Desktop Chrome'], baseURL: 'http://127.0.0.1:4173' },
       testMatch: '**/offline.spec.ts',

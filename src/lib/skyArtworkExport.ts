@@ -110,7 +110,12 @@ function assertArtwork(artwork: SkyArtwork): string {
     }
     return 'elsewhere-sky-' + time.localDate + '.png';
   } catch (error) {
-    throw new SkyArtworkExportError('invalid-artwork', 'Invalid or incomplete sky chart artwork.', false, error);
+    throw new SkyArtworkExportError(
+      'invalid-artwork',
+      'Invalid or incomplete sky chart artwork.',
+      false,
+      error,
+    );
   }
 }
 
@@ -138,12 +143,7 @@ function browserEncode(canvas: SkyArtworkCanvas): Promise<Blob> {
 }
 
 function bigEndian(bytes: Uint8Array, start: number): number {
-  return (
-    bytes[start] * 0x1000000 +
-    bytes[start + 1] * 0x10000 +
-    bytes[start + 2] * 0x100 +
-    bytes[start + 3]
-  );
+  return bytes[start] * 0x1000000 + bytes[start + 1] * 0x10000 + bytes[start + 2] * 0x100 + bytes[start + 3];
 }
 
 /** Inspect PNG signature, IHDR, dimensions and the final IEND, not merely Blob.type. */
@@ -197,7 +197,12 @@ function assertPaintedCanvas(ctx: CanvasRenderingContext2D, width: number, heigh
     }
     if (!varied) throw new Error('Artwork appears to be a single blank color.');
   } catch (error) {
-    throw new SkyArtworkExportError('png-encoding-failed', 'Canvas artwork pixels are incomplete.', false, error);
+    throw new SkyArtworkExportError(
+      'png-encoding-failed',
+      'Canvas artwork pixels are incomplete.',
+      false,
+      error,
+    );
   }
 }
 
@@ -397,7 +402,10 @@ export async function exportSkyChartPng(options: SkyArtworkExportOptions): Promi
 }
 
 export interface SkyArtworkExportCoordinator {
-  export(artwork: SkyArtwork, options?: Omit<SkyArtworkExportOptions, 'artwork' | 'signal' | 'requestId'>): Promise<SkyArtworkPng>;
+  export(
+    artwork: SkyArtwork,
+    options?: Omit<SkyArtworkExportOptions, 'artwork' | 'signal' | 'requestId'>,
+  ): Promise<SkyArtworkPng>;
   cancel(): void;
   dispose(): void;
 }
