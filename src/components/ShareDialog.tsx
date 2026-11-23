@@ -107,7 +107,6 @@ const ShareDialog = forwardRef<ShareDialogHandle, Props>(function ShareDialog(
       </div>
       <div className="share-layout">
         <section className="share-link-panel" aria-labelledby="share-link-title">
-          <p className="share-section-kicker">01 / {m.share.eyebrow}</p>
           <h3 id="share-link-title">{m.share.field}</h3>
           <p className="share-description">
             {m.moment.sentences([
@@ -141,7 +140,6 @@ const ShareDialog = forwardRef<ShareDialogHandle, Props>(function ShareDialog(
           )}
         </section>
         <section className="share-image-panel" aria-label={m.moment.make}>
-          <p className="share-section-kicker">02 / {m.moment.make}</p>
           {request &&
             (imageShown ? (
               <Suspense

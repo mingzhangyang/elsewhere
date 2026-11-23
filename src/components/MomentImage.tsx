@@ -145,25 +145,19 @@ export default function MomentImage({
         </p>
       )}
       <div className="moment-options">
-        <div className="moment-option">
-          <span className="moment-option-caption">{m.moment.style}</span>
-          <div role="group" aria-label={m.moment.style} className="segmented">
-            {MOMENT_STYLES.map((value) => (
-              <button key={value} aria-pressed={style === value} onClick={() => setStyle(value)}>
-                {m.moment.styles[value]}
-              </button>
-            ))}
-          </div>
+        <div role="group" aria-label={m.moment.style} className="segmented">
+          {MOMENT_STYLES.map((value) => (
+            <button key={value} aria-pressed={style === value} onClick={() => setStyle(value)}>
+              {m.moment.styles[value]}
+            </button>
+          ))}
         </div>
-        <div className="moment-option">
-          <span className="moment-option-caption">{m.moment.horizon}</span>
-          <div role="group" aria-label={m.moment.horizon} className="segmented four">
-            {HORIZON_VARIANTS.map((value) => (
-              <button key={value} aria-pressed={horizon === value} onClick={() => setHorizon(value)}>
-                {m.moment.horizons[value]}
-              </button>
-            ))}
-          </div>
+        <div role="group" aria-label={m.moment.horizon} className="segmented four">
+          {HORIZON_VARIANTS.map((value) => (
+            <button key={value} aria-pressed={horizon === value} onClick={() => setHorizon(value)}>
+              {m.moment.horizons[value]}
+            </button>
+          ))}
         </div>
       </div>
       {image && !failed && (

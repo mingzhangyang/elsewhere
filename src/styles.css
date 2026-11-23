@@ -1585,14 +1585,8 @@ dialog:not([open]) {
   gap: 12px;
   margin: 16px 0 12px;
 }
-.moment-option {
+.moment-options > .segmented {
   min-width: 0;
-}
-.moment-option-caption {
-  display: block;
-  margin-bottom: 8px;
-  color: var(--muted);
-  font-size: var(--text-sm);
 }
 .moment-options .segmented.four {
   grid-template-columns: repeat(4, minmax(0, 1fr));
