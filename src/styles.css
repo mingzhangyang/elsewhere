@@ -1585,7 +1585,9 @@ dialog:not([open]) {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  transition: opacity 350ms ease, filter 350ms ease;
+  transition:
+    opacity 350ms ease,
+    filter 350ms ease;
 }
 .moment-preview[aria-hidden='true'] {
   opacity: 0.25;
@@ -1616,7 +1618,9 @@ dialog:not([open]) {
   border: 1px solid #c5d9eb73;
   border-top-color: #f6d7a4;
   border-radius: 50%;
-  box-shadow: 0 0 0 13px #98b9df0b, 0 0 42px #8fbbf13b;
+  box-shadow:
+    0 0 0 13px #98b9df0b,
+    0 0 42px #8fbbf13b;
   animation: moment-preview-orbit 4s linear infinite;
 }
 .moment-preview-orbit::before {
