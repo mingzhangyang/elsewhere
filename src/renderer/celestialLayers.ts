@@ -54,7 +54,6 @@ export function createCelestialLayers(
 ) {
   const bodyLabels = bodies.map((body) => {
     const sprite = text(body.name, '#f1dfb8');
-    sprite.renderOrder = CELESTIAL_LABEL_RENDER_ORDER;
     parent.add(sprite);
     return { id: body.id, sprite };
   });
@@ -62,7 +61,6 @@ export function createCelestialLayers(
   const labels = catalog.flatMap((star, index) => {
     if (!star.name || star.magnitude >= 1.35) return [];
     const sprite = text(names.star(star), '#cbd7e9');
-    sprite.renderOrder = CELESTIAL_LABEL_RENDER_ORDER;
     parent.add(sprite);
     return [{ id: star.id, index, sprite }];
   });
@@ -76,7 +74,6 @@ export function createCelestialLayers(
     const lines = new THREE.LineSegments(geometry, material);
     lines.frustumCulled = false;
     const label = text(names.pattern(definition.id), '#93afd2');
-    label.renderOrder = CELESTIAL_LABEL_RENDER_ORDER;
     label.scale.set(150, 30, 1);
     parent.add(lines, label);
     const ends = definition.lines.flat().map((id) => ({ id, index: indexOf.get(id) ?? -1 }));
@@ -96,22 +93,22 @@ export function createCelestialLayers(
     cloudOpacity = 1,
   ) {
     const labelOpacity = opacity * cloudOpacity;
+    const labelsShown = flags.labels && cloudOpacity > 0.01;
     bodyLabels.forEach(({ sprite }, i) => {
       const body = bodyStates[i];
       // Planets are not part of the stars layer; like the Sun and Moon they are always drawn.
       sprite.visible =
         !!body &&
         body.altitude > BODY_LABEL_MIN_ALTITUDE &&
-        flags.labels &&
-        body.opacity > 0.05 &&
-        cloudOpacity > 0.01;
+        labelsShown &&
+        body.opacity > 0.05;
       sprite.material.opacity = Math.min(1, (body?.opacity ?? 0) * 1.4) * cloudOpacity;
       sprite.userData.eligible = sprite.visible;
     });
     for (const entry of labels) {
       const star = starAt(stars, entry);
       const label = entry.sprite;
-      label.visible = !!star && star.altitude > 5 && flags.labels && flags.stars && labelOpacity > 0.01;
+      label.visible = !!star && star.altitude > 5 && labelsShown && flags.stars && labelOpacity > 0.01;
       label.material.opacity = labelOpacity;
       label.userData.eligible = label.visible;
     }
@@ -120,7 +117,7 @@ export function createCelestialLayers(
       lines.visible = patternsShown;
       lines.material.opacity = opacity * 0.36;
       label.material.opacity = labelOpacity;
-      label.userData.patternLabel = flags.constellations && flags.labels && labelOpacity > 0.01;
+      label.userData.patternLabel = labelsShown && patternsShown;
     }
     // At rest, each star and body is where its horizontal position says.
     place(
@@ -185,6 +182,7 @@ export function createCelestialLayers(
     ...labels.map((entry) => entry.sprite),
     ...patterns.map((p) => p.label),
   ];
+  for (const sprite of sprites) sprite.renderOrder = CELESTIAL_LABEL_RENDER_ORDER;
   const world = new THREE.Vector3();
   const projected = new THREE.Vector3();
   /**
