@@ -34,30 +34,27 @@ export default function MomentImage({
   const [style, setStyle] = useState<MomentStyle>('realistic');
   const [horizon, setHorizon] = useState<HorizonVariant>('ridge');
   const [clearSkyImage, setClearSkyImage] = useState(true);
-  const imageSnapshot = useMemo(
-    () => momentImageSnapshot(snapshot, clearSkyImage),
-    [snapshot, clearSkyImage],
-  );
   const choices = useMemo(
-    () => ({ imageSnapshot, style, horizon, clearSkyImage, i18n, m, copy }),
-    [imageSnapshot, style, horizon, clearSkyImage, i18n, m, copy],
+    () => [momentImageSnapshot(snapshot, clearSkyImage), style, horizon, clearSkyImage, i18n] as const,
+    [snapshot, style, horizon, clearSkyImage, i18n],
   );
   const [image, setImage] = useState<{ url: string; blob: Blob; choices: typeof choices } | null>(null);
-  const [failedChoices, setFailedChoices] = useState<typeof choices | null>(null);
+  const [failed, setFailed] = useState(false);
   const [loadedUrl, setLoadedUrl] = useState<string | null>(null);
   const request = useRef(0);
-  const urls = useRef(new Set<string>());
+  const shown = useRef<string | null>(null);
   const latest = useRef(capture);
   const current = image?.choices === choices ? image : null;
-  const failed = failedChoices === choices;
   const ready = !!current && loadedUrl === current.url;
   latest.current = capture;
   useEffect(() => {
-    const { imageSnapshot, style, horizon, clearSkyImage, i18n, m, copy } = choices;
+    const [imageSnapshot, style, horizon, clearSkyImage, i18n] = choices;
+    const { m } = i18n;
+    const copy = momentImageCopy[i18n.locale];
     // Keep the old image dimmed in a fixed slot, but never expose it for saving or sharing.
     // The key also hides stale exports immediately, before this effect runs.
     const ticket = ++request.current;
-    setFailedChoices(null);
+    setFailed(false);
     const place = isDeviceLocation(imageSnapshot.location)
       ? m.moment.devicePlace
       : placeLabel(imageSnapshot.location, i18n).name;
@@ -101,18 +98,18 @@ export default function MomentImage({
       .then(
         (blob) => {
           if (ticket !== request.current) return;
-          if (!blob) return setFailedChoices(choices);
+          if (!blob) return setFailed(true);
           const url = URL.createObjectURL(blob);
-          urls.current.add(url);
+          shown.current = url;
           setImage({ url, blob, choices });
         },
-        () => ticket === request.current && setFailedChoices(choices),
+        () => ticket === request.current && setFailed(true),
       );
   }, [choices]);
   useEffect(
     () => () => {
       // Revoke the old image only after React has replaced it in the preview.
-      if (image && urls.current.delete(image.url)) URL.revokeObjectURL(image.url);
+      if (image && image.url !== shown.current) URL.revokeObjectURL(image.url);
     },
     [image],
   );
@@ -120,8 +117,7 @@ export default function MomentImage({
     () => () => {
       // Cancel in-flight work and release even URLs allocated just before unmount.
       request.current++;
-      for (const url of urls.current) URL.revokeObjectURL(url);
-      urls.current.clear();
+      if (shown.current) URL.revokeObjectURL(shown.current);
     },
     [],
   );
@@ -153,13 +149,13 @@ export default function MomentImage({
             alt={m.moment.alt({ place })}
             aria-hidden={!ready}
             onLoad={() => setLoadedUrl(image.url)}
-            onError={() => setFailedChoices(image.choices)}
+            onError={() => setFailed(true)}
           />
         )}
         {!ready && (
           <div className="moment-preview-transition" role="status">
-            {!failed && <span className="moment-preview-orbit" aria-hidden="true" />}
-            <span>{failed ? m.moment.failed : m.moment.drawing}</span>
+            <span className={failed ? '' : 'moment-preview-orbit'} aria-hidden="true" />
+            {failed ? m.moment.failed : m.moment.drawing}
           </div>
         )}
       </div>
@@ -181,21 +177,19 @@ export default function MomentImage({
       </div>
       <div className="moment-actions">
         {ready && current && (
-          <>
-            <a className="secondary-button" href={current.url} download={file!.name}>
-              <Download size={17} />
-              {m.moment.save}
-            </a>
-            {canSend && (
-              <button
-                className="secondary-button"
-                onClick={() => navigator.share({ files: [file!], text: link }).catch(() => {})}
-              >
-                <Share2 size={17} />
-                {m.moment.send}
-              </button>
-            )}
-          </>
+          <a className="secondary-button" href={current.url} download={file!.name}>
+            <Download size={17} />
+            {m.moment.save}
+          </a>
+        )}
+        {canSend && (
+          <button
+            className="secondary-button"
+            onClick={() => navigator.share({ files: [file!], text: link }).catch(() => {})}
+          >
+            <Share2 size={17} />
+            {m.moment.send}
+          </button>
         )}
       </div>
     </section>
