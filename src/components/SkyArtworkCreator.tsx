@@ -215,8 +215,6 @@ export default function SkyArtworkCreator({
     ready.revision === revision.current &&
     ready.artwork.locale === locale &&
     ready.artwork.theme === draft.theme &&
-    (draft.title.trim() === '' || ready.artwork.title === draft.title.trim()) &&
-    ready.artwork.phrase === draft.phrase.trim()
       ? ready
       : null;
   const showPreview = previewRevision === revision.current && science !== null;
@@ -308,6 +306,7 @@ export default function SkyArtworkCreator({
         <div className="creator-event creator-card">
           <MemorialTimeForm
             initialInput={initialDraft?.time}
+            submitMode="create"
             onDraftChange={handleDraftChange}
             onInvalidated={() => revoke(true)}
             onResolved={(event) => {
