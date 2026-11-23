@@ -53,14 +53,10 @@ export interface IllustrationText {
   pattern: (id: PatternId) => string;
 }
 
+const STAR_TINTS = [hex('#d2e2ff'), hex('#fff8e6'), hex('#ffe2ac'), hex('#ffbe94')];
+const STAR_WHITE = hex('#ffffff');
 const starTint = (colorIndex: number | null | undefined): Rgb =>
-  colorIndex == null || colorIndex < 0.05
-    ? hex('#d2e2ff')
-    : colorIndex < 0.6
-      ? hex('#fff8e6')
-      : colorIndex < 1.1
-        ? hex('#ffe2ac')
-        : hex('#ffbe94');
+  STAR_TINTS[colorIndex == null || colorIndex < 0.05 ? 0 : colorIndex < 0.6 ? 1 : colorIndex < 1.1 ? 2 : 3];
 
 /**
  * A star as a brush would touch it in: a soft halo, a small uneven dot of paint and, for the bright
@@ -78,7 +74,7 @@ function paintStar(
 ) {
   const r = Math.max(1.05, (5.4 - magnitude) * 1.12) * unit;
   const turn = (quirk - 0.5) * 0.5;
-  const white = hex('#ffffff');
+  const white = STAR_WHITE;
   if (magnitude < 1.6) {
     glowAt(ctx, x, y, r * 9, tint, 0.26 * alpha);
     glowAt(ctx, x, y, r * 3.2, white, 0.3 * alpha);
