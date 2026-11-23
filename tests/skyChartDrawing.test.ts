@@ -197,9 +197,32 @@ describe('SM3-A shared fixed layout and drawing', () => {
   it('uses a Chinese-appropriate serif for titles and keeps text checks in the fixed grid', () => {
     const layout = makeLayout('paper', 'zh-Hans');
     expect(layout.blocks[0].font).toContain('Songti SC');
-    expect(layout.blocks[4].font).toContain('Songti SC');
+    expect(layout.blocks[4].font).toContain('Long Cang');
     expect(layout.blocks[5].font).toContain('system-ui');
     expect(layout.blocks[0].top).toBe(972);
+  });
+
+  it('uses handwritten keepsake phrases without sacrificing fixed serif titles', () => {
+    const prepared = Object.freeze({
+      status: 'ready' as const,
+      family: 'system-ui' as const,
+      handwriting: 'caveat' as const,
+    });
+    const model = createSkyArtwork({
+      event,
+      snapshot: fixture(),
+      locale: 'en',
+      theme: 'paper',
+      phrase: 'Written in the stars',
+    });
+    const layout = layoutSkyChartArtwork(model, metrics, prepared);
+    expect(layout.blocks[0].font).toContain('Georgia');
+    expect(layout.blocks[4].font).toContain('Caveat');
+    expect(layout.blocks[4].lines.join(' ')).toContain('Written in the stars');
+    expect(() => drawSkyChartArtwork(recordingContext().ctx, layout, prepared)).not.toThrow();
+    expect(() => drawSkyChartArtwork(recordingContext().ctx, layout, fonts)).toThrow(
+      'Font resources changed',
+    );
   });
 
   it('keeps north up, east left, south down and west right with exact anchor mapping', () => {
