@@ -138,7 +138,7 @@ const ShareDialog = forwardRef<ShareDialogHandle, Props>(function ShareDialog(
             </div>
           )}
         </section>
-        <section className="share-image-panel" aria-label={m.moment.make}>
+        <section className="share-image-panel">
           {request &&
             (imageShown ? (
               <Suspense
@@ -149,12 +149,10 @@ const ShareDialog = forwardRef<ShareDialogHandle, Props>(function ShareDialog(
                 <MomentImage snapshot={request.snapshot} capture={capture} link={link} />
               </Suspense>
             ) : (
-              <div className="share-image-placeholder">
-                <button className="secondary-button moment-make" onClick={() => setImageShown(true)}>
-                  <ImageIcon size={17} />
-                  {m.moment.make}
-                </button>
-              </div>
+              <button className="secondary-button share-image-placeholder" onClick={() => setImageShown(true)}>
+                <ImageIcon size={24} />
+                {m.moment.make}
+              </button>
             ))}
         </section>
       </div>

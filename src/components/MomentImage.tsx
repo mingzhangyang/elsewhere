@@ -124,7 +124,6 @@ export default function MomentImage({
   return (
     <section className="moment-image" aria-labelledby="moment-title" style={{ fontFamily: FONT }}>
       <h3 id="moment-title">{copy.section}</h3>
-      <p className="moment-note">{copy.note}</p>
       <label className="moment-clear-sky">
         <input
           type="checkbox"

@@ -1531,16 +1531,6 @@ dialog:not([open]) {
 .share-image-placeholder > svg {
   color: var(--gold);
 }
-.share-image-placeholder p {
-  max-width: 320px;
-  margin: 0;
-  color: var(--text-soft);
-  font-size: var(--text-md);
-  line-height: 1.65;
-}
-.share-image-placeholder .moment-make {
-  margin-top: 6px;
-}
 .share-image-panel .moment-image {
   margin: 0;
   padding: 0;
