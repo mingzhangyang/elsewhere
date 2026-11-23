@@ -124,7 +124,7 @@ export default function MomentImage({
   return (
     <section className="moment-image" aria-labelledby="moment-title" style={{ fontFamily: FONT }}>
       <h3 id="moment-title">{m.moment.section}</h3>
-      <p className="moment-note">{m.moment.note}</p>
+      <p className="moment-note">{copy.note}</p>
       <label className="moment-clear-sky">
         <input
           type="checkbox"
@@ -151,13 +151,13 @@ export default function MomentImage({
       </div>
       {failed ? (
         <p className="form-status" role="status">
-          {m.moment.failed}
+          {copy.failed}
         </p>
       ) : image ? (
         <img className="moment-preview" src={image.url} alt={m.moment.alt({ place })} />
       ) : (
         <p className="form-status" role="status">
-          {m.moment.drawing}
+          {copy.drawing}
         </p>
       )}
       {image && !failed && (

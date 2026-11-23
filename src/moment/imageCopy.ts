@@ -6,11 +6,20 @@ import type { Locale } from '../i18n/locale';
  */
 export const momentImageCopy = {
   en: {
+    note: 'A prototype: a picture of this moment to send with the link.',
+    drawing: 'Drawing the image…',
+    failed: 'The image could not be drawn. Try another style.',
     clearSkyImage: 'Clear Sky for image (default; does not change the live sky or shared link)',
     clearSkyBadge: 'Clear Sky mode · clouds removed',
   },
   'zh-Hans': {
+    note: '原型：一张这一刻的图片，可以和链接一起发出。',
+    drawing: '正在绘制图片…',
+    failed: '图片无法绘制。请换一种风格再试。',
     clearSkyImage: '图片使用晴朗天空（默认；不改变实时天空或分享链接）',
     clearSkyBadge: 'Clear Sky 模式 · 已移除云层',
   },
-} satisfies Record<Locale, { clearSkyImage: string; clearSkyBadge: string }>;
+} satisfies Record<
+  Locale,
+  { note: string; drawing: string; failed: string; clearSkyImage: string; clearSkyBadge: string }
+>;
