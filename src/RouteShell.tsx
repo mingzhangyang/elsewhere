@@ -33,6 +33,9 @@ export default function RouteShell({ diagnostics = false }: { diagnostics?: bool
   const [route, setRoute] = useState<Route>(() => routeForHash(window.location.hash));
   const [handoff, setHandoff] = useState<ExplorerHandoff | null>(null);
   const savedDraft = useRef<SkyCreatorDraft | null>(null);
+  const saveDraft = useCallback((value: SkyCreatorDraft) => {
+    savedDraft.current = value;
+  }, []);
   const [explorerVisit, setExplorerVisit] = useState(0);
 
   useEffect(() => {
@@ -86,9 +89,7 @@ export default function RouteShell({ diagnostics = false }: { diagnostics?: bool
       {route === 'create' ? (
         <Creator
           initialDraft={savedDraft.current}
-          onDraftChange={(next) => {
-            savedDraft.current = next;
-          }}
+          onDraftChange={saveDraft}
           onExplore={openExplorer}
         />
       ) : (
