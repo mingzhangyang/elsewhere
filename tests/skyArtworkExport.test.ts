@@ -491,11 +491,9 @@ describe('SM3-B ownership, concurrency, download and share adapters', () => {
       },
     });
     expect(result.status).toBe('open-requested');
-    expect([anchor.href, anchor.target, anchor.rel]).toEqual([
-      'blob:manual-save',
-      '_blank',
-      'noopener',
-    ]);
+    expect(anchor.href).toBe('blob:manual-save');
+    expect(anchor.target).toBe('_blank');
+    expect(anchor.rel).toBe('noopener');
     expect(appended).toHaveBeenCalledWith(anchor);
     expect(clicked).toHaveBeenCalledOnce();
     expect(revoked).not.toHaveBeenCalled();

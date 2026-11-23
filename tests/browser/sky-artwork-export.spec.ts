@@ -309,14 +309,8 @@ test('browser download requests original PNG from a genuine button click, and sh
   expect(download.suggestedFilename()).toBe('elsewhere-sky-2026-06-21.png');
 });
 
-test('no-download fallback requests a real noopener PNG tab from a user click', async ({
-  page,
-  context,
-}, testInfo) => {
-  test.skip(
-    testInfo.project.name !== 'chromium',
-    'The native Blob image tab is verified in desktop Chromium; adapters are covered separately.',
-  );
+test('no-download fallback opens a noopener PNG tab', async ({ page, context }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium', 'Desktop Chromium only.');
   await page.goto('/?scenario=day');
   await page.evaluate(async () => {
     const { SkyArtworkPng } = await import('../../src/lib/skyArtworkExport.ts');
@@ -344,7 +338,7 @@ test('no-download fallback requests a real noopener PNG tab from a user click', 
       // Exercise the *default* capability check with a native DOM anchor.
       // In the test only, simulate a browser without the HTMLAnchorElement.download IDL property.
       const property = Object.getOwnPropertyDescriptor(HTMLAnchorElement.prototype, 'download');
-      if (!property?.configurable) throw new Error('Cannot simulate unsupported download attribute');
+      if (!property?.configurable) throw new Error('Cannot override download attribute');
       Reflect.deleteProperty(HTMLAnchorElement.prototype, 'download');
       try {
         const handoff = downloadSkyArtwork(output, {
