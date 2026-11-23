@@ -1,17 +1,8 @@
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 
 const require = createRequire(import.meta.url);
-const targetFile = 'src/lib/skyArtworkDelivery.ts';
-const fmt = spawnSync(process.execPath, [join(dirname(require.resolve('prettier/package.json')), 'bin/prettier.cjs'), '--write', targetFile], { stdio: 'inherit' });
-if (fmt.status !== 0) process.exit(fmt.status ?? 1);
-const code = Buffer.from(readFileSync(targetFile)).toString('base64');
-for (let offset = 0; offset < code.length; offset += 1024) {
-  console.log('SM3B-DELIVERY-FMT|' + offset + '|' + code.slice(offset, offset + 1024));
-}
-process.exit(1); // Temporary read-only formatter evidence; restored in next commit.
 const notices = spawnSync(process.execPath, ['scripts/generate-notices.mjs', '--check'], {
   stdio: 'inherit',
 });

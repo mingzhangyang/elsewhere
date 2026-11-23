@@ -1,8 +1,4 @@
-import {
-  SkyArtworkExportError,
-  type SkyArtworkPng,
-  type SkyArtworkUrlPort,
-} from './skyArtworkExport';
+import { SkyArtworkExportError, type SkyArtworkPng, type SkyArtworkUrlPort } from './skyArtworkExport';
 
 /** These actions must be initiated by a direct user gesture in SM3-C. */
 export type SkyArtworkShareCapability = 'files' | 'text-only' | 'unavailable' | 'file-unsupported';
@@ -135,8 +131,7 @@ export function downloadSkyArtwork(
       status = 'download-requested';
     } else {
       const opened =
-        port.openImage?.(url) ??
-        (typeof window !== 'undefined' && !!window.open(url, '_blank', 'noopener'));
+        port.openImage?.(url) ?? (typeof window !== 'undefined' && !!window.open(url, '_blank', 'noopener'));
       if (!opened) {
         throw new SkyArtworkExportError(
           'download-unavailable',
