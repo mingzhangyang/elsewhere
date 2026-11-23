@@ -5,6 +5,18 @@ import type { MemorialTime } from './lib/memorialTime';
 import type { SkyCreatorDraft } from './lib/skyCreatorDraft';
 import type { AppProps } from './App';
 
+// Route props are optional; an absent handoff must not erase dev scenario fixtures.
+// Explicit creator handoffs still override any scenario location/time.
+export function mergeExplorerProps(scenario: AppProps, route: AppProps): AppProps {
+  return {
+    ...scenario,
+    ...route,
+    initialLocation: route.initialLocation ?? scenario.initialLocation,
+    initialTime: route.initialTime ?? scenario.initialTime,
+    weatherLoader: route.weatherLoader ?? scenario.weatherLoader,
+  };
+}
+
 const Creator = lazy(() => import('./components/SkyArtworkCreator'));
 
 // Neither App, Three.js, the renderer, the HYG catalog, nor weather enters #create's
@@ -16,7 +28,7 @@ const Explorer = lazy(async () => {
   ]);
   const scenario = dev?.scenarioProps(new URLSearchParams(window.location.search).get('scenario')) ?? {};
   return {
-    default: (props: AppProps) => <module.default {...scenario} {...props} />,
+    default: (props: AppProps) => <module.default {...mergeExplorerProps(scenario, props)} />,
   };
 });
 

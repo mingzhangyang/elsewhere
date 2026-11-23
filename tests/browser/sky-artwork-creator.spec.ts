@@ -158,7 +158,7 @@ test('Chinese reference time and DST error retain their scientific meanings', as
     contentType: 'image/png',
   });
   await page.getByLabel('公历日期').fill('2026-03-08');
-  await page.getByRole('radio', { name: '知道具体时间' }).check();
+  await page.getByRole('radio', { name: '知道具体时间', exact: true }).check();
   await page.getByLabel(/^事件发生地的当地时间/).fill('02:30');
   await page.getByRole('button', { name: '生成我的星图' }).click();
   await expect(page.getByRole('alert')).toContainText('这个时间不存在');
