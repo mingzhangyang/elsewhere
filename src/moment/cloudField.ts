@@ -28,7 +28,7 @@ export function createCloudField(random: () => number, tiers = 1): CloudField {
     const u = (i + random()) / count;
     masses.push([
       (u - 0.5) * 3.3 + (random() - 0.5) * 0.25,
-      -0.4 - (1 - Math.abs(2 * u - 1)) * (0.28 + random() * 0.36),
+      -0.36 - random() * 0.53 - Math.sin(u * Math.PI * 3.2) * 0.12,
       0.38 + random() * 0.53,
       0.29 + random() * 0.5,
       0.72 + random() * 0.26,
@@ -52,8 +52,8 @@ export function sampleCloudField(field: CloudField, u: number, v: number): numbe
     const dy = (v - distortion - my) / ry;
     clear *= 1 - strength * Math.exp(-1.75 * (dx * dx + dy * dy));
   }
-  const edge = 1 - clear + wash(u * 1.8, v * 1.8, phase + 11) * 0.075;
-  const t = clamp01((edge - 0.25) / 0.72);
+  const edge = 1 - clear + wash(u * 1.8, v * 1.8, phase + 11) * 0.08;
+  const t = clamp01((edge - 0.25) / 0.64);
   return t * t * (3 - 2 * t);
 }
 
@@ -91,12 +91,12 @@ export function paintCloudField(
     ctx.restore();
     return field;
   }
-  const step = Math.max(1.6, size * 0.027);
+  const step = Math.max(1.6, size * 0.026);
   offscreen.width = Math.max(8, Math.ceil(width / step));
   offscreen.height = Math.max(8, Math.ceil(height / step));
   const image = c.createImageData(offscreen.width, offscreen.height);
   const pixels = image.data;
-  const base = mix(palette.cloudShadow, palette.cloudBody, 0.52);
+  const base = mix(mix(palette.cloudShadow, palette.cloudBody, 0.52), light.underColour, light.under * 0.25);
   const phase = field.seed * 0.000001;
   let n = 0;
   for (let j = 0; j < offscreen.height; j++) {
@@ -105,11 +105,13 @@ export function paintCloudField(
       const u = -2.33 + (i + 0.5) * (4.66 / offscreen.width);
       const opacity = sampleCloudField(field, u, v);
       const pigment = wash(u * 0.9, v * 0.9, phase);
-      const lit = clamp01(0.42 - v * 0.21 - u * light.x * 0.1 + pigment * 0.18 - light.backlit * 0.12);
+      const lit = clamp01(
+        0.47 - v * 0.23 - u * light.x * 0.1 + pigment * 0.055 + (opacity - 0.5) * 0.23 - light.backlit * 0.12,
+      );
       for (let ch = 0; ch < 3; ch++) {
         pixels[n++] = lerp(base[ch], palette.cloudLight[ch], lit);
       }
-      pixels[n++] = 255 * opacity * (0.73 + 0.07 * pigment);
+      pixels[n++] = 255 * opacity * (0.86 + 0.04 * pigment);
     }
   }
   c.putImageData(image, 0, 0);

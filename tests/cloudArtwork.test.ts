@@ -104,7 +104,7 @@ describe('illustrated postcard watercolor cloud treatment', () => {
     cloudSheet(record.canvas, 1200, 0, 780, palette, light, random, 1);
     const afterSheet = record.operations.filter((x) => x.startsWith('fill:')).length;
     expect(record.stackDepth()).toBe(0);
-    expect(afterSheet - beforeSheet).toBeLessThanOrEqual(12);
+    expect(afterSheet - beforeSheet).toBeLessThanOrEqual(3);
     expect(afterSheet - beforeSheet).toBeGreaterThan(0);
   });
 

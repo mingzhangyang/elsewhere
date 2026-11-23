@@ -119,7 +119,6 @@ export function stratus(
     const t = (8 + random() * 7) * unit;
     const cx = x + (random() - 0.5) * length * 0.24;
     veil(ctx, cx, y + oy, l, t * 1.45, body, edge, random, 0.42, (random() - 0.5) * 0.04);
-    washAt(ctx, cx - l * 0.05, y + oy - t * 0.4, t * 0.7, l / (t * 1.4), edge, 0.09);
   }
 }
 
@@ -141,22 +140,6 @@ export function altocumulus(
     const shift = (random() - 0.5) * size * 2;
     const length = size * (4.6 + random() * 3.6);
     veil(ctx, x + shift, cy, length, size * (0.55 + random() * 0.28), body, edge, random, 0.25, slope);
-    // Fine chipped feather marks soften the transition without building rows of spheres.
-    ctx.save();
-    ctx.fillStyle = css(edge, 0.11);
-    ctx.beginPath();
-    for (let k = 0; k < 3; k++)
-      mark(
-        ctx,
-        x + shift + (random() - 0.5) * length * 0.72,
-        cy - size * (0.15 + random() * 0.25),
-        size * (0.6 + random() * 0.9),
-        size * 0.035,
-        slope,
-        -size * 0.06,
-      );
-    ctx.fill();
-    ctx.restore();
   }
 }
 
@@ -206,7 +189,7 @@ export function cloudSheet(
 ) {
   if (bottom <= top || amount <= 0) return;
   const span = bottom - top;
-  const bands = 2 + Math.round(clamp01(amount) * 3);
+  const bands = 1 + Math.round(clamp01(amount) * 2);
   const shadow = mix(palette.cloudBody, palette.cloudShadow, 0.35 + 0.25 * light.backlit);
   for (let i = 0; i < bands; i++) {
     const t = (i + 0.45 + (random() - 0.5) * 0.28) / bands;
@@ -225,15 +208,6 @@ export function cloudSheet(
       random,
       clamp01(0.1 + 0.3 * amount),
       (random() - 0.5) * 0.045,
-    );
-    washAt(
-      ctx,
-      cx,
-      cy - depth * 0.3,
-      depth * 0.56,
-      length / (depth * 1.7),
-      palette.cloudLight,
-      0.05 + 0.09 * clamp01(amount),
     );
   }
 }
