@@ -599,11 +599,6 @@ const zh: Messages = {
     searchLanguage: 'zh',
   },
   share: {
-    linkSection: '分享链接',
-    linkHeading: '把这片天空分享出去',
-    imageSection: '纪念图片',
-    imageHeading: '纪念图片预览',
-    imagePrompt: '生成这一刻的纪念图片，即可在此预览、选择风格并保存。',
     eyebrow: '留住这一刻',
     title: '分享这片天空',
     close: '关闭分享',

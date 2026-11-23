@@ -107,8 +107,8 @@ const ShareDialog = forwardRef<ShareDialogHandle, Props>(function ShareDialog(
       </div>
       <div className="share-layout">
         <section className="share-link-panel" aria-labelledby="share-link-title">
-          <p className="share-section-kicker">01 / {m.share.linkSection}</p>
-          <h3 id="share-link-title">{m.share.linkHeading}</h3>
+          <p className="share-section-kicker">01 / {m.share.eyebrow}</p>
+          <h3 id="share-link-title">{m.share.field}</h3>
           <p className="share-description">
             {m.moment.sentences([
               m.share.includes({ focus: subjectName, customWeather: includesCustomWeather }),
@@ -140,8 +140,8 @@ const ShareDialog = forwardRef<ShareDialogHandle, Props>(function ShareDialog(
             </div>
           )}
         </section>
-        <section className="share-image-panel" aria-label={m.share.imageHeading}>
-          <p className="share-section-kicker">02 / {m.share.imageSection}</p>
+        <section className="share-image-panel" aria-label={m.moment.make}>
+          <p className="share-section-kicker">02 / {m.moment.make}</p>
           {request &&
             (imageShown ? (
               <Suspense
@@ -154,17 +154,13 @@ const ShareDialog = forwardRef<ShareDialogHandle, Props>(function ShareDialog(
                 <MomentImage snapshot={request.snapshot} capture={capture} link={link} />
               </Suspense>
             ) : (
-              <>
-                <h3 className="share-image-title">{m.share.imageHeading}</h3>
-                <div className="share-image-placeholder">
-                  <ImageIcon size={36} aria-hidden="true" />
-                  <p>{m.share.imagePrompt}</p>
-                  <button className="secondary-button moment-make" onClick={() => setImageShown(true)}>
-                    <ImageIcon size={17} />
-                    {m.moment.make}
-                  </button>
-                </div>
-              </>
+              <div className="share-image-placeholder">
+                <ImageIcon size={36} aria-hidden="true" />
+                <button className="secondary-button moment-make" onClick={() => setImageShown(true)}>
+                  <ImageIcon size={17} />
+                  {m.moment.make}
+                </button>
+              </div>
             ))}
         </section>
       </div>
