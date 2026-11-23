@@ -205,3 +205,11 @@ Linux, Node 22, Playwright 1.65 with the preinstalled Chromium (software GL). 39
 - **Tests:** `tests/cloudArtwork.test.ts` checks contours and Canvas state.
 - **Screenshots:** Playwright captures wind, rain, sunset and overcast with Clear Sky unchecked.
 - **Review gate:** Inspect the final browser PNGs before accepting artistic quality.
+
+### PR #31: density-field watercolor clouds
+
+- Cumulus uses overlapping seeded cloud masses, multi-scale noise, soft alpha and local pigment lighting.
+- Each cloud renders to a small offscreen Canvas 2D bitmap and is smoothed into the postcard.
+- Recording-only contexts use a gradient fallback; neither path touches the live sky or astronomy.
+- The Cloud Field unit tests check reproducibility, soft transparent edges and balanced Canvas state.
+- Browser artwork screenshots must still be reviewed manually for visual quality.

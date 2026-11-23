@@ -607,7 +607,8 @@ export function drawIllustration(
     const grow = 0.78 + random() * 0.42;
     const p = place(3, 21, (scale) => {
       const size = 108 * grow * scale;
-      return { half: size * 2.55, up: size * (1.05 + 0.35 * tiers), down: size * 0.16 };
+      // Density-field wisps spread on both sides and below the former hard silhouette.
+      return { half: size * 2.33, up: size * 1.9, down: size * 0.64 };
     });
     if (p) heaps.push({ x: p.x, y: p.y, alt: p.alt, size: 108 * grow * p.scale, tiers });
   }

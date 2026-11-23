@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { seededRandom } from '../src/lib/random';
 import { altocumulus, cirrus, cloudSheet, cumulus, stratus } from '../src/moment/clouds';
+import { createCloudField, sampleCloudField } from '../src/moment/cloudField';
 import { paletteFor } from '../src/moment/paint';
 import type { CloudLight } from '../src/moment/clouds';
 
@@ -54,7 +55,24 @@ function recordingCanvas() {
 const palette = paletteFor(-5, 0.9);
 
 describe('illustrated postcard watercolor cloud treatment', () => {
-  it('joins each cumulus bank into a smooth outline without layered ellipse volumes', () => {
+  it('uses deterministic feathered pigment rather than a sharp summit silhouette', () => {
+    const first = createCloudField(seededRandom(2026), 2);
+    const second = createCloudField(seededRandom(2026), 2);
+    const alternate = createCloudField(seededRandom(163), 2);
+    expect(first).toEqual(second);
+    expect(first).not.toEqual(alternate);
+    expect(first.masses.length).toBeGreaterThanOrEqual(9);
+    expect(sampleCloudField(first, 0, -0.65)).toBeGreaterThan(0.55);
+    expect(sampleCloudField(first, -2.33, -1.9)).toBeLessThan(0.01);
+    expect(sampleCloudField(first, 2.33, 0.64)).toBeLessThan(0.01);
+    const samples = Array.from({ length: 30 }, (_, i) =>
+      sampleCloudField(first, -2.1 + i * 0.14, -0.8),
+    );
+    expect(new Set(samples.map((a) => a.toFixed(3))).size).toBeGreaterThan(15);
+    expect(samples.every((alpha) => Number.isFinite(alpha) && alpha >= 0 && alpha <= 1)).toBe(true);
+  });
+
+  it('keeps the recording-context fallback soft and the Canvas stack balanced', () => {
     const run = () => {
       const record = recordingCanvas();
       cumulus(record.canvas, 480, 320, 105, palette, light, seededRandom(2026), 2);
@@ -64,34 +82,9 @@ describe('illustrated postcard watercolor cloud treatment', () => {
     const second = run();
     expect(first.operations).toEqual(second.operations);
     expect(first.stackDepth()).toBe(0);
-    expect(first.operations.filter((x) => x.startsWith('quadraticCurveTo:')).length).toBeGreaterThan(20);
-    expect(first.operations.filter((x) => x.startsWith('ellipse:'))).toHaveLength(0);
-    expect(first.operations.some((x) => x.startsWith('createLinearGradient'))).toBe(true);
-  });
-
-  it('draws multiple rounded and asymmetric cumulus crowns rather than a single mountain peak', () => {
-    const outlines = [1, 86, 163, 2026].map((seed) => {
-      const record = recordingCanvas();
-      cumulus(record.canvas, 480, 320, 105, palette, light, seededRandom(seed), 2);
-      const start = record.operations.indexOf('beginPath:');
-      const end = record.operations.indexOf('closePath:', start);
-      // The first closed outline controls the full joined crown (33 points) and its underside.
-      const crown = record.operations
-        .slice(start, end)
-        .filter((op) => op.startsWith('quadraticCurveTo:'))
-        .slice(0, 33)
-        .map((op) => Number(op.split(':')[1].split(',')[1]));
-      const crests: number[] = [];
-      for (let i = 2; i < crown.length - 2; i++) {
-        const y = crown[i];
-        const substantial = y < Math.min(crown[i - 2], crown[i + 2]) - 2.4;
-        if (substantial && y < crown[i - 1] && y <= crown[i + 1]) crests.push(i);
-      }
-      expect(crests.length, `seed ${seed}`).toBeGreaterThanOrEqual(2);
-      expect(record.stackDepth()).toBe(0);
-      return crown.join(',');
-    });
-    expect(new Set(outlines).size).toBe(outlines.length);
+    expect(first.operations.filter((op) => op === 'createRadialGradient').length).toBeGreaterThan(8);
+    expect(first.operations.filter((op) => op.startsWith('quadraticCurveTo:'))).toHaveLength(0);
+    expect(first.operations.some((op) => op.includes('rgba('))).toBe(true);
   });
 
   it('uses translucent, nonparallel veils rather than a row of shaded spheres', () => {

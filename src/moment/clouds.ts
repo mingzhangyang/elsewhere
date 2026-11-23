@@ -1,4 +1,5 @@
 import { type Palette, type Rgb, clamp01, css, lerp, mark, mix, washAt } from './paint';
+import { paintCloudField } from './cloudField';
 
 /**
  * Atmospheric watercolour clouds for postcard illustrations. The shape vocabulary is deliberately
@@ -81,9 +82,9 @@ function veil(
 }
 
 /**
- * A single continuous cloud bank. A modest sculpted crown catches a wide wash of light; a cool,
- * feathered underside recedes into the sky. There are no independent billow discs to read as
- * rows of cotton balls or 3D spheres.
+ * Cumulus now comes from a seeded, two-dimensional transparency field instead of an elevation
+ * silhouette. Its pigment density, lit surface and softened edge are drawn in the lazy postcard
+ * canvas. The live 3D weather renderer is not involved.
  */
 export function cumulus(
   ctx: CanvasRenderingContext2D,
@@ -95,131 +96,7 @@ export function cumulus(
   random: () => number,
   tiers = 1,
 ) {
-  const half = size * (1.45 + random() * 0.55);
-  const height = size * (0.7 + Math.min(3, tiers) * 0.2);
-  const lean = (random() - 0.5) * size * 0.36;
-  const base = y + size * 0.04;
-  const crown = mix(palette.cloudBody, palette.cloudLight, 0.55 - light.backlit * 0.24);
-  const shade = mix(palette.cloudBody, palette.cloudShadow, 0.4);
-  const upper: Point[] = [];
-  const lower: Point[] = [];
-  // Several asymmetric rounded crowns share one silhouette, rather than forming one mountain peak.
-  // Neighbouring saddles sit well above the base: the banks stay connected, not rows of circles.
-  const lobeCount = 3 + Math.floor(random() * 2);
-  const peaks = Array.from({ length: lobeCount }, (_, i) => {
-    const t = (i + 0.5 + (random() - 0.5) * 0.4) / lobeCount;
-    return {
-      t,
-      rise: height * (0.62 + random() * 0.38) * Math.pow(Math.sin(Math.PI * t), 0.38),
-    };
-  });
-  const anchors = [{ t: 0, rise: 0 }];
-  for (let i = 0; i < peaks.length; i++) {
-    anchors.push(peaks[i]);
-    if (i < peaks.length - 1) {
-      const t = (peaks[i].t + peaks[i + 1].t) / 2 + (random() - 0.5) * 0.015;
-      anchors.push({
-        t,
-        rise: Math.min(peaks[i].rise, peaks[i + 1].rise) * (0.62 + random() * 0.1),
-      });
-    }
-  }
-  anchors.push({ t: 1, rise: 0 });
-  for (let i = 0; i <= 32; i++) {
-    const t = i / 32;
-    const px = x + half * (2 * t - 1) + lean * Math.sin(t * Math.PI);
-    let section = 0;
-    while (section < anchors.length - 2 && t > anchors[section + 1].t) section++;
-    const a = anchors[section];
-    const b = anchors[section + 1];
-    const u = (t - a.t) / (b.t - a.t);
-    const smooth = u * u * (3 - 2 * u);
-    const torn = height * Math.sin(Math.PI * t) * (random() - 0.5) * 0.026;
-    const rise = a.rise + (b.rise - a.rise) * smooth + torn;
-    upper.push({ x: px, y: base - rise });
-  }
-  for (let i = 8; i >= 0; i--) {
-    const t = i / 8;
-    const px = x + half * (2 * t - 1);
-    lower.push({
-      x: px,
-      y: base + size * (0.035 + 0.022 * Math.sin(t * 3 * Math.PI) + 0.025 * (random() - 0.5)),
-    });
-  }
-
-  const top = base - height * 1.15;
-  const gradient = ctx.createLinearGradient(0, top, 0, base + size * 0.1);
-  gradient.addColorStop(0, css(crown, 0.58));
-  gradient.addColorStop(0.3, css(crown, 0.8));
-  gradient.addColorStop(0.64, css(palette.cloudBody, 0.78));
-  gradient.addColorStop(0.89, css(shade, 0.65));
-  gradient.addColorStop(1, css(shade, 0.12));
-
-  ctx.save();
-  // Only one outline, softly deposited: no bevel, bevel highlight, or outlines of inner circles.
-  ctx.fillStyle = gradient;
-  ctx.shadowColor = css(palette.cloudBody, 0.42);
-  ctx.shadowBlur = size * 0.12;
-  ctx.beginPath();
-  smoothCloudPath(ctx, upper, lower);
-  ctx.fill();
-  ctx.shadowBlur = 0;
-  ctx.beginPath();
-  smoothCloudPath(ctx, upper, lower);
-  ctx.clip();
-
-  // Broader, nearly horizontal wet-on-wet washes express form without internal ball contours.
-  washAt(
-    ctx,
-    x - half * 0.05 + light.x * size * 0.2,
-    base - height * 0.64,
-    size * 0.28,
-    half / (size * 0.3),
-    mix(crown, palette.glow, light.backlit * 0.32),
-    0.18 + 0.12 * (1 - light.backlit),
-  );
-  washAt(ctx, x - half * 0.23, base - height * 0.34, size * 0.24, half / (size * 0.28), shade, 0.15);
-  washAt(
-    ctx,
-    x + half * 0.24,
-    base - height * 0.18,
-    size * 0.18,
-    half / (size * 0.34),
-    light.under > 0.02 ? mix(shade, light.underColour, light.under * 0.65) : shade,
-    0.2 + light.under * 0.2,
-  );
-  const ribbons = 2 + (tiers > 1 ? 1 : 0);
-  for (let i = 0; i < ribbons; i++) {
-    const from = base - height * (0.22 + random() * 0.5);
-    const length = half * (0.55 + random() * 0.65);
-    veil(
-      ctx,
-      x + (random() - 0.5) * half * 0.55,
-      from,
-      length,
-      size * (0.08 + random() * 0.07),
-      shade,
-      crown,
-      random,
-      0.12,
-      (random() - 0.5) * 0.08,
-    );
-  }
-  ctx.restore();
-
-  // Transparent torn edges bleed into the wash beyond the coherent main silhouette.
-  for (let i = 0; i < 2; i++) {
-    const side = i ? 1 : -1;
-    washAt(
-      ctx,
-      x + side * half * 0.72,
-      base - height * (0.25 + random() * 0.32),
-      size * 0.11,
-      3.5 + random() * 1.5,
-      crown,
-      0.12,
-    );
-  }
+  paintCloudField(ctx, x, y, size, palette, light, random, tiers);
 }
 
 /** Near-horizon stratus: thin horizontal washes with broken, nonparallel feathered edges. */
