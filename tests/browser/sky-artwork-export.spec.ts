@@ -312,11 +312,10 @@ test('browser download requests original PNG from a genuine button click, and sh
 test('no-download fallback requests a real noopener PNG tab from a user click', async ({
   page,
   context,
-  browserName,
-}) => {
+}, testInfo) => {
   test.skip(
-    browserName !== 'chromium',
-    'The native Blob image tab is verified in Chromium; adapters are covered separately.',
+    testInfo.project.name !== 'chromium',
+    'The native Blob image tab is verified in desktop Chromium; adapters are covered separately.',
   );
   await page.goto('/?scenario=day');
   await page.evaluate(async () => {
@@ -363,13 +362,14 @@ test('no-download fallback requests a real noopener PNG tab from a user click', 
     context.waitForEvent('page'),
     page.getByRole('button', { name: 'Open PNG for manual save' }).click(),
   ]);
+  await imageTab.waitForURL(/blob:/);
   await imageTab.waitForLoadState();
   expect(imageTab.url()).toContain('blob:');
   expect(await imageTab.evaluate(() => window.opener === null)).toBe(true);
-  const dimensions = await imageTab.locator('img').evaluate((image: HTMLImageElement) => [
-    image.naturalWidth,
-    image.naturalHeight,
-  ]);
+  const dimensions = await imageTab.locator('img').evaluate((element) => {
+    const image = element as HTMLImageElement;
+    return [image.naturalWidth, image.naturalHeight];
+  });
   expect(dimensions).toEqual([12, 15]);
   expect(await page.locator('#sm3-b-gesture-manual-save').getAttribute('data-status')).toBe(
     'open-requested',
