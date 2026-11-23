@@ -18,11 +18,8 @@ import {
 } from '../lib/memorialTime';
 import type { LocationInfo } from '../types';
 
-/**
- * This form is deliberately not wired into the explorer or a route yet (SM3).
- * In particular, there is no default city or device time zone: a city must be selected.
- */
-type Fields = {
+/** No default city or device time zone: a city must be selected. */
+export type MemorialTimeFields = {
   location: LocationInfo | null;
   localDate: string;
   kind: 'exact' | 'reference';
@@ -37,7 +34,7 @@ type Feedback =
   | { type: 'result'; result: MemorialTimeResult }
   | null;
 
-function initialFields(initialDraft?: MemorialTimeDraft): Fields {
+function initialFields(initialDraft?: MemorialTimeDraft): MemorialTimeFields {
   return {
     location: initialDraft?.location ?? null,
     localDate: initialDraft?.localDate ?? '',
@@ -52,7 +49,7 @@ function initialFields(initialDraft?: MemorialTimeDraft): Fields {
 }
 
 /** Only a selected place can produce an SM1-A draft. Unselected form fields stay in the UI. */
-function toDraft(fields: Fields): MemorialTimeDraft | null {
+export function memorialFieldsToDraft(fields: MemorialTimeFields): MemorialTimeDraft | null {
   if (!fields.location) return null;
   if (fields.kind === 'exact') {
     return {
@@ -74,23 +71,27 @@ function toDraft(fields: Fields): MemorialTimeDraft | null {
 
 export default function MemorialTimeForm({
   initialDraft,
+  initialInput,
+  onDraftChange,
   onResolved,
   onInvalidated,
 }: {
-  /** Restoring an in-progress draft is separate from restoring a saved artwork/link (SM5). */
+  /** Existing SM1 restoration API (also used outside the creator). */
   initialDraft?: MemorialTimeDraft;
-  /** A resolved event, not an artwork; the creator/astronomy handoff is a later batch. */
+  /** Preserve even incomplete form values when returning from the explorer. */
+  initialInput?: MemorialTimeFields;
+  onDraftChange?: (fields: MemorialTimeFields) => void;
   onResolved: (value: MemorialTime) => void;
-  /** Clear the creator's last resolved snapshot whenever its inputs are edited. */
   onInvalidated?: () => void;
 }) {
   const { locale } = useI18n();
   const t = memorialMessages(locale);
   const radioName = useId();
-  const [fields, setFields] = useState<Fields>(() => initialFields(initialDraft));
+  const [fields, setFields] = useState<MemorialTimeFields>(() => initialInput ?? initialFields(initialDraft));
   const [feedback, setFeedback] = useState<Feedback>(null);
   const generation = useRef(0);
   const previousInitialDraft = useRef(initialDraft);
+  const initialInputOnce = useRef(initialInput);
   const onInvalidatedRef = useRef(onInvalidated);
 
   useEffect(() => {
@@ -99,6 +100,10 @@ export default function MemorialTimeForm({
 
   // A slow time-zone/polyfill load must not publish a result after edits or unmount.
   useEffect(() => () => void (generation.current += 1), []);
+
+  useEffect(() => {
+    onDraftChange?.(fields);
+  }, [fields, onDraftChange]);
 
   // A saved draft is untrusted until its candidate is rechecked against today's IANA rules.
   // The ticket also protects newer user edits from an older restoration response.
@@ -110,20 +115,23 @@ export default function MemorialTimeForm({
       onInvalidatedRef.current?.();
       setFeedback(null);
     }
-    if (!initialDraft) {
+    const draft = initialDraft ?? (initialInputOnce.current ? memorialFieldsToDraft(initialInputOnce.current) : null);
+    if (!draft) {
       if (replaced) setFields(initialFields());
       return;
     }
     const ticket = ++generation.current;
-    void restoreMemorialDraft(initialDraft)
+    void restoreMemorialDraft(draft)
       .then((restoration) => {
         if (ticket !== generation.current) return;
         if (restoration.status === 'error') {
-          setFields(initialFields());
+          if (initialDraft) setFields(initialFields());
+          else setFields((previous) => ({ ...previous, choiceUtc: undefined }));
           setFeedback({ type: 'restore-error', code: restoration.code });
           return;
         }
-        setFields(initialFields(restoration.draft));
+        if (initialDraft) setFields(initialFields(restoration.draft));
+        else setFields((previous) => ({ ...previous, choiceUtc: restoration.draft.choiceUtc }));
         setFeedback(
           restoration.status === 'needs-confirmation'
             ? { type: 'restore-error', code: restoration.code }
@@ -144,7 +152,7 @@ export default function MemorialTimeForm({
     onInvalidated?.();
   };
 
-  const edit = (partial: Partial<Fields>) => {
+  const edit = (partial: Partial<MemorialTimeFields>) => {
     invalidate();
     setFields((previous) => ({ ...previous, ...partial, choiceUtc: undefined }));
   };
@@ -152,7 +160,7 @@ export default function MemorialTimeForm({
   const selectCity = (location: LocationInfo) => {
     invalidate();
     setFields((previous) => {
-      const currentDraft = toDraft(previous);
+      const currentDraft = memorialFieldsToDraft(previous);
       // SM1-B preserves the event's civil clock, not the explorer's UTC instant.
       const moved = currentDraft ? changeMemorialLocation(currentDraft, location) : null;
       return {
@@ -185,11 +193,11 @@ export default function MemorialTimeForm({
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    void validate(toDraft(fields));
+    void validate(memorialFieldsToDraft(fields));
   };
 
   const chooseOffset = (utc: string) => {
-    const draft = toDraft(fields);
+    const draft = memorialFieldsToDraft(fields);
     if (!draft) return;
     setFields((previous) => ({ ...previous, choiceUtc: utc }));
     void validate({ ...draft, choiceUtc: utc });
