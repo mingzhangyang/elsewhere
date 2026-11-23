@@ -22,7 +22,9 @@ test('postcard defaults to Clear Sky without changing the explorer', async ({ pa
 
   await page.goto('/?scenario=overcast');
   const source = page.locator('.source-pill');
-  await expect(source).toBeVisible();
+  // WebKit can show the neutral loading state before the synthetic forecast arrives.
+  // Capture the settled provider state so image generation cannot be blamed for that async transition.
+  await expect(source).toHaveText('Forecast', { timeout: 15000 });
   const originalSource = await source.innerText();
 
   await page.getByRole('button', { name: 'Share this sky' }).click();
