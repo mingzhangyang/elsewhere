@@ -32,7 +32,7 @@ export default defineConfig({
     {
       name: 'mobile-webkit-sky-export',
       use: { ...devices['iPhone 13'] },
-      testMatch: '**/sky-artwork-export.spec.ts',
+      testMatch: ['**/sky-artwork-export.spec.ts', '**/sky-artwork-creator.spec.ts'],
     },
     {
       name: 'offline-chromium',
