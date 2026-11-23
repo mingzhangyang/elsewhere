@@ -216,6 +216,10 @@ Linux, Node 22, Playwright 1.65 with the preinstalled Chromium (software GL). 39
 
 ## Bundle budget governance (PR #35)
 
+`npm run build` automatically runs `scripts/check-build.mjs` via the npm
+`postbuild` hook. It prints the full distribution before enforcing the hard
+gates, so an over-budget build still shows the exact largest contributors.
+
 `npm run validate` runs the built-in Node tests for `scripts/build-budget.mjs`,
 builds the production files, and invokes the existing `scripts/check-build.mjs`.
 The same script still tests service-worker installation, offline asset recovery,

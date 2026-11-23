@@ -16,7 +16,8 @@
     "validate": "node scripts/validate.mjs",
     "test:browser": "playwright test",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "postbuild": "node scripts/check-build.mjs"
   },
   "dependencies": {
     "@fontsource/caveat": "^5.3.0",

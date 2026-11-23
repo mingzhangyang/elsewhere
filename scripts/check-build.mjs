@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import { analyzeBuild, assertBuildBudgets, formatBuildReport } from './build-budget.mjs';
 
 const report = await analyzeBuild();
+const baseline = JSON.parse(await readFile(new URL('./build-budget-baseline.json', import.meta.url), 'utf8'));
+console.log(formatBuildReport(report, baseline));
 await assertBuildBudgets(report);
 const paths = report.assetNames;
 
@@ -135,6 +137,4 @@ for (const request of [
   });
   assert.equal(reply, undefined, `Service worker must not intercept ${request.method} ${request.url}`);
 }
-const baseline = JSON.parse(await readFile(new URL('./build-budget-baseline.json', import.meta.url), 'utf8'));
-console.log(formatBuildReport(report, baseline));
 console.log('Offline assets with Vary: Origin, navigation fallback, and API exclusion passed.');
