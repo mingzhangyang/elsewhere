@@ -97,8 +97,8 @@ describe('illustrated postcard watercolor cloud treatment', () => {
           totalError += error;
         }
       }
-      expect(maxError).toBeLessThan(0.07);
-      expect(totalError / raster.length).toBeLessThan(0.005);
+      expect(maxError).toBeLessThan(0.03);
+      expect(totalError / raster.length).toBeLessThan(0.003);
     }
   });
 

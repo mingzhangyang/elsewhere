@@ -112,11 +112,15 @@ export function rasterCloudOpacity(field: CloudField, columns: number, rows: num
     for (let i = 0; i < columns; i++) {
       const u = -2.33 + (i + 0.5) * stepX;
       const drift = wash(u, v, phase) * 0.07;
-      const x = Math.max(0, Math.min(columns - 1, i + drift / stepX));
-      const y = Math.max(0, Math.min(rows - 1, j - drift / stepY));
-      const xi = Math.floor(x), yi = Math.floor(y);
-      const x1 = Math.min(columns - 1, xi + 1), y1 = Math.min(rows - 1, yi + 1);
-      const tx = x - xi, ty = y - yi;
+      const x = i + drift / stepX;
+      const y = j - drift / stepY;
+      // Extrapolate at edges instead of clamping: the displaced field stays continuous.
+      const xi = Math.max(0, Math.min(columns - 2, Math.floor(x)));
+      const yi = Math.max(0, Math.min(rows - 2, Math.floor(y)));
+      const x1 = xi + 1;
+      const y1 = yi + 1;
+      const tx = x - xi;
+      const ty = y - yi;
       const top = lerp(clear[yi * columns + xi], clear[yi * columns + x1], tx);
       const bottom = lerp(clear[y1 * columns + xi], clear[y1 * columns + x1], tx);
       const edge = 1 - lerp(top, bottom, ty) + wash(u * 1.8, v * 1.8, phase + 11) * 0.08;
