@@ -1,5 +1,6 @@
 node_modules
 dist
+dist-sdk
 src/data/stars.json
 tests/fixtures
 package-lock.json

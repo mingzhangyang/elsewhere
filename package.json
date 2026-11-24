@@ -14,6 +14,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "validate": "node scripts/validate.mjs",
+    "sdk:build": "node scripts/build-sky-engine.mjs",
+    "pretest:browser": "npm run sdk:build",
     "test:browser": "playwright test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

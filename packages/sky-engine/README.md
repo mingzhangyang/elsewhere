@@ -1,4 +1,4 @@
-# Sky Engine — scene and illustration API (milestone 2)
+# Sky Engine — versioned browser and npm distribution (milestone 3)
 
 This directory is the single source of truth for the shared sky calculations and Canvas 2D illustration
 pipeline. Elsewhere's existing `src/domain`, `src/moment`, `src/lib` and ridge entry points re-export
@@ -6,7 +6,7 @@ the relocated modules where needed. No copied implementations or second catalog 
 
 ## Boundaries
 
-- `src/index.ts`: host-neutral source entry point; not a published npm API yet.
+- `src/index.ts`: the common host-neutral source entry point for the app and distribution.
 - `src/types.ts` and `src/contracts.ts`: astronomy, weather values, camera, layers and moment contracts.
 - `src/domain/`: observer and time validation, ephemerides, star catalog/encoding, Galactic coordinates,
   visibility and clear-weather defaults.
@@ -26,11 +26,11 @@ remains MIT. The loader has one live catalog per module instance.
 
 ## Browser API
 
-Import from `src/index.ts` until M3 packages the same entry point. A plain browser consumer supplies
+Import the bundled ESM from a pinned release or the installed npm package. A plain browser consumer supplies
 its observer and data; there is no geolocation prompt, live weather request, or site dependency.
 
 ```ts
-import { createSkyScene, decodeStarColumns, renderIllustration } from './src/index';
+import { createSkyScene, decodeStarColumns, renderIllustration } from './vendor/sky-engine/sky-engine.mjs';
 
 const scene = await createSkyScene({
   latitude: 39.14,
@@ -91,14 +91,64 @@ const framed = await renderIllustration(canvas, scene, {
   entry point and the same `createCoverProjection` as the realistic capture. The legacy low-level
   API is still available. Rendering requires browser Canvas 2D and DOM; pure scene creation does not.
 
+## Build and release
+
+From a clean repository checkout run `npm ci` and `npm run sdk:build`. The SDK build is isolated
+from the Elsewhere app's `dist/` and Service Worker: output is in ignored `dist-sdk/release/`.
+The standalone ESM contains Astronomy Engine, Temporal fallback and its dependencies, with no
+additional JS chunks, app dependencies, runtime CDN or import map. Catalog and optional imagery
+remain separate resources. The app's own lazy Temporal import is unchanged.
+
+Release assets for the initial version **0.1.0**:
+
+| Asset                                      | Purpose                                                        |
+| ------------------------------------------ | -------------------------------------------------------------- |
+| `sky-engine.mjs`                           | Self-contained browser ESM, served with a JavaScript MIME type |
+| `stars.json`                               | Exact HYG v4.1 columnar catalog used by Elsewhere              |
+| `orangely-sky-engine-0.1.0.tgz`            | npm-installable ESM, declarations, catalog and notices         |
+| `orangely-sky-engine-landscapes-0.1.0.tgz` | Optional city/mountain artwork and license                     |
+| `sky-engine-NOTICES.txt`                   | MIT, runtime dependency notices and HYG attribution/license    |
+| `manifest.json` / `SHA256SUMS`             | Version, source commit, file sizes and SHA-256 integrity       |
+
+No npm registry publication is required. For npm applications, install the downloaded core tarball
+(`npm install ./orangely-sky-engine-0.1.0.tgz`) and import from `@orangely/sky-engine`. Its package
+export `@orangely/sky-engine/stars.json` is available to copy into the host's static assets.
+Both archives are tested with an isolated offline installation, and the core package with a strict
+NodeNext TypeScript consumer. The package's license expression covers the MIT code and the separately
+CC BY-SA 4.0 catalog; the bundled runtime dependencies retain their own license notices.
+
+For now-and-more, download the browser module, catalog and notices from the **exact** GitHub Release
+tag, verify `SHA256SUMS`, and copy them into a local versioned vendor directory. Import the local
+ESM and explicitly fetch its matching local catalog. Precache both in the host Service Worker and
+bump its cache version when upgrading. No runtime fetch from Elsewhere is needed. A host can
+omit the optional landscape archive for procedural ridge or sea scenes. For the other landscapes,
+extract its `package/landscapes` directory into the host's static resources and resolve the SDK's
+season/light request to the appropriate WebP (see `LANDSCAPES.md` in the source).
+
+The core module has initial independent limits of 750,000 raw and 250,000 gzip bytes; catalog
+gzip is capped at 120,000 bytes, the core npm archive at 400,000 bytes, and the optional artwork
+archive at 5 MB. Existing app limits are unchanged. CI checks the SDK on Node 24 on Linux and Windows,
+and the Chromium distribution test serves the actual generated files on an independent host,
+forces the bundled Temporal fallback, renders, then verifies an identical offline reload.
+
+### Publishing after merge
+
+The SDK version comes from `packages/sky-engine/package.json`. After the release PR is merged
+and CI passes, push an annotated tag `sky-engine-v0.1.0` on the merged main commit. The release
+workflow accepts only a tag matching the package version and reachable from main, validates the
+app, rebuilds/tests the SDK, checks hashes and creates a GitHub Release without overwriting an
+existing release. It does not publish to npm or deploy either app. Never move or reuse a version
+tag: bump the package version for a new release. Use the CI candidate artifact for review before
+tagging. Release assets remain unpublished until this explicit tag step.
+
 ## Remaining milestones (separate, non-stacked changes)
 
 1. **M1 (completed):** relocate implementation and contracts without changing rendering behavior;
    keep legacy imports and existing tests working. Check module boundary and single-instance exports.
-2. **M2 (this change):** design and test a host-neutral scene/render facade, consistent crop/projection mapping,
+2. **M2 (completed):** design and test a host-neutral scene/render facade, consistent crop/projection mapping,
    explicit composition and pattern overrides, asset injection, and bounded browser resource loading.
    Preserve current and automatic framing; allow the now-and-more signature asterism policy.
-3. **M3:** publish a versioned build from the same sources: ESM (including a browser-consumable build),
+3. **M3 (this change):** publish a versioned build from the same sources: ESM (including a browser-consumable build),
    declarations, optional data/landscape assets, checksums and licenses. Validate package and app budgets
    and offline behavior; no remote latest-version runtime dependency.
 4. **M4:** in now-and-more, consume the pinned artifact with local assets and cache-version updates,
