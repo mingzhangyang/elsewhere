@@ -34,6 +34,9 @@ import { NEW_YORK } from './fixtures/locations';
 const painted = vi.hoisted(
   () => [] as ({ kind: 'cloud' } | { kind: 'fill'; arcs: { x: number; y: number; r: number }[] })[],
 );
+// These recording-context tests exercise scene ordering, not browser pixel buffers.
+vi.mock('../src/moment/milkyWayArt', () => ({ paintMilkyWay: vi.fn() }));
+
 // The cloud painters, unchanged, noting each call in `painted`.
 vi.mock('../src/moment/clouds', async (importOriginal) => {
   const clouds = await importOriginal<Record<string, unknown>>();

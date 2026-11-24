@@ -29,6 +29,7 @@ import {
 import { type CloudLight, altocumulus, cirrus, cloudSheet, cumulus, stratus } from './clouds';
 import { landscapeSeason } from './seasons';
 import { paintLandscape } from './landscape';
+import { paintMilkyWay } from './milkyWayArt';
 
 /**
  * The illustrated sky: a painted, picture-book rendering of the same calculated snapshot as the
@@ -42,7 +43,7 @@ import { paintLandscape } from './landscape';
  * fewer. What is illustrative: sizes (the Moon and planets are enlarged), colours, cloud shapes and
  * the landscape. Scenery reaches at most 2° above the horizon; anything taller (trees, houses,
  * people) stands on ground below the horizon line, so nothing reported visible is hidden. Nothing is
- * invented in the sky: no Milky Way, meteors or aurora.
+ * invented in the sky: the Milky Way follows the star sphere; no invented meteors or aurora.
  */
 
 /** Maps a direction to canvas pixels in the sky area. */
@@ -315,6 +316,9 @@ export function drawIllustration(
     ctx.fillStyle = g;
     ctx.fillRect(0, horizonY - 260 * unit, width, 260 * unit);
   }
+
+  // Diffuse Galactic pigment goes behind every star, cloud and foreground mark.
+  paintMilkyWay(ctx, width, height, snapshot, palette);
 
   // 2. Stars, through the app's visibility model.
   /** Names to letter in at the end: below their object, or above it (`top`) when that would fall on the land. */
