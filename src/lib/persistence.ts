@@ -4,7 +4,7 @@ import type { SkyBrightness } from '../domain/starVisibility';
 import { validateObserver } from '../domain/observer';
 import { validateInstant } from '../domain/time';
 import { defaultWeatherValues } from '../domain/weather';
-import { isDeviceLocation, normalizeLocation, PRESETS } from './locations';
+import { isDeviceLocation, normalizeLocation } from './locations';
 
 export interface LayerSettings {
   stars: boolean;
@@ -144,6 +144,88 @@ export function savePreferences(value: Preferences): boolean {
 }
 
 /**
+ * Immutable v2 share-link preset snapshot. Never derive this from the editable PRESETS list
+ * or update these records: existing v2 IDs must always resolve to their original observer.
+ * Updated/new app presets are serialized as full location tuples until a new link version.
+ */
+const SHARE_PRESETS_V2: readonly Readonly<LocationInfo>[] = Object.freeze(
+  [
+    {
+      id: 'new-york',
+      name: 'New York',
+      country: 'United States',
+      latitude: 40.7128,
+      longitude: -74.006,
+      elevation: 10,
+      timezone: 'America/New_York',
+    },
+    {
+      id: 'beijing',
+      name: 'Beijing',
+      country: 'China',
+      latitude: 39.9042,
+      longitude: 116.4074,
+      elevation: 44,
+      timezone: 'Asia/Shanghai',
+    },
+    {
+      id: 'tokyo',
+      name: 'Tokyo',
+      country: 'Japan',
+      latitude: 35.6762,
+      longitude: 139.6503,
+      elevation: 40,
+      timezone: 'Asia/Tokyo',
+    },
+    {
+      id: 'london',
+      name: 'London',
+      country: 'United Kingdom',
+      latitude: 51.5072,
+      longitude: -0.1276,
+      elevation: 11,
+      timezone: 'Europe/London',
+    },
+    {
+      id: 'reykjavik',
+      name: 'Reykjavík',
+      country: 'Iceland',
+      latitude: 64.1466,
+      longitude: -21.9426,
+      elevation: 61,
+      timezone: 'Atlantic/Reykjavik',
+    },
+    {
+      id: 'sydney',
+      name: 'Sydney',
+      country: 'Australia',
+      latitude: -33.8688,
+      longitude: 151.2093,
+      elevation: 58,
+      timezone: 'Australia/Sydney',
+    },
+    {
+      id: 'cairo',
+      name: 'Cairo',
+      country: 'Egypt',
+      latitude: 30.0444,
+      longitude: 31.2357,
+      elevation: 23,
+      timezone: 'Africa/Cairo',
+    },
+    {
+      id: 'antarctica',
+      name: 'McMurdo Station',
+      country: 'Antarctica',
+      latitude: -77.8419,
+      longitude: 166.6863,
+      elevation: 24,
+      timezone: 'Antarctica/McMurdo',
+    },
+  ].map((place) => Object.freeze(place)),
+);
+
+/**
  * Version 2 compact share payload. The fixed tuple avoids repeating keys, and the UTF-8
  * base64url envelope is safe to copy without an external short-link service.
  *
@@ -207,7 +289,7 @@ function expandedWeather(data: unknown): unknown {
 
 function compactLocation(location: LocationInfo): string | (string | number | null)[] {
   const preset = !isDeviceLocation(location)
-    ? PRESETS.find(
+    ? SHARE_PRESETS_V2.find(
         (place) =>
           place.id === location.id &&
           place.name === location.name &&
@@ -232,7 +314,7 @@ function compactLocation(location: LocationInfo): string | (string | number | nu
 
 function expandedLocation(data: unknown): unknown {
   if (typeof data === 'string') {
-    const preset = PRESETS.find((place) => place.id === data);
+    const preset = SHARE_PRESETS_V2.find((place) => place.id === data);
     if (!preset) throw new Error('Unknown shared place');
     return preset;
   }

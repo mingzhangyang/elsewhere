@@ -53,6 +53,42 @@ describe('portable exploration state', () => {
     return JSON.parse(atob(token.replaceAll('-', '+').replaceAll('_', '/'))) as unknown[];
   };
 
+  it('pins existing v2 preset IDs when the live catalog changes or removes a place', () => {
+    const original = { ...PRESETS[0] };
+    const state = { ...exploration, location: original, custom: null };
+    const originalHash = new URL(explorationUrl(state)).hash;
+    expect(compactTuple(state)[0]).toBe(original.id);
+    const livePresets = [...PRESETS];
+    try {
+      const revised = {
+        ...original,
+        latitude: original.latitude + 0.25,
+        elevation: original.elevation + 25,
+        timezone: 'America/Chicago',
+      };
+      PRESETS[0] = revised;
+      expect(parseExploration(originalHash).value?.location).toEqual(original);
+      const revisedState = { ...state, location: revised };
+      expect(compactTuple(revisedState)[0]).toEqual([
+        revised.id,
+        revised.name,
+        revised.country,
+        revised.latitude,
+        revised.longitude,
+        revised.elevation,
+        revised.timezone,
+      ]);
+      expect(parseExploration(new URL(explorationUrl(revisedState)).hash).value?.location).toEqual(revised);
+      const added = { ...original, id: 'future-preset' };
+      PRESETS.push(added);
+      expect(compactTuple({ ...state, location: added })[0]).toBeInstanceOf(Array);
+      PRESETS.shift();
+      expect(parseExploration(originalHash).value?.location).toEqual(original);
+    } finally {
+      PRESETS.splice(0, PRESETS.length, ...livePresets);
+    }
+  });
+
   it('shortens ordinary weather links and keeps legacy JSON links readable', () => {
     const regular = { ...exploration, custom: null, clearSky: false };
     const short = new URL(explorationUrl(regular)).hash;

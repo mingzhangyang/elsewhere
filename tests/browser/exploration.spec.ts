@@ -267,7 +267,12 @@ test('the share dialog draws a keepsake image in each style and horizon', async 
   await page.getByRole('button', { name: 'Share this sky', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Share this sky' });
   await expect(dialog).toContainText('When opened, the view turns to Jupiter.');
-  expect(await dialog.getByRole('textbox', { name: 'Sky link' }).inputValue()).toContain('#sky=2.');
+  const link = await dialog.getByRole('textbox', { name: 'Sky link' }).inputValue();
+  expect(link).toContain('#sky=2.');
+  const tuple = JSON.parse(
+    Buffer.from(new URL(link).hash.slice('#sky=2.'.length), 'base64url').toString('utf8'),
+  ) as unknown[];
+  expect(tuple[8]).toBe('jupiter');
   const image = dialog.getByRole('img', { name: 'Keepsake image of the sky over New York' });
   /** The image's size and the share of its sky area that is not plain black. */
   const inspect = () =>
