@@ -1,0 +1,179 @@
+.location-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border: 1px solid var(--line);
+  background: var(--control-surface);
+  border-radius: 10px;
+  padding: 9px 14px;
+  min-height: 48px;
+  text-align: left;
+  min-width: 0;
+}
+.location-trigger > svg {
+  flex: 0 0 auto;
+  color: var(--text-dim);
+}
+.location-trigger > span {
+  flex: 1;
+  overflow: hidden;
+}
+/* Wide screens name the place in the sky title; the header trigger only offers the change. */
+.topbar .location-trigger {
+  justify-self: center;
+  min-width: 200px;
+}
+.location-current {
+  display: none;
+}
+.location-change {
+  font-size: var(--text-md);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.location-trigger strong {
+  display: block;
+  font-size: var(--text-md);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.location-trigger small {
+  display: block;
+  color: var(--quiet);
+  font-size: var(--text-sm);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.place-dialog {
+  width: 540px;
+  max-height: min(720px, calc(100dvh - 40px));
+  padding-bottom: 16px;
+}
+.place-dialog .eyebrow {
+  font-size: var(--text-xs);
+}
+.place-search {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 22px 14px;
+  padding: 12px 14px;
+  border: 1px solid #91aed750;
+  border-radius: 9px;
+  background: #080f1a;
+  color: #a8c1dc;
+}
+.place-search input {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-size: var(--text-md);
+  outline: none;
+}
+.place-search:focus-within {
+  outline: 2px solid #91aed7;
+  outline-offset: 2px;
+}
+.place-actions {
+  display: flex;
+  gap: 8px;
+  margin: 0 22px 20px;
+}
+.place-actions button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--raised);
+  padding: 10px;
+  min-height: 44px;
+  font-size: var(--text-sm);
+}
+.place-dialog > .eyebrow,
+.place-dialog > .form-status {
+  margin-left: 24px;
+  margin-right: 24px;
+}
+.place-options {
+  max-height: 410px;
+  overflow: auto;
+  padding: 0 12px;
+}
+.place-options button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  min-height: 60px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #b7c9dc;
+  text-align: left;
+}
+.place-options button.active,
+.place-options button:hover {
+  background: #23384f;
+}
+.place-options button > span {
+  flex: 1;
+  min-width: 0;
+}
+.place-options strong {
+  display: block;
+  color: #e5eef8;
+  font-size: var(--text-md);
+  font-weight: 500;
+}
+.place-options small {
+  display: block;
+  color: #a2b4c9;
+  font-size: var(--text-xs);
+  margin-top: 5px;
+}
+@media (max-width: 680px) {
+  .location-trigger {
+    min-height: 42px;
+    padding: 8px 10px;
+    gap: 8px;
+  }
+  .topbar .location-trigger {
+    min-width: 0;
+    justify-self: stretch;
+  }
+  .location-current {
+    display: block;
+  }
+  .location-change,
+  .location-trigger small {
+    display: none;
+  }
+  .location-trigger strong {
+    font-size: var(--text-sm);
+  }
+  .place-dialog {
+    max-height: calc(100dvh - 24px);
+  }
+  .place-options {
+    max-height: 48dvh;
+  }
+  .place-actions button {
+    padding: 10px 7px;
+    font-size: var(--text-sm);
+    min-height: 44px;
+  }
+  .place-actions {
+    gap: 6px;
+  }
+}

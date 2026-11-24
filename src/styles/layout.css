@@ -1,0 +1,176 @@
+.app-shell {
+  height: 100dvh;
+  min-height: 380px;
+  display: grid;
+  /* viewport-fit=cover: the last visible row owns the bottom inset; side insets clear landscape notches. */
+  grid-template-rows: calc(76px + env(safe-area-inset-top)) minmax(120px, 1fr) auto calc(
+      30px + env(safe-area-inset-bottom)
+    );
+  padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
+  overflow: clip;
+}
+.recovery-page {
+  max-width: 600px;
+  margin: 15vh auto;
+  padding: 24px;
+  line-height: 1.7;
+}
+.recovery-page a {
+  display: block;
+  margin-top: 20px;
+}
+.topbar {
+  display: grid;
+  grid-template-columns: 1fr minmax(200px, 360px) 1fr;
+  align-items: center;
+  gap: 24px;
+  padding: env(safe-area-inset-top) 28px 0;
+  background: var(--chrome);
+  border-bottom: 1px solid var(--line);
+  z-index: 10;
+}
+.brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: #eaf1f8;
+  width: fit-content;
+}
+.brand-mark {
+  display: grid;
+  place-items: center;
+  border: 1px solid #e5ceb143;
+  color: var(--gold);
+  border-radius: 50%;
+  width: 38px;
+  height: 38px;
+}
+.brand-name {
+  font-size: 23px;
+  font-weight: 650;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+.brand-name > span {
+  color: var(--gold);
+}
+.brand-name small {
+  display: block;
+  margin-top: 8px;
+  color: var(--quiet);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  letter-spacing: 0.17em;
+}
+.header-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+}
+.bottom-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 0 28px env(safe-area-inset-bottom);
+  color: #8698ae;
+  font-size: var(--text-xs);
+  background: var(--chrome);
+  letter-spacing: 0.06em;
+}
+.bottom-bar a {
+  color: #92a7c1;
+  text-decoration: none;
+  letter-spacing: 0;
+}
+.bottom-bar > span:first-child {
+  letter-spacing: 0.17em;
+  font-size: var(--text-xs);
+}
+.notice {
+  position: fixed;
+  z-index: 30;
+  top: 88px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(620px, calc(100% - 24px));
+  padding: 10px 10px 10px 18px;
+  background: #24384ef5;
+  border: 1px solid #aec7e04f;
+  border-radius: 10px;
+  font-size: var(--text-md);
+  box-shadow: 0 10px 40px #0006;
+}
+@media (max-width: 1000px) {
+  .topbar {
+    grid-template-columns: 1fr minmax(180px, 320px) auto;
+    gap: 18px;
+    padding: 0 20px;
+  }
+}
+@media (max-width: 680px) {
+  .app-shell {
+    /* Keep intrinsic widths in the time controls from widening the entire sky stage. */
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: calc(64px + env(safe-area-inset-top)) minmax(120px, 1fr) auto calc(
+        24px + env(safe-area-inset-bottom)
+      );
+  }
+  .topbar {
+    padding: 0 12px;
+    gap: 12px;
+    grid-template-columns: 34px minmax(0, 1fr) 42px;
+    padding-top: env(safe-area-inset-top);
+  }
+  .brand-name {
+    display: none;
+  }
+  .brand-mark {
+    width: 32px;
+    height: 32px;
+  }
+  .brand-mark svg {
+    width: 20px;
+  }
+  .bottom-bar {
+    min-width: 0;
+    padding: 0 15px env(safe-area-inset-bottom);
+  }
+  .bottom-bar > span:first-child {
+    display: none;
+  }
+  .notice {
+    top: 74px;
+  }
+}
+@media (max-height: 620px) {
+  .app-shell {
+    grid-template-rows: calc(54px + env(safe-area-inset-top)) minmax(100px, 1fr) auto 0;
+  }
+  .topbar {
+    height: auto;
+  }
+  .bottom-bar {
+    display: none;
+  }
+}
+@media (max-width: 680px), (max-width: 1000px) and (pointer: coarse) {
+  .bottom-bar,
+  .bottom-bar > span:nth-child(2) {
+    font-size: var(--text-xs);
+  }
+}
+.immersive {
+  grid-template-rows: 0 minmax(120px, 1fr) 0 0;
+}
+.immersive .topbar,
+.immersive .bottom-bar {
+  visibility: hidden;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+}

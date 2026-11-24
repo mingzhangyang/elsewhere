@@ -1,0 +1,27 @@
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+/* iOS Safari zooms the page when a focused field is smaller than 16px. */
+@media (pointer: coarse) {
+  /* :is() lifts select/textarea to the input selector's specificity so component rules can't undercut it. */
+  :is(input:not([type='range']):not([type='checkbox']):not([type='radio']), select, textarea) {
+    font-size: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *:before,
+  *:after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

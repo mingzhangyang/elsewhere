@@ -1,0 +1,134 @@
+.dev-diagnostics {
+  position: absolute;
+  z-index: 8;
+  left: 20px;
+  bottom: 20px;
+  max-width: 340px;
+  background: #0a111cee;
+  border: 1px solid var(--quiet);
+  padding: 12px;
+  border-radius: 8px;
+  font-size: var(--text-sm);
+}
+.dev-diagnostics output {
+  display: block;
+  margin: 8px 0;
+  line-height: 1.7;
+}
+.dev-diagnostics button {
+  background: #20334a;
+  border: 1px solid var(--quiet);
+  padding: 8px;
+  border-radius: 6px;
+}
+.dev-diagnostics pre {
+  max-height: 170px;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-size: var(--text-sm);
+}
+.dev-diagnostics button + button {
+  margin-left: 6px;
+}
+.stage {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  isolation: isolate;
+  background: #0c192a;
+}
+.sky-scene {
+  position: absolute;
+  inset: 0;
+  cursor: grab;
+  touch-action: none;
+}
+.sky-scene:active {
+  cursor: grabbing;
+}
+.sky-scene canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.sky-scene canvas:focus-visible {
+  outline: 2px solid #d8b884;
+  outline-offset: -3px;
+}
+.stage-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: linear-gradient(180deg, #03091566 0%, transparent 38%, transparent 60%, #040a1370 100%);
+}
+.sky-target {
+  position: absolute;
+  z-index: 3;
+  width: var(--ring, 34px);
+  height: var(--ring, 34px);
+  margin: calc(var(--ring, 34px) / -2);
+  border: 1px solid #f2d2a4;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px #0008;
+  pointer-events: none;
+}
+.sky-target[hidden] {
+  display: none;
+}
+.sky-target span {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--ring, 34px) + 8px);
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: var(--text-sm);
+  color: #f6e2c6;
+  background: #0a1423d9;
+  padding: 5px 8px;
+  border-radius: 5px;
+}
+.scene-error {
+  position: absolute;
+  z-index: 3;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 22px;
+  width: min(400px, calc(100% - 40px));
+  border-radius: 12px;
+  border: 1px solid var(--line-bright);
+  background: #16273e;
+  text-align: center;
+  font-size: var(--text-md);
+}
+.scene-error button {
+  background: var(--gold);
+  border: 0;
+  border-radius: 7px;
+  padding: 12px 16px;
+  color: #152338;
+}
+@media (max-width: 680px) {
+  .stage {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    /* Reserve a shrinkable card row and an independent dock row. */
+    grid-template-rows: max-content minmax(0, 1fr) minmax(0, max-content) auto;
+    --view-tools-button-height: 48px;
+    --view-tools-padding: 3px;
+    --view-tools-offset: 12px;
+  }
+}
+@media (max-height: 620px) {
+  .sky-target span {
+    top: auto;
+    bottom: calc(var(--ring, 34px) + 8px);
+  }
+}
+@media (max-width: 680px), (max-width: 1000px) and (pointer: coarse) {
+  .stage.panel-open {
+    /* Lift the drawer above the time dock and header without changing the desktop stacking. */
+    z-index: 11;
+  }
+}

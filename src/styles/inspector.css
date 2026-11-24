@@ -1,0 +1,432 @@
+.inspector {
+  position: absolute;
+  right: 22px;
+  top: 16px;
+  bottom: 84px;
+  z-index: 6;
+  width: 360px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: #0d1929f5;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 16px 50px #0006;
+  overflow: hidden;
+}
+.inspector-heading .eyebrow {
+  font-size: var(--text-xs);
+  margin-bottom: 6px;
+}
+.inspector-heading h2:focus {
+  outline: none;
+}
+.inspector-content {
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 0 16px 16px;
+  scrollbar-width: thin;
+  scrollbar-color: #40546b transparent;
+  min-height: 0;
+}
+.panel-intro {
+  color: var(--muted);
+  font-size: var(--text-md);
+  margin: 0 0 20px;
+}
+.source-detail {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: var(--text-md);
+  color: #b9cce1;
+  margin: 12px 0;
+}
+.weather-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  margin: 12px 0;
+}
+.weather-grid > div {
+  border: 1px solid var(--line);
+  background: var(--veil);
+  border-radius: 10px;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+.weather-grid svg {
+  color: #93adc8;
+  grid-column: 2;
+  grid-row: 1;
+}
+.weather-grid strong {
+  font-size: 23px;
+  font-weight: 450;
+  grid-column: 1;
+  grid-row: 1;
+}
+.weather-grid strong small {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  margin-left: 4px;
+}
+.weather-grid span {
+  color: var(--muted);
+  font-size: var(--text-xs);
+  grid-column: 1 / -1;
+}
+.weather-slider {
+  display: block;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.weather-slider > span {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--text-md);
+  color: #bbcadd;
+  margin-bottom: 5px;
+}
+.weather-slider b {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: #e0e8f3;
+}
+.weather-description {
+  margin: 20px 0 0;
+  font-size: var(--text-md);
+}
+.object-detail {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border: 0;
+}
+.object-detail-heading {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin: 10px 0;
+}
+.object-detail-heading h3 {
+  font-size: 27px;
+  font-weight: 450;
+  margin: 0;
+  letter-spacing: -0.03em;
+}
+.object-detail-heading .eyebrow {
+  font-size: var(--text-xs);
+  margin-bottom: 5px;
+}
+.moon-phase {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+}
+.object-status {
+  font-size: var(--text-sm);
+  color: #aec9bf;
+}
+.coordinate-grid {
+  display: flex;
+  gap: 40px;
+  margin: 16px 0;
+}
+.coordinate-grid strong {
+  font-size: 24px;
+  font-weight: 400;
+  display: block;
+  font-variant-numeric: tabular-nums;
+}
+.coordinate-grid span {
+  display: block;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  margin-top: 5px;
+}
+.object-detail > p {
+  font-size: var(--text-md);
+}
+.event-list {
+  margin: 18px 0 22px;
+  font-size: var(--text-md);
+}
+.event-list > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 10px;
+}
+.event-list dt {
+  color: var(--muted);
+}
+.event-list dd {
+  margin: 0;
+}
+.object-search {
+  display: block;
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+.object-search input {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  margin: 6px 0 12px;
+  font-size: var(--text-sm);
+}
+.object-list {
+  display: grid;
+  gap: 3px;
+}
+.object-list button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--veil);
+  padding: 10px;
+  border-radius: 7px;
+  text-align: left;
+}
+.object-list button > span {
+  flex: 1;
+  font-size: var(--text-md);
+}
+.object-list button small {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+.object-list button.active {
+  background: #29405a80;
+}
+.setting-group {
+  padding: 10px 0 20px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+.setting-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  width: 100%;
+  gap: 12px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-size: var(--text-md);
+  padding: 8px 0;
+}
+.switch {
+  position: relative;
+  width: 30px;
+  height: 18px;
+  background: #344257;
+  border-radius: 14px;
+  flex: 0 0 auto;
+}
+.switch:after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  height: 12px;
+  width: 12px;
+  border-radius: 50%;
+  background: #c0cad7;
+}
+[aria-pressed='true'] > .switch {
+  background: #c6a575;
+}
+[aria-pressed='true'] > .switch:after {
+  left: 15px;
+  background: #142033;
+}
+.quality-setting {
+  display: flex;
+  flex-wrap: wrap;
+  min-height: 48px;
+  padding-block: 6px;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--text-md);
+}
+.quality-setting + .quality-setting {
+  margin-top: 12px;
+}
+.quality-setting select {
+  flex: 0 1 150px;
+  min-width: 0;
+  min-height: 44px;
+  margin-left: auto;
+  padding: 10px;
+  max-width: 150px;
+  font-size: var(--text-sm);
+}
+.about-note {
+  display: flex;
+  gap: 12px;
+  color: var(--muted);
+  margin-top: 20px;
+}
+.about-note > svg {
+  flex: 0 0 auto;
+  color: #bdcfe1;
+}
+.about-note h3 {
+  font-size: var(--text-sm);
+  color: #d2deec;
+  margin-bottom: 5px;
+}
+.about-note p {
+  font-size: var(--text-md);
+  margin-top: 0;
+}
+.inspector-heading h2 {
+  font-size: 20px;
+}
+.back-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--gold);
+  font-size: var(--text-sm);
+}
+.visibility-label {
+  font-size: var(--text-md);
+  color: var(--gold);
+  margin: 10px 0 4px;
+}
+.visibility-explanation {
+  font-size: var(--text-md);
+  color: var(--text-soft);
+  margin: 0 0 16px;
+}
+.object-detail-heading h3:focus {
+  outline: none;
+}
+.object-facts {
+  font-size: var(--text-md);
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.object-facts summary {
+  min-height: 44px;
+  padding: 10px 0;
+  cursor: pointer;
+  color: var(--text-soft);
+}
+.object-list button > span small {
+  display: block;
+  margin-top: 3px;
+}
+.object-list button > b {
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: var(--gold);
+}
+.catalog-note {
+  font-size: var(--text-md);
+  color: var(--muted);
+  margin: 12px 0;
+}
+.catalog-weather {
+  padding: 10px 12px;
+  border: 1px solid var(--gold-edge);
+  border-radius: 8px;
+  background: var(--gold-wash);
+  font-size: var(--text-md);
+  margin-bottom: 10px;
+}
+.catalog-weather span {
+  display: block;
+}
+.preview-notice {
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid var(--gold-edge);
+  border-radius: 8px;
+  font-size: var(--text-md);
+}
+.preview-notice p {
+  margin: 0 0 10px;
+}
+@keyframes drawer-enter {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@media (max-width: 1000px) {
+  .inspector {
+    right: 80px;
+  }
+}
+@media (max-height: 620px) {
+  .inspector-heading {
+    padding: 12px 16px;
+    align-items: center;
+  }
+  .inspector-heading .eyebrow,
+  .inspector-content > .panel-intro {
+    display: none;
+  }
+  .inspector-heading h2 {
+    font-size: 18px;
+  }
+  .inspector-content {
+    padding: 0 16px 12px;
+  }
+  .inspector {
+    top: 8px;
+    bottom: 70px;
+    right: 12px;
+  }
+}
+@media (max-height: 620px) and (min-width: 700px) {
+  .inspector {
+    bottom: 8px;
+  }
+}
+/* Drawer geometry must win over the short-viewport inspector rules above. */
+@media (max-width: 680px), (max-width: 1000px) and (pointer: coarse) {
+  .inspector {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: auto;
+    height: min(62dvh, 620px);
+    max-height: calc(100dvh - env(safe-area-inset-top) - 56px);
+    border-radius: 20px 20px 0 0;
+    border-bottom: 0;
+    padding-bottom: env(safe-area-inset-bottom);
+    box-shadow: 0 -12px 40px #0006;
+    animation: drawer-enter 180ms ease-out;
+  }
+  .inspector-heading {
+    padding: 16px max(16px, env(safe-area-inset-right)) 12px max(16px, env(safe-area-inset-left));
+    align-items: center;
+  }
+  .inspector-heading h2 {
+    font-size: 18px;
+  }
+  .inspector-content {
+    padding: 0 max(18px, env(safe-area-inset-right)) 20px max(18px, env(safe-area-inset-left));
+  }
+}

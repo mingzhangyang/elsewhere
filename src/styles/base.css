@@ -1,0 +1,94 @@
+/* Chinese text uses Simplified Chinese faces (not Japanese or Traditional forms) after the Latin face. */
+:root:lang(zh) {
+  font-family:
+    'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC',
+    'Source Han Sans SC', ui-sans-serif, system-ui, sans-serif;
+}
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  margin: 0;
+  width: 100%;
+  min-width: 320px;
+  min-height: 100%;
+}
+body {
+  overscroll-behavior: none;
+}
+button,
+input,
+select {
+  font: inherit;
+}
+button,
+a,
+input,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  cursor: pointer;
+  color: inherit;
+  transition:
+    background 0.16s,
+    border-color 0.16s,
+    color 0.16s;
+}
+button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+a {
+  color: #c1dbf4;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid #b6dafb;
+  outline-offset: 4px;
+}
+input,
+select {
+  color: var(--text);
+  background: #172537;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+}
+button:hover:not(:disabled) {
+  filter: brightness(1.15);
+}
+h1 {
+  font-size: clamp(28px, 3.2vw, 44px);
+  letter-spacing: -0.045em;
+  font-weight: 500;
+  line-height: 1.1;
+  margin: 0 0 12px;
+}
+h2 {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  margin: 0;
+  line-height: 1.25;
+}
+h3 {
+  font-size: 15px;
+  line-height: 1.35;
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+p {
+  line-height: 1.65;
+}
+@media (max-width: 680px) {
+  h1 {
+    font-size: 30px;
+    margin-bottom: 8px;
+  }
+}

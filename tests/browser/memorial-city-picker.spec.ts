@@ -28,7 +28,13 @@ test('memorial city prompt remains visible across the mobile breakpoint', async 
       </body>
     </html>
   `);
-  await page.addStyleTag({ path: 'src/styles.css' });
+  // Resolve the global entry's imports through Vite before injecting CSS into the isolated document.
+  const response = await page.request.get('/src/styles.css?direct');
+  expect(response.ok()).toBe(true);
+  expect(response.headers()['content-type']).toContain('text/css');
+  const css = await response.text();
+  expect(css).not.toMatch(/^\s*@import\b/m);
+  await page.addStyleTag({ content: css });
   await page.addStyleTag({ path: 'src/components/memorialTimeForm.css' });
 
   const empty = page.getByRole('button', { name: 'Choose a city' });
