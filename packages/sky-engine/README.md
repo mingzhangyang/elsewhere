@@ -1,4 +1,4 @@
-# Sky Engine — versioned browser and npm distribution (milestone 3)
+# Sky Engine — browser illustrations and star diagrams (v0.2.0)
 
 This directory is the single source of truth for the shared sky calculations and Canvas 2D illustration
 pipeline. Elsewhere's existing `src/domain`, `src/moment`, `src/lib` and ridge entry points re-export
@@ -9,9 +9,9 @@ the relocated modules where needed. No copied implementations or second catalog 
 - `src/index.ts`: the common host-neutral source entry point for the app and distribution.
 - `src/types.ts` and `src/contracts.ts`: astronomy, weather values, camera, layers and moment contracts.
 - `src/domain/`: observer and time validation, ephemerides, star catalog/encoding, Galactic coordinates,
-  visibility and clear-weather defaults.
+  visibility, all-sky position selection and azimuthal-equidistant projection, and clear-weather defaults.
 - `src/moment/`: projection, framing (including the #45 automatic framing policy), illustration,
-  Galactic pigment, cloud and landscape painting, ridge and paper finish.
+  Galactic pigment, cloud and landscape painting, ridge, paper finish, and chart painting.
 - Elsewhere continues to own weather retrieval/interpolation, location selection, Vite asset URLs,
   localization, the postcard text panel, WebGL capture, sharing and persistence.
 
@@ -91,6 +91,60 @@ const framed = await renderIllustration(canvas, scene, {
   entry point and the same `createCoverProjection` as the realistic capture. The legacy low-level
   API is still available. Rendering requires browser Canvas 2D and DOM; pure scene creation does not.
 
+## Image types
+
+The same `MomentSnapshot` can be rendered in three image styles, without recalculating astronomy:
+
+| Image              | Public API            | Meaning                                                            |
+| ------------------ | --------------------- | ------------------------------------------------------------------ |
+| Watercolor sky     | `renderIllustration`  | Weather and light-dependent perspective scene with landscape       |
+| Circular sky chart | `renderSkyChart`      | Whole above-horizon hemisphere; north up, east left, zenith center |
+| Minimal star map   | `renderMinimalSkyMap` | Perspective position diagram with optional custom star lines       |
+
+All three use Canvas 2D, the same catalog and calculated apparent horizon positions. The
+interactive WebGL/Three.js explorer and its realistic screenshot remain **outside the SDK**.
+There are no new dependencies, no external fonts or asset fetches for the diagram types, and no
+new image resource pack.
+
+```ts
+import { renderSkyChart, renderMinimalSkyMap } from '@orangely/sky-engine';
+
+// A whole-sky chart with a light paper theme, independent of the camera:
+renderSkyChart(chartCanvas, scene, { theme: 'paper', limitingMagnitude: 6, locale: 'en' });
+
+// A dark minimal chart around a caller-defined pattern of real HYG IDs:
+renderMinimalSkyMap(mapCanvas, scene, {
+  theme: 'midnight',
+  limitingMagnitude: 4.5,
+  composition: { pattern: 'signature' },
+  patterns: [{ id: 'signature', lines: [[idA, idB]] }],
+  layers: { stars: true, lines: true, labels: false },
+});
+```
+
+Both diagram renderers are synchronous, use a caller-sized canvas (160–4096 px each dimension,
+aspect 0.1–10; the minimal map also validates the remaining sky panel aspect after its footer),
+and reset the drawing state only after validation. Use at least 600 px for legible exported text.
+They include HYG attribution, a calculated-position disclaimer, and a solar safety reminder by day.
+They require the full installed HYG catalog used by `createSkyScene`; no independent star data is
+created. Blank location names/countries in SDK scenes are described as unspecified in chart
+metadata, never inferred.
+
+The circular chart shares the existing Elsewhere memorial artwork's selection, projection, palette,
+object marker sizes and disc painting, but not its brand, fixed 4:5 layout or personalized text.
+`renderSkyChart` returns its frozen `SkyChartSnapshot`; `buildSkyChartSnapshot` can produce the
+same calculated chart data without a canvas. Marker sizes are symbols, not angular diameters.
+Both `midnight` and `paper` themes preserve exact object positions. Daylight, clouds and light
+pollution do not remove geometrically above-horizon bodies from either diagram.
+
+The minimal map returns the composed scene. Its default `current` composition preserves the
+input camera and uses the same centered cover crop as illustrations. `auto` uses the existing
+visibility-aware composition policy, but diagram object selection itself is geometric.
+A named pattern frames only selected above-horizon members, independent of daylight/weather;
+missing or too-faint members cannot create artificial stars. Unusable patterns retain the current
+view. Layers control star dots, lines and labels; an empty custom-pattern array disables built-ins.
+No terrain, atmospheric painting or invented decorative stars are drawn.
+
 ## Build and release
 
 From a clean repository checkout run `npm ci` and `npm run sdk:build`. The SDK build is isolated
@@ -99,19 +153,19 @@ The standalone ESM contains Astronomy Engine, Temporal fallback and its dependen
 additional JS chunks, app dependencies, runtime CDN or import map. Catalog and optional imagery
 remain separate resources. The app's own lazy Temporal import is unchanged.
 
-Release assets for the initial version **0.1.0**:
+Release assets for version **0.2.0**:
 
 | Asset                                      | Purpose                                                        |
 | ------------------------------------------ | -------------------------------------------------------------- |
 | `sky-engine.mjs`                           | Self-contained browser ESM, served with a JavaScript MIME type |
 | `stars.json`                               | Exact HYG v4.1 columnar catalog used by Elsewhere              |
-| `orangely-sky-engine-0.1.0.tgz`            | npm-installable ESM, declarations, catalog and notices         |
-| `orangely-sky-engine-landscapes-0.1.0.tgz` | Optional city/mountain artwork and license                     |
+| `orangely-sky-engine-0.2.0.tgz`            | npm-installable ESM, declarations, catalog and notices         |
+| `orangely-sky-engine-landscapes-0.2.0.tgz` | Optional city/mountain artwork and license                     |
 | `sky-engine-NOTICES.txt`                   | MIT, runtime dependency notices and HYG attribution/license    |
 | `manifest.json` / `SHA256SUMS`             | Version, source commit, file sizes and SHA-256 integrity       |
 
 No npm registry publication is required. For npm applications, install the downloaded core tarball
-(`npm install ./orangely-sky-engine-0.1.0.tgz`) and import from `@orangely/sky-engine`. Its package
+(`npm install ./orangely-sky-engine-0.2.0.tgz`) and import from `@orangely/sky-engine`. Its package
 export `@orangely/sky-engine/stars.json` is available to copy into the host's static assets.
 Both archives are tested with an isolated offline installation, and the core package with a strict
 NodeNext TypeScript consumer. The package's license expression covers the MIT code and the separately
@@ -129,12 +183,13 @@ The core module has initial independent limits of 750,000 raw and 250,000 gzip b
 gzip is capped at 120,000 bytes, the core npm archive at 400,000 bytes, and the optional artwork
 archive at 5 MB. Existing app limits are unchanged. CI checks the SDK on Node 24 on Linux and Windows,
 and the Chromium distribution test serves the actual generated files on an independent host,
-forces the bundled Temporal fallback, renders, then verifies an identical offline reload.
+forces the bundled Temporal fallback, renders all three image types, checks diagram positions and
+custom line pixels, then verifies identical offline reloads.
 
 ### Publishing after merge
 
 The SDK version comes from `packages/sky-engine/package.json`. After the release PR is merged
-and CI passes, push an annotated tag `sky-engine-v0.1.0` on the merged main commit. The release
+and CI passes, push an annotated tag `sky-engine-v0.2.0` on the merged main commit. The release
 workflow accepts only a tag matching the package version and reachable from main, validates the
 app, rebuilds/tests the SDK, checks hashes and creates a GitHub Release without overwriting an
 existing release. It does not publish to npm or deploy either app. Never move or reuse a version
@@ -148,7 +203,7 @@ tagging. Release assets remain unpublished until this explicit tag step.
 2. **M2 (completed):** design and test a host-neutral scene/render facade, consistent crop/projection mapping,
    explicit composition and pattern overrides, asset injection, and bounded browser resource loading.
    Preserve current and automatic framing; allow the now-and-more signature asterism policy.
-3. **M3 (this change):** publish a versioned build from the same sources: ESM (including a browser-consumable build),
+3. **M3 (completed):** publish a versioned build from the same sources: ESM (including a browser-consumable build),
    declarations, optional data/landscape assets, checksums and licenses. Validate package and app budgets
    and offline behavior; no remote latest-version runtime dependency.
 4. **M4:** in now-and-more, consume the pinned artifact with local assets and cache-version updates,

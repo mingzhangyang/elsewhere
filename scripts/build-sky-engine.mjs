@@ -210,11 +210,15 @@ try {
   );
   await writeFile(
     join(consumer, 'consumer.ts'),
-    `import { createSkyScene, renderIllustration, type MomentSnapshot } from '@orangely/sky-engine';
+    `import {
+  createSkyScene, renderIllustration, renderSkyChart, renderMinimalSkyMap, type MomentSnapshot,
+} from '@orangely/sky-engine';
 const scene: MomentSnapshot = await createSkyScene({
   latitude: 40, longitude: -74, timezone: 'UTC', instant: new Date(),
 });
 await renderIllustration(document.createElement('canvas'), scene, { composition: 'auto' });
+renderSkyChart(document.createElement('canvas'), scene, { theme: 'paper' });
+renderMinimalSkyMap(document.createElement('canvas'), scene, { composition: 'current' });
 `,
   );
   run(tsc, ['--project', join(consumer, 'tsconfig.json')], consumer);
@@ -235,6 +239,14 @@ assert.equal(scene.sky.stars.length, 5070);
 assert.equal(scene.sky.planets.length, 5);
 assert(Number.isFinite(scene.sky.moon.altitude));
 assert.equal(sdk.prepareIllustrationScene(scene, 800, 600).aspect, 800 / 600);
+const chart = sdk.buildSkyChartSnapshot({
+  time: { kind: 'utc', utc: scene.instant.toISOString() },
+  location: { ...scene.location, name: 'New York', country: 'US' },
+}, scene.sky);
+assert(chart.objects.length > 100);
+assert(chart.objects.every((object) => object.altitude >= 0 && Math.hypot(object.x, object.y) <= 1 + 1e-12));
+assert.equal(typeof sdk.renderSkyChart, 'function');
+assert.equal(typeof sdk.renderMinimalSkyMap, 'function');
 `,
   );
   run(join(consumer, 'smoke.mjs'), [], consumer);
