@@ -432,7 +432,15 @@ h1 {
   padding: 4px;
   backdrop-filter: blur(12px);
 }
-.view-controls > span {
+.view-tools-actions {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+.view-tools-toggle {
+  display: none;
+}
+.view-tools-actions > span {
   height: 20px;
   width: 1px;
   background: var(--line);
@@ -1801,7 +1809,7 @@ dialog:not([open]) {
     bottom: auto;
     flex-direction: column;
   }
-  .view-controls > span {
+  .view-tools-actions > span {
     width: 22px;
     height: 1px;
     margin: 4px;
@@ -2114,7 +2122,7 @@ dialog:not([open]) {
   .sky-compass {
     display: none;
   }
-  .view-controls > span {
+  .view-tools-actions > span {
     width: 1px;
     height: 20px;
   }
@@ -2223,5 +2231,149 @@ dialog:not([open]) {
     animation: none !important;
     transition: none !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* Phone explorer chrome: keep the sky itself as the primary visual surface.
+   An opened tool group expands to the left, so its trigger never jumps. */
+@media (min-width: 681px) and (max-width: 1000px) {
+  .view-tools-actions {
+    flex-direction: column;
+  }
+}
+@media (min-width: 681px) and (max-width: 1000px) and (max-height: 620px) {
+  .view-tools-actions {
+    flex-direction: row;
+  }
+}
+@media (max-width: 680px) {
+  .sky-context {
+    top: 14px;
+    left: 14px;
+    max-width: calc(100% - 88px);
+    display: flex;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .sky-context .eyebrow {
+    flex-basis: 100%;
+    margin: 0;
+  }
+  .source-pill,
+  .sky-create-actions {
+    margin-top: 0;
+  }
+  .source-pill {
+    max-width: 100%;
+    padding: 8px 10px;
+    font-size: 12px;
+    border-radius: 999px;
+    box-shadow: 0 3px 12px #0003;
+  }
+  .sky-create-actions {
+    max-width: 100%;
+  }
+  .sky-create-link {
+    min-height: 44px;
+    padding: 8px 10px;
+    gap: 6px;
+    font-size: 12px;
+    white-space: nowrap;
+    background: #152039db;
+    border-color: #e9c69759;
+    box-shadow: 0 3px 12px #0003;
+  }
+  .sky-create-link svg {
+    width: 16px;
+    height: 16px;
+  }
+  .sky-compass {
+    top: 14px;
+    right: 14px;
+    width: 54px;
+    min-height: 52px;
+    display: grid;
+    grid-template-columns: 18px 1fr;
+    grid-template-rows: 20px 14px;
+    align-content: center;
+    justify-items: center;
+    gap: 0 3px;
+    padding: 6px 5px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: #091729c9;
+    box-shadow: 0 3px 12px #0003;
+  }
+  .sky-compass svg {
+    width: 17px;
+    height: 17px;
+    align-self: center;
+  }
+  .sky-compass strong {
+    font-size: 12px;
+  }
+  .sky-compass span {
+    grid-column: 1 / -1;
+    text-align: center;
+    font-size: var(--text-xs);
+  }
+  .view-controls {
+    top: clamp(156px, 28%, 240px);
+    right: 12px;
+    bottom: auto;
+    flex-direction: row;
+    padding: 3px;
+    border-radius: 15px;
+    background: #091729c9;
+    box-shadow: 0 3px 12px #0003;
+  }
+  .view-controls .icon-button {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+  }
+  .view-tools-toggle {
+    display: inline-flex;
+  }
+  .view-tools-actions {
+    display: none;
+    flex-direction: row;
+  }
+  .view-controls.tools-open .view-tools-actions {
+    display: flex;
+  }
+  .view-tools-actions > span {
+    display: none;
+  }
+  .immersive .view-tools-actions,
+  .immersive .view-tools-toggle {
+    display: none;
+  }
+  .explore-toolbar {
+    bottom: 14px;
+    width: max-content;
+    max-width: calc(100% - 28px);
+    justify-content: center;
+    gap: 0;
+    padding: 3px;
+    border-radius: 999px;
+    background: #0a1526d9;
+  }
+  .explore-toolbar button {
+    flex: 0 1 auto;
+    min-width: 92px;
+    min-height: 44px;
+    padding: 8px 11px;
+    gap: 6px;
+    border-radius: 999px;
+    font-size: 12px;
+  }
+}
+@media (max-width: 680px) and (max-height: 620px) {
+  .view-controls {
+    top: auto;
+    bottom: 72px;
   }
 }

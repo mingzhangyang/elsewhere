@@ -260,6 +260,8 @@ const zh: Messages = {
     resetView: '复位视角',
     showControls: '显示控件',
     hideControls: '隐藏控件',
+    showViewTools: '展开视角工具',
+    hideViewTools: '收起视角工具',
     explore: '探索控件',
     objects: '天体',
     weather: '天气',
