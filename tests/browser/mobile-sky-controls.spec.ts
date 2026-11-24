@@ -41,6 +41,10 @@ test('mobile sky chrome stays separate and view tools expand in place', async ({
     await toggle.click();
     await expect(toggle).toHaveAttribute('aria-expanded', 'true');
     await expect(page.locator('.view-tools-actions')).toBeVisible();
+    const expanded = await rect(page, '.view-tools-actions');
+    expect(expanded.x).toBeGreaterThanOrEqual(8);
+    expect(expanded.x + expanded.width).toBeLessThanOrEqual(width - 8);
+    expect(overlaps(context, expanded)).toBe(false);
     const after = await toggle.boundingBox();
     expect(after!.x).toBeCloseTo(before!.x, 0);
     await page.locator('.view-tools-actions .icon-button').first().click();
