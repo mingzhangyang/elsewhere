@@ -9,7 +9,9 @@ export { validateInstant } from './domain/time';
 export { defaultWeatherValues } from './domain/weather';
 export { decodeStarColumns } from './domain/starCatalogEncoding';
 export {
+  awaitStarCatalog,
   loadStarCatalog,
+  starCatalogInstallation,
   starCatalogLoaded,
   STAR_CATALOG,
   CONSTELLATIONS,

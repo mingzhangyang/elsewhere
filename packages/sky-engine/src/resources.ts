@@ -14,11 +14,9 @@ export async function loadResource<T>(
   signal?.addEventListener('abort', abort, { once: true });
   const timer = setTimeout(abort, timeoutMs);
   const interrupted = new Promise<never>((_, reject) => {
-    controller.signal.addEventListener(
-      'abort',
-      () => reject(new Error(name + ' cancelled or timed out.')),
-      { once: true },
-    );
+    controller.signal.addEventListener('abort', () => reject(new Error(name + ' cancelled or timed out.')), {
+      once: true,
+    });
   });
   try {
     const pending = Promise.resolve().then(() => {

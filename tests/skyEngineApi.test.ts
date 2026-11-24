@@ -1,11 +1,15 @@
+import { readFile } from 'node:fs/promises';
 import { describe, expect, it, vi } from 'vitest';
 import {
   createCoverProjection,
   createProjection,
   createSkyRay,
   createSkyScene,
+  decodeStarColumns,
+  drawIllustration,
   prepareIllustrationScene,
   renderIllustration,
+  type CatalogRow,
   type MomentSnapshot,
   type SkySceneOptions,
 } from '../packages/sky-engine/src';
@@ -52,9 +56,9 @@ describe('shared scene creation', () => {
       /camera/,
     );
     const scene = await createSkyScene(options);
-    await expect(createSkyScene({ ...options, weather: { ...scene.weather, cloudCover: NaN } })).rejects.toThrow(
-      /weather/,
-    );
+    await expect(
+      createSkyScene({ ...options, weather: { ...scene.weather, cloudCover: NaN } }),
+    ).rejects.toThrow(/weather/);
   });
 });
 
@@ -92,6 +96,12 @@ describe('output geometry and composition', () => {
     expect(scene.view.heading).toBe(0);
     expect(scene.aspect).toBe(0.6);
     expect(auto.sky).toBe(scene.sky);
+    const narrow = prepareIllustrationScene(scene, 100, 1000);
+    expect(narrow.aspect).toBeCloseTo(0.1);
+    const sun = createProjection(narrow.view, narrow.aspect)(narrow.sky.sun.altitude, narrow.sky.sun.azimuth);
+    expect(sun.front).toBe(true);
+    expect(Math.abs(sun.x)).toBeLessThanOrEqual(0.88);
+    expect(Math.abs(sun.y)).toBeLessThanOrEqual(0.88);
   });
 
   it('frames a custom pattern across north using existing stars and handles missing members', async () => {
@@ -109,7 +119,15 @@ describe('output geometry and composition', () => {
     };
     const prepared = prepareIllustrationScene(scene, 600, 1000, {
       composition: { pattern: 'signature' },
-      patterns: [{ id: 'signature', lines: [['a', 'b'], ['b', 'missing']] }],
+      patterns: [
+        {
+          id: 'signature',
+          lines: [
+            ['a', 'b'],
+            ['b', 'missing'],
+          ],
+        },
+      ],
       layers: { lines: true },
     });
     expect(prepared.aspect).toBe(0.6);
@@ -127,9 +145,9 @@ describe('output geometry and composition', () => {
       patterns: [{ id: 'signature', lines: [['a', 'missing']] }],
     });
     expect(fallback.view).toEqual(scene.view);
-    expect(() =>
-      prepareIllustrationScene(scene, 600, 1000, { composition: { pattern: 'unknown' } }),
-    ).toThrow(/Unknown/);
+    expect(() => prepareIllustrationScene(scene, 600, 1000, { composition: { pattern: 'unknown' } })).toThrow(
+      /Unknown/,
+    );
     expect(() => prepareIllustrationScene(scene, 10000, 600)).toThrow(/dimensions/);
   });
 });
@@ -177,5 +195,150 @@ describe('bounded resource loading', () => {
     await rejected;
     expect(provided?.aborted).toBe(true);
     expect(canvas.width).toBe(800);
+  });
+});
+
+const catalogRows = async () =>
+  decodeStarColumns(JSON.parse(await readFile('src/data/stars.json', 'utf8'))) as CatalogRow[];
+
+describe('fresh catalog installation', () => {
+  it('joins an in-flight installation and does not require a second loader', async () => {
+    vi.resetModules();
+    const { createSkyScene: create } = await import('../packages/sky-engine/src/scene');
+    const rows = await catalogRows();
+    let release: (value: CatalogRow[]) => void = () => {};
+    const gate = new Promise<CatalogRow[]>((resolve) => {
+      release = resolve;
+    });
+    const loader = vi.fn((_signal: AbortSignal) => gate);
+    const first = create({ ...options, loadCatalog: loader });
+    const second = create(options);
+    await Promise.resolve();
+    expect(loader).toHaveBeenCalledTimes(1);
+    release(rows);
+    const [a, b] = await Promise.all([first, second]);
+    expect(a.sky.stars.length).toBeGreaterThan(1000);
+    expect(b.sky.stars).toEqual(a.sky.stars);
+  });
+
+  it('rejects a corrupt decoded catalog, then accepts a valid retry', async () => {
+    vi.resetModules();
+    const { createSkyScene: create } = await import('../packages/sky-engine/src/scene');
+    const rows = await catalogRows();
+    const [id, name, , ...rest] = rows[0];
+    const corrupt = rows.map((row, index) =>
+      index === 0 ? [id, name, 'nope', ...rest] : row,
+    ) as CatalogRow[];
+    const duplicate = rows.map((row, index) =>
+      index === 1 ? [rows[0][0], ...row.slice(1)] : row,
+    ) as CatalogRow[];
+    await expect(create({ ...options, loadCatalog: async () => corrupt })).rejects.toThrow(/right ascension/);
+    await expect(create({ ...options, loadCatalog: async () => duplicate })).rejects.toThrow(/Duplicate/);
+    const scene = await create({ ...options, loadCatalog: async () => rows });
+    expect(scene.sky.stars.length).toBeGreaterThan(1000);
+  });
+
+  it('bounds a joined host installation without cancelling it or calling a second loader', async () => {
+    vi.resetModules();
+    const stars = await import('../packages/sky-engine/src/domain/stars');
+    const { createSkyScene: create } = await import('../packages/sky-engine/src/scene');
+    const rows = await catalogRows();
+    vi.useFakeTimers();
+    try {
+      let release: (value: CatalogRow[]) => void = () => {};
+      const host = stars.loadStarCatalog(
+        () =>
+          new Promise<CatalogRow[]>((resolve) => {
+            release = resolve;
+          }),
+      );
+      const loader = vi.fn(async () => rows);
+      const scene = create({ ...options, loadCatalog: loader });
+      const rejected = expect(scene).rejects.toThrow(/timed out/);
+      await vi.advanceTimersByTimeAsync(15000);
+      await rejected;
+      expect(loader).not.toHaveBeenCalled();
+      expect(stars.starCatalogLoaded()).toBe(false);
+      let hostSettled = false;
+      void host.then(() => {
+        hostSettled = true;
+      });
+      await Promise.resolve();
+      expect(hostSettled).toBe(false);
+      release(rows);
+      await host;
+      expect(stars.starCatalogLoaded()).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe('custom pattern labels', () => {
+  it('anchors a partial pattern on a drawn edge and ignores a back-facing member', async () => {
+    const original = await createSkyScene(options);
+    const scene: MomentSnapshot = {
+      ...original,
+      view: { heading: 180, altitude: 30, fov: 66 },
+      aspect: 1,
+      layers: { stars: false, lines: true, labels: true },
+      sky: {
+        ...original.sky,
+        sunAltitude: -25,
+        sun: { ...original.sky.sun, altitude: -25, visible: false },
+        moon: { ...original.sky.moon, altitude: -30, visible: false },
+        planets: [],
+        stars: [
+          { ...original.sky.stars[0], id: 'a', name: 'A', altitude: 42, azimuth: 180, magnitude: 0.2 },
+          { ...original.sky.stars[1], id: 'b', name: 'B', altitude: 30, azimuth: 190, magnitude: 0.4 },
+          { ...original.sky.stars[2], id: 'c', name: 'C', altitude: -5, azimuth: 0, magnitude: 0.1 },
+        ],
+      },
+    };
+    const texts: { text: string; x: number }[] = [];
+    const ctx = new Proxy(
+      {},
+      {
+        get(_target, key) {
+          if (key === 'fillText') return (text: string, x: number) => texts.push({ text, x });
+          if (key === 'measureText') return () => ({ width: 40 });
+          if (key === 'createLinearGradient' || key === 'createRadialGradient')
+            return () => ({ addColorStop() {} });
+          if (key === 'canvas') return { width: 400, height: 400 };
+          return () => {};
+        },
+        set: () => true,
+      },
+    ) as CanvasRenderingContext2D;
+    const { toCanvas } = createCoverProjection(scene.view, scene.aspect, 400, 400);
+    drawIllustration(
+      ctx,
+      400,
+      400,
+      scene,
+      toCanvas,
+      'ridge',
+      { object: (object) => object.name, pattern: (id) => id },
+      'sans-serif',
+      null,
+      {
+        patterns: [
+          {
+            id: 'hook',
+            label: 'Hook',
+            lines: [
+              ['a', 'b'],
+              ['b', 'c'],
+            ],
+          },
+        ],
+        milkyWay: false,
+      },
+    );
+    const label = texts.find((entry) => entry.text === 'Hook');
+    const anchor = toCanvas(30, 190);
+    expect(label).toBeTruthy();
+    expect(Math.abs(label!.x - anchor.x)).toBeLessThan(1);
+    expect(Math.abs(label!.x - 200)).toBeGreaterThan(20);
   });
 });

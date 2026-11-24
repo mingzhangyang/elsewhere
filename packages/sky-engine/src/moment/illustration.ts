@@ -377,7 +377,8 @@ export function drawIllustration(
       label?: string;
     }[] = details.patterns ?? CONSTELLATIONS;
     for (const pattern of patterns) {
-      let shown = false;
+      const anchors: Star[] = [];
+      const anchored = new Set<string>();
       for (const [a, b] of pattern.lines) {
         const sa = byId.get(a),
           sb = byId.get(b);
@@ -389,17 +390,26 @@ export function drawIllustration(
         ctx.moveTo(pa.x, pa.y);
         ctx.lineTo(pb.x, pb.y);
         ctx.stroke();
-        shown ||= inView(pa, 0) || inView(pb, 0);
+        // Only endpoints of edges that were actually drawn, and only where they land on the
+        // canvas. A below-horizon or back-facing member must not pull the label to the center.
+        for (const [star, point] of [
+          [sa, pa],
+          [sb, pb],
+        ] as const) {
+          if (!inView(point, 0) || anchored.has(star.id)) continue;
+          anchored.add(star.id);
+          anchors.push(star);
+        }
       }
-      if (shown && layers.labels) {
-        const stars = pattern.lines
-          .flat()
-          .map((id) => byId.get(id))
-          .filter((star): star is Star => star !== undefined);
-        const lowest = stars.reduce((a, b) => (a.altitude < b.altitude ? a : b));
+      if (anchors.length && layers.labels) {
+        const lowest = anchors.reduce((a, b) => (a.altitude < b.altitude ? a : b));
         const p = toCanvas(lowest.altitude, lowest.azimuth);
-        const name = details.patterns ? (pattern.label ?? pattern.id) : text.pattern(pattern.id as PatternId);
-        named.push({ name, x: p.x, y: p.y + 18 * unit });
+        if (p.front && inView(p, 0)) {
+          const name = details.patterns
+            ? (pattern.label ?? pattern.id)
+            : text.pattern(pattern.id as PatternId);
+          named.push({ name, x: p.x, y: p.y + 18 * unit });
+        }
       }
     }
     ctx.setLineDash([]);

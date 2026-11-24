@@ -59,18 +59,26 @@ const framed = await renderIllustration(canvas, scene, {
 - `createSkyScene` requires an explicit time zone and date. An omitted weather value uses the
   default rendering assumptions with provenance `none`; `'clear'` records a clear-sky assumption,
   not a measured weather report. Explicit weather values are copied and recorded as custom.
-  The input date, view, weather and layers are copied. A catalog loader is needed only before
-  the first installation; concurrent calls share the same catalog and failed SDK loads can retry.
+  The input date, view, weather and layers are copied. A catalog loader is required only when this
+  module has neither an installed catalog nor an in-flight installation. Concurrent calls join that
+  installation (`awaitStarCatalog`). Each caller's wait is bounded to 15 s, and a joiner timing out
+  does not cancel another consumer's load, including a fetch the host already started. Failed
+  installations are cleared so a later call can retry. Decoded rows are checked for shape, finite
+  coordinates, ranges and unique HYG ids before they replace the shared catalog.
 - `renderIllustration` owns the **whole** canvas (dimensions set by the caller, 1–4096 px each,
   aspect 0.1–10). It resets the drawing state after resources are ready and returns the actual
   composed snapshot. It does not generate app-specific text, compass, link, or a download.
 - `composition: 'current'` preserves the supplied camera and source aspect with a centered cover
   crop; `'auto'` uses the real output aspect for smart framing and respects explicit object focus.
+  At postcard aspects the automatic Sun, Moon, galaxy and bright-star bias stays 8°; narrower
+  output aspects reduce that bias so the target remains inside the frame.
   Use `{ pattern: 'signature' }` and `patterns: [{ id: 'signature', lines: [[idA, idB]] }]` for a
   host-selected pattern. IDs are actual HYG IDs such as `hyg-32263`; no fabricated coordinates.
   The engine uses above-horizon edges and tries progressively wider views. If no usable pattern
   can be framed, it preserves the input view. Set `layers.lines: true` to draw those edges.
-  An empty patterns list suppresses the built-in patterns; an omitted list keeps them.
+  Pattern labels sit on a visible endpoint of an edge that was actually drawn, and are omitted
+  when every member is below the horizon or behind the camera. An empty patterns list suppresses
+  the built-in patterns; an omitted list keeps them.
 - `ridge` and `sea` are procedural. `city` and `mountains` require a decoded `landscapeArt` image
   or a host-provided `loadLandscape(request, signal)` (season and light are selected by the engine).
   There is no bundled Vite URL or implicit network request. The wait is bounded (10 s by default;

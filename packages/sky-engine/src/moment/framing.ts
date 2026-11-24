@@ -31,6 +31,21 @@ function aim(target: HorizontalPosition, fov = 66, offset = 8): CameraView {
   };
 }
 
+/** Postcard aspects keep the fixed 8° bias. Narrower output aspects shrink it and keep the
+ * target inside the frame — an 8° shift at aspect 0.1 lands past the canvas edge. */
+function aimForAspect(target: HorizontalPosition, aspect: number, fov = 66): CameraView {
+  if (aspect >= 0.8) return aim(target, fov, 8);
+  const scaled = 8 * (aspect / 0.8);
+  let fallback = aim(target, fov, 0);
+  for (const offset of [scaled, 0]) {
+    const view = aim(target, fov, offset);
+    fallback = view;
+    const p = createProjection(view, aspect)(target.altitude, target.azimuth);
+    if (p.front && Math.abs(p.x) <= 0.88 && Math.abs(p.y) <= 0.88) return view;
+  }
+  return fallback;
+}
+
 type WeightedPosition = HorizontalPosition & { weight: number };
 
 /** At most five planets: try spherical subset centers, scoring the actual picture rather than
@@ -114,19 +129,19 @@ export function frameMoment(
   const aspect = options?.aspect ?? clamp(snapshot.aspect, 0.8, 1.5);
   let view: CameraView | undefined;
   if (sky.sun.visible || sky.sunAltitude >= -2) {
-    view = aim(sky.sun);
+    view = aimForAspect(sky.sun, aspect);
   } else if (weather.cloudCover < 85) {
     if (sky.moon.visible && sky.moon.illumination >= 0.03) {
-      view = aim(sky.moon);
+      view = aimForAspect(sky.moon, aspect);
     } else {
       const planets = sky.planets
         .filter((p) => p.visible && planetVisibilityFactors(p, sky, weather, skyBrightness).combined >= 0.2)
         .map((p) => ({ ...p, weight: 1 + clamp(-p.magnitude, 0, 4) * 0.25 }));
       view = planetView(planets, aspect);
-      if (!view && sky.sunAltitude >= -6) view = aim(sky.sun);
+      if (!view && sky.sunAltitude >= -6) view = aimForAspect(sky.sun, aspect);
       if (!view && layers.stars) {
         const galaxy = options?.milkyWay === false ? undefined : galaxyTarget(snapshot);
-        if (galaxy) view = aim(galaxy);
+        if (galaxy) view = aimForAspect(galaxy, aspect);
         else {
           let best: { star: HorizontalPosition; score: number } | undefined;
           for (const star of sky.stars) {
@@ -135,12 +150,12 @@ export function frameMoment(
             const score = visibility * (4 - clamp(star.magnitude, -2, 3));
             if (visibility >= 0.5 && (!best || score > best.score)) best = { star, score };
           }
-          if (best) view = aim(best.star);
+          if (best) view = aimForAspect(best.star, aspect);
         }
       }
     }
   } else if (sky.sunAltitude >= -6) {
-    view = aim(sky.sun);
+    view = aimForAspect(sky.sun, aspect);
   }
   return view ? { ...snapshot, aspect, view, subject: undefined } : snapshot;
 }

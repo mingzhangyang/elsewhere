@@ -38,6 +38,32 @@ let loading: Promise<void> | null = null;
 
 export const starCatalogLoaded = () => STAR_CATALOG.length > 0;
 
+/** In-flight or completed installation for this module. Null only before the first attempt
+ * and after a failed one, so another caller can join instead of starting a second load. */
+export function starCatalogInstallation(): Promise<void> | null {
+  return loading;
+}
+
+/**
+ * Wait for the installation another caller already started. The timeout rejects only this
+ * waiter: it does not clear `loading` or abort the consumer that started the work.
+ */
+export function awaitStarCatalog(timeoutMs = 15000): Promise<void> {
+  if (!Number.isFinite(timeoutMs) || timeoutMs < 1 || timeoutMs > 30000) {
+    throw new RangeError('Resource timeout must be between 1 and 30000 ms.');
+  }
+  if (!loading) {
+    return starCatalogLoaded()
+      ? Promise.resolve()
+      : Promise.reject(new Error('Star catalog is not loading.'));
+  }
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error('Star catalog cancelled or timed out.')), timeoutMs);
+  });
+  return Promise.race([loading, timeout]).finally(() => clearTimeout(timer));
+}
+
 /**
  * Installs the catalog once from `load` (services/starCatalog.ts in the app, the file system in
  * tests and scripts). Any failure, in loading or in installing, clears the attempt so a later call
@@ -54,18 +80,15 @@ export function loadStarCatalog(load: () => Promise<CatalogRow[]>): Promise<void
 }
 
 function installCatalog(rows: CatalogRow[]) {
-  const catalog = rows.map((r) => ({
-    id: 'hyg-' + r[0],
-    catalogId: Number(r[0]),
-    name: String(r[1]),
-    ra: Number(r[2]),
-    dec: Number(r[3]),
-    magnitude: Number(r[4]),
-    colorIndex: r[5] === null ? null : Number(r[5]),
-    pmra: Number(r[6]),
-    pmdec: Number(r[7]),
-  }));
-  CONSTELLATIONS = PATTERNS.map((pattern) => ({
+  if (!Array.isArray(rows) || rows.length === 0) throw new Error('Invalid star catalog.');
+  const seen = new Set<number>();
+  const catalog = rows.map((row) => {
+    const star = catalogStar(row);
+    if (seen.has(star.catalogId)) throw new Error(`Duplicate star catalog id: ${star.catalogId}`);
+    seen.add(star.catalogId);
+    return star;
+  });
+  const constellations = PATTERNS.map((pattern) => ({
     ...pattern,
     lines: pattern.lines.map((pair) =>
       pair.map((name) => {
@@ -75,7 +98,53 @@ function installCatalog(rows: CatalogRow[]) {
       }),
     ),
   }));
+  CONSTELLATIONS = constellations;
   STAR_CATALOG = catalog;
+}
+
+function catalogId(value: unknown): number {
+  const id =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string' && value.trim() !== ''
+        ? Number(value)
+        : NaN;
+  if (!Number.isSafeInteger(id) || id <= 0) throw new Error('Invalid star catalog identifier.');
+  return id;
+}
+
+function finiteField(value: unknown, label: string): number {
+  const n =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string' && value.trim() !== ''
+        ? Number(value)
+        : NaN;
+  if (!Number.isFinite(n)) throw new Error(`Invalid star catalog ${label}.`);
+  return n;
+}
+
+/** Reject rows that would corrupt the shared catalog before that catalog is published. */
+function catalogStar(row: CatalogRow): CatalogStar {
+  if (!Array.isArray(row) || row.length !== 8) throw new Error('Invalid star catalog row.');
+  const id = catalogId(row[0]);
+  if (typeof row[1] !== 'string') throw new Error('Invalid star catalog name.');
+  const ra = finiteField(row[2], 'right ascension');
+  const dec = finiteField(row[3], 'declination');
+  if (ra < 0 || ra > 24) throw new Error('Invalid star catalog right ascension.');
+  if (dec < -90 || dec > 90) throw new Error('Invalid star catalog declination.');
+  const magnitude = finiteField(row[4], 'magnitude');
+  if (magnitude < -5 || magnitude > 15) throw new Error('Invalid star catalog magnitude.');
+  let colorIndex: number | null = null;
+  if (row[5] !== null) {
+    colorIndex = finiteField(row[5], 'color index');
+    if (colorIndex < -2 || colorIndex > 6) throw new Error('Invalid star catalog color index.');
+  }
+  const pmra = finiteField(row[6], 'proper motion');
+  const pmdec = finiteField(row[7], 'proper motion');
+  if (Math.abs(pmra) > 20000 || Math.abs(pmdec) > 20000)
+    throw new Error('Invalid star catalog proper motion.');
+  return { id: 'hyg-' + id, catalogId: id, name: row[1], ra, dec, magnitude, colorIndex, pmra, pmdec };
 }
 
 // Original, deliberately simplified teaching patterns; these are not IAU boundaries.
