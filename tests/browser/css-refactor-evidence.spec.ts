@@ -122,7 +122,10 @@ for (const { width, height, scenario, locale, state } of [
         await page.locator('.location-trigger').click();
         await expect(page.locator('.place-dialog')).toBeVisible();
       } else if (state === 'weather' || state === 'layers') {
-        await page.locator('.explore-toolbar button').nth(state === 'weather' ? 1 : 2).click();
+        await page
+          .locator('.explore-toolbar button')
+          .nth(state === 'weather' ? 1 : 2)
+          .click();
         await expect(page.locator('.inspector')).toBeVisible();
       } else if (state === 'share') {
         await page.locator('.header-actions button').click();
