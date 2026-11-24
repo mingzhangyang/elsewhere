@@ -8,6 +8,7 @@ import ShareDialog, {
 } from '../src/components/ShareDialog';
 import { setLanguage } from '../src/i18n';
 import { normalizeLocation, PRESETS } from '../src/lib/locations';
+import { parseExploration } from '../src/lib/persistence';
 
 vi.mock('../src/components/MomentImage', async () => {
   const { createPortal } = await import('react-dom');
@@ -63,13 +64,17 @@ it('says Copied only while the copied link is the one on screen (precise → cop
   openDialog();
   fireEvent.click(exact());
   await act(async () => fireEvent.click(copyButton()));
-  expect(writeText).toHaveBeenCalledWith(expect.stringContaining('35.71234'));
+  const copiedUrl = new URL(writeText.mock.calls[0][0]);
+  const preciseLocation = parseExploration(copiedUrl.hash).value?.location;
+  expect(preciseLocation?.latitude).toBe(35.71234);
   expect(copyButton()).toHaveTextContent('Copied');
   // Back to the rounded link: the clipboard still holds the precise one, so no confirmation.
   fireEvent.click(exact());
   expect(copyButton()).toHaveTextContent('Copy link');
   await act(async () => fireEvent.click(copyButton()));
-  expect(writeText).toHaveBeenLastCalledWith(expect.not.stringContaining('35.71234'));
+  const roundedUrl = new URL(writeText.mock.calls.at(-1)![0]);
+  const roundedLocation = parseExploration(roundedUrl.hash).value?.location;
+  expect(roundedLocation?.latitude).toBe(35.7);
   expect(copyButton()).toHaveTextContent('Copied');
 });
 

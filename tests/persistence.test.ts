@@ -47,6 +47,137 @@ describe('portable exploration state', () => {
     expect(loadPreferences().value.moonDisplayAid).toBe(true);
   });
 
+  const legacyHash = (value: Exploration) => '#sky=' + encodeURIComponent(JSON.stringify(value));
+  const compactTuple = (value: Exploration): unknown[] => {
+    const token = new URL(explorationUrl(value)).hash.slice('#sky=2.'.length);
+    return JSON.parse(atob(token.replaceAll('-', '+').replaceAll('_', '/'))) as unknown[];
+  };
+
+  it('pins existing v2 preset IDs when the live catalog changes or removes a place', () => {
+    const original = { ...PRESETS[0] };
+    const state = { ...exploration, location: original, custom: null };
+    const originalHash = new URL(explorationUrl(state)).hash;
+    expect(compactTuple(state)[0]).toBe(original.id);
+    const livePresets = [...PRESETS];
+    try {
+      const revised = {
+        ...original,
+        latitude: original.latitude + 0.25,
+        elevation: original.elevation + 25,
+        timezone: 'America/Chicago',
+      };
+      PRESETS[0] = revised;
+      expect(parseExploration(originalHash).value?.location).toEqual(original);
+      const revisedState = { ...state, location: revised };
+      expect(compactTuple(revisedState)[0]).toEqual([
+        revised.id,
+        revised.name,
+        revised.country,
+        revised.latitude,
+        revised.longitude,
+        revised.elevation,
+        revised.timezone,
+      ]);
+      expect(parseExploration(new URL(explorationUrl(revisedState)).hash).value?.location).toEqual(revised);
+      const added = { ...original, id: 'future-preset' };
+      PRESETS.push(added);
+      expect(compactTuple({ ...state, location: added })[0]).toBeInstanceOf(Array);
+      PRESETS.shift();
+      expect(parseExploration(originalHash).value?.location).toEqual(original);
+    } finally {
+      PRESETS.splice(0, PRESETS.length, ...livePresets);
+    }
+  });
+
+  it('shortens ordinary weather links and keeps legacy JSON links readable', () => {
+    const regular = { ...exploration, custom: null, clearSky: false };
+    const short = new URL(explorationUrl(regular)).hash;
+    expect(short).toMatch(/^#sky=2\.[A-Za-z0-9_-]+$/);
+    expect(short.length).toBeLessThan(legacyHash(regular).length / 2);
+    expect(compactTuple(regular)).toHaveLength(6);
+    expect(parseExploration(short)).toEqual({ value: regular, notice: null });
+    expect(parseExploration(legacyHash(regular))).toEqual({ value: regular, notice: null });
+  });
+
+  it('packs integer custom weather as 39 digits with a signed temperature offset', () => {
+    const custom = {
+      ...exploration.custom!,
+      cloudCover: 100,
+      humidity: 100,
+      precipitation: 15,
+      temperature: -27,
+      pressure: 1013,
+      weatherCode: 99,
+      visibilityKm: 200,
+      windSpeed: 500,
+    };
+    const state = { ...exploration, custom, focus: 'hyg-32263', subject: 'pattern:orion' };
+    const short = new URL(explorationUrl(state)).hash;
+    expect(short.length).toBeLessThan(legacyHash(state).length / 2);
+    expect(compactTuple(state)[6]).toMatch(/^\d{39}$/);
+    expect(parseExploration(short)).toEqual({ value: state, notice: null });
+    expect(parseExploration(legacyHash(state))).toEqual({ value: state, notice: null });
+  });
+
+  it('uses lossless numeric array for fractional weather rather than silently rounding', () => {
+    const custom = {
+      ...exploration.custom!,
+      temperature: -3.75,
+      humidity: 86.25,
+      precipitation: 0.125,
+      windDirection: 358.5,
+      pressure: 1011.25,
+    };
+    const state = { ...exploration, custom };
+    expect(compactTuple(state)[6]).toBeInstanceOf(Array);
+    expect(parseExploration(new URL(explorationUrl(state)).hash)).toEqual({
+      value: state,
+      notice: null,
+    });
+  });
+
+  it('round-trips a non-preset multilingual place, precise device coordinates and clear sky', () => {
+    const customPlace = {
+      ...PRESETS[0],
+      id: 'special-place',
+      name: 'Ålesund / 東京',
+      country: 'Norge / 日本',
+      latitude: 62.472228,
+      longitude: 6.149482,
+      timezone: 'Europe/Oslo',
+    };
+    const state = { ...exploration, location: customPlace, clearSky: true };
+    const link = new URL(explorationUrl(state)).hash;
+    expect(link.length).toBeLessThan(legacyHash(state).length * 0.65);
+    expect(parseExploration(link).value).toEqual(state);
+    const exact = normalizeLocation({
+      ...customPlace,
+      id: 'device-location',
+      source: 'device',
+    });
+    const restored = parseExploration(new URL(explorationUrl({ ...state, location: exact })).hash);
+    expect(restored.value?.location).toEqual(exact);
+  });
+
+  it('rejects malformed compact data, unknown places, bad weather and invalid flags', () => {
+    const compactHash = (tuple: unknown[]) => {
+      const bytes = btoa(JSON.stringify(tuple));
+      return '#sky=2.' + bytes.replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
+    };
+    const good = compactTuple(exploration);
+    const failures = [
+      '#sky=2.not!base64',
+      '#sky=2.%%%%',
+      compactHash(['unknown-preset', ...good.slice(1)]),
+      compactHash([...good.slice(0, 5), 32, ...good.slice(6)]),
+      compactHash([...good.slice(0, 6), '123']),
+      '#sky=' + 'a'.repeat(6000),
+    ];
+    for (const hash of failures) {
+      expect(parseExploration(hash), hash).toEqual({ value: null, notice: { code: 'invalid-link' } });
+    }
+  });
+
   it('preserves the repeated-hour instant, camera and custom conditions', () => {
     expect(parseExploration(new URL(explorationUrl(exploration)).hash)).toEqual({
       value: exploration,

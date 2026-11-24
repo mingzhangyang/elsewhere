@@ -267,9 +267,12 @@ test('the share dialog draws a keepsake image in each style and horizon', async 
   await page.getByRole('button', { name: 'Share this sky', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Share this sky' });
   await expect(dialog).toContainText('When opened, the view turns to Jupiter.');
-  expect(decodeURIComponent(await dialog.getByRole('textbox', { name: 'Sky link' }).inputValue())).toContain(
-    '"subject":"jupiter"',
-  );
+  const link = await dialog.getByRole('textbox', { name: 'Sky link' }).inputValue();
+  expect(link).toContain('#sky=2.');
+  const tuple = JSON.parse(
+    Buffer.from(new URL(link).hash.slice('#sky=2.'.length), 'base64url').toString('utf8'),
+  ) as unknown[];
+  expect(tuple[8]).toBe('jupiter');
   const image = dialog.getByRole('img', { name: 'Keepsake image of the sky over New York' });
   /** The image's size and the share of its sky area that is not plain black. */
   const inspect = () =>
@@ -379,7 +382,7 @@ test('a link shared after panning away does not claim the planet is centered', a
   await expect(dialog).toContainText('camera view, layers');
   await expect(dialog).not.toContainText('centered on');
   const link = await page.getByRole('textbox', { name: 'Sky link' }).inputValue();
-  expect(decodeURIComponent(link)).not.toContain('"focus"');
+  expect(link).toContain('#sky=2.');
   const reopened = await browser.newPage();
   await reopened.goto(link);
   await expect(reopened.getByRole('img', { name: /^Sky view\./ })).toBeVisible();
