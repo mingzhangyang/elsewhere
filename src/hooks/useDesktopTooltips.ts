@@ -31,6 +31,8 @@ export function useDesktopTooltips() {
     if (topLayer) tooltip.setAttribute('popover', 'manual');
 
     let anchor: HTMLElement | null = null;
+    let hovered: HTMLElement | null = null;
+    let focused: HTMLElement | null = null;
     let timer: number | undefined;
 
     function cancelTimer() {
@@ -38,12 +40,18 @@ export function useDesktopTooltips() {
       timer = undefined;
     }
 
-    function hide() {
+    function hideTooltip() {
       cancelTimer();
       observer.disconnect();
       if (topLayer && tooltip.matches(':popover-open')) tooltip.hidePopover();
       tooltip.remove();
       anchor = null;
+    }
+
+    function hide() {
+      hovered = null;
+      focused = null;
+      hideTooltip();
     }
 
     function position(target: HTMLElement) {
@@ -73,6 +81,7 @@ export function useDesktopTooltips() {
     });
 
     function show() {
+      timer = undefined;
       if (!anchor || !media?.matches || !anchor.isConnected || !anchor.getClientRects().length) {
         hide();
         return;
@@ -94,13 +103,23 @@ export function useDesktopTooltips() {
       if (dialog) observer.observe(dialog, { attributes: true, attributeFilter: ['open'] });
     }
 
-    function schedule(target: HTMLElement) {
-      if (!media?.matches || target.matches(':disabled') || !label(target)) return;
+    function eligible(target: HTMLElement | null): target is HTMLElement {
+      return !!target && !!media?.matches && !target.matches(':disabled') && !!label(target);
+    }
+
+    function sync() {
+      // Hover takes precedence while the pointer is over a control or its hint.
+      // Keep keyboard ownership so leaving the pointer restores the focused hint.
+      const target = hovered ?? focused;
+      if (!target) {
+        hideTooltip();
+        return;
+      }
       if (anchor === target) {
         if (tooltip.isConnected) cancelTimer();
         return;
       }
-      hide();
+      hideTooltip();
       anchor = target;
       timer = window.setTimeout(show, 350);
     }
@@ -108,33 +127,53 @@ export function useDesktopTooltips() {
     function pointerOver(event: PointerEvent) {
       if (event.pointerType !== 'mouse' && event.pointerType !== 'pen') return;
       if (event.target === tooltip) {
-        cancelTimer();
+        hovered = anchor;
+        sync();
         return;
       }
       const target = control(event.target);
-      if (target && target !== control(event.relatedTarget)) schedule(target);
+      if (eligible(target)) {
+        if (target !== control(event.relatedTarget)) {
+          hovered = target;
+          sync();
+        }
+      } else if (hovered) {
+        // Top-layer transitions can arrive without a matching pointerout.
+        leaveHover();
+      }
     }
 
     function pointerOut(event: PointerEvent) {
-      if (!anchor || (event.pointerType !== 'mouse' && event.pointerType !== 'pen')) return;
-      if (event.target !== tooltip && control(event.target) !== anchor) return;
-      if (event.relatedTarget === tooltip || control(event.relatedTarget) === anchor) return;
-      if (!tooltip.isConnected) {
-        hide();
-        return;
+      if (!hovered || (event.pointerType !== 'mouse' && event.pointerType !== 'pen')) return;
+      if (event.target !== tooltip && control(event.target) !== hovered) return;
+      if (event.relatedTarget === tooltip || control(event.relatedTarget) === hovered) return;
+      leaveHover();
+    }
+
+    function leaveHover() {
+      hovered = null;
+      if (tooltip.isConnected && focused !== anchor) {
+        // Allow crossing the gap to the hint before switching to focus or hiding.
+        cancelTimer();
+        timer = window.setTimeout(sync, 180);
+      } else {
+        sync();
       }
-      cancelTimer();
-      // Allow moving across the small gap onto the hint without losing it.
-      timer = window.setTimeout(hide, 180);
     }
 
     function focusIn(event: FocusEvent) {
       const target = control(event.target);
-      if (target?.matches(':focus-visible')) schedule(target);
+      if (eligible(target) && target.matches(':focus-visible')) {
+        focused = target;
+        sync();
+      }
     }
 
     function focusOut(event: FocusEvent) {
-      if (anchor && control(event.target) === anchor) hide();
+      if (focused && control(event.target) === focused) {
+        focused = null;
+        sync();
+      }
     }
 
     function keyDown(event: KeyboardEvent) {
@@ -144,6 +183,7 @@ export function useDesktopTooltips() {
     document.addEventListener('pointerover', pointerOver);
     document.addEventListener('pointerout', pointerOut);
     document.addEventListener('pointerdown', hide, true);
+    document.addEventListener('click', hide, true);
     document.addEventListener('focusin', focusIn);
     document.addEventListener('focusout', focusOut);
     document.addEventListener('keydown', keyDown, true);
@@ -157,6 +197,7 @@ export function useDesktopTooltips() {
       document.removeEventListener('pointerover', pointerOver);
       document.removeEventListener('pointerout', pointerOut);
       document.removeEventListener('pointerdown', hide, true);
+      document.removeEventListener('click', hide, true);
       document.removeEventListener('focusin', focusIn);
       document.removeEventListener('focusout', focusOut);
       document.removeEventListener('keydown', keyDown, true);

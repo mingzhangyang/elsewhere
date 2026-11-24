@@ -18,7 +18,12 @@ test('desktop hints stay in bounds without shifting controls', async ({ page }, 
   expect(box.y + box.height).toBeLessThanOrEqual(800);
 
   await tooltip.hover();
+  await page.waitForTimeout(250);
   await expect(tooltip).toBeVisible();
+  await page.mouse.move(0, 0);
+  await expect(tooltip).toHaveCount(0);
+  await zoom.hover();
+  await expect(tooltip).toHaveText('Zoom in');
   await page.keyboard.press('Escape');
   await expect(tooltip).toHaveCount(0);
 
@@ -67,6 +72,67 @@ test('keyboard focus and native dialogs have accessible control hints', async ({
   await expect(tooltip).toHaveCount(0);
   await expect(dialog).toBeHidden();
 });
+
+test('hover and keyboard focus retain independent hint ownership', async ({ page }, info) => {
+  test.skip(info.project.name === 'mobile-chromium', 'Desktop pointer only');
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/?scenario=day');
+  const tooltip = page.locator('.desktop-tooltip');
+  const zoom = page.getByRole('button', { name: 'Zoom in', exact: true });
+  const zoomOut = page.getByRole('button', { name: 'Zoom out', exact: true });
+
+  await page.keyboard.press('Tab');
+  await zoom.focus();
+  await expect(tooltip).toHaveText('Zoom in');
+  await zoom.hover();
+  await page.mouse.move(0, 0);
+  // Outlast the pointer-departure grace period while keyboard focus remains.
+  await page.waitForTimeout(250);
+  await expect(tooltip).toHaveText('Zoom in');
+  await expect(zoom).toBeFocused();
+
+  await zoom.hover();
+  await page.keyboard.press('Tab');
+  await zoomOut.focus();
+  await expect(zoomOut).toBeFocused();
+  // A different keyboard focus must not steal the active hover hint.
+  await page.waitForTimeout(400);
+  await expect(tooltip).toHaveText('Zoom in');
+  await page.mouse.move(0, 0);
+  await expect(tooltip).toHaveText('Zoom out');
+  await page.keyboard.press('Escape');
+  await expect(tooltip).toHaveCount(0);
+  await page.waitForTimeout(400);
+  await expect(tooltip).toHaveCount(0);
+});
+
+for (const key of ['Enter', 'Space']) {
+  test(`keyboard ${key} dismisses the hint without canceling the click`, async ({ page }, info) => {
+    test.skip(info.project.name === 'mobile-chromium', 'Desktop pointer only');
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/?scenario=day');
+    const tooltip = page.locator('.desktop-tooltip');
+    const zoom = page.getByRole('button', { name: 'Zoom in', exact: true });
+    await zoom.evaluate((button) => {
+      button.addEventListener(
+        'click',
+        (event) => {
+          if (!event.defaultPrevented) button.dataset.keyboardActivated = 'true';
+        },
+        { once: true },
+      );
+    });
+    await page.keyboard.press('Tab');
+    await zoom.focus();
+    await expect(tooltip).toHaveText('Zoom in');
+    await page.keyboard.press(key);
+    await expect(zoom).toHaveAttribute('data-keyboard-activated', 'true');
+    await expect(zoom).toBeFocused();
+    await expect(tooltip).toHaveCount(0);
+    await page.waitForTimeout(400);
+    await expect(tooltip).toHaveCount(0);
+  });
+}
 
 test.describe('Chinese tooltip labels', () => {
   test.use({ locale: 'zh-CN' });
