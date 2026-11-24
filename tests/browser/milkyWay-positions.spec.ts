@@ -409,14 +409,51 @@ test('Milky Way and postcard pixels follow independent sky coordinates', async (
             : [];
           const conditions = [];
           if (checkWeather) {
+            // Visual pairs use the actual renderer, with the same snapshot as the painted card.
+            const realistic = (snapshot: import('../../src/lib/moment').MomentSnapshot) => {
+              renderer.settings({
+                reducedMotion: true,
+                quality: 'high',
+                horizon: 'ridge',
+                skyBrightness: snapshot.skyBrightness,
+              });
+              renderer.update(snapshot.sky, snapshot.weather, {
+                stars: snapshot.layers.stars,
+                constellations: false,
+                labels: false,
+              });
+              const capture = renderer.capture({ ridge: true, weather: snapshot.weather });
+              return drawPostcard({
+                snapshot,
+                style: 'realistic',
+                horizon: 'ridge',
+                capture,
+                i18n,
+                site: 'example.test',
+              }).toDataURL('image/png');
+            };
+            // Synthetic photometric controls isolate attenuation at the same sky coordinates.
             const fixtures = [
-              { name: 'daylight', snapshot: { ...diffuse, sky: { ...diffuse.sky, sunAltitude: 20 } } },
+              {
+                name: 'daylight',
+                snapshot: {
+                  ...diffuse,
+                  sky: {
+                    ...diffuse.sky,
+                    sunAltitude: 20,
+                    sun: { ...sky.sun, altitude: 20, geometricAltitude: 20, visible: true },
+                  },
+                },
+              },
               { name: 'twilight', snapshot: { ...diffuse, sky: { ...diffuse.sky, sunAltitude: -10 } } },
               {
                 name: 'moonlight',
                 snapshot: {
                   ...diffuse,
-                  sky: { ...diffuse.sky, moon: { ...sky.moon, altitude: 85, illumination: 1 } },
+                  sky: {
+                    ...diffuse.sky,
+                    moon: { ...sky.moon, altitude: 85, geometricAltitude: 85, illumination: 1, visible: true },
+                  },
                 },
               },
               { name: 'city', snapshot: { ...diffuse, skyBrightness: 'city' as const } },
@@ -439,8 +476,9 @@ test('Milky Way and postcard pixels follow independent sky coordinates', async (
               const enabled = await drawArt(snapshot);
               const disabled = await drawArt({ ...snapshot, layers: { ...snapshot.layers, stars: false } });
               const pixels = measure(enabled.card, disabled.card, exportHeight);
-              const full = await drawArt({ ...snapshot, sky: { ...snapshot.sky, stars: sky.stars } });
-              conditions.push({ name, pixels, png: full.png });
+              const fullSnapshot = { ...snapshot, sky: { ...snapshot.sky, stars: sky.stars } };
+              const full = await drawArt(fullSnapshot);
+              conditions.push({ name, pixels, png: full.png, realisticPng: realistic(fullSnapshot) });
             }
             const overcast = fixtures[fixtures.length - 1].snapshot;
             const clear = momentImageSnapshot(overcast, true);
@@ -452,10 +490,23 @@ test('Milky Way and postcard pixels follow independent sky coordinates', async (
               name: 'clear-override',
               pixels: measure(restored.card, artOff.card, exportHeight),
               png: restored.png,
+              realisticPng: realistic({ ...base, weather: clear.weather }),
             });
-            // A portrait crop, including a real star field, for the visual evidence.
-            const portrait = await drawArt({ ...base, aspect: 0.55 });
-            conditions.push({ name: 'portrait', pixels: null, png: portrait.png });
+            // Exercise actual cover crops in both renderers with the full catalog.
+            for (const [name, w, h] of [
+              ['portrait', 330, 600],
+              ['wide', 960, 400],
+            ] as const) {
+              host.style.width = w + 'px';
+              host.style.height = h + 'px';
+              // Wait for ResizeObserver to update the WebGL camera aspect.
+              await new Promise<void>((resolve) =>
+                requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+              );
+              const snapshot = { ...base, aspect: w / h };
+              const image = await drawArt(snapshot);
+              conditions.push({ name, pixels: null, png: image.png, realisticPng: realistic(snapshot) });
+            }
           }
           return {
             frame: measure(on.frame, off.frame, on.frame.height),
@@ -500,9 +551,13 @@ test('Milky Way and postcard pixels follow independent sky coordinates', async (
       body: Buffer.from(artWithoutStarsPng.split(',')[1], 'base64'),
       contentType: 'image/png',
     });
-    for (const { name, png } of conditions) {
+    for (const { name, png, realisticPng } of conditions) {
       await info.attach(name + '-illustrated-postcard.png', {
         body: Buffer.from(png.split(',')[1], 'base64'),
+        contentType: 'image/png',
+      });
+      await info.attach(name + '-realistic-postcard.png', {
+        body: Buffer.from(realisticPng.split(',')[1], 'base64'),
         contentType: 'image/png',
       });
     }
