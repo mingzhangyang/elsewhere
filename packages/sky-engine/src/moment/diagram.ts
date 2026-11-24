@@ -233,15 +233,15 @@ export function renderMinimalSkyMap(
       ctx.stroke();
     }
     for (const { object, x, y, radius } of points) {
+      ctx.fillStyle =
+        object.kind === 'sun'
+          ? palette.sun
+          : object.kind === 'moon'
+            ? palette.moon
+            : object.kind === 'planet'
+              ? palette.planet
+              : palette.star;
       if (object.kind !== 'star' || framed.layers.stars) {
-        ctx.fillStyle =
-          object.kind === 'sun'
-            ? palette.sun
-            : object.kind === 'moon'
-              ? palette.moon
-              : object.kind === 'planet'
-                ? palette.planet
-                : palette.star;
         ctx.beginPath();
         ctx.arc(x, y, radius, 0, 2 * Math.PI);
         ctx.fill();

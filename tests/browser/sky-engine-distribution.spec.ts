@@ -127,6 +127,28 @@ try {
       rejected.aspect !== dayView.aspect || lineOnly.toDataURL() !== comparison.toDataURL()) {
     throw new Error('A nonstellar pattern endpoint changed framing or pixels');
   }
+  // Labels are an independent layer: use an isolated named bright star centered on the map.
+  const named = snapshot.objects.find((object) =>
+    object.kind === 'star' && object.name && object.magnitude <= 1.5 && object.altitude > 20 &&
+    snapshot.objects.every((other) => other.id === object.id ||
+      Math.hypot(object.x - other.x, object.y - other.y) > 0.04));
+  if (!named) throw new Error('Fixture must have an isolated named bright star');
+  const namedView = {
+    ...scene, aspect: map.width / (map.height - 57),
+    view: { heading: named.azimuth, altitude: named.altitude, fov: 40 },
+  };
+  sdk.renderMinimalSkyMap(lineOnly, namedView, {
+    composition: 'current', patterns: [], layers: { ...off, labels: true },
+  });
+  sdk.renderMinimalSkyMap(comparison, namedView, {
+    composition: 'current', patterns: [], layers: off,
+  });
+  const labelRegion = (target) => target.getContext('2d').getImageData(406, 362, 48, 20).data;
+  const label = labelRegion(lineOnly);
+  const noLabel = labelRegion(comparison);
+  if (!label.some((value, index) => value !== noLabel[index])) {
+    throw new Error('Turning off star dots also removed the bright star label');
+  }
   document.body.dataset.stars = scene.sky.stars.length;
   document.body.dataset.ready = 'true';
 } catch (error) {
