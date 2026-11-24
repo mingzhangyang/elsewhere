@@ -1,4 +1,4 @@
-import type { MomentSnapshot, SkyObject } from '../contracts';
+import type { IllustrationPattern, MomentSnapshot, SkyObject } from '../contracts';
 import type { Star } from '../types';
 import { CONSTELLATIONS, type PatternId } from '../domain/stars';
 import {
@@ -51,6 +51,13 @@ export type ToCanvas = (altitude: number, azimuth: number) => { x: number; y: nu
 export interface IllustrationText {
   object: (object: SkyObject) => string;
   pattern: (id: PatternId) => string;
+}
+
+export interface IllustrationDetails {
+  /** Undefined uses the built-in patterns; an empty array paints no pattern. */
+  patterns?: readonly IllustrationPattern[];
+  /** Defaults to true; the stars layer and physical visibility still govern the Galaxy. */
+  milkyWay?: boolean;
 }
 
 const STAR_TINTS = [hex('#d2e2ff'), hex('#fff8e6'), hex('#ffe2ac'), hex('#ffbe94')];
@@ -220,6 +227,7 @@ export function drawIllustration(
   text: IllustrationText,
   font: string,
   landscapeArt?: HTMLImageElement | null,
+  details: IllustrationDetails = {},
 ) {
   const { sky, weather, layers, view } = snapshot;
   const unit = height / 1000;
@@ -317,7 +325,7 @@ export function drawIllustration(
   }
 
   // Diffuse Galactic pigment goes behind every star, cloud and foreground mark.
-  paintMilkyWay(ctx, width, height, snapshot, palette);
+  if (details.milkyWay !== false) paintMilkyWay(ctx, width, height, snapshot, palette);
 
   // 2. Stars, through the app's visibility model.
   /** Names to letter in at the end: below their object, or above it (`top`) when that would fall on the land. */
@@ -363,7 +371,12 @@ export function drawIllustration(
     ctx.lineWidth = 2.4 * unit;
     ctx.lineCap = 'round';
     ctx.setLineDash([0.1, 8 * unit]);
-    for (const pattern of CONSTELLATIONS) {
+    const patterns: readonly {
+      id: string;
+      lines: readonly (readonly string[])[];
+      label?: string;
+    }[] = details.patterns ?? CONSTELLATIONS;
+    for (const pattern of patterns) {
       let shown = false;
       for (const [a, b] of pattern.lines) {
         const sa = byId.get(a),
@@ -379,10 +392,14 @@ export function drawIllustration(
         shown ||= inView(pa, 0) || inView(pb, 0);
       }
       if (shown && layers.labels) {
-        const stars = pattern.lines.flat().map((id) => byId.get(id)!);
+        const stars = pattern.lines
+          .flat()
+          .map((id) => byId.get(id))
+          .filter((star): star is Star => star !== undefined);
         const lowest = stars.reduce((a, b) => (a.altitude < b.altitude ? a : b));
         const p = toCanvas(lowest.altitude, lowest.azimuth);
-        named.push({ name: text.pattern(pattern.id), x: p.x, y: p.y + 18 * unit });
+        const name = details.patterns ? (pattern.label ?? pattern.id) : text.pattern(pattern.id as PatternId);
+        named.push({ name, x: p.x, y: p.y + 18 * unit });
       }
     }
     ctx.setLineDash([]);

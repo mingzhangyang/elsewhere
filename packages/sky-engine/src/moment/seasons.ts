@@ -20,3 +20,11 @@ export const seasonalColours = {
   autumn: { turf: '#ae854c', leaf: '#d5793b', shallow: '#8ea89c', sea: '#406e70', sand: '#dbb98b' },
   winter: { turf: '#b8c4bc', leaf: '#a6a19a', shallow: '#9cbac0', sea: '#5a6d81', sand: '#c1b5a3' },
 };
+
+// The shared moment already carries the Sun's local horizon coordinates.
+// In twilight an eastern Sun is rising and a western Sun is setting.
+export function landscapeLight(altitude: number, azimuth: number) {
+  if (altitude >= 6) return 'day';
+  if (altitude < -6) return 'night';
+  return azimuth < 180 ? 'dawn' : 'dusk';
+}

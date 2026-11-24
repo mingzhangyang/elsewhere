@@ -1,17 +1,11 @@
-import type { LandscapeSeason } from './seasons';
+import { landscapeLight, type LandscapeSeason } from './seasons';
 
 const assets = import.meta.glob<string>('../assets/{waterfront,valley,coast}/*.webp', {
   eager: true,
   import: 'default',
 });
 
-// The shared moment already carries the Sun's local horizon coordinates.
-// In twilight an eastern Sun is rising and a western Sun is setting.
-export function landscapeLight(altitude: number, azimuth: number) {
-  if (altitude >= 6) return 'day';
-  if (altitude < -6) return 'night';
-  return azimuth < 180 ? 'dawn' : 'dusk';
-}
+export { landscapeLight } from './seasons';
 
 export async function loadLandscapeArt(
   scene: 'city' | 'mountains' | 'sea',

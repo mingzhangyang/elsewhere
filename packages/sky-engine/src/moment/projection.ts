@@ -56,3 +56,22 @@ export function createSkyRay(view: CameraView, aspect: number, width: number, he
     return [dx / length, dy / length, dz / length];
   };
 }
+
+/** Centered cover crop, shared by the realistic capture, painting, overlays and inverse sky rays. */
+export function createCoverProjection(view: CameraView, aspect: number, width: number, height: number) {
+  const coverW = Math.max(width, height * aspect);
+  const coverH = coverW / aspect;
+  const left = (width - coverW) / 2;
+  const top = (height - coverH) / 2;
+  const project = createProjection(view, aspect);
+  return {
+    coverW,
+    coverH,
+    left,
+    top,
+    toCanvas(altitude: number, azimuth: number): Projected {
+      const p = project(altitude, azimuth);
+      return { x: left + ((p.x + 1) / 2) * coverW, y: top + ((1 - p.y) / 2) * coverH, front: p.front };
+    },
+  };
+}

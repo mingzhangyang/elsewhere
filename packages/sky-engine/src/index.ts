@@ -20,9 +20,29 @@ export {
   type StarField,
 } from './domain/stars';
 export type { SkyBrightness } from './domain/starVisibility';
-export { createProjection, createSkyRay, type Projected, type Projection } from './moment/projection';
-export { drawIllustration, lettering, type IllustrationText, type ToCanvas } from './moment/illustration';
+export {
+  createCoverProjection,
+  createProjection,
+  createSkyRay,
+  type Projected,
+  type Projection,
+} from './moment/projection';
+export {
+  drawIllustration,
+  lettering,
+  type IllustrationDetails,
+  type IllustrationText,
+  type ToCanvas,
+} from './moment/illustration';
 export { frameMoment, type MomentFraming } from './moment/framing';
 export { paintFinish } from './moment/paintFinish';
 export { HORIZON_VARIANTS, horizonAltitude, type HorizonVariant } from './moment/scenery';
-export { landscapeSeason, type LandscapeSeason } from './moment/seasons';
+export { landscapeLight, landscapeSeason, type LandscapeSeason } from './moment/seasons';
+export { createSkyScene, type SkySceneOptions } from './scene';
+export {
+  prepareIllustrationScene,
+  renderIllustration,
+  type RenderIllustrationOptions,
+  type LandscapeRequest,
+} from './render';
+export { paintIllustrationPanel, type IllustrationPanelOptions } from './moment/panel';
