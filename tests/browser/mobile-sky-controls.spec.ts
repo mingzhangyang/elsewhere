@@ -3,8 +3,12 @@ import { expect, test, type Page } from '@playwright/test';
 type Rect = { x: number; y: number; width: number; height: number };
 
 function overlaps(a: Rect, b: Rect) {
-  return a.x < b.x + b.width && b.x < a.x + a.width &&
-    a.y < b.y + b.height && b.y < a.y + a.height;
+  return (
+    a.x < b.x + b.width &&
+    b.x < a.x + a.width &&
+    a.y < b.y + b.height &&
+    b.y < a.y + a.height
+  );
 }
 
 async function rect(page: Page, selector: string): Promise<Rect> {
