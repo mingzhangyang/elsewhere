@@ -15,5 +15,5 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false
   },
-  "include": ["src", "tests", "*.config.ts"]
+  "include": ["src", "packages/sky-engine/src", "tests", "*.config.ts"]
 }

@@ -7,28 +7,14 @@ import type {
   WeatherValues,
 } from '../types';
 import { getZonedParts } from './time';
+import { defaultWeatherValues } from '../../packages/sky-engine/src/domain/weather';
 
 /**
  * Weather as the simulation uses it: which sample applies at an instant, how samples interpolate,
  * and what the renderer assumes where a measurement is missing. Fetching lives in services/.
  */
 
-export const defaultWeatherValues = (): WeatherValues => ({
-  cloudCover: 0,
-  cloudLow: 0,
-  cloudMid: 0,
-  cloudHigh: 0,
-  visibilityKm: 30,
-  visibilityAvailable: false,
-  haze: 0,
-  humidity: 50,
-  windSpeed: 0,
-  windDirection: 0,
-  precipitation: 0,
-  temperature: 15,
-  pressure: 1013,
-  weatherCode: 0,
-});
+export { defaultWeatherValues } from '../../packages/sky-engine/src/domain/weather';
 
 export function weatherKey(location: LocationInfo, date: Date): string {
   return `${location.latitude},${location.longitude},${location.elevation},${location.timezone},${getZonedParts(date, location.timezone).date}`;

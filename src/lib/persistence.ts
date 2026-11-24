@@ -6,16 +6,10 @@ import { validateInstant } from '../domain/time';
 import { defaultWeatherValues } from '../domain/weather';
 import { isDeviceLocation, normalizeLocation } from './locations';
 
-export interface LayerSettings {
-  stars: boolean;
-  lines: boolean;
-  labels: boolean;
-}
-export interface CameraView {
-  heading: number;
-  altitude: number;
-  fov: number;
-}
+import type { CameraView, LayerSettings } from '../../packages/sky-engine/src/contracts';
+
+export type { CameraView, LayerSettings } from '../../packages/sky-engine/src/contracts';
+
 /** Vertical field of view limits, in degrees. The narrow end frames the Sun or Moon in detail. */
 export const MIN_FOV = 2;
 export const MAX_FOV = 92;

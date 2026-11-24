@@ -35,10 +35,10 @@ const painted = vi.hoisted(
   () => [] as ({ kind: 'cloud' } | { kind: 'fill'; arcs: { x: number; y: number; r: number }[] })[],
 );
 // These recording-context tests exercise scene ordering, not browser pixel buffers.
-vi.mock('../src/moment/milkyWayArt', () => ({ paintMilkyWay: vi.fn() }));
+vi.mock('../packages/sky-engine/src/moment/milkyWayArt', () => ({ paintMilkyWay: vi.fn() }));
 
 // The cloud painters, unchanged, noting each call in `painted`.
-vi.mock('../src/moment/clouds', async (importOriginal) => {
+vi.mock('../packages/sky-engine/src/moment/clouds', async (importOriginal) => {
   const clouds = await importOriginal<Record<string, unknown>>();
   return Object.fromEntries(
     Object.entries(clouds).map(([name, value]) => [
