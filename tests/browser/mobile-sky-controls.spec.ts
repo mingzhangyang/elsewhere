@@ -26,11 +26,42 @@ test('mobile sky chrome stays separate and view tools expand in place', async ({
     expect(overlaps(context, compass)).toBe(false);
     expect(overlaps(context, view)).toBe(false);
     expect(overlaps(view, explore)).toBe(false);
+    const dock = await rect(page, '.stage-actions');
+    expect(Math.abs(view.y + view.height / 2 - (explore.y + explore.height / 2))).toBeLessThan(2);
+    expect(dock.x).toBeGreaterThanOrEqual(8);
+    expect(dock.x + dock.width).toBeLessThanOrEqual(width - 8);
+    expect(overlaps(dock, context)).toBe(false);
+    expect(overlaps(dock, compass)).toBe(false);
+    await expect(page.locator('.stage-actions .explore-toolbar')).toHaveCount(1);
+    await expect(page.locator('.stage-actions .view-controls')).toHaveCount(1);
+    for (const button of await page.locator('.stage-actions button:visible').all()) {
+      const target = (await button.boundingBox())!;
+      expect(target.width).toBeGreaterThanOrEqual(44);
+      expect(target.height).toBeGreaterThanOrEqual(44);
+    }
 
     for (const selector of ['.source-pill', '.sky-create-link']) {
       const target = await rect(page, selector);
       expect(target.x + target.width).toBeLessThanOrEqual(width - 8);
     }
+
+    const contextSurfaces = await page.locator('.context-actions').evaluate((group) => ({
+      group: getComputedStyle(group).backgroundColor,
+      source: getComputedStyle(group.querySelector('.source-pill')!).backgroundColor,
+      create: getComputedStyle(group.querySelector('.sky-create-link')!).backgroundColor,
+    }));
+    expect(contextSurfaces.group).not.toBe('rgba(0, 0, 0, 0)');
+    expect(contextSurfaces.source).toBe('rgba(0, 0, 0, 0)');
+    expect(contextSurfaces.create).toBe('rgba(0, 0, 0, 0)');
+
+    const surfaces = await page.locator('.stage-actions').evaluate((dock) => ({
+      dock: getComputedStyle(dock).backgroundColor,
+      explore: getComputedStyle(dock.querySelector('.explore-toolbar')!).backgroundColor,
+      view: getComputedStyle(dock.querySelector('.view-controls')!).backgroundColor,
+    }));
+    expect(surfaces.dock).not.toBe('rgba(0, 0, 0, 0)');
+    expect(surfaces.explore).toBe('rgba(0, 0, 0, 0)');
+    expect(surfaces.view).toBe('rgba(0, 0, 0, 0)');
 
     const toggle = page.locator('.view-tools-toggle');
     await expect(toggle).toBeVisible();
@@ -44,6 +75,7 @@ test('mobile sky chrome stays separate and view tools expand in place', async ({
     expect(expanded.x).toBeGreaterThanOrEqual(8);
     expect(expanded.x + expanded.width).toBeLessThanOrEqual(width - 8);
     expect(overlaps(context, expanded)).toBe(false);
+    expect(expanded.y + expanded.height).toBeLessThanOrEqual(dock.y);
     const after = await toggle.boundingBox();
     expect(after!.x).toBeCloseTo(before!.x, 0);
     expect(after!.y).toBeCloseTo(before!.y, 0);
@@ -172,5 +204,11 @@ test.describe('Chinese compass', () => {
       };
     });
     expect(geometry).toEqual({ lines: 1, inside: true, separated: true });
+    const dock = await rect(page, '.stage-actions');
+    const explore = await rect(page, '.explore-toolbar');
+    const controls = await rect(page, '.view-controls');
+    expect(Math.abs(explore.y + explore.height / 2 - (controls.y + controls.height / 2))).toBeLessThan(2);
+    expect(dock.x + dock.width).toBeLessThanOrEqual(312);
+    await expect(page.getByRole('button', { name: '天气', exact: true })).toBeVisible();
   });
 });
