@@ -4,6 +4,7 @@ import type { BodyId, Planet, PlanetId, SkyState, Star, WeatherValues } from '..
 import type { PatternId } from '../domain/stars';
 import { PLANETS } from '../domain/planets';
 import type { CameraView, Preferences } from '../lib/persistence';
+import type { MomentSnapshot } from '../lib/moment';
 import { createCelestialLayers, type ScreenBox } from './celestialLayers';
 import { seededRandom } from '../lib/random';
 // Bundled through Vite so its URL carries a content hash and can be cached as immutable.
@@ -99,6 +100,8 @@ export interface RenderInput extends RenderSettings {
 export interface SkyCaptureOptions {
   ridge: boolean;
   weather?: WeatherValues;
+  /** Frozen image-only camera, aspect, time, layers and weather. No camera-control callbacks. */
+  snapshot?: MomentSnapshot;
 }
 /** One frame of the sky, captured for a sky-moment image. */
 export interface SkyCapture {
@@ -498,8 +501,8 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
     // The camera can change every animation frame. Keep the actual Moon's
     // geometry, picking area and displayed size in step with its current FOV.
     // Texture detail follows the *physical* projection, not the boosted disc.
-    const syncMoonDisplay = () => {
-      const physicalDiameter = moonScreenDiameterPx(activeSky.moon.distanceKm, host.clientHeight, camera.fov);
+    const syncMoonDisplay = (height = host.clientHeight) => {
+      const physicalDiameter = moonScreenDiameterPx(activeSky.moon.distanceKm, height, camera.fov);
       const displayScale = moonDisplayAid ? moonDisplayScale(physicalDiameter) : 1;
       moonMesh.scale.setScalar(((1650 * 1737.4) / activeSky.moon.distanceKm / 20) * displayScale);
       moonUniforms.uMoonDetail.value = moonTextureDetail(physicalDiameter);
@@ -683,14 +686,49 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
        * does not keep it). Labels are laid out ignoring the interface over the sky, which the image
        * does not show. `ridge` draws the illustrative ridge for this frame whatever the setting.
        */
-      capture: ({ ridge: withRidge, weather: imageWeather }: SkyCaptureOptions): SkyCapture => {
+      capture: ({ ridge: withRidge, weather: imageWeather, snapshot }: SkyCaptureOptions): SkyCapture => {
         const shown = ridge.visible;
         const onScreenWeather = activeWeather;
+        const onScreenSky = activeSky;
+        const onScreenFlags = activeFlags;
+        const onScreenBrightness = skyBrightness;
+        const onScreenTarget = targetId;
+        const onScreenLastTarget = lastTarget;
+        const rotation = camera.rotation.clone();
+        const { aspect, fov } = camera;
+        const size = renderer.getSize(new THREE.Vector2());
+        const height = Math.max(1, size.y);
+        const width = snapshot ? Math.max(1, Math.round(height * snapshot.aspect)) : size.x;
+        const resized = width !== size.x;
         try {
-          // The caller's cloud-free preview is strictly temporary, for this frame only.
-          if (imageWeather) api.update(activeSky, imageWeather, activeFlags);
+          if (snapshot) {
+            // Bypass controls: their private yaw/pitch and the view store must not change.
+            const view = snapshot.view;
+            camera.rotation.set(
+              THREE.MathUtils.degToRad(view.altitude),
+              -THREE.MathUtils.degToRad(view.heading),
+              0,
+              'YXZ',
+            );
+            camera.fov = view.fov;
+            camera.aspect = snapshot.aspect;
+            camera.updateProjectionMatrix();
+            if (resized) renderer.setSize(width, height, false);
+            skyBrightness = snapshot.skyBrightness;
+            targetId = snapshot.subject?.kind === 'object' ? snapshot.subject.object.id : null;
+            api.update(
+              snapshot.sky,
+              imageWeather ?? snapshot.weather,
+              {
+                stars: snapshot.layers.stars,
+                constellations: snapshot.layers.lines,
+                labels: snapshot.layers.labels,
+              },
+              true,
+            );
+          } else if (imageWeather) api.update(activeSky, imageWeather, activeFlags, true);
           ridge.visible = withRidge;
-          drawFrame(performance.now(), 0, false, true);
+          drawFrame(performance.now(), 0, false, true, { width, height });
           const image = document.createElement('canvas');
           image.width = renderer.domElement.width;
           image.height = renderer.domElement.height;
@@ -698,7 +736,16 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
           return { image, target: lastTarget };
         } finally {
           ridge.visible = shown;
-          if (imageWeather) api.update(activeSky, onScreenWeather, activeFlags);
+          camera.rotation.copy(rotation);
+          camera.aspect = aspect;
+          camera.fov = fov;
+          camera.updateProjectionMatrix();
+          if (resized) renderer.setSize(size.x, size.y, false);
+          skyBrightness = onScreenBrightness;
+          targetId = onScreenTarget;
+          lastTarget = onScreenLastTarget;
+          if (snapshot || imageWeather) api.update(onScreenSky, onScreenWeather, onScreenFlags, true);
+          scene.updateMatrixWorld();
           invalidate();
         }
       },
@@ -732,6 +779,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
         nextSky: SkyState,
         nextWeather: WeatherValues,
         flags: { stars: boolean; constellations: boolean; labels: boolean },
+        imageOnly = false,
       ) => {
         const ticked = nextSky !== activeSky;
         activeStars = nextSky.stars;
@@ -775,7 +823,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
         setRotationMatrix(starBase, nextSky.starField.rotation);
         setRotationMatrix(milkyWayPrecession, nextSky.starField.precession);
         // The new instant already includes the turn shown so far; restart from rest.
-        if (ticked) playbackTurn.tick(performance.now());
+        if (ticked && !imageOnly) playbackTurn.tick(performance.now());
         applyTurn(0);
         const nightVisibility = twilightVisibility(nextSky.sunAltitude);
         const visibilityFactor = weatherVisibility(nextWeather);
@@ -820,16 +868,24 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
       adapted = 0;
     const frameTimes: number[] = [],
       drawTimes: number[] = [];
-    const drawFrame = (now: number, elapsed: number, continuous: boolean, capturing = false) => {
+    const drawFrame = (
+      now: number,
+      elapsed: number,
+      continuous: boolean,
+      capturing = false,
+      viewport = { width: host.clientWidth, height: host.clientHeight },
+    ) => {
       const start = performance.now();
-      stepArrival(now);
+      if (!capturing) stepArrival(now);
       const delta = reducedMotion ? 0 : elapsed;
       if (continuous && previous) {
         frameTimes.push(now - previous);
         if (frameTimes.length > 240) frameTimes.shift();
       }
-      previous = now;
-      frames++;
+      if (!capturing) {
+        previous = now;
+        frames++;
+      }
       skyUniforms.uTime.value += delta;
       if (rainMaterial.opacity > 0 && delta) {
         const wind = windVector(activeWeather.windSpeed * 0.06, activeWeather.windDirection).applyQuaternion(
@@ -844,10 +900,10 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
       }
       const blocked = capturing ? [] : occluders();
       // Recomputed every frame, so a pause or reduced motion can never leave the sky turned.
-      applyTurn(playbackTurn.seconds(now, !!reducedMotion));
+      applyTurn(capturing ? 0 : playbackTurn.seconds(now, !!reducedMotion));
       sunGroup.position.copy(bodyDirection(activeSky.sun, scratch).multiplyScalar(1650));
       moonGroup.position.copy(bodyDirection(activeSky.moon, scratch).multiplyScalar(1650));
-      const displayedMoonDiameter = syncMoonDisplay();
+      const displayedMoonDiameter = syncMoonDisplay(viewport.height);
       celestialLayers.place(
         (index, target) => (index < starVectors.length / 3 ? starDirection(index, target) : null),
         (index, target) => {
@@ -857,7 +913,7 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
       );
       scene.updateMatrixWorld();
       const target = findSkyObject(activeSky, targetId);
-      targetMarker.hidden = true;
+      if (!capturing) targetMarker.hidden = true;
       lastTarget = null;
       if (target && aboveHorizon(target)) {
         const direction =
@@ -871,29 +927,31 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
           Math.abs(projected.x) < 0.94 &&
           Math.abs(projected.y) < 0.88
         ) {
-          targetMarker.hidden = false;
           // A zoomed Sun or Moon is circled rather than covered, even when cloud hides the disc.
           const discPx =
             target.kind === 'moon'
               ? displayedMoonDiameter / 2
-              : ((angularDiameter(target) / camera.fov) * host.clientHeight) / 2;
-          targetMarker.style.setProperty(
-            '--ring',
-            `${Math.round(Math.max(MARKER_RADIUS_PX, discPx + MARKER_GAP_PX) * 2)}px`,
-          );
-          targetMarker.style.left = `${(projected.x + 1) * 50}%`;
-          targetMarker.style.top = `${(1 - projected.y) * 50}%`;
-          targetLabel.textContent = labels.target(target);
+              : ((angularDiameter(target) / camera.fov) * viewport.height) / 2;
+          const radius = Math.max(MARKER_RADIUS_PX, discPx + MARKER_GAP_PX);
+          const label = labels.target(target);
+          if (!capturing) {
+            targetMarker.hidden = false;
+            targetMarker.style.setProperty('--ring', `${Math.round(radius * 2)}px`);
+            targetMarker.style.left = `${(projected.x + 1) * 50}%`;
+            targetMarker.style.top = `${(1 - projected.y) * 50}%`;
+            targetLabel.textContent = label;
+          }
           lastTarget = {
             x: (projected.x + 1) / 2,
             y: (1 - projected.y) / 2,
-            radius: Math.max(MARKER_RADIUS_PX, discPx + MARKER_GAP_PX) / host.clientHeight,
-            label: targetLabel.textContent,
+            radius: radius / viewport.height,
+            label,
           };
         }
       }
-      celestialLayers.layout(camera, host.clientWidth, host.clientHeight, blocked);
+      celestialLayers.layout(camera, viewport.width, viewport.height, blocked);
       renderer.render(scene, camera);
+      if (capturing) return;
       drawTimes.push(performance.now() - start);
       if (drawTimes.length > 240) drawTimes.shift();
       if (quality === 'auto' && frameTimes.length >= 120 && now - adapted > 10000) {

@@ -12,6 +12,7 @@ type PostcardInputRecord = {
   style: string;
   weather: { cloudCover: number; precipitation: number };
   provenance: string;
+  view: MomentSnapshot['view'];
 };
 const postcardInputs = vi.hoisted(() => [] as PostcardInputRecord[]);
 const pending: ((blob: Blob | null) => void)[] = [];
@@ -26,6 +27,7 @@ vi.mock('../src/moment/postcard', () => ({
         precipitation: options.snapshot.weather.precipitation,
       },
       provenance: options.snapshot.provenance.kind,
+      view: options.snapshot.view,
     });
     return { toBlob: (done: (blob: Blob | null) => void) => pending.push(done) };
   },
@@ -63,7 +65,17 @@ beforeEach(() => {
 const snapshot = {
   location: PRESETS[0],
   instant: new Date('2026-01-10T00:30:00Z'),
-  sky: { sunAltitude: -18, sun: { azimuth: 270 }, moon: { phase: 'full' } },
+  sky: {
+    sunAltitude: -18,
+    sun: { altitude: -18, azimuth: 270, visible: false },
+    moon: { phase: 'full', altitude: 40, azimuth: 140, visible: true, illumination: 1 },
+    planets: [],
+    stars: [],
+  },
+  view: { heading: 0, altitude: 18, fov: 66 },
+  aspect: 1.6,
+  layers: { stars: true, lines: true, labels: true },
+  skyBrightness: 'dark',
   weather: { ...defaultWeatherValues(), cloudCover: 95, precipitation: 3, weatherCode: 63 },
   provenance: { kind: 'source', source: 'forecast' },
 } as unknown as MomentSnapshot;
@@ -276,4 +288,60 @@ it('invalidates the previous download while changing the Clear Sky image option'
   await settle();
   await release(1);
   expect(screen.getByRole('link', { name: 'Save image' })).toBeVisible();
+});
+
+it('defaults to smart framing, uses the same view in both styles, and preserves the original view', async () => {
+  const captured: SkyCaptureOptions[] = [];
+  render(
+    <MomentImage
+      snapshot={snapshot}
+      capture={(options) => {
+        captured.push(options);
+        return capture();
+      }}
+      link="https://example.test/#sky"
+    />,
+  );
+  const smart = screen.getByRole('button', { name: 'Smart framing' });
+  const current = screen.getByRole('button', { name: 'Current view' });
+  expect(smart).toHaveAttribute('aria-pressed', 'true');
+  await settle();
+  const auto = postcardInputs[0].view;
+  expect(auto.heading).not.toBe(snapshot.view.heading);
+  expect(captured[0].snapshot?.view).toEqual(auto);
+  await release(0);
+  fireEvent.click(screen.getByRole('button', { name: 'Illustrated' }));
+  await settle();
+  expect(postcardInputs[1].view).toEqual(auto);
+  await release(1);
+  fireEvent.click(current);
+  expect(screen.queryByRole('link', { name: 'Save image' })).not.toBeInTheDocument();
+  await settle();
+  expect(postcardInputs[2].view).toEqual(snapshot.view);
+  expect(snapshot.view.heading).toBe(0);
+});
+
+it('finishes both no-op framing toggles with Clear Sky off', async () => {
+  render(<MomentImage snapshot={snapshot} capture={capture} link="" />);
+  await settle();
+  await release(0);
+  fireEvent.click(screen.getByRole('checkbox', { name: /Clear Sky for image/ }));
+  await settle();
+  await release(1);
+  const slot = document.querySelector('.moment-preview-slot');
+  expect(slot).toHaveAttribute('aria-busy', 'false');
+  expect(postcardInputs[1].view).toBe(snapshot.view);
+
+  // At night with 95% cloud cover neither mode changes the original snapshot.
+  for (const [index, name] of ['Current view', 'Smart framing'].entries()) {
+    fireEvent.click(screen.getByRole('button', { name }));
+    expect(screen.queryByRole('link', { name: 'Save image' })).not.toBeInTheDocument();
+    await settle();
+    expect(pending).toHaveLength(index + 3);
+    expect(postcardInputs[index + 2].view).toBe(snapshot.view);
+    await release(index + 2);
+    expect(slot).toHaveAttribute('aria-busy', 'false');
+    expect(screen.getByRole('img', { name: /New York/ })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Save image' })).toBeVisible();
+  }
 });
