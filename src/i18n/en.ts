@@ -133,6 +133,9 @@ const en = {
     objects: 'Objects',
     weather: 'Weather',
     layers: 'Layers',
+    objectsTooltip: 'Find and explore celestial objects',
+    weatherTooltip: 'View or customize the weather',
+    layersTooltip: 'Customize sky layers and settings',
     dismissNotice: 'Dismiss notice',
   },
   hint: {
@@ -368,6 +371,7 @@ const en = {
     paused: 'Paused',
     change: 'Change date and time',
     now: 'Now',
+    nowTooltip: 'Return to real time',
     tonight: 'Tonight',
     tonightTitle: 'Explore one hour after civil dusk',
     noDusk: 'No civil dusk on this date',

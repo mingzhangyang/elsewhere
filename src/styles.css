@@ -2413,3 +2413,24 @@ dialog:not([open]) {
     font-size: 12px;
   }
 }
+
+/* One viewport-positioned tooltip, independent of the sky and control layout. */
+.desktop-tooltip {
+  position: fixed;
+  inset: auto;
+  z-index: 40;
+  width: max-content;
+  max-width: min(260px, calc(100vw - 16px));
+  margin: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--line-bright);
+  border-radius: 7px;
+  background: var(--chrome);
+  color: var(--text);
+  box-shadow: 0 4px 14px #0006;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  cursor: default;
+}

@@ -266,6 +266,9 @@ const zh: Messages = {
     objects: '天体',
     weather: '天气',
     layers: '图层',
+    objectsTooltip: '查找并探索天体',
+    weatherTooltip: '查看或自定义天气',
+    layersTooltip: '自定义天空图层与设置',
     dismissNotice: '关闭提示',
   },
   hint: {
@@ -449,6 +452,7 @@ const zh: Messages = {
     paused: '已暂停',
     change: '更改日期和时间',
     now: '现在',
+    nowTooltip: '返回实时天空',
     tonight: '今晚',
     tonightTitle: '跳到民用昏影终之后一小时',
     noDusk: '这一天没有民用昏影终',

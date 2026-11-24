@@ -104,6 +104,7 @@ export default function TimeConsole({
         </button>
         <button
           className="now-button"
+          data-tooltip={t.nowTooltip}
           aria-pressed={following}
           onClick={() => {
             setError(null);
@@ -116,7 +117,8 @@ export default function TimeConsole({
         <button
           className="tonight-button"
           disabled={!events.twilightDusk}
-          title={events.twilightDusk ? t.tonightTitle : t.noDusk}
+          data-tooltip={events.twilightDusk ? t.tonightTitle : undefined}
+          title={events.twilightDusk ? undefined : t.noDusk}
           onClick={() => events.twilightDusk && jump(new Date(events.twilightDusk.getTime() + 3600000))}
         >
           {t.tonight}
