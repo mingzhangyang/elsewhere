@@ -114,6 +114,7 @@ export interface RenderCallbacks {
   onHeadingChange?: (heading: number) => void;
   onStarSelect?: (star: Star | null) => void;
   onCameraChange?: (view: CameraView) => void;
+  onAspectChange?: (aspect: number) => void;
   onBodySelect?: (body: BodyId) => void;
   onAssetError?: (asset: 'moon-map') => void;
   onContextChange?: (lost: boolean) => void;
@@ -649,10 +650,12 @@ export function createSkyRenderer(host: HTMLElement, input: RenderInput, callbac
       if (!host.clientWidth || !host.clientHeight) return;
       camera.aspect = host.clientWidth / host.clientHeight;
       camera.updateProjectionMatrix();
+      callbacks.onAspectChange?.(camera.aspect);
       renderer.setSize(host.clientWidth, host.clientHeight);
       invalidate();
     });
     resizeObserver.observe(host);
+    callbacks.onAspectChange?.(camera.aspect);
     releases.push(() => resizeObserver.disconnect());
 
     const api = {

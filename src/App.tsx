@@ -390,6 +390,7 @@ export default function App({
           playbackRate={playing && simTime.getTime() < MAX_INSTANT ? speed : 0}
           onAssetError={() => setNotice({ code: 'moon-map-unavailable' })}
           onCameraChange={view.set}
+          onAspectChange={view.setAspect}
           onDiagnostics={import.meta.env.DEV && diagnostics ? setStats : undefined}
           onStarSelect={(star) => {
             if (star) inspect(star.id, document.activeElement as HTMLElement);
@@ -472,7 +473,14 @@ export default function App({
             </button>
           )}
         </div>
-        <SkyCompass view={view} />
+        {!immersive && !panel && (
+          <SkyCompass
+            view={view}
+            sky={sky}
+            showStars={layers.stars}
+            onNavigate={(altitude, azimuth) => skyRef.current?.focus(altitude, azimuth)}
+          />
+        )}
         {!preferences.hintDismissed && !focused && !panel && (
           <div className="scene-hint" data-occludes-sky>
             <div>

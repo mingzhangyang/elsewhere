@@ -6,15 +6,24 @@ import type { CameraView } from './persistence';
  */
 export interface CameraViewStore {
   get: () => CameraView;
+  getAspect: () => number | null;
+  setAspect: (aspect: number) => void;
   set: (view: CameraView) => void;
   subscribe: (listener: () => void) => () => void;
 }
 
 export function createCameraViewStore(initial: CameraView): CameraViewStore {
   let current = initial;
+  let aspect: number | null = null;
   const listeners = new Set<() => void>();
   return {
     get: () => current,
+    getAspect: () => aspect,
+    setAspect: (next) => {
+      if (!Number.isFinite(next) || next <= 0 || next === aspect) return;
+      aspect = next;
+      listeners.forEach((listener) => listener());
+    },
     set: (view) => {
       current = view;
       listeners.forEach((listener) => listener());

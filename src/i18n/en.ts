@@ -78,6 +78,10 @@ const en = {
   directions: ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'],
   facing: ({ direction, degrees }: { direction: string; degrees: number }) =>
     `Facing ${direction}, ${degrees} degrees`,
+  minimap: {
+    navigate: 'All-sky map. Choose a direction, use arrow keys to look around, or Enter to look up.',
+    altitude: ({ degrees }: { degrees: number }) => `Alt ${degrees}°`,
+  },
   sky: {
     mood: {
       day: 'A moment under the Sun',
