@@ -79,7 +79,8 @@ const en = {
   facing: ({ direction, degrees }: { direction: string; degrees: number }) =>
     `Facing ${direction}, ${degrees} degrees`,
   minimap: {
-    navigate: 'All-sky map. Choose a direction, use arrow keys to look around, or Enter to look up.',
+    navigate:
+      'All-sky map (looking up): north up, south down, east left, west right. Gold outline: current view. Click to navigate; arrow keys to turn, Enter for zenith.',
     altitude: ({ degrees }: { degrees: number }) => `Alt ${degrees}°`,
   },
   sky: {

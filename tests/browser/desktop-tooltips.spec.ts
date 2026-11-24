@@ -35,6 +35,27 @@ test('desktop hints stay in bounds without shifting controls', async ({ page }, 
   await page.mouse.move(0, 0);
   await expect(tooltip).toHaveCount(0);
 
+  const map = page.getByRole('button', { name: /^All-sky map/ });
+  const mapBefore = await map.boundingBox();
+  await map.hover();
+  await expect(tooltip).toContainText('north up, south down, east left, west right');
+  await expect(tooltip).toContainText('Gold outline: current view');
+  await expect(tooltip).toBeVisible();
+  expect(await map.boundingBox()).toEqual(mapBefore);
+  const mapHintBox = (await tooltip.boundingBox())!;
+  expect(mapHintBox.x).toBeGreaterThanOrEqual(0);
+  expect(mapHintBox.y).toBeGreaterThanOrEqual(0);
+  expect(mapHintBox.x + mapHintBox.width).toBeLessThanOrEqual(1280);
+  expect(mapHintBox.y + mapHintBox.height).toBeLessThanOrEqual(800);
+  await page.mouse.move(0, 0);
+  await expect(tooltip).toHaveCount(0);
+  await page.keyboard.press('Tab');
+  await map.focus();
+  await expect(tooltip).toContainText('north up, south down, east left, west right');
+  await page.keyboard.press('Escape');
+  await expect(tooltip).toHaveCount(0);
+  await expect(map).toBeFocused();
+
   const eye = page.getByRole('button', { name: 'Hide controls', exact: true });
   await eye.hover();
   await expect(tooltip).toHaveText('Hide controls');
@@ -145,6 +166,10 @@ test.describe('Chinese tooltip labels', () => {
     await expect(tooltip).toHaveText('放大');
     await page.getByRole('button', { name: '天气', exact: true }).hover();
     await expect(tooltip).toHaveText('查看或自定义天气');
+    await page.getByRole('button', { name: /^全天空导航图/ }).hover();
+    await expect(tooltip).toContainText('仰视天球');
+    await expect(tooltip).toContainText('上北、下南、左东、右西');
+    await expect(tooltip).toContainText('金色轮廓为当前视野');
   });
 });
 
