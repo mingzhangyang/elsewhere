@@ -119,13 +119,15 @@ describe('portable exploration state', () => {
       id: 'device-location',
       source: 'device',
     });
-    expect(parseExploration(new URL(explorationUrl({ ...state, location: exact })).hash).value?.location)
-      .toEqual(exact);
+    const restored = parseExploration(new URL(explorationUrl({ ...state, location: exact })).hash);
+    expect(restored.value?.location).toEqual(exact);
   });
 
   it('rejects malformed compact data, unknown places, bad weather and invalid flags', () => {
-    const compactHash = (tuple: unknown[]) =>
-      '#sky=2.' + btoa(JSON.stringify(tuple)).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
+    const compactHash = (tuple: unknown[]) => {
+      const bytes = btoa(JSON.stringify(tuple));
+      return '#sky=2.' + bytes.replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
+    };
     const good = compactTuple(exploration);
     const failures = [
       '#sky=2.not!base64',
