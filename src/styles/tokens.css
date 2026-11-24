@@ -1,0 +1,33 @@
+:root {
+  font-family: 'Segoe UI', ui-sans-serif, system-ui, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  color-scheme: dark;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  --bg: #080e17;
+  --chrome: #0a111c;
+  --text: #e8eef6;
+  --text-soft: #c3d1e2;
+  --text-dim: #b8c8da;
+  --muted: #a1afc0;
+  --quiet: #8394a9;
+  /* White veils and hairlines, faintest to brightest. */
+  --veil: #ffffff0a;
+  --line: #ffffff18;
+  --line-strong: #ffffff24;
+  --line-bright: #ffffff2e;
+  --gold: #e9c697;
+  /* Gold tints for highlighted controls, faintest to strongest. */
+  --gold-wash: #e9c6970d;
+  --gold-tint: #e9c69720;
+  --gold-edge: #e9c6974d;
+  --gold-strong: #e9c69799;
+  --raised: #1c2b3d;
+  --control-surface: #132032;
+  --radius: 16px;
+  /* Type scale: nothing below --text-xs; controls at --text-sm; panel reading text at --text-md. */
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-md: 14px;
+}

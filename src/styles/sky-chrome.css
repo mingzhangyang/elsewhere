@@ -1,0 +1,587 @@
+/* An unobtrusive but discoverable direct link to the separate #create host. */
+.sky-create-actions {
+  display: flex;
+  align-items: flex-start;
+  margin-top: 10px;
+  pointer-events: auto;
+}
+.source-pill,
+.sky-create-link {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  max-width: 100%;
+}
+.sky-create-link {
+  gap: 9px;
+  padding: 10px 14px;
+  border: 1px solid #e9c69786;
+  border-radius: 999px;
+  background: #151e37ed;
+  color: #f9e5cc;
+  font-size: var(--text-md);
+  font-weight: 650;
+  line-height: 1.25;
+  text-decoration: none;
+  text-shadow: none;
+  box-shadow: 0 4px 20px #0006;
+}
+.sky-create-link:hover {
+  background: #252e4d;
+}
+.sky-context {
+  position: absolute;
+  z-index: 2;
+  top: 28px;
+  left: 32px;
+  pointer-events: none;
+  /* A tight dark edge outlines each glyph over a white cloud; the soft layer reads over blue sky.
+     Both stay on the letters, unlike a scrim that darkens a block of sky around the title. */
+  text-shadow:
+    0 0 1px #030915e6,
+    0 0 3px #030915cc,
+    0 1px 6px #03091599,
+    0 2px 16px #03091566;
+}
+.sky-context .eyebrow {
+  color: #f1f5fa;
+}
+.context-place {
+  margin: 0;
+  font-size: var(--text-sm);
+  /* Brighter than --text-dim: this small line sits directly on the sky, often over a cloud. */
+  color: #e3ebf4;
+}
+.source-pill {
+  pointer-events: auto;
+  gap: 7px;
+  margin-top: 18px;
+  background: #071321eb;
+  border: 1px solid var(--line-strong);
+  border-radius: 30px;
+  font-size: var(--text-sm);
+  color: var(--text);
+  padding: 9px 12px;
+  backdrop-filter: blur(12px);
+}
+.sky-compass {
+  position: absolute;
+  right: 30px;
+  top: 30px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-sm);
+  text-shadow: 0 1px 5px #000;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: #091220b3;
+  backdrop-filter: blur(12px);
+}
+.sky-compass svg {
+  color: #c8d7e9;
+}
+.sky-compass span {
+  color: #b1c2d4;
+  font-size: var(--text-sm);
+}
+.view-controls,
+.view-tools-actions {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+.explore-toolbar {
+  display: flex;
+}
+@media (min-width: 681px) {
+  .view-controls,
+  .explore-toolbar {
+    position: absolute;
+    bottom: 18px;
+    border-radius: 12px;
+  }
+  .view-controls {
+    right: 25px;
+    z-index: 4;
+    background: #0a1526b8;
+    border: 1px solid var(--line);
+    padding: 4px;
+    backdrop-filter: blur(12px);
+  }
+  .explore-toolbar {
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 5;
+    padding: 5px;
+    gap: 3px;
+    border: 1px solid var(--line-strong);
+    background: #0a1526e8;
+    box-shadow: 0 8px 24px #0004;
+    backdrop-filter: blur(16px);
+  }
+}
+.view-tools-toggle {
+  display: none;
+}
+.view-tools-actions > span {
+  height: 20px;
+  width: 1px;
+  background: var(--line);
+  margin: 0 4px;
+}
+.scene-hint {
+  position: absolute;
+  z-index: 2;
+  bottom: 86px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--text-soft);
+  font-size: var(--text-sm);
+  text-align: center;
+  padding: 8px 8px 8px 16px;
+  border-radius: 12px;
+  background: #091220e0;
+  backdrop-filter: blur(12px);
+  max-width: calc(100% - 30px);
+  white-space: normal;
+}
+.scene-hint small {
+  display: block;
+  font-size: var(--text-xs);
+  color: #93a5bc;
+  line-height: 1.8;
+}
+.explore-toolbar button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 16px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: #c1d0e2;
+  font-size: var(--text-sm);
+}
+.explore-toolbar button[aria-expanded='true'] {
+  background: var(--gold-tint);
+  color: var(--gold);
+}
+.restore-atmosphere {
+  pointer-events: auto;
+  text-shadow: 0 1px 5px #000;
+}
+.scene-hint strong {
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+.hint-action {
+  border: 1px solid var(--gold-edge);
+  background: var(--gold-wash);
+  border-radius: 8px;
+  min-height: 44px;
+  padding: 8px 12px;
+  white-space: nowrap;
+  color: #f4dcb8;
+  font-size: var(--text-sm);
+}
+.focus-summary {
+  position: absolute;
+  z-index: 4;
+  left: 24px;
+  bottom: 88px;
+  width: 330px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #0c1829f2;
+  border: 1px solid var(--gold-edge);
+}
+.focus-summary > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.focus-summary strong {
+  font-size: 16px;
+  font-weight: 500;
+}
+.focus-summary span {
+  font-size: var(--text-sm);
+  color: var(--gold);
+  flex: 1;
+}
+.focus-summary p {
+  font-size: var(--text-md);
+  color: #c5d3e3;
+  margin: 4px 0;
+}
+.focus-actions {
+  display: flex;
+  gap: 14px;
+}
+.focus-actions button {
+  background: transparent;
+  border: 0;
+  min-height: 44px;
+  color: var(--gold);
+  padding: 5px 0;
+  font-size: var(--text-sm);
+}
+/* Keep desktop controls in their established positions; phones share one lower dock. */
+.stage-actions,
+.context-actions {
+  display: contents;
+}
+.immersive .sky-context,
+.immersive .explore-toolbar,
+.immersive .scene-hint {
+  visibility: hidden;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+}
+@media (min-width: 681px) and (max-width: 1000px) {
+  .sky-context {
+    left: 24px;
+  }
+  .view-controls {
+    right: 16px;
+  }
+  .view-tools-actions > span {
+    margin: 4px;
+  }
+}
+@media (min-width: 681px) and (max-width: 1000px) and (min-height: 621px) {
+  .view-controls {
+    top: 88px;
+    bottom: auto;
+    flex-direction: column;
+  }
+  .view-tools-actions {
+    flex-direction: column;
+  }
+  .view-tools-actions > span {
+    width: 22px;
+    height: 1px;
+  }
+}
+@media (max-width: 680px) {
+  .scene-hint {
+    gap: 8px;
+    padding: 5px 6px 5px 12px;
+    width: max-content;
+    max-width: calc(100% - 34px);
+  }
+  .scene-hint small {
+    display: none;
+  }
+  .focus-summary {
+    padding: 8px 12px;
+  }
+  /* The header names the place on phones; the title stays for screen readers only. */
+  .sky-context h1 {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .context-place {
+    display: none;
+  }
+  .sky-context {
+    position: relative;
+    grid-area: 1 / 1;
+    align-self: start;
+    justify-self: start;
+    top: auto;
+    left: auto;
+    min-width: 0;
+    max-width: calc(100% - 18px);
+    margin: 12px 6px 0 12px;
+    display: flex;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 0 8px;
+  }
+  .sky-context .eyebrow {
+    flex-basis: 100%;
+    margin: 0 0 2px;
+    letter-spacing: 0.04em;
+  }
+  .context-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    max-width: 100%;
+    border-radius: 10px;
+    background: #091729b3;
+  }
+  .source-pill,
+  .sky-create-actions {
+    margin-top: 0;
+    max-width: 100%;
+  }
+  .source-pill,
+  .sky-create-link {
+    padding: 6px 8px;
+    font-size: var(--text-sm);
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    box-shadow: none;
+    text-shadow: inherit;
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+  .source-pill {
+    backdrop-filter: none;
+  }
+  .sky-create-link {
+    gap: 5px;
+  }
+  .sky-create-link:hover {
+    background: #091729d9;
+  }
+  .sky-create-link svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+  }
+  .sky-compass {
+    position: relative;
+    grid-area: 1 / 2;
+    align-self: start;
+    justify-self: end;
+    top: auto;
+    right: auto;
+    margin: 12px 12px 0 0;
+    width: max-content;
+    min-width: 64px;
+    min-height: 44px;
+    display: grid;
+    grid-template-columns: 18px max-content;
+    grid-template-rows: 20px 14px;
+    align-content: center;
+    justify-items: center;
+    gap: 0 3px;
+    padding: 4px 5px;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    color: #f1f5fa;
+    text-shadow:
+      0 0 2px #030915,
+      0 1px 5px #030915;
+  }
+  .sky-compass svg {
+    width: 17px;
+    height: 17px;
+    align-self: center;
+    filter: drop-shadow(0 1px 2px #030915);
+  }
+  .sky-compass strong {
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .sky-compass span {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: #e3ebf4;
+    font-size: var(--text-xs);
+  }
+  .scene-hint,
+  .focus-summary {
+    position: relative;
+    grid-area: 3 / 1 / 4 / -1;
+    inset: auto;
+    transform: none;
+    min-height: 0;
+    overflow: auto;
+    margin: 0 auto 12px;
+  }
+  .focus-summary {
+    width: calc(100% - 28px);
+  }
+  .stage-actions {
+    position: relative;
+    grid-area: 4 / 1 / 5 / -1;
+    z-index: 5;
+    width: calc(100% - 24px);
+    min-width: 0;
+    max-width: 420px;
+    margin: 0 auto 12px;
+    display: flex;
+    align-items: center;
+    padding: 4px;
+    gap: 4px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: #0a1526e8;
+    box-shadow: 0 4px 16px #0003;
+    backdrop-filter: blur(12px);
+  }
+  .explore-toolbar {
+    min-width: 0;
+    flex: 1;
+  }
+  .explore-toolbar button {
+    flex: 1 1 0;
+    min-width: 44px;
+    min-height: 48px;
+    padding: 4px 2px;
+    flex-direction: column;
+    gap: 3px;
+    border-radius: 8px;
+    font-size: var(--text-xs);
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+  .explore-toolbar button svg {
+    flex-shrink: 0;
+  }
+  .view-controls {
+    position: relative;
+    flex: 0 0 auto;
+    gap: 0;
+    padding-left: 4px;
+    border-left: 1px solid var(--line);
+  }
+  .view-controls .icon-button {
+    width: 44px;
+    height: var(--view-tools-button-height);
+  }
+  .view-tools-toggle {
+    display: inline-flex;
+  }
+  .view-tools-actions {
+    /* Open above the shared dock; keep the trigger in place and other actions reachable. */
+    position: absolute;
+    bottom: calc(100% + var(--view-tools-offset));
+    right: 0;
+    display: none;
+    padding: var(--view-tools-padding);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #091729ed;
+    box-shadow: 0 3px 12px #0005;
+    backdrop-filter: blur(12px);
+  }
+  .view-controls.tools-open .view-tools-actions {
+    display: flex;
+  }
+  /* Reserve the popover's full height (including borders) and offset without moving the dock. */
+  .stage:not(.panel-open):has(.view-controls.tools-open) .stage-actions {
+    margin-top: calc(
+      var(--view-tools-button-height) + 2 * var(--view-tools-padding) + 2px + var(--view-tools-offset)
+    );
+  }
+  .view-tools-toggle[aria-expanded='true'] {
+    background: var(--gold-tint);
+    color: var(--gold);
+  }
+  .view-tools-actions > span {
+    display: none;
+  }
+  .immersive .sky-context,
+  .immersive .scene-hint,
+  .immersive .explore-toolbar,
+  .immersive .view-tools-actions,
+  .immersive .view-tools-toggle {
+    display: none;
+  }
+  .immersive .stage-actions {
+    justify-self: end;
+    width: max-content;
+    margin: 0 12px 12px;
+  }
+  .immersive .view-controls {
+    padding: 0;
+    border: 0;
+  }
+}
+@media (max-height: 620px) {
+  .focus-summary p {
+    display: none;
+  }
+  .focus-summary {
+    padding: 4px 12px;
+  }
+  .has-target .sky-context {
+    display: none;
+  }
+  .sky-context .eyebrow,
+  .context-place,
+  .scene-hint {
+    display: none;
+  }
+  .sky-context h1 {
+    font-size: 24px;
+  }
+}
+@media (max-height: 620px) and (min-width: 681px) {
+  .focus-summary {
+    bottom: 76px;
+  }
+  .sky-context {
+    top: 16px;
+  }
+  .source-pill {
+    margin-top: 8px;
+  }
+  .view-controls {
+    top: 12px;
+    bottom: auto;
+  }
+  .sky-compass {
+    display: none;
+  }
+  .explore-toolbar {
+    bottom: 10px;
+  }
+}
+@media (max-height: 620px) and (min-width: 700px) {
+  .explore-toolbar {
+    left: 24px;
+    transform: none;
+  }
+}
+@media (max-width: 680px), (max-width: 1000px) and (pointer: coarse) {
+  .panel-open .sky-context,
+  .panel-open .view-controls,
+  .panel-open .scene-hint {
+    display: none;
+  }
+  .sky-context .eyebrow {
+    font-size: var(--text-xs);
+  }
+}
+/* One viewport-positioned tooltip, independent of the sky and control layout. */
+.desktop-tooltip {
+  position: fixed;
+  inset: auto;
+  z-index: 40;
+  width: max-content;
+  max-width: min(260px, calc(100vw - 16px));
+  margin: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--line-bright);
+  border-radius: 7px;
+  background: var(--chrome);
+  color: var(--text);
+  box-shadow: 0 4px 14px #0006;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  cursor: default;
+}
