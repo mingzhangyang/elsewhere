@@ -1827,6 +1827,8 @@ dialog:not([open]) {
     padding: 8px 12px;
   }
   .app-shell {
+    /* Keep intrinsic widths in the time controls from widening the entire sky stage. */
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: calc(64px + env(safe-area-inset-top)) minmax(120px, 1fr) auto calc(
         24px + env(safe-area-inset-bottom)
       );
@@ -1854,6 +1856,7 @@ dialog:not([open]) {
     border-color: var(--line);
   }
   .topbar .location-trigger {
+    min-width: 0;
     justify-self: stretch;
   }
   .location-current {
@@ -1904,6 +1907,7 @@ dialog:not([open]) {
     padding: 0 18px 20px;
   }
   .bottom-dock {
+    min-width: 0;
     padding: 10px 14px 9px;
   }
   .day-navigation > span {
@@ -1956,6 +1960,7 @@ dialog:not([open]) {
     min-height: 44px;
   }
   .bottom-bar {
+    min-width: 0;
     padding: 0 15px env(safe-area-inset-bottom);
     font-size: var(--text-xs);
   }
@@ -2320,6 +2325,7 @@ dialog:not([open]) {
     grid-area: 4 / 1 / 5 / -1;
     z-index: 5;
     width: calc(100% - 24px);
+    min-width: 0;
     max-width: 420px;
     margin: 0 auto 12px;
     display: flex;

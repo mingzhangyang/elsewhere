@@ -19,6 +19,11 @@ test('mobile sky chrome stays separate and view tools expand in place', async ({
   ]) {
     await page.setViewportSize({ width, height });
     await page.goto('/?scenario=day');
+    for (const selector of ['.topbar', '.stage', '.bottom-dock', '.bottom-bar']) {
+      const bounds = await rect(page, selector);
+      expect(bounds.x, `${selector} left edge`).toBeGreaterThanOrEqual(0);
+      expect(bounds.x + bounds.width, `${selector} right edge`).toBeLessThanOrEqual(width);
+    }
     const context = await rect(page, '.sky-context');
     const compass = await rect(page, '.sky-compass');
     const view = await rect(page, '.view-controls');
@@ -38,6 +43,9 @@ test('mobile sky chrome stays separate and view tools expand in place', async ({
       const target = (await button.boundingBox())!;
       expect(target.width).toBeGreaterThanOrEqual(44);
       expect(target.height).toBeGreaterThanOrEqual(44);
+      expect(target.x).toBeGreaterThanOrEqual(dock.x);
+      expect(target.x + target.width).toBeLessThanOrEqual(dock.x + dock.width);
+      await expectHitTarget(button);
     }
 
     for (const selector of ['.source-pill', '.sky-create-link']) {
