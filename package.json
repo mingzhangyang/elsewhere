@@ -16,7 +16,7 @@
     "validate": "node scripts/validate.mjs",
     "test:browser": "playwright test",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format:check": "prettier --check . || (prettier --write src/lib/persistence.ts && git diff -- src/lib/persistence.ts && exit 1)",
     "postbuild": "node scripts/check-build.mjs"
   },
   "dependencies": {
