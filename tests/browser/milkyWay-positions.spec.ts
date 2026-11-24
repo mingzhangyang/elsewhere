@@ -133,6 +133,7 @@ function field(direction: Vector, instant: Date, cygnus: boolean, place: Locatio
   return {
     view: { heading: (azimuth / RAD + 360) % 360, altitude: altitude / RAD, fov: FOV },
     points: { bands, stars },
+    cropBand: () => band('off-center plane', galacticPlane(10), 12),
   };
 }
 
@@ -214,9 +215,14 @@ test('Milky Way and postcard pixels follow independent sky coordinates', async (
       await page.goto('/credits.html');
     }
     const place = fixture.southern ? { ...location, latitude: -30 } : location;
-    const { view, points } = field(fixture.direction, new Date(fixture.date), !!fixture.cygnus, place);
+    const { view, points, cropBand } = field(
+      fixture.direction,
+      new Date(fixture.date),
+      !!fixture.cygnus,
+      place,
+    );
     const result = await page.evaluate(
-      async ({ location, date, view, points, width, height, checkWeather }) => {
+      async ({ location, date, view, points, cropBand, width, height, checkWeather }) => {
         // Use the actual production renderer, real star catalog, capture path and
         // postcard compositor inside the browser, not an emulated fragment shader.
         const { loadStars } = await import('../../src/services/starCatalog.ts');
@@ -337,7 +343,12 @@ test('Milky Way and postcard pixels follow independent sky coordinates', async (
           const artFull = await drawArt(base);
           // Subtract the same view with stars/galaxy disabled, then take a median
           // over a circular patch. Individual stars cannot masquerade as diffuse glow.
-          const measure = (enabled: HTMLCanvasElement, disabled: HTMLCanvasElement, skyH: number) => {
+          const measure = (
+            enabled: HTMLCanvasElement,
+            disabled: HTMLCanvasElement,
+            skyH: number,
+            probes = points,
+          ) => {
             const w = enabled.width;
             const a = enabled.getContext('2d')!.getImageData(0, 0, w, skyH).data;
             const b = disabled.getContext('2d')!.getImageData(0, 0, w, skyH).data;
@@ -366,13 +377,13 @@ test('Milky Way and postcard pixels follow independent sky coordinates', async (
               return { median: values[Math.floor(values.length / 2)], peak, offset: distance / skyH };
             };
             return {
-              bands: points.bands.map(({ name, plane, north, south }) => ({
+              bands: probes.bands.map(({ name, plane, north, south }) => ({
                 name,
                 plane: patch(plane, 0.025).median,
                 north: patch(north, 0.025).median,
                 south: patch(south, 0.025).median,
               })),
-              stars: points.stars.map(({ name, point }) => {
+              stars: probes.stars.map(({ name, point }) => {
                 const { peak, median, offset } = patch(point, 0.02);
                 return { name, contrast: peak - median, offset };
               }),
@@ -401,6 +412,15 @@ test('Milky Way and postcard pixels follow independent sky coordinates', async (
             bands: measure(artOn.card, artOff.card, exportHeight).bands,
             stars: measure(artFull.card, artOn.card, exportHeight).stars,
           };
+          // Move the reference west by 1.4% of sky height, keeping the real peak inside the search.
+          const shiftedStars = points.stars.map(({ name, point }) => ({
+            name,
+            point: { ...point, x: point.x - (0.014 * exportHeight) / artFull.card.width },
+          }));
+          const shifted = measure(artFull.card, artOn.card, exportHeight, {
+            bands: [],
+            stars: shiftedStars,
+          }).stars;
           const artTransformed = points.stars.length
             ? [false, true].map((flipY) => ({
                 name: flipY ? '180-degree roll' : 'horizontal mirror',
@@ -408,7 +428,7 @@ test('Milky Way and postcard pixels follow independent sky coordinates', async (
               }))
             : [];
           const conditions = [];
-          if (checkWeather) {
+          if (checkWeather && cropBand) {
             // Visual pairs use the actual renderer, with the same snapshot as the painted card.
             const realistic = (snapshot: import('../../src/lib/moment').MomentSnapshot) => {
               renderer.settings({
@@ -452,7 +472,13 @@ test('Milky Way and postcard pixels follow independent sky coordinates', async (
                   ...diffuse,
                   sky: {
                     ...diffuse.sky,
-                    moon: { ...sky.moon, altitude: 85, geometricAltitude: 85, illumination: 1, visible: true },
+                    moon: {
+                      ...sky.moon,
+                      altitude: 85,
+                      geometricAltitude: 85,
+                      illumination: 1,
+                      visible: true,
+                    },
                   },
                 },
               },
@@ -486,11 +512,12 @@ test('Milky Way and postcard pixels follow independent sky coordinates', async (
               ...diffuse,
               weather: clear.weather,
             });
+            const fullClear = { ...base, weather: clear.weather };
             conditions.push({
               name: 'clear-override',
               pixels: measure(restored.card, artOff.card, exportHeight),
-              png: restored.png,
-              realisticPng: realistic({ ...base, weather: clear.weather }),
+              png: (await drawArt(fullClear)).png,
+              realisticPng: realistic(fullClear),
             });
             // Exercise actual cover crops in both renderers with the full catalog.
             for (const [name, w, h] of [
@@ -505,7 +532,30 @@ test('Milky Way and postcard pixels follow independent sky coordinates', async (
               );
               const snapshot = { ...base, aspect: w / h };
               const image = await drawArt(snapshot);
-              conditions.push({ name, pixels: null, png: image.png, realisticPng: realistic(snapshot) });
+              const isolated = { ...diffuse, aspect: snapshot.aspect };
+              const enabled = await drawArt(isolated);
+              const disabled = await drawArt({ ...isolated, layers: { ...isolated.layers, stars: false } });
+              const skyH = skyHeight(snapshot.aspect);
+              const cardW = enabled.card.width;
+              const coverScale = Math.max(cardW / w, skyH / h);
+              // Reference coordinates came from the original width/height camera.
+              const crop = (point: Pixel) => ({
+                x: 0.5 + ((point.x - 0.5) * (width / height) * h * coverScale) / cardW,
+                y: 0.5 + ((point.y - 0.5) * h * coverScale) / skyH,
+              });
+              const probes = {
+                bands: [
+                  {
+                    name: cropBand.name,
+                    plane: crop(cropBand.plane),
+                    north: crop(cropBand.north),
+                    south: crop(cropBand.south),
+                  },
+                ],
+                stars: [],
+              };
+              const pixels = measure(enabled.card, disabled.card, skyH, probes);
+              conditions.push({ name, pixels, png: image.png, realisticPng: realistic(snapshot) });
             }
           }
           return {
@@ -514,6 +564,7 @@ test('Milky Way and postcard pixels follow independent sky coordinates', async (
             transformed,
             illustrated,
             artTransformed,
+            shifted,
             artDrawMs: { isolated: artOn.drawMs, withoutGalaxy: artOff.drawMs, full: artFull.drawMs },
             artPng: artFull.png,
             artWithoutStarsPng: artOn.png,
@@ -536,6 +587,7 @@ test('Milky Way and postcard pixels follow independent sky coordinates', async (
         date: fixture.date,
         view,
         points,
+        cropBand: fixture.name === 'center' ? cropBand() : null,
         width: WIDTH,
         height: HEIGHT,
         checkWeather: fixture.name === 'center',
@@ -601,13 +653,18 @@ test('Milky Way and postcard pixels follow independent sky coordinates', async (
       fixture.name + ': illustrated diffuse pixels',
     ).toEqual([]);
     if (fixture.cygnus) {
+      const positionTolerance = 0.008;
+      for (const { contrast, offset, name } of metrics.shifted) {
+        expect(contrast, name + ': shifted peak stays detectable').toBeGreaterThan(8);
+        expect(offset, name + ': reject shifted position').toBeGreaterThanOrEqual(positionTolerance);
+      }
       for (const { contrast, offset, name } of metrics.illustrated.stars) {
         expect(contrast, name + ': illustrated star contrast').toBeGreaterThan(8);
-        expect(offset, name + ': illustrated star position').toBeLessThan(0.025);
+        expect(offset, name + ': illustrated star position').toBeLessThan(positionTolerance);
       }
       for (const { name, pixels } of metrics.artTransformed) {
         expect(
-          pixels.stars.some(({ contrast, offset }) => contrast <= 8 || offset >= 0.025),
+          pixels.stars.some(({ contrast, offset }) => contrast <= 8 || offset >= positionTolerance),
           name + ': reject illustrated orientation',
         ).toBe(true);
       }
@@ -621,6 +678,10 @@ test('Milky Way and postcard pixels follow independent sky coordinates', async (
       }
     }
     if (fixture.name === 'center') {
+      for (const name of ['portrait', 'wide']) {
+        const crop = conditions.find((condition) => condition.name === name)!;
+        expect(registrationFailures(crop.pixels), name + ': off-center Galactic band').toEqual([]);
+      }
       const plane = (name: string) =>
         conditions.find((condition) => condition.name === name)!.pixels!.bands[0].plane;
       for (const name of ['daylight', 'city', 'overcast']) expect(plane(name), name).toBe(0);

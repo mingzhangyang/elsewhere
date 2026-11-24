@@ -42,8 +42,7 @@ function pigment(x: number, y: number, z: number, l: number, b: number) {
   const fine = 0.7 * noise(x * 25 + 3, y * 25 + 3, z * 25 + 3) + 0.3 * noise(x * 49, y * 49, z * 49);
   const light =
     band * along * (0.5 + 1.1 * clouds * clouds) + bulge * shape.bulgeStrength * (0.6 + 0.6 * clouds);
-  const rift =
-    (step(-18, -2, l) - step(75, 92, l)) * bell(b - 2 - 2 * Math.sin(l * RAD * 4), 2 + 2.5 * fine);
+  const rift = (step(-18, -2, l) - step(75, 92, l)) * bell(b - 2 - 2 * Math.sin(l * RAD * 4), 2 + 2.5 * fine);
   const dust = Math.max(0, Math.min(0.85, rift * 0.8 + (fine - 0.45) * 0.9 * band));
   return light * (1 - dust);
 }
