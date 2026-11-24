@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import * as Astronomy from 'astronomy-engine';
-import type { CameraView } from '../../src/lib/persistence';
+import { parseExploration, type CameraView } from '../../src/lib/persistence';
 
 test('smart keepsakes reframe both image styles without moving the live sky or shared link', async ({
   page,
@@ -147,20 +147,34 @@ for (const fixture of [
       altitude: Math.max(19, Math.min(90, body.altitude - 66 * 0.18)),
       fov: 66,
     };
+    const layers = { stars: false, lines: false, labels: false };
     const hash = encodeURIComponent(
       JSON.stringify({
         version: 1,
         location,
         instant: date.toISOString(),
         camera: currentView,
-        layers: { stars: false, lines: false, labels: false },
+        layers,
         custom: null,
         clearSky: true,
       }),
     );
-    await page.goto(`/?scenario=${fixture.name}#sky=${hash}`);
+    // Do not use a time-bearing scenario: App would bypass parsing the shared hash.
+    await page.goto(`/?scenario=share-clear#sky=${hash}`);
     const sky = page.getByRole('img', { name: /^Sky view\./ });
     await expect(sky).toBeVisible();
+    const facing = page.locator('.sky-compass-readout');
+    await expect(facing).toContainText(`${Math.round(currentView.heading) % 360}°`);
+    await page.getByRole('button', { name: 'Layers', exact: true }).click();
+    const settings = page.getByRole('region', { name: 'settings inspector' });
+    for (const name of ['Stars', 'Constellation lines', 'Object labels']) {
+      const toggle = settings.getByRole('button', { name, exact: true });
+      await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    }
+    const clearSky = settings.getByRole('button', { name: 'Clear-sky preview' });
+    await expect(clearSky).toHaveAttribute('aria-pressed', 'true');
+    await settings.getByRole('button', { name: 'Close inspector' }).click();
+    await expect(settings).toBeHidden();
     const host = await page.locator('.sky-scene').evaluate((element) => ({
       width: element.clientWidth,
       height: element.clientHeight,
@@ -237,7 +251,20 @@ for (const fixture of [
     };
 
     await share.click();
+    await expect(link).not.toHaveValue('');
     const original = await link.inputValue();
+    // Validate the actual live state serialized by App, not the input hash or default camera.
+    const shared = parseExploration(new URL(original).hash).value;
+    expect(shared).toMatchObject({
+      instant: date.toISOString(),
+      location,
+      layers,
+      clearSky: true,
+      custom: null,
+    });
+    expect(shared?.camera.heading).toBeCloseTo(currentView.heading, 5);
+    expect(shared?.camera.altitude).toBeCloseTo(currentView.altitude, 5);
+    expect(shared?.camera.fov).toBeCloseTo(currentView.fov, 5);
     await checkCard('smart', 'Realistic');
     // Close directly after the smart WebGL capture; a subsequent current-view capture must not
     // be allowed to accidentally fix a leaked camera before this assertion.

@@ -5,7 +5,7 @@ import { PRESETS } from '../lib/locations';
 
 // Development-only entry point; never included in a production build.
 export function scenarioProps(name: string | null): AppProps {
-  const scenarios: Record<string, { time: string; cloudCover: number; precipitation: number; code: number }> =
+  const scenarios: Record<string, { time?: string; cloudCover: number; precipitation: number; code: number }> =
     {
       day: { time: '2026-11-12T17:00:00Z', cloudCover: 15, precipitation: 0, code: 1 },
       night: { time: '2026-11-13T04:00:00Z', cloudCover: 0, precipitation: 0, code: 0 },
@@ -21,6 +21,8 @@ export function scenarioProps(name: string | null): AppProps {
       // Civil dusk in New York (Sun about 5° down) with a 12% waxing crescent low in the west.
       dusk: { time: '2026-11-12T22:08:00Z', cloudCover: 0, precipitation: 0, code: 0 },
       moon: { time: '2026-11-24T02:00:00Z', cloudCover: 0, precipitation: 0, code: 0 },
+      // Weather only: let the shared hash initialize location, instant, camera and layers.
+      'share-clear': { cloudCover: 0, precipitation: 0, code: 0 },
       south: { time: '2026-06-21T12:00:00Z', cloudCover: 0, precipitation: 0, code: 0 },
       polar: { time: '2026-12-21T12:00:00Z', cloudCover: 15, precipitation: 0, code: 1 },
       unavailable: { time: '2026-11-12T17:00:00Z', cloudCover: 0, precipitation: 0, code: 0 },
@@ -42,7 +44,7 @@ export function scenarioProps(name: string | null): AppProps {
     windSpeed: name === 'rain' || name === 'snow' ? 20 : name === 'windy' ? 15 : 0,
   };
   return {
-    initialTime: new Date(scene.time),
+    initialTime: scene.time ? new Date(scene.time) : undefined,
     initialLocation: name === 'south' ? PRESETS[5] : name === 'polar' ? PRESETS[7] : undefined,
     weatherLoader: async (location, date) => {
       const base = { key: weatherKey(location, date), fetchedAt: Date.now() };
