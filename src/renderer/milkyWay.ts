@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { EQUATORIAL_TO_GALACTIC } from '../domain/galactic';
+import { EQUATORIAL_TO_GALACTIC, MILKY_WAY_SHAPE as shape } from '../domain/galactic';
 
 /**
  * The Milky Way as a procedural glow on a sphere that turns with the stars. The sphere holds
@@ -11,6 +11,7 @@ import { EQUATORIAL_TO_GALACTIC } from '../domain/galactic';
  */
 
 const m = EQUATORIAL_TO_GALACTIC;
+const glsl = (value: number) => (Number.isInteger(value) ? value.toFixed(1) : String(value));
 // GLSL matrices are column-major: mat3(column0, column1, column2).
 const GALACTIC = `mat3(${[m[0], m[3], m[6], m[1], m[4], m[7], m[2], m[5], m[8]].join(', ')})`;
 
@@ -66,20 +67,20 @@ float bell(float x, float width) { return exp(-(x * x) / (width * width)); }
 void main() {
   vec3 g = GALACTIC * normalize(vLocal);
   float b = asin(clamp(g.z, -1.0, 1.0)) / DEG;
-  if (abs(b) > 42.0) discard;
+  if (abs(b) > ${glsl(shape.latitudeCutoff)}) discard;
   float l = atan(g.y, g.x) / DEG;
   float al = abs(l);
 
   // Brightness along the plane: the inner Galaxy, with Cygnus and Carina as secondary peaks.
-  float along = 0.3 + 0.7 * bell(al, 60.0) + 0.4 * bell(l - 75.0, 25.0) + 0.3 * bell(l + 75.0, 25.0);
-  float width = 7.0 + 7.0 * bell(al, 45.0);
+  float along = ${shape.base} + ${shape.inner} * bell(al, ${glsl(shape.innerWidth)}) + ${shape.cygnus} * bell(l - ${glsl(shape.secondaryLongitude)}, ${glsl(shape.secondaryWidth)}) + ${shape.carina} * bell(l + ${glsl(shape.secondaryLongitude)}, ${glsl(shape.secondaryWidth)});
+  float width = ${glsl(shape.bandWidth)} + ${glsl(shape.innerBandWidth)} * bell(al, ${glsl(shape.widthFalloff)});
   float band = bell(b, width);
-  float bulge = bell(l, 13.0) * bell(b + 2.0, 9.0);
+  float bulge = bell(l, ${glsl(shape.bulgeWidth)}) * bell(b + ${glsl(-shape.bulgeLatitude)}, ${glsl(shape.bulgeHeight)});
 
   // Star clouds and dust: one coarse and one fine layer of noise in galactic coordinates.
   float clouds = fbm(g * 7.0);
   float fine = fbm(g * 22.0 + 3.1);
-  float light = band * along * (0.5 + 1.1 * clouds * clouds) + bulge * 0.85 * (0.6 + 0.6 * clouds);
+  float light = band * along * (0.5 + 1.1 * clouds * clouds) + bulge * ${shape.bulgeStrength} * (0.6 + 0.6 * clouds);
 
   // The Great Rift: a dark lane just north of the plane from Cygnus (l ≈ 80°) to Ophiuchus (l ≈ 0°).
   float rift = (smoothstep(-18.0, -2.0, l) - smoothstep(75.0, 92.0, l))
@@ -89,7 +90,7 @@ void main() {
 
   // Fades into the thicker air toward the horizon.
   float altitude = normalize(vWorld).y;
-  float air = smoothstep(-0.02, 0.22, altitude);
+  float air = smoothstep(${shape.airStart}, ${shape.airEnd}, altitude);
   vec3 tint = mix(vec3(0.72, 0.80, 1.0), vec3(1.0, 0.88, 0.72), bell(al, 40.0));
   gl_FragColor = vec4(tint * light * air * uIntensity * ${MILKY_WAY_PEAK}, 1.0);
 }

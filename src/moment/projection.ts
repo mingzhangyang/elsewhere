@@ -1,4 +1,5 @@
 import type { CameraView } from '../lib/persistence';
+import type { SkyDirection } from '../domain/galactic';
 
 const RAD = Math.PI / 180;
 
@@ -9,6 +10,16 @@ export interface Projected {
   front: boolean;
 }
 
+function cameraBasis(view: CameraView) {
+  const h = view.heading * RAD,
+    p = view.altitude * RAD;
+  const forward = [Math.cos(p) * Math.sin(h), Math.sin(p), -Math.cos(p) * Math.cos(h)];
+  const right = [Math.cos(h), 0, Math.sin(h)];
+  const up = [-Math.sin(p) * Math.sin(h), Math.cos(p), Math.sin(p) * Math.cos(h)];
+  const scale = Math.tan((view.fov * RAD) / 2);
+  return { forward, right, up, scale };
+}
+
 /**
  * The renderer's perspective projection without three.js: a camera turned to `view.heading` and
  * tilted up `view.altitude` with no roll, `view.fov` degrees tall, `aspect` wide over high.
@@ -16,12 +27,7 @@ export interface Projected {
  * (tests/moment.test.ts checks it against three.js).
  */
 export function createProjection(view: CameraView, aspect: number) {
-  const h = view.heading * RAD,
-    p = view.altitude * RAD;
-  const forward = [Math.cos(p) * Math.sin(h), Math.sin(p), -Math.cos(p) * Math.cos(h)];
-  const right = [Math.cos(h), 0, Math.sin(h)];
-  const up = [-Math.sin(p) * Math.sin(h), Math.cos(p), Math.sin(p) * Math.cos(h)];
-  const scale = Math.tan((view.fov * RAD) / 2);
+  const { forward, right, up, scale } = cameraBasis(view);
   return (altitude: number, azimuth: number): Projected => {
     const a = altitude * RAD,
       z = azimuth * RAD;
@@ -34,3 +40,19 @@ export function createProjection(view: CameraView, aspect: number) {
   };
 }
 export type Projection = ReturnType<typeof createProjection>;
+
+/** Inverse of the postcard's centered cover projection, in east/up/south scene axes. */
+export function createSkyRay(view: CameraView, aspect: number, width: number, height: number) {
+  const { forward, right, up, scale } = cameraBasis(view);
+  const coverHeight = Math.max(width / aspect, height);
+  const factor = (2 * scale) / coverHeight;
+  return (x: number, y: number): SkyDirection => {
+    const u = (x - width / 2) * factor;
+    const v = (height / 2 - y) * factor;
+    const dx = forward[0] + u * right[0] + v * up[0];
+    const dy = forward[1] + v * up[1];
+    const dz = forward[2] + u * right[2] + v * up[2];
+    const length = Math.hypot(dx, dy, dz);
+    return [dx / length, dy / length, dz / length];
+  };
+}

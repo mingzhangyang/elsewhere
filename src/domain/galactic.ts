@@ -24,3 +24,46 @@ export function galacticFromEquatorial(raDeg: number, decDeg: number): { l: numb
   const z = m[6] * e[0] + m[7] * e[1] + m[8] * e[2];
   return { l: (Math.atan2(y, x) * DEG + 360) % 360, b: Math.asin(Math.max(-1, Math.min(1, z))) * DEG };
 }
+
+export type SkyDirection = [number, number, number];
+
+/** Invert the WebGL sphere transform: scene -> equator of date -> J2000 -> Galactic. */
+export function createSceneToGalactic(field: { rotation: readonly number[]; precession: readonly number[] }) {
+  const { rotation, precession } = field;
+  const m = EQUATORIAL_TO_GALACTIC;
+  // Each of the two rotations is orthogonal. Compose M * P^T * R^T once per image.
+  const row = (i: number, j: number) =>
+    m[i] * precession[j] + m[i + 1] * precession[j + 1] + m[i + 2] * precession[j + 2];
+  const eq = Array.from({ length: 9 }, (_, i) => row(Math.floor(i / 3) * 3, (i % 3) * 3));
+  const t = Array.from({ length: 9 }, (_, i) => {
+    const a = Math.floor(i / 3) * 3;
+    const b = (i % 3) * 3;
+    return eq[a] * rotation[b] + eq[a + 1] * rotation[b + 1] + eq[a + 2] * rotation[b + 2];
+  });
+  return ([x, y, z]: SkyDirection): SkyDirection => [
+    t[0] * x + t[1] * y + t[2] * z,
+    t[3] * x + t[4] * y + t[5] * z,
+    t[6] * x + t[7] * y + t[8] * z,
+  ];
+}
+
+/** The same large-scale Galaxy in the shader and the painting; noise and pigment are independent. */
+export const MILKY_WAY_SHAPE = {
+  base: 0.3,
+  inner: 0.7,
+  innerWidth: 60,
+  cygnus: 0.4,
+  carina: 0.3,
+  secondaryLongitude: 75,
+  secondaryWidth: 25,
+  bandWidth: 7,
+  innerBandWidth: 7,
+  widthFalloff: 45,
+  bulgeWidth: 13,
+  bulgeLatitude: -2,
+  bulgeHeight: 9,
+  bulgeStrength: 0.85,
+  latitudeCutoff: 42,
+  airStart: -0.02,
+  airEnd: 0.22,
+} as const;
