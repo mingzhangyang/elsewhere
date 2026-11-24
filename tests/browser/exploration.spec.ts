@@ -1,10 +1,17 @@
 import { createRequire } from 'node:module';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 const axeScript = createRequire(import.meta.url).resolve('axe-core/axe.min.js');
 // The star catalog data request: /src/data/stars.json in development, a hashed assets/stars-*.json
 // in production. No query string: in development `stars.json?url` is a module the app itself needs.
 const CATALOG = /\/stars(-[\w-]+)?\.json$/;
+
+// The mobile dock reveals zoom/reset on demand; desktop keeps them directly available.
+async function setViewTools(page: Page, open: boolean) {
+  const name = open ? 'Show view tools' : 'Hide view tools';
+  const toggle = page.getByRole('button', { name, exact: true });
+  if (await toggle.isVisible()) await toggle.click();
+}
 
 // Canvas-dependent cases below fail confusingly without WebGL; this names the cause directly.
 test('the 3D sky starts', async ({ page }) => {
@@ -43,7 +50,9 @@ test.describe('portrait Moon touch', () => {
     await page.getByRole('button', { name: 'Find the Moon' }).click();
     await page.getByRole('button', { name: 'Center in view' }).click();
     // Zoom back out to the smallest lunar disc while preserving its centered direction.
+    await setViewTools(page, true);
     for (let step = 0; step < 20; step++) await page.getByRole('button', { name: 'Zoom out' }).click();
+    await setViewTools(page, false);
     const ring = page.locator('.sky-target');
     await expect(ring).toBeVisible();
     const box = (await ring.boundingBox())!;
@@ -148,7 +157,9 @@ test('a visitor key press stops the shared-link turn at the current heading', as
 test('zooming stops the shared-link turn without altering its heading', async ({ page }) => {
   await page.goto(jupiterMoment('jupiter'));
   await expect(page.getByRole('img', { name: /^Sky view\./ })).toBeVisible();
+  await setViewTools(page, true);
   await page.getByRole('button', { name: 'Zoom in' }).click();
+  await setViewTools(page, false);
   // Zoom changes field of view, not heading. The arrival may already be complete on a slow
   // runner, in which case 180° is correct; only a later automatic turn would be wrong.
   const afterZoom = await compass(page).getAttribute('aria-label');
@@ -500,7 +511,9 @@ test('finding the Moon ends on the Moon itself, circled rather than covered', as
   // Framed, the disc is about a quarter of the view tall and the ring circles it.
   await expect.poll(width).toBeGreaterThan(100);
   // Zoomed back out, the Moon is small again and the ring returns to its marker size.
+  await setViewTools(page, true);
   for (let step = 0; step < 12; step++) await page.getByRole('button', { name: 'Zoom out' }).click();
+  await setViewTools(page, false);
   await expect.poll(width).toBeLessThan(40);
 });
 
@@ -515,7 +528,9 @@ test('pausing between playback ticks leaves the sky at the displayed instant', a
   // Capella remains above New York's horizon throughout the accelerated playback.
   await page.getByRole('button', { name: 'Center in view' }).click();
   // At a 2° field, the up to 0.5° the sky turns between 600× ticks is a quarter of the view.
+  await setViewTools(page, true);
   for (let step = 0; step < 15; step++) await page.getByRole('button', { name: 'Zoom in' }).click();
+  await setViewTools(page, false);
   await page.getByRole('combobox', { name: 'Playback speed' }).selectOption('600');
   const canvas = page.getByRole('img', { name: /^Sky view\./ });
   const ring = page.locator('.sky-target');

@@ -9,6 +9,7 @@ import {
   Minus,
   Plus,
   Share2,
+  SlidersHorizontal,
   Sparkles,
   X,
 } from 'lucide-react';
@@ -130,6 +131,7 @@ export default function App({
   });
   const [stats, setStats] = useState<RenderStats | null>(null);
   const [audit, setAudit] = useState('');
+  const [viewToolsOpen, setViewToolsOpen] = useState(false);
   const [systemMotion, setSystemMotion] = useState(
     () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
   );
@@ -239,6 +241,7 @@ export default function App({
     dispatch({ type: 'close-panel' });
   };
   const openPanel = (next: Panel, trigger: HTMLElement) => {
+    setViewToolsOpen(false);
     if (panel === next) {
       closePanel();
       return;
@@ -462,34 +465,49 @@ export default function App({
           )}
         </div>
         <SkyCompass view={view} />
-        <div className="view-controls" data-occludes-sky>
+        <div className={`view-controls ${viewToolsOpen ? 'tools-open' : ''}`} data-occludes-sky>
+          <div id="view-tools-actions" className="view-tools-actions" data-occludes-sky>
+            <button
+              className="icon-button"
+              aria-label={m.controls.zoomIn}
+              onClick={() => skyRef.current?.zoom(ZOOM_STEP)}
+            >
+              <Plus size={19} />
+            </button>
+            <button
+              className="icon-button"
+              aria-label={m.controls.zoomOut}
+              onClick={() => skyRef.current?.zoom(1 / ZOOM_STEP)}
+            >
+              <Minus size={19} />
+            </button>
+            <span aria-hidden="true" />
+            <button
+              className="icon-button"
+              aria-label={m.controls.resetView}
+              onClick={() => skyRef.current?.resetView()}
+            >
+              <Crosshair size={19} />
+            </button>
+          </div>
           <button
-            className="icon-button"
-            aria-label={m.controls.zoomIn}
-            onClick={() => skyRef.current?.zoom(ZOOM_STEP)}
+            className="icon-button view-tools-toggle"
+            type="button"
+            aria-label={viewToolsOpen ? m.controls.hideViewTools : m.controls.showViewTools}
+            aria-expanded={viewToolsOpen}
+            aria-controls="view-tools-actions"
+            onClick={() => setViewToolsOpen((open) => !open)}
           >
-            <Plus size={19} />
-          </button>
-          <button
-            className="icon-button"
-            aria-label={m.controls.zoomOut}
-            onClick={() => skyRef.current?.zoom(1 / ZOOM_STEP)}
-          >
-            <Minus size={19} />
-          </button>
-          <span />
-          <button
-            className="icon-button"
-            aria-label={m.controls.resetView}
-            onClick={() => skyRef.current?.resetView()}
-          >
-            <Crosshair size={19} />
+            <SlidersHorizontal size={19} />
           </button>
           <button
             className="icon-button"
             aria-label={immersive ? m.controls.showControls : m.controls.hideControls}
             aria-pressed={immersive}
-            onClick={() => dispatch({ type: 'immersive', value: !immersive })}
+            onClick={() => {
+              setViewToolsOpen(false);
+              dispatch({ type: 'immersive', value: !immersive });
+            }}
           >
             <Eye size={19} />
           </button>

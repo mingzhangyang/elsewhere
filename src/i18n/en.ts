@@ -127,6 +127,8 @@ const en = {
     resetView: 'Reset view',
     showControls: 'Show controls',
     hideControls: 'Hide controls',
+    showViewTools: 'Show view tools',
+    hideViewTools: 'Hide view tools',
     explore: 'Explore controls',
     objects: 'Objects',
     weather: 'Weather',
