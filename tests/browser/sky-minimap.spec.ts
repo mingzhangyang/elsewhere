@@ -17,6 +17,16 @@ test('the all-sky map follows perspective zoom, resize and navigation', async ({
   await map.click({ position: { x: box.width * 0.25, y: box.height * 0.5 } });
   await expect(page.locator('.sky-compass strong')).toHaveText('E');
   await expect(page.locator('.sky-compass span')).toHaveText('90°');
+  for (const [direction, degrees] of [
+    ['N', '0°'],
+    ['E', '90°'],
+    ['S', '180°'],
+    ['W', '270°'],
+  ]) {
+    await map.getByText(direction, { exact: true }).click();
+    await expect(page.locator('.sky-compass span')).toHaveText(degrees);
+    await expect(page.locator('.sky-minimap-altitude')).toHaveText('Alt 0°');
+  }
   await map.focus();
   await page.keyboard.press('Enter');
   await expect(page.locator('.sky-minimap-altitude')).toHaveText('Alt 90°');
@@ -42,6 +52,10 @@ test('the phone map fits the existing compass slot and hides behind inspectors',
     body: await page.screenshot({ animations: 'disabled' }),
     contentType: 'image/png',
   });
+  await map.getByText('N', { exact: true }).click();
+  await expect(page.locator('.sky-compass span')).toHaveText('0°');
+  await map.getByText('S', { exact: true }).click();
+  await expect(page.locator('.sky-compass span')).toHaveText('180°');
   await page.getByRole('button', { name: 'Objects', exact: true }).click();
   await expect(map).toHaveCount(0);
   await page.getByRole('button', { name: 'Close inspector' }).click();

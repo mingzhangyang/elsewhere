@@ -1,6 +1,6 @@
 import { memo, useMemo, useSyncExternalStore } from 'react';
 import { projectSkyChart } from '../domain/skyChartProjection';
-import { projectViewFootprint, unprojectSkyChart } from '../domain/skyViewFootprint';
+import { pickSkyChartDirection, projectViewFootprint, SKY_CHART_CARDINALS } from '../domain/skyViewFootprint';
 import type { CameraViewStore } from '../lib/cameraViewStore';
 import type { SkyState } from '../types';
 import { useI18n } from '../i18n';
@@ -97,7 +97,7 @@ function SkyNavigation({ view, sky, showStars, onNavigate }: Props) {
           }
           const rect = event.currentTarget.getBoundingClientRect();
           if (!rect.width || !rect.height) return;
-          const point = unprojectSkyChart({
+          const point = pickSkyChartDirection({
             x: ((event.clientX - rect.left) / rect.width - 0.5) * 2 * HALF,
             y: ((event.clientY - rect.top) / rect.height - 0.5) * 2 * HALF,
           });
@@ -146,10 +146,11 @@ function SkyNavigation({ view, sky, showStars, onNavigate }: Props) {
             />
           )}
           <g fill="#d3dfed" fontSize=".14" textAnchor="middle" dominantBaseline="central">
-            <text y="-1.1">{m.directions[0]}</text>
-            <text x="-1.1">{m.directions[2]}</text>
-            <text y="1.1">{m.directions[4]}</text>
-            <text x="1.1">{m.directions[6]}</text>
+            {SKY_CHART_CARDINALS.map(({ x, y, azimuth }) => (
+              <text key={azimuth} x={x} y={y}>
+                {m.directions[azimuth / 45]}
+              </text>
+            ))}
           </g>
         </svg>
       </button>

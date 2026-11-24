@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { projectSkyChart } from '../src/domain/skyChartProjection';
-import { projectViewFootprint, unprojectSkyChart } from '../src/domain/skyViewFootprint';
+import {
+  pickSkyChartDirection,
+  projectViewFootprint,
+  unprojectSkyChart,
+} from '../src/domain/skyViewFootprint';
 
 describe('sky view footprint', () => {
   it('round-trips the cardinal directions and zenith', () => {
@@ -12,6 +16,19 @@ describe('sky view footprint', () => {
     }
     expect(unprojectSkyChart({ x: 0, y: 0 })).toEqual({ altitude: 90, azimuth: 0 });
     expect(unprojectSkyChart({ x: 1.01, y: 0 })).toBeNull();
+  });
+
+  it('navigates cardinal label hit areas without changing the disc or unrelated margins', () => {
+    expect(pickSkyChartDirection({ x: 0, y: -1.1 })).toEqual({ altitude: 0, azimuth: 0 });
+    expect(pickSkyChartDirection({ x: -1.1, y: 0 })).toEqual({ altitude: 0, azimuth: 90 });
+    expect(pickSkyChartDirection({ x: 0, y: 1.1 })).toEqual({ altitude: 0, azimuth: 180 });
+    expect(pickSkyChartDirection({ x: 1.1, y: 0 })).toEqual({ altitude: 0, azimuth: 270 });
+    expect(pickSkyChartDirection({ x: -1.12, y: 0.08 })).toEqual({ altitude: 0, azimuth: 90 });
+    const inside = { x: 0.98, y: 0 };
+    expect(pickSkyChartDirection(inside)).toEqual(unprojectSkyChart(inside));
+    expect(pickSkyChartDirection({ x: 0.8, y: 0.8 })).toBeNull();
+    expect(pickSkyChartDirection({ x: 1.4, y: 0 })).toBeNull();
+    expect(pickSkyChartDirection({ x: NaN, y: 0 })).toBeNull();
   });
 
   it('has the expected horizon intersections and arc for a north-facing square viewport', () => {

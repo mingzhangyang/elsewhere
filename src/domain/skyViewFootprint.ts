@@ -33,6 +33,21 @@ export function unprojectSkyChart({ x, y }: SkyChartPoint): { altitude: number; 
   return { altitude: 90 * (1 - radius), azimuth };
 }
 
+export const SKY_CHART_CARDINALS = [
+  { x: 0, y: -1.1, azimuth: 0 },
+  { x: -1.1, y: 0, azimuth: 90 },
+  { x: 0, y: 1.1, azimuth: 180 },
+  { x: 1.1, y: 0, azimuth: 270 },
+] as const;
+
+/** Preserve exact disc navigation; the four label hit areas extend into its margin. */
+export function pickSkyChartDirection(point: SkyChartPoint) {
+  const direction = unprojectSkyChart(point);
+  if (direction) return direction;
+  const cardinal = SKY_CHART_CARDINALS.find(({ x, y }) => Math.hypot(point.x - x, point.y - y) <= 0.16);
+  return cardinal ? { altitude: 0, azimuth: cardinal.azimuth } : null;
+}
+
 /**
  * Perspective viewport intersected with the above-horizon hemisphere. The camera uses a vertical
  * FOV and zero roll (YXZ). Clip its rectangle of unnormalized rays against up >= 0 BEFORE mapping
