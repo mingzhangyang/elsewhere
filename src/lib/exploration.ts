@@ -1,4 +1,4 @@
-import type { HorizontalPosition, Planet, SkyState, Star, WeatherValues } from '../types';
+import type { HorizontalPosition, SkyState, WeatherValues } from '../types';
 import { MIN_FOV, type CameraView, type Preferences } from './persistence';
 import {
   planetVisibilityFactors,
@@ -7,11 +7,9 @@ import {
   twilightVisibility,
 } from '../domain/starVisibility';
 
-export type SkyObject =
-  | (SkyState['sun'] & { id: 'sun'; name: string; kind: 'sun' })
-  | (SkyState['moon'] & { id: 'moon'; name: string; kind: 'moon' })
-  | (Planet & { kind: 'planet' })
-  | (Star & { kind: 'star' });
+import type { SkyObject } from '../../packages/sky-engine/src/contracts';
+
+export type { SkyObject } from '../../packages/sky-engine/src/contracts';
 
 /** The Sun, the Moon, the planets (innermost first), then the catalog's stars, brightest first. */
 export function skyObjects(sky: SkyState): SkyObject[] {

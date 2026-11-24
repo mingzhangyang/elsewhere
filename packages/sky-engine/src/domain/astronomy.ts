@@ -1,0 +1,206 @@
+import { validateObserver } from './observer';
+import * as Astronomy from 'astronomy-engine';
+import type { BodyId, LocationInfo, MoonPhaseKey, PlanetId, RiseSet, SkyEvents, SkyState } from '../types';
+import { localDayBounds, validateInstant, MIN_INSTANT, MAX_INSTANT } from './time';
+import { calculateStarField, calculateStarPositions } from './stars';
+import { brightLimbAngle, calculatePlanets, PLANETS } from './planets';
+
+const AU_KM = 149_597_870.7;
+const DEG = Math.PI / 180;
+
+/** The Moon's phase for an elongation angle, as a key the interface names in its language. */
+export function getPhase(angle: number): MoonPhaseKey {
+  const phases: MoonPhaseKey[] = [
+    'new',
+    'waxing-crescent',
+    'first-quarter',
+    'waxing-gibbous',
+    'full',
+    'waning-gibbous',
+    'last-quarter',
+    'waning-crescent',
+  ];
+  return phases[Math.round((((angle % 360) + 360) % 360) / 45) % 8];
+}
+
+const BODIES: Record<BodyId, Astronomy.Body> = {
+  sun: Astronomy.Body.Sun,
+  moon: Astronomy.Body.Moon,
+  ...(Object.fromEntries(PLANETS.map((planet) => [planet.id, planet.body])) as Record<
+    PlanetId,
+    Astronomy.Body
+  >),
+};
+
+export function nextBodyRise(location: LocationInfo, body: BodyId, date: Date): Date | null {
+  validateObserver(location);
+  validateInstant(date);
+  const days = Math.min(370, (MAX_INSTANT - date.getTime()) / 86400000);
+  if (days <= 0) return null;
+  return (
+    Astronomy.SearchRiseSet(
+      BODIES[body],
+      new Astronomy.Observer(location.latitude, location.longitude, location.elevation),
+      1,
+      date,
+      days,
+    )?.date ?? null
+  );
+}
+
+/** Every event is constrained to [local midnight, next local midnight). */
+export function calculateDailyEvents(location: LocationInfo, date: Date): SkyEvents {
+  validateObserver(location);
+  if (!Number.isFinite(date.getTime())) validateInstant(date);
+  const observer = new Astronomy.Observer(location.latitude, location.longitude, location.elevation);
+  const { start, end } = localDayBounds(date, location.timezone);
+  // A valid UTC boundary instant can belong to an adjacent local calendar year.
+  if (end.getTime() <= MIN_INSTANT || start.getTime() > MAX_INSTANT)
+    throw new RangeError('Choose a date between 1900 and 2100 UTC.');
+  const search = (body: Astronomy.Body, direction: number): Date[] => {
+    const events: Date[] = [];
+    let cursor = start;
+    while (cursor < end) {
+      const event = Astronomy.SearchRiseSet(
+        body,
+        observer,
+        direction,
+        cursor,
+        (end.getTime() - cursor.getTime()) / 86400000,
+        0,
+      )?.date;
+      if (!event || event >= end) break;
+      events.push(event);
+      cursor = new Date(event.getTime() + 1000);
+    }
+    return events;
+  };
+  const rises = search(Astronomy.Body.Sun, 1);
+  const sets = search(Astronomy.Body.Sun, -1);
+  const edges = [
+    ...rises.map((time) => ({ time, rising: true })),
+    ...sets.map((time) => ({ time, rising: false })),
+  ].sort((a, b) => a.time.getTime() - b.time.getTime());
+  const eq = Astronomy.Equator(Astronomy.Body.Sun, start, observer, true, true);
+  const initiallyDay = edges.length
+    ? !edges[0].rising
+    : Astronomy.Horizon(start, observer, eq.ra, eq.dec, 'normal').altitude > -0.2666;
+  let lit = initiallyDay;
+  let last = start.getTime();
+  let daylight = 0;
+  for (const edge of edges) {
+    if (lit) daylight += edge.time.getTime() - last;
+    last = edge.time.getTime();
+    lit = edge.rising;
+  }
+  if (lit) daylight += end.getTime() - last;
+  const noon = Astronomy.SearchHourAngle(Astronomy.Body.Sun, observer, 0, start, 1).time.date;
+  const twilight = (direction: number) => {
+    const found = Astronomy.SearchAltitude(
+      Astronomy.Body.Sun,
+      observer,
+      direction,
+      start,
+      (end.getTime() - start.getTime()) / 86400000,
+      -6,
+    )?.date;
+    return found && found < end ? found : null;
+  };
+  return {
+    sunrise: rises[0] ?? null,
+    sunset: sets[0] ?? null,
+    moonrise: search(Astronomy.Body.Moon, 1)[0] ?? null,
+    moonset: search(Astronomy.Body.Moon, -1)[0] ?? null,
+    solarNoon: noon < end ? noon : null,
+    daylightHours: daylight / 3600000,
+    daylightStatus: !edges.length
+      ? initiallyDay
+        ? 'polar-day'
+        : 'polar-night'
+      : rises.length && sets.length
+        ? 'normal'
+        : 'partial',
+    twilightDawn: twilight(1),
+    twilightDusk: twilight(-1),
+    planets: Object.fromEntries(
+      PLANETS.map(({ id, body }) => [
+        id,
+        { rise: search(body, 1)[0] ?? null, set: search(body, -1)[0] ?? null },
+      ]),
+    ) as Record<PlanetId, RiseSet>,
+  };
+}
+
+export function calculateSky(
+  location: LocationInfo,
+  date: Date,
+  events = calculateDailyEvents(location, date),
+): SkyState {
+  validateObserver(location);
+  validateInstant(date);
+  const observer = new Astronomy.Observer(location.latitude, location.longitude, location.elevation);
+  const sunEq = Astronomy.Equator(Astronomy.Body.Sun, date, observer, true, true);
+  const moonEq = Astronomy.Equator(Astronomy.Body.Moon, date, observer, true, true);
+  const sun = Astronomy.Horizon(date, observer, sunEq.ra, sunEq.dec, 'normal');
+  const moon = Astronomy.Horizon(date, observer, moonEq.ra, moonEq.dec, 'normal');
+  const phaseAngle = Astronomy.MoonPhase(date);
+  const geometricSun = Astronomy.Horizon(date, observer, sunEq.ra, sunEq.dec);
+  const geometricMoon = Astronomy.Horizon(date, observer, moonEq.ra, moonEq.dec);
+  const m = moonEq.vec,
+    s = sunEq.vec;
+  const light = { x: s.x - m.x, y: s.y - m.y, z: s.z - m.z };
+  const illumination =
+    (1 -
+      (light.x * m.x + light.y * m.y + light.z * m.z) /
+        (Math.hypot(light.x, light.y, light.z) * moonEq.dist)) /
+    2;
+  const axis = Astronomy.RotationAxis(Astronomy.Body.Moon, date);
+  const a = axis.ra * 15 * DEG,
+    d = axis.dec * DEG,
+    w = axis.spin * DEG;
+  const rotation = Astronomy.Rotation_EQJ_HOR(date, observer);
+  const localVector = (vector: Astronomy.Vector): [number, number, number] => {
+    const h = Astronomy.RotateVector(rotation, vector);
+    return [-h.y, h.z, -h.x]; // Three.js: east, zenith, south
+  };
+  const prime = new Astronomy.Vector(
+    -Math.sin(a) * Math.cos(w) - Math.cos(a) * Math.sin(d) * Math.sin(w),
+    Math.cos(a) * Math.cos(w) - Math.sin(a) * Math.sin(d) * Math.sin(w),
+    Math.cos(d) * Math.sin(w),
+    Astronomy.MakeTime(date),
+  );
+  const starField = calculateStarField(
+    location.latitude,
+    location.longitude,
+    date,
+    Astronomy.SiderealTime(date),
+  );
+  return {
+    sun: {
+      altitude: sun.altitude,
+      geometricAltitude: geometricSun.altitude,
+      azimuth: sun.azimuth,
+      visible: sun.altitude > -Math.asin(695700 / (sunEq.dist * AU_KM)) / DEG,
+      distanceKm: sunEq.dist * AU_KM,
+    },
+    moon: {
+      altitude: moon.altitude,
+      geometricAltitude: geometricMoon.altitude,
+      azimuth: moon.azimuth,
+      visible: moon.altitude > -Math.asin(1737.4 / (moonEq.dist * AU_KM)) / DEG,
+      phaseAngle,
+      illumination: Math.max(0, Math.min(1, illumination)),
+      phase: getPhase(phaseAngle),
+      distanceKm: moonEq.dist * AU_KM,
+      waxing: phaseAngle < 180,
+      brightLimbAngle: brightLimbAngle(sun, moon),
+      north: localVector(axis.north),
+      prime: localVector(prime),
+    },
+    planets: calculatePlanets(observer, date, sun),
+    stars: calculateStarPositions(starField),
+    starField,
+    events,
+    sunAltitude: sun.altitude,
+  };
+}
