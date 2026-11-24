@@ -117,7 +117,7 @@ export default function MomentImage({
           if (ticket === request.current) setStatus('failed');
         },
       );
-  }, [imageSnapshot, style, horizon, clearSkyImage, i18n, m, copy, place]);
+  }, [imageSnapshot, style, horizon, clearSkyImage, framing, i18n, m, copy, place]);
   useEffect(
     () => () => {
       request.current++;

@@ -320,3 +320,28 @@ it('defaults to smart framing, uses the same view in both styles, and preserves 
   expect(postcardInputs[2].view).toEqual(snapshot.view);
   expect(snapshot.view.heading).toBe(0);
 });
+
+it('finishes both no-op framing toggles with Clear Sky off', async () => {
+  render(<MomentImage snapshot={snapshot} capture={capture} link="" />);
+  await settle();
+  await release(0);
+  fireEvent.click(screen.getByRole('checkbox', { name: /Clear Sky for image/ }));
+  await settle();
+  await release(1);
+  const slot = document.querySelector('.moment-preview-slot');
+  expect(slot).toHaveAttribute('aria-busy', 'false');
+  expect(postcardInputs[1].view).toBe(snapshot.view);
+
+  // At night with 95% cloud cover neither mode changes the original snapshot.
+  for (const [index, name] of ['Current view', 'Smart framing'].entries()) {
+    fireEvent.click(screen.getByRole('button', { name }));
+    expect(screen.queryByRole('link', { name: 'Save image' })).not.toBeInTheDocument();
+    await settle();
+    expect(pending).toHaveLength(index + 3);
+    expect(postcardInputs[index + 2].view).toBe(snapshot.view);
+    await release(index + 2);
+    expect(slot).toHaveAttribute('aria-busy', 'false');
+    expect(screen.getByRole('img', { name: /New York/ })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Save image' })).toBeVisible();
+  }
+});
