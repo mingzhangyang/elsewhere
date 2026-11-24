@@ -27,6 +27,7 @@ import type { AppNotice, BodyId, LocationInfo } from './types';
 import { useSimulation } from './hooks/useSimulation';
 import { useWeather } from './hooks/useWeather';
 import { useDrawerFocus } from './hooks/useDrawerFocus';
+import { useDesktopTooltips } from './hooks/useDesktopTooltips';
 import { MAX_INSTANT } from './domain/time';
 import { calculateSky, nextBodyRise } from './domain/astronomy';
 import {
@@ -79,6 +80,7 @@ export default function App({
   onCreate,
   onReturnToCreator,
 }: AppProps) {
+  useDesktopTooltips();
   const i18n = useI18n();
   const { m } = i18n;
   const creatorText = memorialMessages(i18n.locale);
@@ -429,7 +431,11 @@ export default function App({
           <p className="context-place">
             {[place.country, m.f.zone(location.timezone, simTime)].filter(Boolean).join(' · ')}
           </p>
-          <button className="source-pill" onClick={(event) => openPanel('weather', event.currentTarget)}>
+          <button
+            className="source-pill"
+            data-tooltip={m.controls.weatherTooltip}
+            onClick={(event) => openPanel('weather', event.currentTarget)}
+          >
             <span className={`status-dot ${clearSky || custom || !selection.values ? 'amber' : ''}`} />
             {sourceText}
             {!clearSky && !custom && !selection.values ? m.atmosphere.neutral : ''}
@@ -549,6 +555,7 @@ export default function App({
           <button
             ref={objectsTrigger}
             aria-expanded={panel === 'objects'}
+            data-tooltip={m.controls.objectsTooltip}
             onClick={(event) => openPanel('objects', event.currentTarget)}
           >
             <Sparkles size={17} />
@@ -556,6 +563,7 @@ export default function App({
           </button>
           <button
             aria-expanded={panel === 'weather'}
+            data-tooltip={m.controls.weatherTooltip}
             onClick={(event) => openPanel('weather', event.currentTarget)}
           >
             <Cloud size={17} />
@@ -563,6 +571,7 @@ export default function App({
           </button>
           <button
             aria-expanded={panel === 'settings'}
+            data-tooltip={m.controls.layersTooltip}
             onClick={(event) => openPanel('settings', event.currentTarget)}
           >
             <Layers size={17} />
