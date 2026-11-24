@@ -1824,10 +1824,6 @@ dialog:not([open]) {
     display: none;
   }
   .focus-summary {
-    left: 14px;
-    right: 14px;
-    width: auto;
-    bottom: 84px;
     padding: 8px 12px;
   }
   .app-shell {
@@ -1887,7 +1883,6 @@ dialog:not([open]) {
     display: none;
   }
   .scene-hint {
-    bottom: 83px;
     font-size: var(--text-sm);
     padding: 5px 6px 5px 12px;
     white-space: normal;
@@ -2199,7 +2194,11 @@ dialog:not([open]) {
   .stage {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-rows: max-content minmax(0, 1fr);
+    /* Reserve a shrinkable card row and an independent dock row. */
+    grid-template-rows: max-content minmax(0, 1fr) minmax(0, max-content) auto;
+    --view-tools-button-height: 48px;
+    --view-tools-padding: 3px;
+    --view-tools-offset: 12px;
   }
   .sky-context {
     position: relative;
@@ -2303,14 +2302,26 @@ dialog:not([open]) {
     color: #e3ebf4;
     font-size: var(--text-xs);
   }
+  .scene-hint,
+  .focus-summary {
+    position: relative;
+    grid-area: 3 / 1 / 4 / -1;
+    inset: auto;
+    transform: none;
+    min-height: 0;
+    overflow: auto;
+    margin: 0 auto 12px;
+  }
+  .focus-summary {
+    width: calc(100% - 28px);
+  }
   .stage-actions {
-    position: absolute;
+    position: relative;
+    grid-area: 4 / 1 / 5 / -1;
     z-index: 5;
-    left: 12px;
-    right: 12px;
-    bottom: 12px;
+    width: calc(100% - 24px);
     max-width: 420px;
-    margin-inline: auto;
+    margin: 0 auto 12px;
     display: flex;
     align-items: center;
     padding: 4px;
@@ -2349,7 +2360,7 @@ dialog:not([open]) {
   }
   .view-controls .icon-button {
     width: 44px;
-    height: 48px;
+    height: var(--view-tools-button-height);
   }
   .view-tools-toggle {
     display: inline-flex;
@@ -2357,10 +2368,10 @@ dialog:not([open]) {
   .view-tools-actions {
     /* Open above the shared dock; keep the trigger in place and other actions reachable. */
     position: absolute;
-    bottom: calc(100% + 12px);
+    bottom: calc(100% + var(--view-tools-offset));
     right: 0;
     display: none;
-    padding: 3px;
+    padding: var(--view-tools-padding);
     border: 1px solid var(--line);
     border-radius: 12px;
     background: #091729ed;
@@ -2370,6 +2381,12 @@ dialog:not([open]) {
   .view-controls.tools-open .view-tools-actions {
     display: flex;
   }
+  /* Reserve the popover's full height (including borders) and offset without moving the dock. */
+  .stage:not(.panel-open):has(.view-controls.tools-open) .stage-actions {
+    margin-top: calc(
+      var(--view-tools-button-height) + 2 * var(--view-tools-padding) + 2px + var(--view-tools-offset)
+    );
+  }
   .view-tools-toggle[aria-expanded='true'] {
     background: var(--gold-tint);
     color: var(--gold);
@@ -2378,14 +2395,16 @@ dialog:not([open]) {
     display: none;
   }
   .immersive .sky-context,
+  .immersive .scene-hint,
   .immersive .explore-toolbar,
   .immersive .view-tools-actions,
   .immersive .view-tools-toggle {
     display: none;
   }
   .immersive .stage-actions {
-    left: auto;
-    margin: 0;
+    justify-self: end;
+    width: max-content;
+    margin: 0 12px 12px;
   }
   .immersive .view-controls {
     padding: 0;

@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 type Rect = { x: number; y: number; width: number; height: number };
 
@@ -84,6 +84,69 @@ test('mobile sky chrome stays separate and view tools expand in place', async ({
     await expect(page.locator('.view-tools-actions')).toBeHidden();
   }
 });
+
+async function expectHitTarget(button: Locator) {
+  await button.scrollIntoViewIfNeeded();
+  expect(
+    await button.evaluate((el) => {
+      const bounds = el.getBoundingClientRect();
+      const hit = document.elementFromPoint(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+      return el.contains(hit);
+    }),
+  ).toBe(true);
+}
+
+for (const { width, height } of [
+  { width: 320, height: 640 },
+  { width: 390, height: 844 },
+]) {
+  test(`expanded tools leave the viewing hint clickable at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await page.goto('/?scenario=moon');
+    const toggle = page.locator('.view-tools-toggle');
+    await toggle.click();
+    const hint = page.locator('.scene-hint');
+    const find = hint.getByRole('button', { name: 'Find the Moon' });
+    const dismiss = hint.getByRole('button', { name: 'Dismiss viewing hint' });
+    expect(overlaps(await rect(page, '.scene-hint'), await rect(page, '.view-tools-actions'))).toBe(false);
+    await expectHitTarget(find);
+    await expectHitTarget(dismiss);
+    await find.click();
+    await expect(page.getByRole('region', { name: 'objects inspector' })).toBeVisible();
+    await page.getByRole('button', { name: 'Close inspector' }).click();
+    if ((await toggle.getAttribute('aria-expanded')) === 'false') await toggle.click();
+    await expectHitTarget(dismiss);
+    await dismiss.click();
+    await expect(hint).toBeHidden();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  test(`expanded tools leave focused-object actions clickable at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await page.goto('/?scenario=day');
+    await page.getByRole('button', { name: 'Layers', exact: true }).click();
+    await page.getByRole('button', { name: 'Clear-sky preview', exact: true }).click();
+    await page.getByRole('button', { name: 'Close inspector' }).click();
+    await page.getByRole('button', { name: 'Find the Moon' }).click();
+    await page.getByRole('button', { name: 'Center in view' }).click();
+    const summary = page.getByRole('region', { name: 'Selected object' });
+    const restore = summary.getByRole('button', { name: 'Restore atmosphere', exact: true });
+    const recenter = summary.getByRole('button', { name: 'Recenter', exact: true });
+    const clear = summary.getByRole('button', { name: 'Clear object selection' });
+    const toggle = page.locator('.view-tools-toggle');
+    await toggle.click();
+    expect(overlaps(await rect(page, '.focus-summary'), await rect(page, '.view-tools-actions'))).toBe(false);
+    await expectHitTarget(recenter);
+    await expectHitTarget(clear);
+    await expectHitTarget(restore);
+    await restore.click();
+    await expect(restore).toBeHidden();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await expectHitTarget(clear);
+    await clear.click();
+    await expect(summary).toBeHidden();
+  });
+}
 
 test('immersive view keeps a direct one-tap exit on phones', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
