@@ -230,7 +230,8 @@ const zh: Messages = {
   directions: ['北', '东北', '东', '东南', '南', '西南', '西', '西北'],
   facing: ({ direction, degrees }) => `朝向${direction}，${degrees} 度`,
   minimap: {
-    navigate: '全天空导航图。点击选择方向，方向键转动视角，回车查看天顶。',
+    navigate:
+      '全天空导航图（仰视天球）：上北、下南、左东、右西。金色轮廓为当前视野。点击选择方向，方向键转动视角，回车查看天顶。',
     altitude: ({ degrees }) => `高度 ${degrees}°`,
   },
   sky: {
