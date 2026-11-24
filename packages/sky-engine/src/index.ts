@@ -74,3 +74,10 @@ export {
   type SkyChartOptions,
   type MinimalSkyMapOptions,
 } from './moment/diagram';
+export {
+  renderMoonPhase,
+  loadMoonTexture,
+  installMoonTexture,
+  type MoonPhaseOptions,
+  type MoonTexture,
+} from './moment/moonPhase';

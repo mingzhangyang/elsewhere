@@ -15,6 +15,7 @@ const sdk = join(root, 'packages/sky-engine');
 const output = join(root, 'dist-sdk');
 const stage = join(output, 'package');
 const landscapeStage = join(output, 'landscape-package');
+const moonStage = join(output, 'moon-texture-package');
 const release = join(output, 'release');
 const manifest = JSON.parse(await readFile(join(sdk, 'package.json'), 'utf8'));
 const version = manifest.version;
@@ -97,6 +98,7 @@ await prune(types);
 
 await copy('packages/sky-engine/package.json', join(stage, 'package.json'));
 await copy('packages/sky-engine/README.md', join(stage, 'README.md'));
+await copy('packages/sky-engine/MOON-TEXTURE.md', join(stage, 'MOON-TEXTURE.md'));
 await copy('LICENSE', join(stage, 'LICENSE'));
 await copy('public/licenses/THIRD-PARTY.txt', join(stage, 'THIRD-PARTY.txt'));
 await copy('public/licenses/HYG.txt', join(stage, 'HYG.txt'));
@@ -128,6 +130,25 @@ for (const folder of ['valley', 'waterfront']) {
     }
   }
 }
+// The lunar texture is never embedded in the core module or core npm archive.
+await mkdir(moonStage, { recursive: true });
+await writeFile(
+  join(moonStage, 'package.json'),
+  JSON.stringify({
+    name: '@orangely/sky-engine-moon-texture',
+    version,
+    description: 'Optional NASA LROC lunar surface texture for Sky Engine',
+    license: 'SEE LICENSE IN README.md',
+    files: ['moon-lroc.jpg', 'README.md'],
+    exports: { './moon-lroc.jpg': './moon-lroc.jpg' },
+  }),
+);
+await copy('src/assets/moon-lroc.jpg', join(moonStage, 'moon-lroc.jpg'));
+await copy('packages/sky-engine/MOON-TEXTURE.md', join(moonStage, 'README.md'));
+const lunarTexture = await readFile(join(moonStage, 'moon-lroc.jpg'));
+const lunarChecksum = 'f7130a1822681fa7512d7dcfd40db8c10b9ba4f06777910348698260ed7a2170';
+assert.equal(sha256(lunarTexture), lunarChecksum, 'NASA lunar texture checksum mismatch.');
+
 function pack(directory) {
   const [packed] = JSON.parse(
     run(npm, ['pack', directory, '--json', '--offline', '--ignore-scripts', '--pack-destination', release]),
@@ -137,8 +158,13 @@ function pack(directory) {
 }
 const core = pack(stage);
 const landscapes = pack(landscapeStage);
+const lunar = pack(moonStage);
 assert(core.size < 400000, 'SDK npm archive exceeds 400,000 bytes.');
 assert(landscapes.size < 5000000, 'Optional landscape archive exceeds 5 MB.');
+assert(lunar.size < 600000, 'Optional Moon texture archive exceeds 600,000 bytes.');
+assert(lunar.files.some((file) => file.path === 'moon-lroc.jpg'));
+assert(!core.files.some((file) => file.path.endsWith('.jpg')), 'Moon texture must remain optional.');
+await copyFile(join(moonStage, 'moon-lroc.jpg'), join(release, 'moon-lroc.jpg'));
 assert.equal(landscapes.files.filter((file) => file.path.endsWith('.webp')).length, 32);
 for (const file of [
   'sky-engine.mjs',
@@ -181,9 +207,12 @@ try {
       '--no-package-lock',
       join(release, core.filename),
       join(release, landscapes.filename),
+      join(release, lunar.filename),
     ],
     consumer,
   );
+  const installedMoon = join(consumer, 'node_modules/@orangely/sky-engine-moon-texture/moon-lroc.jpg');
+  assert.equal(sha256(await readFile(installedMoon)), lunarChecksum);
   const installedArtwork = join(consumer, 'node_modules/@orangely/sky-engine-landscapes/landscapes');
   for (const folder of ['valley', 'waterfront']) {
     const expected = await readdir(join(landscapeStage, 'landscapes', folder));
@@ -211,7 +240,8 @@ try {
   await writeFile(
     join(consumer, 'consumer.ts'),
     `import {
-  createSkyScene, renderIllustration, renderSkyChart, renderMinimalSkyMap, type MomentSnapshot,
+  createSkyScene, renderIllustration, renderSkyChart, renderMinimalSkyMap, renderMoonPhase,
+  installMoonTexture, loadMoonTexture, type MoonPhaseOptions, type MomentSnapshot,
 } from '@orangely/sky-engine';
 const scene: MomentSnapshot = await createSkyScene({
   latitude: 40, longitude: -74, timezone: 'UTC', instant: new Date(),
@@ -219,6 +249,10 @@ const scene: MomentSnapshot = await createSkyScene({
 await renderIllustration(document.createElement('canvas'), scene, { composition: 'auto' });
 renderSkyChart(document.createElement('canvas'), scene, { theme: 'paper' });
 renderMinimalSkyMap(document.createElement('canvas'), scene, { composition: 'current' });
+const texture = await loadMoonTexture('/moon-lroc.jpg');
+installMoonTexture(texture);
+const moonOptions: MoonPhaseOptions = { orientation: 'north-up', background: 'transparent' };
+await renderMoonPhase(document.createElement('canvas'), scene, moonOptions);
 `,
   );
   run(tsc, ['--project', join(consumer, 'tsconfig.json')], consumer);
@@ -247,6 +281,11 @@ assert(chart.objects.length > 100);
 assert(chart.objects.every((object) => object.altitude >= 0 && Math.hypot(object.x, object.y) <= 1 + 1e-12));
 assert.equal(typeof sdk.renderSkyChart, 'function');
 assert.equal(typeof sdk.renderMinimalSkyMap, 'function');
+assert.equal(typeof sdk.renderMoonPhase, 'function');
+assert.equal(typeof sdk.installMoonTexture, 'function');
+assert.equal(typeof sdk.loadMoonTexture, 'function');
+const moonUrl = new URL(import.meta.resolve('@orangely/sky-engine-moon-texture/moon-lroc.jpg'));
+assert.equal((await readFile(moonUrl)).length, 457942);
 `,
   );
   run(join(consumer, 'smoke.mjs'), [], consumer);
@@ -266,6 +305,11 @@ const releaseManifest = {
   sourceCommit,
   bundle: { rawBytes: bundle.length, gzipBytes: bundleGzip },
   catalog: { rawBytes: catalog.length, gzipBytes: gzipSync(catalog).length, license: 'CC-BY-SA-4.0' },
+  moonTexture: {
+    rawBytes: lunarTexture.length,
+    sha256: lunarChecksum,
+    license: 'NASA public-domain imagery',
+  },
   files,
 };
 const json = JSON.stringify(releaseManifest, null, 2) + '\n';
