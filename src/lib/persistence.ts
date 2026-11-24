@@ -281,8 +281,7 @@ function decodeCompact(token: string): unknown {
     c.charCodeAt(0),
   );
   const tuple: unknown = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
-  if (!Array.isArray(tuple) || tuple.length < 6 || tuple.length > 9)
-    throw new Error('Invalid compact state');
+  if (!Array.isArray(tuple) || tuple.length < 6 || tuple.length > 9) throw new Error('Invalid compact state');
   const [place, millis, heading, altitude, fov, flags, weather, focus, subject] = tuple;
   if (
     typeof millis !== 'number' ||
