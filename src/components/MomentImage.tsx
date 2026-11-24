@@ -5,6 +5,7 @@ import { Share2 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import type { MomentSnapshot } from '../lib/moment';
 import { momentImageSnapshot } from '../moment/imageWeather';
+import { frameMoment, type MomentFraming } from '../moment/framing';
 import { momentImageCopy } from '../moment/imageCopy';
 import type { SkyCapture, SkyCaptureOptions } from '../renderer/createSkyRenderer';
 import { useI18n } from '../i18n';
@@ -42,9 +43,10 @@ export default function MomentImage({
   const [style, setStyle] = useState<MomentStyle>('realistic');
   const [horizon, setHorizon] = useState<HorizonVariant>('ridge');
   const [clearSkyImage, setClearSkyImage] = useState(true);
+  const [framing, setFraming] = useState<MomentFraming>('auto');
   const imageSnapshot = useMemo(
-    () => momentImageSnapshot(snapshot, clearSkyImage),
-    [snapshot, clearSkyImage],
+    () => frameMoment(momentImageSnapshot(snapshot, clearSkyImage), framing),
+    [snapshot, clearSkyImage, framing],
   );
   const [image, setImage] = useState<PreviewImage | null>(null);
   const [pendingImage, setPendingImage] = useState<PreviewImage | null>(null);
@@ -81,10 +83,12 @@ export default function MomentImage({
       .then(
         ([, landscapeArt]) =>
           new Promise<Blob | null>((resolve) => {
+            if (ticket !== request.current) return resolve(null);
             const frame =
               style === 'realistic'
                 ? latest.current({
                     ridge: horizon === 'ridge',
+                    snapshot: imageSnapshot,
                     ...(clearSkyImage ? { weather: imageSnapshot.weather } : {}),
                   })
                 : null;
@@ -166,6 +170,20 @@ export default function MomentImage({
         {copy.clearSkyImage}
       </label>
       <div className="moment-options">
+        <div role="group" aria-label={copy.framing} className="segmented">
+          {(['auto', 'current'] as const).map((value) => (
+            <button
+              key={value}
+              aria-pressed={framing === value}
+              onClick={() => {
+                if (framing !== value) setStatus('drawing');
+                setFraming(value);
+              }}
+            >
+              {value === 'auto' ? copy.autoFraming : copy.currentFraming}
+            </button>
+          ))}
+        </div>
         <div role="group" aria-label={m.moment.style} className="segmented">
           {MOMENT_STYLES.map((value) => (
             <button
