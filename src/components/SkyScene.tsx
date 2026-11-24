@@ -121,6 +121,7 @@ const SkyScene = forwardRef<SkySceneHandle, Props>(function SkyScene(props, ref)
                 view.current = next;
                 latest.current.onCameraChange?.(next);
               },
+              onAspectChange: (aspect) => latest.current.onAspectChange?.(aspect),
               onAssetError: (message) => latest.current.onAssetError?.(message),
               onContextChange: (lost) => setError(lost ? 'context' : null),
               onDiagnostics: (stats) => latest.current.onDiagnostics?.(stats),
