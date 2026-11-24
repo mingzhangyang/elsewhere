@@ -97,10 +97,7 @@ function field(direction: Vector, instant: Date) {
   };
 }
 
-test('real renderer and realistic postcard place the Milky Way at independent sky coordinates', async (
-  { page },
-  info,
-) => {
+test('Milky Way and postcard pixels follow independent sky coordinates', async ({ page }, info) => {
   test.skip(info.project.name !== 'chromium', 'Dedicated Chromium astronomical pixel qualification');
   test.setTimeout(120000);
   await page.goto('/credits.html');
