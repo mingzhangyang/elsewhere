@@ -167,11 +167,7 @@ function mapPoints(
     const point = toCanvas(object.altitude, object.azimuth);
     if (!point.front || point.x < 0 || point.x > width || point.y < 0 || point.y > height) return [];
     const radius =
-      object.kind === 'star'
-        ? Math.max(1, 3.5 - object.magnitude * 0.4)
-        : object.kind === 'planet'
-          ? 4
-          : 6;
+      object.kind === 'star' ? Math.max(1, 3.5 - object.magnitude * 0.4) : object.kind === 'planet' ? 4 : 6;
     return [{ object, x: point.x, y: point.y, radius: radius * unit }];
   });
 }

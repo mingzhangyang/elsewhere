@@ -1,7 +1,7 @@
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 const html = `<!doctype html><meta charset="utf-8">
 <canvas id="illustration" width="640" height="480"></canvas>
@@ -127,10 +127,13 @@ try {
       rejected.aspect !== dayView.aspect || lineOnly.toDataURL() !== comparison.toDataURL()) {
     throw new Error('A nonstellar pattern endpoint changed framing or pixels');
   }
-  // Labels are an independent layer: use an isolated named bright star centered on the map.
+  // Labels are an independent layer: center a named bright star whose label
+  // region is clear of every other object that can paint into it. Faint catalog
+  // stars do not count — dots are hidden, so they cannot mark the sample.
+  const paintsLabel = (object) => object.kind !== 'star' || (object.name && object.magnitude <= 1.5);
   const named = snapshot.objects.find((object) =>
     object.kind === 'star' && object.name && object.magnitude <= 1.5 && object.altitude > 20 &&
-    snapshot.objects.every((other) => other.id === object.id ||
+    snapshot.objects.every((other) => other.id === object.id || !paintsLabel(other) ||
       Math.hypot(object.x - other.x, object.y - other.y) > 0.04));
   if (!named) throw new Error('Fixture must have an isolated named bright star');
   const namedView = {
@@ -166,6 +169,17 @@ self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim(
 self.addEventListener('fetch', (event) => {
   event.respondWith(caches.match(event.request).then((response) => response || fetch(event.request)));
 });`;
+
+/** Fixture failures set data-error instead of data-ready; surface that text instead of waiting out the timeout. */
+async function expectDistributionReady(page: Page) {
+  const body = page.locator('body');
+  await expect
+    .poll(async () => (await body.getAttribute('data-error')) ?? (await body.getAttribute('data-ready')), {
+      timeout: 30000,
+    })
+    .not.toBeNull();
+  expect(await body.getAttribute('data-error')).toBeNull();
+}
 
 test('published browser ESM works on an independent host, including offline reload', async ({
   page,
@@ -211,7 +225,7 @@ test('published browser ESM works on an independent host, including offline relo
       Object.defineProperty(globalThis, 'Temporal', { value: undefined, configurable: true }),
     );
     await page.goto(origin);
-    await expect(page.locator('body')).toHaveAttribute('data-ready', 'true', { timeout: 30000 });
+    await expectDistributionReady(page);
     await expect(page.locator('body')).toHaveAttribute('data-stars', '5070');
     const drawing = page.locator('#illustration');
     const metrics = await drawing.evaluate((canvas: HTMLCanvasElement) => {
@@ -226,9 +240,9 @@ test('published browser ESM works on an independent host, including offline relo
     });
     expect(metrics.opaque).toBe(metrics.pixels);
     expect(metrics.colors).toBeGreaterThan(100);
-    const images = await page.locator('canvas').evaluateAll((canvases) =>
-      canvases.map((canvas) => (canvas as HTMLCanvasElement).toDataURL()),
-    );
+    const images = await page
+      .locator('canvas')
+      .evaluateAll((canvases) => canvases.map((canvas) => (canvas as HTMLCanvasElement).toDataURL()));
     expect(new Set(images).size).toBe(3);
     for (const id of ['chart', 'minimal']) {
       const stats = await page.locator('#' + id).evaluate((canvas: HTMLCanvasElement) => {
@@ -254,11 +268,11 @@ test('published browser ESM works on an independent host, including offline relo
     ).length;
     await context.setOffline(true);
     await page.reload();
-    await expect(page.locator('body')).toHaveAttribute('data-ready', 'true', { timeout: 30000 });
+    await expectDistributionReady(page);
     await expect(page.locator('body')).toHaveAttribute('data-stars', '5070');
-    const offlineImages = await page.locator('canvas').evaluateAll((canvases) =>
-      canvases.map((canvas) => (canvas as HTMLCanvasElement).toDataURL()),
-    );
+    const offlineImages = await page
+      .locator('canvas')
+      .evaluateAll((canvases) => canvases.map((canvas) => (canvas as HTMLCanvasElement).toDataURL()));
     expect(offlineImages).toEqual(images);
     const offlineCount = requests.filter(
       (path) => path === '/' || path === '/sky-engine.mjs' || path === '/stars.json',

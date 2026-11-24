@@ -220,7 +220,11 @@ function dot(ctx: CanvasRenderingContext2D, x: number, y: number, r: number): vo
   ctx.fill();
 }
 
-export function drawBody(ctx: CanvasRenderingContext2D, object: SkyChartDrawObject, palette: SkyChartPalette): void {
+export function drawBody(
+  ctx: CanvasRenderingContext2D,
+  object: SkyChartDrawObject,
+  palette: SkyChartPalette,
+): void {
   const { px, py, radius } = object;
   if (object.kind === 'star') {
     ctx.fillStyle =

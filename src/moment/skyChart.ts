@@ -251,9 +251,7 @@ export function layoutSkyChartArtwork(
       throw new SkyChartLayoutError('Text section overlap');
     }
   }
-  const objects = Object.freeze(
-    artwork.snapshot.objects.map((object) => chartDrawObject(object, GRAPH)),
-  );
+  const objects = Object.freeze(artwork.snapshot.objects.map((object) => chartDrawObject(object, GRAPH)));
   const zh = artwork.locale === 'zh-Hans';
   const compass = Object.freeze([
     Object.freeze({ text: zh ? '北' : 'N', x: GRAPH.cx, y: 55 }),
