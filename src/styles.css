@@ -2338,11 +2338,27 @@ dialog:not([open]) {
     display: inline-flex;
   }
   .view-tools-actions {
+    /* Pop out to the left rather than reflowing the toggle under the finger. */
+    position: absolute;
+    top: 0;
+    right: calc(100% + 8px);
     display: none;
     flex-direction: row;
+    align-items: center;
+    gap: 1px;
+    padding: 3px;
+    border: 1px solid var(--line);
+    border-radius: 15px;
+    background: #091729ed;
+    box-shadow: 0 3px 12px #0005;
+    backdrop-filter: blur(12px);
   }
   .view-controls.tools-open .view-tools-actions {
     display: flex;
+  }
+  .view-tools-toggle[aria-expanded='true'] {
+    background: var(--gold-tint);
+    color: var(--gold);
   }
   .view-tools-actions > span {
     display: none;
