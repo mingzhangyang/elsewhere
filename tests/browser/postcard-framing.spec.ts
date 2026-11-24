@@ -207,7 +207,9 @@ for (const fixture of [
           contentType: 'image/png',
         });
       } finally {
-        await overlay.evaluate((element) => element.remove());
+        await overlay.evaluate((node) => {
+          node.parentNode?.removeChild(node);
+        });
       }
     };
     await verifyLive('live-before');
