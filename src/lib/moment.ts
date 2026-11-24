@@ -3,7 +3,11 @@ import { CONSTELLATIONS, type PatternId } from '../domain/stars';
 import type { CameraView, LayerSettings } from './persistence';
 import type { MomentProvenance, MomentSubject } from '../../packages/sky-engine/src/contracts';
 
-export type { MomentProvenance, MomentSnapshot, MomentSubject } from '../../packages/sky-engine/src/contracts';
+export type {
+  MomentProvenance,
+  MomentSnapshot,
+  MomentSubject,
+} from '../../packages/sky-engine/src/contracts';
 
 export function momentProvenance(
   selection: WeatherSelection,
