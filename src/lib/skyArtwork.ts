@@ -2,7 +2,9 @@ import type { SkyChartSnapshot, SkyChartSnapshotObject } from '../domain/skyChar
 import { assertMemorialTimeConsistency, type MemorialTime } from './memorialTime';
 import type { Locale } from '../i18n/locale';
 
-export type SkyArtworkTheme = 'midnight' | 'paper';
+import type { SkyArtworkTheme } from '../../packages/sky-engine/src/moment/chartPaint';
+
+export type { SkyArtworkTheme } from '../../packages/sky-engine/src/moment/chartPaint';
 
 /** SM3-A has one deliberately fixed design, independent of the explorer and its weather. */
 export interface SkyArtworkInput {

@@ -53,3 +53,24 @@ export {
   type LandscapeRequest,
 } from './render';
 export { paintIllustrationPanel, type IllustrationPanelOptions } from './moment/panel';
+export { projectSkyChart, type SkyChartPoint } from './domain/skyChartProjection';
+export {
+  selectSkyChartObjects,
+  type SkyChartCandidates,
+  type SkyChartSelectedObject,
+  type SkyChartSelection,
+  type SkyChartSelectionOptions,
+} from './domain/skyChartSelection';
+export {
+  buildSkyChartSnapshot,
+  type SkyChartSnapshot,
+  type SkyChartSnapshotInput,
+  type SkyChartSnapshotObject,
+} from './domain/skyChartSnapshot';
+export type { SkyArtworkTheme } from './moment/chartPaint';
+export {
+  renderSkyChart,
+  renderMinimalSkyMap,
+  type SkyChartOptions,
+  type MinimalSkyMapOptions,
+} from './moment/diagram';

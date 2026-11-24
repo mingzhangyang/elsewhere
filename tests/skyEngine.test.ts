@@ -8,6 +8,9 @@ import { CONSTELLATIONS, loadStarCatalog, STAR_CATALOG } from '../src/domain/sta
 import { frameMoment } from '../src/moment/framing';
 import { drawIllustration } from '../src/moment/illustration';
 import { createProjection } from '../src/moment/projection';
+import { projectSkyChart } from '../src/domain/skyChartProjection';
+import { selectSkyChartObjects } from '../src/domain/skyChartSelection';
+import { buildSkyChartSnapshot } from '../src/domain/skyChartSnapshot';
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -36,6 +39,9 @@ it('uses exactly the same implementations and live catalog through legacy and en
   expect(engine.calculateSky).toBe(calculateSky);
   expect(engine.defaultWeatherValues).toBe(defaultWeatherValues);
   expect(engine.createProjection).toBe(createProjection);
+  expect(engine.projectSkyChart).toBe(projectSkyChart);
+  expect(engine.selectSkyChartObjects).toBe(selectSkyChartObjects);
+  expect(engine.buildSkyChartSnapshot).toBe(buildSkyChartSnapshot);
   expect(engine.drawIllustration).toBe(drawIllustration);
   expect(engine.frameMoment).toBe(frameMoment);
   expect(engine.loadStarCatalog).toBe(loadStarCatalog);

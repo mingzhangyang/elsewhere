@@ -165,9 +165,13 @@ export function framePattern(
   snapshot: MomentSnapshot,
   lines: readonly (readonly string[])[],
   aspect: number,
+  // A diagram can show calculated positions even in daylight or poor weather.
+  positionsOnly = false,
 ): MomentSnapshot {
   const { sky, weather } = snapshot;
-  if (twilightVisibility(sky.sunAltitude) * weatherVisibility(weather) <= 0.01) return snapshot;
+  if (!positionsOnly && twilightVisibility(sky.sunAltitude) * weatherVisibility(weather) <= 0.01) {
+    return snapshot;
+  }
   const byId = new Map(sky.stars.map((star) => [star.id, star]));
   const ids = new Set<string>();
   for (const [a, b] of lines) {
