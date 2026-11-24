@@ -37,6 +37,11 @@ const center = equatorial(266.405, -28.936);
 const northPole = equatorial(192.85948, 27.12825);
 const deneb = equatorial(310.35798, 45.28034);
 const anticenter: Vector = [-center[0], -center[1], -center[2]];
+const namedStars = [
+  { name: 'Deneb', direction: deneb },
+  { name: 'Vega', direction: equatorial(279.234735, 38.783689) },
+  { name: 'Altair', direction: equatorial(297.6958, 8.8683) },
+];
 
 function atLatitude(direction: Vector, latitude: number): Vector {
   const alongPole = dot(direction, northPole);
@@ -65,11 +70,29 @@ function reference(direction: Vector, instant: Date): Vector {
   return [h.x, h.y, h.z];
 }
 
-function field(direction: Vector, instant: Date) {
-  const forward = reference(direction, instant);
+// Construct a Galactic longitude from independent reference directions, not the shader matrix.
+function galacticPlane(longitude: number): Vector {
+  const x = atLatitude(center, 0);
+  const y: Vector = [
+    northPole[1] * x[2] - northPole[2] * x[1],
+    northPole[2] * x[0] - northPole[0] * x[2],
+    northPole[0] * x[1] - northPole[1] * x[0],
+  ];
+  const c = Math.cos(longitude * RAD);
+  const s = Math.sin(longitude * RAD) / Math.hypot(...y);
+  return [c * x[0] + s * y[0], c * x[1] + s * y[1], c * x[2] + s * y[2]];
+}
+
+function field(direction: Vector, instant: Date, cygnus: boolean) {
+  // The Cygnus camera deliberately does not point at any of the named stars.
+  const aim = cygnus ? equatorial(300, 35) : direction;
+  const forward = reference(aim, instant);
   const altitude = Math.asin(forward[2]);
   const azimuth = Math.atan2(-forward[1], forward[0]);
-  const right: Vector = [Math.sin(azimuth), -Math.cos(azimuth), 0];
+  // Increasing azimuth is eastward; in north/west/up coordinates its tangent
+  // is (-sin azimuth, -cos azimuth, 0), perpendicular to the optical axis.
+  const right: Vector = [-Math.sin(azimuth), -Math.cos(azimuth), 0];
+  expect(Math.abs(dot(forward, right))).toBeLessThan(1e-10);
   const up: Vector = [
     -Math.sin(altitude) * Math.cos(azimuth),
     Math.sin(altitude) * Math.sin(azimuth),
@@ -82,33 +105,99 @@ function field(direction: Vector, instant: Date) {
     expect(depth).toBeGreaterThan(0);
     // Keep the probes well above the horizon and away from the postcard compass.
     expect(ray[2]).toBeGreaterThan(Math.sin(12 * RAD));
-    return {
+    const point = {
       x: 0.5 + dot(ray, right) / (2 * depth * scale * (WIDTH / HEIGHT)),
       y: 0.5 - dot(ray, up) / (2 * depth * scale),
     };
+    for (const coordinate of [point.x, point.y]) {
+      expect(coordinate).toBeGreaterThan(0.04);
+      expect(coordinate).toBeLessThan(0.96);
+    }
+    return point;
   };
+  expect(project(aim).x).toBeCloseTo(0.5, 9);
+  expect(project(aim).y).toBeCloseTo(0.5, 9);
+  const band = (name: string, target: Vector, latitude: number) => ({
+    name,
+    plane: project(atLatitude(target, 0)),
+    north: project(atLatitude(target, latitude)),
+    south: project(atLatitude(target, -latitude)),
+  });
+  const bands = [band('primary', direction, 25)];
+  if (cygnus) {
+    bands.push(band('longitude 65', galacticPlane(65), 16));
+    bands.push(band('longitude 90', galacticPlane(90), 16));
+  }
+  const stars = cygnus ? namedStars.map(({ name, direction }) => ({ name, point: project(direction) })) : [];
+  if (cygnus) {
+    for (const point of [...bands.map(({ plane }) => plane), ...stars.map(({ point }) => point)]) {
+      expect(Math.hypot(point.x - 0.5, point.y - 0.5)).toBeGreaterThan(0.05);
+    }
+  }
   return {
     view: { heading: (azimuth / RAD + 360) % 360, altitude: altitude / RAD, fov: FOV },
-    points: {
-      plane: project(direction),
-      north: project(atLatitude(direction, 25)),
-      south: project(atLatitude(direction, -25)),
-    },
+    points: { bands, stars },
   };
+}
+
+interface Registration {
+  bands: { name: string; plane: number; north: number; south: number }[];
+  stars: { name: string; contrast: number; offset: number }[];
+}
+
+// Use exactly the same acceptance criteria for the real pixels and the negative
+// controls. Offsets are fractions of the sky height (0.008 = 3.2 CSS pixels).
+function registrationFailures(surface: Registration): string[] {
+  const failures: string[] = [];
+  for (const { name, plane, north, south } of surface.bands) {
+    if (!(plane > Math.max(north, south) + 1.5)) failures.push('band ' + name);
+  }
+  for (const { name, contrast, offset } of surface.stars) {
+    if (!(contrast > 18 && offset < 0.008)) failures.push('star ' + name);
+  }
+  return failures;
+}
+
+interface Fixture {
+  name: string;
+  direction: Vector;
+  date: string;
+  cygnus?: boolean;
+  raOffset?: boolean;
 }
 
 test('Milky Way and postcard pixels follow independent sky coordinates', async ({ page }, info) => {
   test.skip(info.project.name !== 'chromium', 'Dedicated Chromium astronomical pixel qualification');
-  test.setTimeout(120000);
+  test.setTimeout(180000);
   await page.goto('/credits.html');
-  const fixtures = [
+  const fixtures: Fixture[] = [
     { name: 'center', direction: center, date: '2026-06-15T00:00:00Z' },
-    { name: 'deneb', direction: deneb, date: '2026-08-12T00:00:00Z' },
+    { name: 'deneb', direction: deneb, date: '2026-08-12T00:00:00Z', cygnus: true },
     { name: 'anticenter', direction: anticenter, date: '2026-12-09T00:00:00Z' },
-  ] as const;
+    { name: 'ra-offset', direction: center, date: '2026-06-15T00:00:00Z', raOffset: true },
+  ];
   const results = [];
+  let injections = 0;
   for (const fixture of fixtures) {
-    const { view, points } = field(fixture.direction, new Date(fixture.date));
+    if (fixture.raOffset) {
+      // On a fresh document, mutate only the real Milky Way shader: rotating its
+      // equatorial x/y components by 180 degrees changes RA but not declination.
+      // The star catalog and independent reference coordinates remain untouched.
+      await page.route('**/src/renderer/milkyWay.ts*', async (route) => {
+        const response = await route.fetch();
+        const source = await response.text();
+        const original = 'GALACTIC * normalize(vLocal)';
+        if (source.split(original).length !== 2) {
+          await route.fulfill({ response });
+          return;
+        }
+        injections++;
+        const body = source.replace(original, 'GALACTIC * normalize(vec3(-vLocal.x, -vLocal.y, vLocal.z))');
+        await route.fulfill({ response, body });
+      });
+      await page.goto('/credits.html');
+    }
+    const { view, points } = field(fixture.direction, new Date(fixture.date), !!fixture.cygnus);
     const result = await page.evaluate(
       async ({ location, date, view, points, width, height }) => {
         // Use the actual production renderer, real star catalog, capture path and
@@ -200,30 +289,66 @@ test('Milky Way and postcard pixels follow independent sky coordinates', async (
               const cy = Math.round(point.y * skyH);
               const radius = Math.max(2, Math.round(fraction * skyH));
               const values: number[] = [];
+              let peak = -Infinity;
+              let distance = Infinity;
               for (let y = cy - radius; y <= cy + radius; y++) {
                 for (let x = cx - radius; x <= cx + radius; x++) {
                   if ((x - cx) ** 2 + (y - cy) ** 2 > radius ** 2) continue;
                   if (x < 0 || x >= w || y < 0 || y >= skyH) throw new Error('Probe outside sky');
                   const i = (y * w + x) * 4;
-                  values.push((a[i] + a[i + 1] + a[i + 2] - b[i] - b[i + 1] - b[i + 2]) / 3);
+                  const value = (a[i] + a[i + 1] + a[i + 2] - b[i] - b[i + 1] - b[i + 2]) / 3;
+                  values.push(value);
+                  const offset = Math.hypot(x + 0.5 - point.x * w, y + 0.5 - point.y * skyH);
+                  if (value > peak || (value === peak && offset < distance)) {
+                    peak = value;
+                    distance = offset;
+                  }
                 }
               }
               values.sort((a, b) => a - b);
-              return { median: values[Math.floor(values.length / 2)], peak: values[values.length - 1] };
+              return { median: values[Math.floor(values.length / 2)], peak, offset: distance / skyH };
             };
             return {
-              plane: patch(points.plane, 0.025).median,
-              north: patch(points.north, 0.025).median,
-              south: patch(points.south, 0.025).median,
-              starPeak: patch(points.plane, 0.0125).peak,
+              bands: points.bands.map(({ name, plane, north, south }) => ({
+                name,
+                plane: patch(plane, 0.025).median,
+                north: patch(north, 0.025).median,
+                south: patch(south, 0.025).median,
+              })),
+              stars: points.stars.map(({ name, point }) => {
+                const { peak, median, offset } = patch(point, 0.02);
+                return { name, contrast: peak - median, offset };
+              }),
             };
           };
+
+          // Transform only the decoded sky rectangle, leaving the card's text
+          // panel out of the measurement. Transform both on/off images alike.
+          const transform = (source: HTMLCanvasElement, flipY: boolean) => {
+            const canvas = document.createElement('canvas');
+            canvas.width = source.width;
+            canvas.height = exportHeight;
+            const ctx = canvas.getContext('2d')!;
+            ctx.translate(canvas.width, flipY ? exportHeight : 0);
+            ctx.scale(-1, flipY ? -1 : 1);
+            ctx.drawImage(source, 0, 0, source.width, exportHeight, 0, 0, canvas.width, exportHeight);
+            return canvas;
+          };
+          const transformed = points.stars.length
+            ? [false, true].map((flipY) => ({
+                name: flipY ? '180-degree roll' : 'horizontal mirror',
+                pixels: measure(transform(on.card, flipY), transform(off.card, flipY), exportHeight),
+              }))
+            : [];
           return {
             frame: measure(on.frame, off.frame, on.frame.height),
             card: measure(on.card, off.card, exportHeight),
+            transformed,
             sunAltitude: sky.sunAltitude,
             moonAltitude: sky.moon.altitude,
-            denebLoaded: sky.stars.some((star) => star.name.toLowerCase() === 'deneb'),
+            namedStarsLoaded: points.stars.every(({ name }) =>
+              sky.stars.some((star) => star.name.toLowerCase() === name.toLowerCase()),
+            ),
             framePng: on.frame.toDataURL('image/png'),
             cardPng: on.png,
           };
@@ -250,28 +375,43 @@ test('Milky Way and postcard pixels follow independent sky coordinates', async (
     });
     expect(result.sunAltitude, fixture.name).toBeLessThan(-18);
     expect(result.moonAltitude, fixture.name).toBeLessThan(0);
-    expect(result.denebLoaded).toBe(true);
+    expect(result.namedStarsLoaded).toBe(true);
+
+    if (fixture.raOffset) {
+      expect(injections, 'real shader mutation installed').toBe(1);
+      for (const surface of ['frame', 'card'] as const) {
+        expect(registrationFailures(metrics[surface]), surface + ': reject the RA offset').toContain(
+          'band primary',
+        );
+      }
+      continue;
+    }
+
+    for (const surface of ['frame', 'card'] as const) {
+      expect(registrationFailures(metrics[surface]), fixture.name + ': ' + surface).toEqual([]);
+    }
+    if (fixture.cygnus) {
+      expect(metrics.transformed).toHaveLength(2);
+      for (const { name, pixels } of metrics.transformed) {
+        const failures = registrationFailures(pixels);
+        expect(failures.some((failure) => failure.startsWith('star ')), name + ': reject orientation').toBe(
+          true,
+        );
+      }
+    }
     results.push(metrics);
   }
 
   for (const surface of ['frame', 'card'] as const) {
-    const [core, cygnus, outer] = results.map((result) => result[surface]);
-    for (const { plane, north, south } of [core, cygnus, outer]) {
-      expect(plane, surface + ': diffuse light is concentrated near the expected plane').toBeGreaterThan(
-        Math.max(north, south) + 1.5,
-      );
-    }
-    expect(core.plane, surface + ': inner Galaxy is brighter than the anticenter').toBeGreaterThan(
-      outer.plane * 1.5,
-    );
-    expect(cygnus.starPeak, surface + ': actual Deneb point lies in the reference field').toBeGreaterThan(
-      cygnus.plane + 18,
-    );
+    const [core, , outer] = results.map((result) => result[surface].bands[0].plane);
+    expect(core, surface + ': inner Galaxy is brighter than the anticenter').toBeGreaterThan(outer * 1.5);
   }
-  // The postcard must preserve the registered glow, not rotate, mirror or move it.
+  // The card must preserve the diffuse glow at every registered probe.
   for (const { frame, card } of results) {
-    for (const point of ['plane', 'north', 'south'] as const) {
-      expect(Math.abs(frame[point] - card[point])).toBeLessThan(3);
+    for (const [i, band] of frame.bands.entries()) {
+      for (const point of ['plane', 'north', 'south'] as const) {
+        expect(Math.abs(band[point] - card.bands[i][point])).toBeLessThan(3);
+      }
     }
   }
 });
