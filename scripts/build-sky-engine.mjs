@@ -149,7 +149,10 @@ for (const file of [
   'THIRD-PARTY.txt',
   'CATALOG-ATTRIBUTION.md',
 ]) {
-  assert(core.files.some((entry) => entry.path === file), 'Missing npm archive file: ' + file);
+  assert(
+    core.files.some((entry) => entry.path === file),
+    'Missing npm archive file: ' + file,
+  );
 }
 for (const file of ['sky-engine.mjs', 'stars.json']) await copyFile(join(stage, file), join(release, file));
 const notices = await Promise.all(
