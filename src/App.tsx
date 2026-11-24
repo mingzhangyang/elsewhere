@@ -431,37 +431,39 @@ export default function App({
           <p className="context-place">
             {[place.country, m.f.zone(location.timezone, simTime)].filter(Boolean).join(' · ')}
           </p>
-          <button
-            className="source-pill"
-            data-tooltip={m.controls.weatherTooltip}
-            onClick={(event) => openPanel('weather', event.currentTarget)}
-          >
-            <span className={`status-dot ${clearSky || custom || !selection.values ? 'amber' : ''}`} />
-            {sourceText}
-            {!clearSky && !custom && !selection.values ? m.atmosphere.neutral : ''}
-            <ArrowUpRight size={13} />
-          </button>
-          <div className="sky-create-actions">
-            {onReturnToCreator ? (
-              <button className="sky-create-link" type="button" onClick={onReturnToCreator}>
-                <Sparkles size={17} aria-hidden="true" />
-                {creatorText.returnToArtwork}
-              </button>
-            ) : (
-              <a
-                className="sky-create-link"
-                href="#create"
-                onClick={(event) => {
-                  if (onCreate) {
-                    event.preventDefault();
-                    onCreate();
-                  }
-                }}
-              >
-                <Sparkles size={17} aria-hidden="true" />
-                {creatorText.createEntry}
-              </a>
-            )}
+          <div className="context-actions">
+            <button
+              className="source-pill"
+              data-tooltip={m.controls.weatherTooltip}
+              onClick={(event) => openPanel('weather', event.currentTarget)}
+            >
+              <span className={`status-dot ${clearSky || custom || !selection.values ? 'amber' : ''}`} />
+              {sourceText}
+              {!clearSky && !custom && !selection.values ? m.atmosphere.neutral : ''}
+              <ArrowUpRight size={13} />
+            </button>
+            <div className="sky-create-actions">
+              {onReturnToCreator ? (
+                <button className="sky-create-link" type="button" onClick={onReturnToCreator}>
+                  <Sparkles size={17} aria-hidden="true" />
+                  {creatorText.returnToArtwork}
+                </button>
+              ) : (
+                <a
+                  className="sky-create-link"
+                  href="#create"
+                  onClick={(event) => {
+                    if (onCreate) {
+                      event.preventDefault();
+                      onCreate();
+                    }
+                  }}
+                >
+                  <Sparkles size={17} aria-hidden="true" />
+                  {creatorText.createEntry}
+                </a>
+              )}
+            </div>
           </div>
           {/* Only when no panel or object card already offers its own Restore button. */}
           {clearSky && !panel && !focusedVisibility && (
@@ -471,53 +473,6 @@ export default function App({
           )}
         </div>
         <SkyCompass view={view} />
-        <div className={`view-controls ${viewToolsOpen ? 'tools-open' : ''}`} data-occludes-sky>
-          <div id="view-tools-actions" className="view-tools-actions" data-occludes-sky>
-            <button
-              className="icon-button"
-              aria-label={m.controls.zoomIn}
-              onClick={() => skyRef.current?.zoom(ZOOM_STEP)}
-            >
-              <Plus size={19} />
-            </button>
-            <button
-              className="icon-button"
-              aria-label={m.controls.zoomOut}
-              onClick={() => skyRef.current?.zoom(1 / ZOOM_STEP)}
-            >
-              <Minus size={19} />
-            </button>
-            <span aria-hidden="true" />
-            <button
-              className="icon-button"
-              aria-label={m.controls.resetView}
-              onClick={() => skyRef.current?.resetView()}
-            >
-              <Crosshair size={19} />
-            </button>
-          </div>
-          <button
-            className="icon-button view-tools-toggle"
-            type="button"
-            aria-label={viewToolsOpen ? m.controls.hideViewTools : m.controls.showViewTools}
-            aria-expanded={viewToolsOpen}
-            aria-controls="view-tools-actions"
-            onClick={() => setViewToolsOpen((open) => !open)}
-          >
-            <SlidersHorizontal size={19} />
-          </button>
-          <button
-            className="icon-button"
-            aria-label={immersive ? m.controls.showControls : m.controls.hideControls}
-            aria-pressed={immersive}
-            onClick={() => {
-              setViewToolsOpen(false);
-              dispatch({ type: 'immersive', value: !immersive });
-            }}
-          >
-            <Eye size={19} />
-          </button>
-        </div>
         {!preferences.hintDismissed && !focused && !panel && (
           <div className="scene-hint" data-occludes-sky>
             <div>
@@ -551,33 +506,82 @@ export default function App({
             onJumpToRise={jumpToRise}
           />
         )}
-        <nav className="explore-toolbar" data-occludes-sky aria-label={m.controls.explore}>
-          <button
-            ref={objectsTrigger}
-            aria-expanded={panel === 'objects'}
-            data-tooltip={m.controls.objectsTooltip}
-            onClick={(event) => openPanel('objects', event.currentTarget)}
-          >
-            <Sparkles size={17} />
-            {m.controls.objects}
-          </button>
-          <button
-            aria-expanded={panel === 'weather'}
-            data-tooltip={m.controls.weatherTooltip}
-            onClick={(event) => openPanel('weather', event.currentTarget)}
-          >
-            <Cloud size={17} />
-            {m.controls.weather}
-          </button>
-          <button
-            aria-expanded={panel === 'settings'}
-            data-tooltip={m.controls.layersTooltip}
-            onClick={(event) => openPanel('settings', event.currentTarget)}
-          >
-            <Layers size={17} />
-            {m.controls.layers}
-          </button>
-        </nav>
+        <div className="stage-actions" data-occludes-sky>
+          <nav className="explore-toolbar" data-occludes-sky aria-label={m.controls.explore}>
+            <button
+              ref={objectsTrigger}
+              aria-expanded={panel === 'objects'}
+              data-tooltip={m.controls.objectsTooltip}
+              onClick={(event) => openPanel('objects', event.currentTarget)}
+            >
+              <Sparkles size={17} />
+              {m.controls.objects}
+            </button>
+            <button
+              aria-expanded={panel === 'weather'}
+              data-tooltip={m.controls.weatherTooltip}
+              onClick={(event) => openPanel('weather', event.currentTarget)}
+            >
+              <Cloud size={17} />
+              {m.controls.weather}
+            </button>
+            <button
+              aria-expanded={panel === 'settings'}
+              data-tooltip={m.controls.layersTooltip}
+              onClick={(event) => openPanel('settings', event.currentTarget)}
+            >
+              <Layers size={17} />
+              {m.controls.layers}
+            </button>
+          </nav>
+          <div className={`view-controls ${viewToolsOpen ? 'tools-open' : ''}`} data-occludes-sky>
+            <div id="view-tools-actions" className="view-tools-actions" data-occludes-sky>
+              <button
+                className="icon-button"
+                aria-label={m.controls.zoomIn}
+                onClick={() => skyRef.current?.zoom(ZOOM_STEP)}
+              >
+                <Plus size={19} />
+              </button>
+              <button
+                className="icon-button"
+                aria-label={m.controls.zoomOut}
+                onClick={() => skyRef.current?.zoom(1 / ZOOM_STEP)}
+              >
+                <Minus size={19} />
+              </button>
+              <span aria-hidden="true" />
+              <button
+                className="icon-button"
+                aria-label={m.controls.resetView}
+                onClick={() => skyRef.current?.resetView()}
+              >
+                <Crosshair size={19} />
+              </button>
+            </div>
+            <button
+              className="icon-button view-tools-toggle"
+              type="button"
+              aria-label={viewToolsOpen ? m.controls.hideViewTools : m.controls.showViewTools}
+              aria-expanded={viewToolsOpen}
+              aria-controls="view-tools-actions"
+              onClick={() => setViewToolsOpen((open) => !open)}
+            >
+              <SlidersHorizontal size={19} />
+            </button>
+            <button
+              className="icon-button"
+              aria-label={immersive ? m.controls.showControls : m.controls.hideControls}
+              aria-pressed={immersive}
+              onClick={() => {
+                setViewToolsOpen(false);
+                dispatch({ type: 'immersive', value: !immersive });
+              }}
+            >
+              <Eye size={19} />
+            </button>
+          </div>
+        </div>
         {panel && (
           <section
             ref={inspector}
