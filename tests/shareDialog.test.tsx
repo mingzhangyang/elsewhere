@@ -64,15 +64,15 @@ it('says Copied only while the copied link is the one on screen (precise → cop
   openDialog();
   fireEvent.click(exact());
   await act(async () => fireEvent.click(copyButton()));
-  expect(parseExploration(new URL(writeText.mock.calls[0][0]).hash).value?.location.latitude)
-    .toBe(35.71234);
+  const preciseLocation = parseExploration(new URL(writeText.mock.calls[0][0]).hash).value?.location;
+  expect(preciseLocation?.latitude).toBe(35.71234);
   expect(copyButton()).toHaveTextContent('Copied');
   // Back to the rounded link: the clipboard still holds the precise one, so no confirmation.
   fireEvent.click(exact());
   expect(copyButton()).toHaveTextContent('Copy link');
   await act(async () => fireEvent.click(copyButton()));
-  expect(parseExploration(new URL(writeText.mock.calls.at(-1)![0]).hash).value?.location.latitude)
-    .toBe(35.7);
+  const roundedLocation = parseExploration(new URL(writeText.mock.calls.at(-1)![0]).hash).value?.location;
+  expect(roundedLocation?.latitude).toBe(35.7);
   expect(copyButton()).toHaveTextContent('Copied');
 });
 
