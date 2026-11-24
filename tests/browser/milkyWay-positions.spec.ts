@@ -53,11 +53,7 @@ function atLatitude(direction: Vector, latitude: number): Vector {
   const length = Math.hypot(...plane);
   const c = Math.cos(latitude * RAD) / length;
   const s = Math.sin(latitude * RAD);
-  return [
-    plane[0] * c + northPole[0] * s,
-    plane[1] * c + northPole[1] * s,
-    plane[2] * c + northPole[2] * s,
-  ];
+  return [plane[0] * c + northPole[0] * s, plane[1] * c + northPole[1] * s, plane[2] * c + northPole[2] * s];
 }
 
 // Astronomy Engine's independent EQJ -> horizontal rotation includes precession
@@ -394,9 +390,10 @@ test('Milky Way and postcard pixels follow independent sky coordinates', async (
       expect(metrics.transformed).toHaveLength(2);
       for (const { name, pixels } of metrics.transformed) {
         const failures = registrationFailures(pixels);
-        expect(failures.some((failure) => failure.startsWith('star ')), name + ': reject orientation').toBe(
-          true,
-        );
+        expect(
+          failures.some((failure) => failure.startsWith('star ')),
+          name + ': reject orientation',
+        ).toBe(true);
       }
     }
     results.push(metrics);
