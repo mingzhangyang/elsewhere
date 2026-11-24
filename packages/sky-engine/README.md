@@ -242,8 +242,9 @@ await renderMoonPhase(canvas, scene, {
 });
 ```
 
-- `scene` is the existing `MomentSnapshot` from `createSkyScene`; its lunar ephemeris, bright-limb
-  angle and IAU body axes drive the portrait. The Moon can be rendered even below the horizon.
+- `scene` is the existing `MomentSnapshot` from `createSkyScene`; its geometric Sun and Moon
+  positions, illuminated fraction and IAU body axes drive the portrait. The apparent bright-limb
+  angle remains for sky icons. The Moon can be rendered even below the horizon.
 - `orientation`: `'observer'` (zenith up) or `'north-up'` (lunar north up, not celestial north).
 - `background`: `'transparent'`, `'dark'` or `'light'`. Only the exterior is transparent;
   the unilluminated lunar surface is opaque. Earthshine defaults to false.
@@ -259,8 +260,8 @@ await renderMoonPhase(canvas, scene, {
 
 The renderer uses orthographic projection and bilinear sampling, wraps longitude at the seam,
 and rotates the body frame into the local viewing frame to preserve libration. Lighting follows
-the topocentric illuminated fraction and existing apparent bright-limb direction. Surface
-photometry and earthshine are approximate; topographic shadows, eclipses, atmospheric
+the topocentric illuminated fraction and the airless bright-limb direction of the geometric Sun
+and Moon. Surface photometry and earthshine are approximate; topographic shadows, eclipses, atmospheric
 distortion across the disc and watercolor portraits are not modeled.
 
 The optional archive, raw image, and release SHA-256 manifest are produced by

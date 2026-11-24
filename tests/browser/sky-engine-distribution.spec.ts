@@ -314,6 +314,31 @@ try {
   });
   const check = (condition, message) => { if (!condition) throw new Error(message); };
   const metrics = [];
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const toBody = (alt, az) => {
+    const c = Math.cos((alt * Math.PI) / 180);
+    return [c * Math.sin((az * Math.PI) / 180), Math.sin((alt * Math.PI) / 180), -c * Math.cos((az * Math.PI) / 180)];
+  };
+  const angularError = (actual, expected) => Math.abs(((actual - expected + 540) % 360) - 180);
+  // Geometric Sun projected onto the portrait plane. Not the snapshot's refracted brightLimbAngle.
+  const terminatorAngle = (sunAlt, sunAz, moonAlt, moonAz, north, orientation) => {
+    const M = toBody(moonAlt, moonAz);
+    const S = toBody(sunAlt, sunAz);
+    const front = [-M[0], -M[1], -M[2]];
+    const observerUp = cross(front, [Math.cos((moonAz * Math.PI) / 180), 0, Math.sin((moonAz * Math.PI) / 180)]);
+    let up = observerUp;
+    if (orientation === 'north-up') {
+      const nlen = Math.hypot(...north);
+      const n = [north[0] / nlen, north[1] / nlen, north[2] / nlen];
+      const dep = dot(n, front);
+      const proj = [n[0] - dep * front[0], n[1] - dep * front[1], n[2] - dep * front[2]];
+      const plen = Math.hypot(...proj);
+      up = [proj[0] / plen, proj[1] / plen, proj[2] / plen];
+    }
+    const right = cross(up, front);
+    return (Math.atan2(dot(S, right), dot(S, up)) * 180) / Math.PI;
+  };
   for (let i = 0; i < dates.length; i++) {
     const scene = await makeScene(dates[i]);
     const target = canvas(1024);
@@ -335,9 +360,16 @@ try {
       colors.add(data[j]);
     }
     const f = scene.sky.moon.illumination;
-    const angle = scene.sky.moon.brightLimbAngle;
+    const angle = terminatorAngle(
+      scene.sky.sun.geometricAltitude,
+      scene.sky.sun.azimuth,
+      scene.sky.moon.geometricAltitude,
+      scene.sky.moon.azimuth,
+      scene.sky.moon.north,
+      'observer',
+    );
     const centroid = Math.atan2(x, y) * 180 / Math.PI;
-    const error = Math.abs(((centroid - angle + 540) % 360) - 180);
+    const error = angularError(centroid, angle);
     check(scene.sky.moon.phase === phases[i], 'Unexpected phase ' + dates[i]);
     check(Math.abs(lit / disk - f) < 0.012, 'Incorrect illuminated area ' + phases[i]);
     check(error < 2, 'Incorrect bright-limb direction ' + phases[i]);
@@ -353,7 +385,9 @@ try {
   }
   const base = await makeScene('2026-03-25', -33.8688, 151.2093);
   const synthetic = (overrides = {}) => ({
-    ...base, sky: { ...base.sky, moon: {
+    ...base, sky: { ...base.sky,
+      sun: { ...base.sky.sun, azimuth: 90, geometricAltitude: 0 },
+      moon: {
       ...base.sky.moon, azimuth: 0, geometricAltitude: 0, illumination: 1, brightLimbAngle: 90,
       north: [0, 1, 0], prime: [0, 0, 1], ...overrides,
     } },
@@ -377,6 +411,50 @@ try {
   await sdk.renderMoonPhase(probe, quarter, { texture: marker, earthshine: true, background: 'dark' });
   check(pixel(0,0)[0] === 12 && pixel(70,128)[0] > 0, 'Earthshine or dark background incorrect');
 
+  // Near the horizon and near opposition, refraction rotates the apparent limb by about 11°
+  // while the airless terminator stays put. The stored brightLimbAngle is that wrong apparent value.
+  const uniform = new ImageData(32, 16);
+  for (let i = 0; i < uniform.data.length; i += 4) uniform.data.set([180, 180, 180, 255], i);
+  const sunAz = 175;
+  const tiltedNorth = [0.6, 0.8, 0];
+  const apparent = (() => {
+    const d = Math.PI / 180;
+    const sa = 0.483 * d, ba = 0.483 * d, az = sunAz * d;
+    const right = Math.cos(sa) * Math.sin(az);
+    const up = Math.sin(sa) * Math.cos(ba) - Math.cos(sa) * Math.sin(ba) * Math.cos(az);
+    return Math.atan2(right, up) / d;
+  })();
+  const opposition = synthetic({
+    azimuth: 0, geometricAltitude: 0, altitude: 0.483, illumination: 0.85,
+    brightLimbAngle: apparent, north: tiltedNorth,
+  });
+  opposition.sky.sun = { ...opposition.sky.sun, azimuth: sunAz, geometricAltitude: 0, altitude: 0.483 };
+  const expectedObserver = terminatorAngle(0, sunAz, 0, 0, tiltedNorth, 'observer');
+  const expectedNorth = terminatorAngle(0, sunAz, 0, 0, tiltedNorth, 'north-up');
+  check(angularError(expectedObserver, 90) < 0.001, 'Geometric observer limb');
+  check(angularError(apparent, 79.07) < 0.05, 'Refracted limb fixture');
+  check(angularError(apparent, expectedObserver) > 10, 'Fixture no longer separates refraction');
+  check(angularError(expectedNorth, expectedObserver) > 20, 'North-up fixture did not rotate');
+  const litCentroid = () => {
+    const data = probe.getContext('2d').getImageData(0, 0, 256, 256).data;
+    let x = 0, y = 0, n = 0;
+    for (let j = 0; j < data.length; j += 4) {
+      if (data[j + 3] !== 255 || data[j] + data[j + 1] + data[j + 2] === 0) continue;
+      n++;
+      x += (j / 4) % 256 + 0.5 - 128;
+      y += 128 - Math.floor(j / 4 / 256) - 0.5;
+    }
+    return { angle: Math.atan2(x, y) * 180 / Math.PI, n };
+  };
+  await sdk.renderMoonPhase(probe, opposition, { texture: uniform, orientation: 'observer' });
+  const observerHit = litCentroid();
+  check(angularError(observerHit.angle, expectedObserver) < 2, 'Airless terminator ' + observerHit.angle);
+  check(angularError(observerHit.angle, apparent) > 8, 'Used refracted bright limb');
+  await sdk.renderMoonPhase(probe, opposition, { texture: uniform, orientation: 'north-up' });
+  const northHit = litCentroid();
+  check(angularError(northHit.angle, expectedNorth) < 2, 'North-up airless terminator ' + northHit.angle);
+  check(angularError(northHit.angle, expectedObserver) > 20, 'North-up ignored lunar roll');
+
   const hd = canvas(4096);
   hd.id = 'moon-hd';
   document.body.append(hd);
@@ -385,7 +463,17 @@ try {
   const ms = performance.now() - start;
   check(hd.getContext('2d').getImageData(0,0,1,1).data[3] === 0, '4096 corner not transparent');
   check(hd.getContext('2d').getImageData(2048,2048,1,1).data[3] === 255, '4096 center not opaque');
-  document.body.dataset.metrics = JSON.stringify({ phases: metrics, hdMs: ms });
+  document.body.dataset.metrics = JSON.stringify({
+    phases: metrics,
+    hdMs: ms,
+    opposition: {
+      apparent,
+      expectedObserver,
+      expectedNorth,
+      observer: observerHit.angle,
+      northUp: northHit.angle,
+    },
+  });
   document.body.dataset.ready = 'true';
 } catch (error) {
   document.body.dataset.error = String(error);

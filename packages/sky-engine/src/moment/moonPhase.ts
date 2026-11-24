@@ -1,4 +1,5 @@
 import type { MomentSnapshot } from '../contracts';
+import { brightLimbAngle } from '../domain/planets';
 import { loadResource } from '../resources';
 import { requireImageSize, resetImageCanvas } from './imageCanvas';
 
@@ -96,11 +97,20 @@ export async function renderMoonPhase(
     throw new RangeError('Invalid Moon portrait options.');
   }
   const moon = scene.sky.moon;
+  const sun = scene.sky.sun;
   if (
-    ![moon.geometricAltitude, moon.azimuth, moon.illumination, moon.brightLimbAngle].every(Number.isFinite) ||
+    ![
+      moon.geometricAltitude,
+      moon.azimuth,
+      moon.illumination,
+      moon.brightLimbAngle,
+      sun.geometricAltitude,
+      sun.azimuth,
+    ].every(Number.isFinite) ||
     moon.illumination < 0 ||
     moon.illumination > 1 ||
-    Math.abs(moon.geometricAltitude) > 90
+    Math.abs(moon.geometricAltitude) > 90 ||
+    Math.abs(sun.geometricAltitude) > 90
   ) {
     throw new RangeError('Invalid Moon ephemeris.');
   }
@@ -116,12 +126,17 @@ export async function renderMoonPhase(
   const up = orientation === 'north-up' ? projected(north, front) : observerUp;
   const right = cross(up, front);
 
-  // The existing topocentric illuminated fraction defines the line-of-sight light component.
-  // Rotate the existing bright-limb angle with the texture; do not recompute the ephemeris.
+  // Illuminated fraction stays the existing topocentric value. Refraction lifts the Sun and Moon
+  // as seen from Earth; it does not rotate the terminator, so the portrait uses geometric altitudes
+  // and azimuths. Sky icons keep the snapshot's apparent brightLimbAngle.
   const f = moon.illumination;
   const lz = 2 * f - 1;
   const transverse = Math.sqrt(Math.max(0, 1 - lz * lz));
-  const angle = moon.brightLimbAngle * DEG;
+  const angle =
+    brightLimbAngle(
+      { altitude: sun.geometricAltitude, azimuth: sun.azimuth },
+      { altitude: moon.geometricAltitude, azimuth: moon.azimuth },
+    ) * DEG;
   const sx = transverse * Math.sin(angle);
   const sy = transverse * Math.cos(angle);
   const lx = sx * dot(observerRight, right) + sy * dot(observerUp, right);
