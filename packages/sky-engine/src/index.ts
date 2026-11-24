@@ -1,9 +1,14 @@
-// Source-only entry point for the shared engine. Distribution is a separate milestone.
+// Public source entry point; M3 bundles this same module for browser and npm consumers.
 export type * from './types';
 export type * from './contracts';
 export { calculateDailyEvents, calculateSky, getPhase, nextBodyRise } from './domain/astronomy';
 export { galacticFromEquatorial, createSceneToGalactic, MILKY_WAY_SHAPE } from './domain/galactic';
-export { ensureTemporal } from './domain/temporal';
+import { ensureTemporal as initializeTemporal } from './domain/temporal';
+
+// Keep the public declaration independent of the polyfill's internal Temporal type.
+export function ensureTemporal(): Promise<void> {
+  return initializeTemporal();
+}
 export { validateObserver } from './domain/observer';
 export { validateInstant } from './domain/time';
 export { defaultWeatherValues } from './domain/weather';
