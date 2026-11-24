@@ -183,9 +183,7 @@ function compactWeather(value: WeatherValues): string | number[] {
       ? String(adjusted).padStart(width, '0')
       : null;
   });
-  return digits.every((value) => value !== null)
-    ? digits.join('')
-    : fields;
+  return digits.every((value) => value !== null) ? digits.join('') : fields;
 }
 
 function expandedWeather(data: unknown): unknown {
