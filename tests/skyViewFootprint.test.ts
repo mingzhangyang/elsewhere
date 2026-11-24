@@ -40,6 +40,7 @@ describe('sky view footprint', () => {
 
   it('clips at the horizon even with a below-horizon center and omits fully hidden sky', () => {
     expect(projectViewFootprint({ heading: 180, altitude: -90, fov: 92 }, 3)).toEqual([]);
+    expect(projectViewFootprint({ heading: 0, altitude: -33, fov: 66 }, 1)).toEqual([]);
     const partial = projectViewFootprint({ heading: 90, altitude: -15, fov: 66 }, 2);
     expect(partial.length).toBeGreaterThan(3);
     expect(partial.some((point) => Math.abs(Math.hypot(point.x, point.y) - 1) < 1e-8)).toBe(true);

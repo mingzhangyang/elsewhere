@@ -275,10 +275,21 @@
   }
 }
 @media (min-width: 681px) and (max-width: 1000px) and (min-height: 621px) {
+  .sky-compass {
+    right: 16px;
+  }
+  .sky-minimap {
+    width: 112px;
+    height: 112px;
+  }
   .view-controls {
-    top: 218px;
+    top: 180px;
     bottom: auto;
     flex-direction: column;
+  }
+  .panel-open .view-controls,
+  .immersive .view-controls {
+    top: 88px;
   }
   .view-tools-actions {
     flex-direction: column;

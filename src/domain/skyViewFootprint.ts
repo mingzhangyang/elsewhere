@@ -42,7 +42,7 @@ export function unprojectSkyChart({ x, y }: SkyChartPoint): { altitude: number; 
  * wraparound and very wide viewports without a seam or a false straight chord across the horizon.
  */
 export function projectViewFootprint(view: ViewDirection, aspect: number): SkyChartPoint[] {
-  if (!Number.isFinite(aspect) || aspect <= 0) return [];
+  if (!Number.isFinite(aspect) || aspect <= 0 || view.altitude + view.fov / 2 <= 0) return [];
   const h = view.heading * RAD;
   const p = view.altitude * RAD;
   const v = Math.tan((view.fov * RAD) / 2);
