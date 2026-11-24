@@ -37,7 +37,11 @@ describe('image-only smart framing', () => {
     const input = {
       ...snapshot,
       aspect,
-      sky: { ...snapshot.sky, sunAltitude: 80, sun: { ...sky.sun, altitude: 80, azimuth: 180, visible: true } },
+      sky: {
+        ...snapshot.sky,
+        sunAltitude: 80,
+        sun: { ...sky.sun, altitude: 80, azimuth: 180, visible: true },
+      },
     };
     const framed = frameMoment(input, 'auto');
     const p = createProjection(framed.view, framed.aspect)(80, 180);
@@ -52,7 +56,11 @@ describe('image-only smart framing', () => {
   it('keeps a sunset near the real horizon, including the below-horizon glow', () => {
     const input = {
       ...snapshot,
-      sky: { ...snapshot.sky, sunAltitude: -3, sun: { ...sky.sun, altitude: -3, azimuth: 270, visible: false } },
+      sky: {
+        ...snapshot.sky,
+        sunAltitude: -3,
+        sun: { ...sky.sun, altitude: -3, azimuth: 270, visible: false },
+      },
     };
     const framed = frameMoment(input, 'auto');
     expect(framed.view.heading).toBe(262);
