@@ -28,10 +28,9 @@ function project(ray: Ray): SkyChartPoint {
 export function unprojectSkyChart({ x, y }: SkyChartPoint): { altitude: number; azimuth: number } | null {
   const radius = Math.hypot(x, y);
   if (!Number.isFinite(radius) || radius > 1) return null;
-  return {
-    altitude: 90 * (1 - radius),
-    azimuth: radius === 0 ? 0 : (Math.atan2(-x, -y) / RAD + 360) % 360,
-  };
+  const degrees = Math.atan2(-x, -y) / RAD;
+  const azimuth = radius === 0 ? 0 : (degrees + 360) % 360;
+  return { altitude: 90 * (1 - radius), azimuth };
 }
 
 /**
@@ -61,8 +60,10 @@ export function projectViewFootprint(view: ViewDirection, aspect: number): SkyCh
   for (let i = 0; i < corners.length; i++) {
     const a = corners[i];
     const b = corners[(i + 1) % corners.length];
-    if (a[1] >= 0) clipped.push(a);
-    if ((a[1] >= 0) !== (b[1] >= 0)) {
+    const aAbove = a[1] >= 0;
+    const bAbove = b[1] >= 0;
+    if (aAbove) clipped.push(a);
+    if (aAbove !== bAbove) {
       const intersection = interpolate(a, b, a[1] / (a[1] - b[1]));
       intersection[1] = 0;
       clipped.push(intersection);
@@ -79,14 +80,18 @@ export function projectViewFootprint(view: ViewDirection, aspect: number): SkyCh
     const sinAngle = Math.sin(angle);
     for (let j = 0; j < steps; j++) {
       const t = j / steps;
-      const ray: Ray =
-        sinAngle < 1e-10
-          ? interpolate(a, b, t)
-          : [
-              (a[0] * Math.sin((1 - t) * angle) + b[0] * Math.sin(t * angle)) / sinAngle,
-              (a[1] * Math.sin((1 - t) * angle) + b[1] * Math.sin(t * angle)) / sinAngle,
-              (a[2] * Math.sin((1 - t) * angle) + b[2] * Math.sin(t * angle)) / sinAngle,
-            ];
+      let ray: Ray;
+      if (sinAngle < 1e-10) {
+        ray = interpolate(a, b, t);
+      } else {
+        const u = Math.sin((1 - t) * angle);
+        const v = Math.sin(t * angle);
+        ray = [
+          (a[0] * u + b[0] * v) / sinAngle,
+          (a[1] * u + b[1] * v) / sinAngle,
+          (a[2] * u + b[2] * v) / sinAngle,
+        ];
+      }
       points.push(project(ray));
     }
   }
