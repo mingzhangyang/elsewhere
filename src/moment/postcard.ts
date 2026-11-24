@@ -5,8 +5,9 @@ import { angularDiameter, findSkyObject } from '../lib/exploration';
 import { isDeviceLocation } from '../lib/locations';
 import { objectName, placeLabel } from '../i18n/names';
 import { weatherDescription } from '../lib/weatherText';
-import { createProjection } from './projection';
-import { drawIllustration, lettering, type ToCanvas } from './illustration';
+import { createCoverProjection } from './projection';
+import { lettering, type ToCanvas } from './illustration';
+import { paintIllustrationPanel } from '../../packages/sky-engine/src/moment/panel';
 import { paintFinish, PAPER } from '../../packages/sky-engine/src/moment/paintFinish';
 import { HORIZON_STEP, horizonAltitude, type HorizonVariant } from './scenery';
 import { momentImageCopy } from './imageCopy';
@@ -85,15 +86,7 @@ export function drawPostcard({
   const width = POSTCARD_WIDTH;
   const skyH = skyHeight(snapshot.aspect);
   // The view as it was on screen, scaled to cover the sky area and centered.
-  const coverW = Math.max(width, skyH * snapshot.aspect);
-  const coverH = coverW / snapshot.aspect;
-  const left = (width - coverW) / 2,
-    top = (skyH - coverH) / 2;
-  const project = createProjection(view, snapshot.aspect);
-  const toCanvas: ToCanvas = (altitude, azimuth) => {
-    const p = project(altitude, azimuth);
-    return { x: left + ((p.x + 1) / 2) * coverW, y: top + ((1 - p.y) / 2) * coverH, front: p.front };
-  };
+  const { coverW, coverH, left, top, toCanvas } = createCoverProjection(view, snapshot.aspect, width, skyH);
 
   // Text first, to size the panel.
   const place = isDeviceLocation(location)
@@ -193,20 +186,15 @@ export function drawPostcard({
   if (style === 'realistic' && capture) {
     ctx.drawImage(capture.image, left, top, coverW, coverH);
     if (horizon !== 'ridge') drawSilhouette(ctx, toCanvas, view.heading, horizon, sky.sunAltitude, skyH);
-  } else
-    drawIllustration(
-      ctx,
-      width,
-      skyH,
-      snapshot,
-      toCanvas,
-      horizon,
-      { object: (object) => objectName(object, i18n), pattern: (id) => m.patterns[id] },
-      FONT,
+  } else {
+    paintIllustrationPanel(ctx, width, skyH, snapshot, {
+      landscape: horizon,
+      text: { object: (object) => objectName(object, i18n), pattern: (id) => m.patterns[id] },
+      font: FONT,
       landscapeArt,
-    );
+    });
+  }
   const painted = style === 'illustrated' || !capture;
-  if (painted) paintFinish(ctx, 0, 0, width, skyH, Math.round(instant.getTime() / 3600000));
 
   // The target ring, as the screen draws it over the subject.
   if (subject?.kind === 'object') {

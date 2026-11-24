@@ -1,0 +1,136 @@
+import type {
+  IllustrationComposition,
+  IllustrationPattern,
+  LayerSettings,
+  MomentSnapshot,
+} from './contracts';
+import { CONSTELLATIONS } from './domain/stars';
+import { frameMoment, framePattern } from './moment/framing';
+import { paintIllustrationPanel, type IllustrationPanelOptions } from './moment/panel';
+import { HORIZON_VARIANTS } from './moment/scenery';
+import { landscapeLight, landscapeSeason, type LandscapeSeason } from './moment/seasons';
+import { loadResource } from './resources';
+import { mergeLayers, validateAspect, validateView } from './validation';
+
+export interface LandscapeRequest {
+  landscape: 'city' | 'mountains';
+  season: LandscapeSeason;
+  light: ReturnType<typeof landscapeLight>;
+}
+
+export interface RenderIllustrationOptions extends IllustrationPanelOptions {
+  composition?: IllustrationComposition;
+  layers?: Partial<LayerSettings>;
+  /** Return a decoded image for the requested season and light, using host-owned URLs. */
+  loadLandscape?: (request: LandscapeRequest, signal: AbortSignal) => Promise<HTMLImageElement>;
+  assetTimeoutMs?: number;
+  signal?: AbortSignal;
+}
+
+function validatePatterns(patterns?: readonly IllustrationPattern[]): void {
+  if (patterns === undefined) return;
+  if (!Array.isArray(patterns) || patterns.length > 32) throw new RangeError('Too many patterns.');
+  const ids = new Set<string>();
+  let edges = 0;
+  for (const pattern of patterns) {
+    if (
+      !pattern ||
+      typeof pattern.id !== 'string' ||
+      !pattern.id ||
+      pattern.id.length > 100 ||
+      ids.has(pattern.id) ||
+      (pattern.label !== undefined && (typeof pattern.label !== 'string' || pattern.label.length > 200)) ||
+      !Array.isArray(pattern.lines)
+    ) {
+      throw new TypeError('Invalid illustration pattern.');
+    }
+    ids.add(pattern.id);
+    edges += pattern.lines.length;
+    if (edges > 256) throw new RangeError('Too many pattern edges.');
+    for (const pair of pattern.lines) {
+      if (
+        !Array.isArray(pair) ||
+        pair.length !== 2 ||
+        !pair.every((id: unknown) => typeof id === 'string' && id.length > 0 && id.length <= 100) ||
+        pair[0] === pair[1]
+      ) {
+        throw new TypeError('Invalid illustration pattern edge.');
+      }
+    }
+  }
+}
+
+function outputAspect(width: number, height: number): number {
+  if (![width, height].every((n) => Number.isInteger(n) && n >= 1 && n <= 4096)) {
+    throw new RangeError('Canvas dimensions must be integers between 1 and 4096.');
+  }
+  const aspect = width / height;
+  validateAspect(aspect);
+  return aspect;
+}
+
+/** Resolve composition against the actual output aspect without mutating the source scene. */
+export function prepareIllustrationScene(
+  scene: MomentSnapshot,
+  width: number,
+  height: number,
+  options: Pick<RenderIllustrationOptions, 'composition' | 'layers' | 'patterns' | 'milkyWay'> = {},
+): MomentSnapshot {
+  const aspect = outputAspect(width, height);
+  validateView(scene.view);
+  validateAspect(scene.aspect);
+  validatePatterns(options.patterns);
+  const snapshot = { ...scene, layers: mergeLayers(scene.layers, options.layers) };
+  const mode = options.composition ?? 'auto';
+  if (mode === 'current') return snapshot;
+  if (mode === 'auto') return frameMoment(snapshot, mode, { aspect, milkyWay: options.milkyWay });
+  if (typeof mode !== 'object' || mode === null || typeof mode.pattern !== 'string') {
+    throw new TypeError('Invalid illustration composition.');
+  }
+  const pattern = (options.patterns ?? CONSTELLATIONS).find((candidate) => candidate.id === mode.pattern);
+  if (!pattern) throw new RangeError('Unknown illustration pattern: ' + mode.pattern);
+  return framePattern(snapshot, pattern.lines, aspect);
+}
+
+/** Render a whole caller-owned browser canvas; no network requests except explicitly injected loaders. */
+export async function renderIllustration(
+  canvas: HTMLCanvasElement,
+  scene: MomentSnapshot,
+  options: RenderIllustrationOptions = {},
+): Promise<MomentSnapshot> {
+  const { width, height } = canvas;
+  const snapshot = prepareIllustrationScene(scene, width, height, options);
+  const landscape = options.landscape ?? 'ridge';
+  if (!HORIZON_VARIANTS.includes(landscape)) throw new RangeError('Invalid landscape.');
+  if (options.signal?.aborted) throw new Error('Illustration cancelled.');
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas 2D is unavailable.');
+  let landscapeArt = options.landscapeArt;
+  if (landscape === 'city' || landscape === 'mountains') {
+    const loader = options.loadLandscape;
+    if (!landscapeArt && loader) {
+      const request: LandscapeRequest = {
+        landscape,
+        season: landscapeSeason(snapshot),
+        light: landscapeLight(snapshot.sky.sunAltitude, snapshot.sky.sun.azimuth),
+      };
+      landscapeArt = await loadResource(
+        (signal) => loader(request, signal),
+        options.assetTimeoutMs ?? 10000,
+        'Landscape art',
+        options.signal,
+      );
+    }
+    if (!landscapeArt?.complete || !landscapeArt.naturalWidth || !landscapeArt.naturalHeight) {
+      throw new Error('This landscape requires decoded artwork.');
+    }
+  }
+  if (options.signal?.aborted) throw new Error('Illustration cancelled.');
+  if (canvas.width !== width || canvas.height !== height) {
+    throw new Error('Canvas size changed while loading illustration resources.');
+  }
+  // Only reset after loading succeeds. Standalone calls must not inherit transforms, clips or alpha.
+  canvas.width = width;
+  paintIllustrationPanel(ctx, width, height, snapshot, { ...options, landscape, landscapeArt });
+  return snapshot;
+}

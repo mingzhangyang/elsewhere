@@ -116,4 +116,49 @@ describe('image-only smart framing', () => {
   it('does not invent a subject when there is no visible candidate', () => {
     expect(frameMoment(snapshot, 'auto')).toBe(snapshot);
   });
+
+  it('keeps the legacy 8° bias, and a narrow portrait still contains the Sun, Moon and a bright star', () => {
+    const sun = {
+      ...snapshot,
+      sky: {
+        ...snapshot.sky,
+        sunAltitude: 30,
+        sun: { ...sky.sun, altitude: 30, azimuth: 180, visible: true },
+      },
+    };
+    expect(frameMoment(sun, 'auto').view.heading).toBe(172);
+    const narrowSun = frameMoment(sun, 'auto', { aspect: 0.1 });
+    expect(narrowSun.aspect).toBe(0.1);
+    expectInside(narrowSun, 30, 180);
+
+    const moon = {
+      ...snapshot,
+      sky: {
+        ...snapshot.sky,
+        moon: { ...sky.moon, altitude: 30, azimuth: 180, illumination: 0.4, visible: true },
+      },
+    };
+    expectInside(frameMoment(moon, 'auto', { aspect: 0.1 }), 30, 180);
+
+    const star = {
+      ...snapshot,
+      layers: { stars: true, lines: false, labels: false },
+      sky: {
+        ...snapshot.sky,
+        stars: [{ ...sky.stars[0], altitude: 30, azimuth: 180, magnitude: 0 }],
+      },
+    };
+    expectInside(frameMoment(star, 'auto', { aspect: 0.1, milkyWay: false }), 30, 180);
+  });
 });
+
+function expectInside(
+  framed: { view: MomentSnapshot['view']; aspect: number },
+  altitude: number,
+  azimuth: number,
+) {
+  const p = createProjection(framed.view, framed.aspect)(altitude, azimuth);
+  expect(p.front).toBe(true);
+  expect(Math.abs(p.x)).toBeLessThanOrEqual(0.88);
+  expect(Math.abs(p.y)).toBeLessThanOrEqual(0.88);
+}

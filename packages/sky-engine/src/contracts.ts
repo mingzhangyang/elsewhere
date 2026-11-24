@@ -45,3 +45,12 @@ export type MomentProvenance =
   | { kind: 'custom' }
   | { kind: 'clear' }
   | { kind: 'none' };
+
+/** Host-defined chalk line pattern, using actual HYG star IDs (not invented sky coordinates). */
+export interface IllustrationPattern {
+  id: string;
+  lines: readonly (readonly [string, string])[];
+  label?: string;
+}
+
+export type IllustrationComposition = 'current' | 'auto' | { pattern: string };
