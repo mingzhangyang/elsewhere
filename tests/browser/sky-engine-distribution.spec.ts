@@ -77,6 +77,56 @@ try {
   const line = map.getContext('2d').getImageData(mx - 2, my - 2, 5, 5).data;
   const noLine = comparison.getContext('2d').getImageData(mx - 2, my - 2, 5, 5).data;
   if (!line.some((value, index) => value !== noLine[index])) throw new Error('Custom line pixels missing');
+  // Line-only mode must use the same projected coordinates, even with star dots hidden.
+  const lineOnly = document.createElement('canvas');
+  lineOnly.width = map.width;
+  lineOnly.height = map.height;
+  const off = { stars: false, lines: false, labels: false };
+  sdk.renderMinimalSkyMap(lineOnly, framed, {
+    composition: 'current', patterns, layers: { ...off, lines: true },
+  });
+  sdk.renderMinimalSkyMap(comparison, framed, {
+    composition: 'current', patterns, layers: off,
+  });
+  const lineOnlyPixels = lineOnly.getContext('2d').getImageData(mx - 2, my - 2, 5, 5).data;
+  const offPixels = comparison.getContext('2d').getImageData(mx - 2, my - 2, 5, 5).data;
+  if (!lineOnlyPixels.some((value, index) => value !== offPixels[index])) {
+    throw new Error('Turning off star dots also removed the pattern line');
+  }
+  // A real daytime Sun and nearby HYG star are both selected and in view.
+  // An invalid Sun-star edge must not alter either the framing or any pixels.
+  const day = await sdk.createSkyScene({
+    latitude: 40.7128, longitude: -74.006, timezone: 'America/New_York',
+    instant: new Date('2026-03-20T17:00:00Z'), weather: 'clear',
+  });
+  if (day.sky.sun.altitude <= 0) throw new Error('Daytime regression fixture has no Sun');
+  const dayView = {
+    ...day, aspect: map.width / (map.height - 57),
+    view: { heading: day.sky.sun.azimuth, altitude: day.sky.sun.altitude, fov: 66 },
+  };
+  const dayProject = sdk.createCoverProjection(
+    dayView.view, dayView.aspect, map.width, map.height - 57,
+  ).toCanvas;
+  const sun = dayProject(day.sky.sun.altitude, day.sky.sun.azimuth);
+  const nearby = day.sky.stars.find((star) => {
+    if (star.altitude <= 0 || star.magnitude > 4.5) return false;
+    const p = dayProject(star.altitude, star.azimuth);
+    const distance = Math.hypot(p.x - sun.x, p.y - sun.y);
+    return p.front && distance > 40 && distance < 250;
+  });
+  if (!nearby) throw new Error('Daytime regression fixture has no nearby selected star');
+  const nonstellar = [{ id: 'invalid', lines: [['sun', nearby.id]] }];
+  const bodyLayers = { stars: true, lines: true, labels: false };
+  const rejected = sdk.renderMinimalSkyMap(lineOnly, dayView, {
+    composition: { pattern: 'invalid' }, patterns: nonstellar, layers: bodyLayers,
+  });
+  sdk.renderMinimalSkyMap(comparison, dayView, {
+    composition: 'current', patterns: [], layers: bodyLayers,
+  });
+  if (JSON.stringify(rejected.view) !== JSON.stringify(dayView.view) ||
+      rejected.aspect !== dayView.aspect || lineOnly.toDataURL() !== comparison.toDataURL()) {
+    throw new Error('A nonstellar pattern endpoint changed framing or pixels');
+  }
   document.body.dataset.stars = scene.sky.stars.length;
   document.body.dataset.ready = 'true';
 } catch (error) {

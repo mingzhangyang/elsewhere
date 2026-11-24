@@ -142,7 +142,10 @@ input camera and uses the same centered cover crop as illustrations. `auto` uses
 visibility-aware composition policy, but diagram object selection itself is geometric.
 A named pattern frames only selected above-horizon members, independent of daylight/weather;
 missing or too-faint members cannot create artificial stars. Unusable patterns retain the current
-view. Layers control star dots, lines and labels; an empty custom-pattern array disables built-ins.
+view. Only selected HYG stars can be pattern endpoints; Sun, Moon and planet IDs are ignored.
+The star-dot, pattern-line and label layers are independent: hiding dots does not hide lines or
+eligible bright-star names. Sun, Moon and planet symbols remain visible when selected and in view.
+An empty custom-pattern array disables built-ins.
 No terrain, atmospheric painting or invented decorative stars are drawn.
 
 ## Build and release

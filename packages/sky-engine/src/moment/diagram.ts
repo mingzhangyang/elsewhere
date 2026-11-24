@@ -164,11 +164,14 @@ function mapPoints(
 ): MapPoint[] {
   const { toCanvas } = createCoverProjection(scene.view, scene.aspect, width, height);
   return objects.flatMap((object) => {
-    if (object.kind === 'star' && !scene.layers.stars) return [];
     const point = toCanvas(object.altitude, object.azimuth);
     if (!point.front || point.x < 0 || point.x > width || point.y < 0 || point.y > height) return [];
     const radius =
-      object.kind === 'star' ? Math.max(1, 3.5 - object.magnitude * 0.4) : object.kind === 'planet' ? 4 : 6;
+      object.kind === 'star'
+        ? Math.max(1, 3.5 - object.magnitude * 0.4)
+        : object.kind === 'planet'
+          ? 4
+          : 6;
     return [{ object, x: point.x, y: point.y, radius: radius * unit }];
   });
 }
@@ -195,7 +198,9 @@ export function renderMinimalSkyMap(
     if (!mode || typeof mode.pattern !== 'string') throw new TypeError('Invalid pattern composition.');
     const pattern = patterns.find((entry) => entry.id === mode.pattern);
     if (!pattern) throw new RangeError('Unknown illustration pattern: ' + mode.pattern);
-    const selected = new Set(snapshot.objects.map((object) => object.id));
+    const selected = new Set(
+      snapshot.objects.filter((object) => object.kind === 'star').map((object) => object.id),
+    );
     const lines = pattern.lines.filter(([a, b]) => selected.has(a) && selected.has(b));
     framed = framePattern(prepared, lines, width / mapHeight, true);
   }
@@ -208,15 +213,18 @@ export function renderMinimalSkyMap(
     ctx.beginPath();
     ctx.rect(0, 0, width, mapHeight);
     ctx.clip();
-    const byId = new Map(points.map((point) => [point.object.id, point]));
-    if (framed.layers.lines && framed.layers.stars) {
+    // The pattern contract uses only selected catalog stars, regardless of dot visibility.
+    const starsById = new Map(
+      points.filter((point) => point.object.kind === 'star').map((point) => [point.object.id, point]),
+    );
+    if (framed.layers.lines) {
       ctx.strokeStyle = palette.accentSoft;
       ctx.lineWidth = Math.max(0.7, unit);
       ctx.beginPath();
       for (const pattern of patterns) {
         for (const [a, b] of pattern.lines) {
-          const start = byId.get(a);
-          const end = byId.get(b);
+          const start = starsById.get(a);
+          const end = starsById.get(b);
           if (!start || !end) continue;
           ctx.moveTo(start.x, start.y);
           ctx.lineTo(end.x, end.y);
@@ -225,17 +233,19 @@ export function renderMinimalSkyMap(
       ctx.stroke();
     }
     for (const { object, x, y, radius } of points) {
-      ctx.fillStyle =
-        object.kind === 'sun'
-          ? palette.sun
-          : object.kind === 'moon'
-            ? palette.moon
-            : object.kind === 'planet'
-              ? palette.planet
-              : palette.star;
-      ctx.beginPath();
-      ctx.arc(x, y, radius, 0, 2 * Math.PI);
-      ctx.fill();
+      if (object.kind !== 'star' || framed.layers.stars) {
+        ctx.fillStyle =
+          object.kind === 'sun'
+            ? palette.sun
+            : object.kind === 'moon'
+              ? palette.moon
+              : object.kind === 'planet'
+                ? palette.planet
+                : palette.star;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, 2 * Math.PI);
+        ctx.fill();
+      }
       if (framed.layers.labels && (object.kind !== 'star' || (object.name && object.magnitude <= 1.5))) {
         ctx.font = `${13 * unit}px system-ui, sans-serif`;
         ctx.textAlign = 'left';
