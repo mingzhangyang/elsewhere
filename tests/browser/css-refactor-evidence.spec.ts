@@ -104,16 +104,12 @@ for (const { width, height, scenario, locale, state } of [
     test.use({ viewport: { width, height }, locale, hasTouch: width <= 1000, reducedMotion: 'reduce' });
 
     test('CSS migration before/after evidence', async ({ page }, info) => {
-      test.skip(
-        info.project.name !== 'chromium' || !baseline,
-        'Requires Chromium and monolithic CSS baseline',
-      );
+      test.skip(info.project.name !== 'chromium' || !baseline, 'Requires Chromium and baseline CSS');
       test.setTimeout(90000);
       await page.goto('/?scenario=' + scenario);
       await expect(page.locator('.sky-scene canvas')).toBeVisible();
-      await expect(page.locator('.source-pill')).toHaveText(locale === 'zh-CN' ? '天气预报' : 'Forecast', {
-        timeout: 15000,
-      });
+      const weatherSource = locale === 'zh-CN' ? '天气预报' : 'Forecast';
+      await expect(page.locator('.source-pill')).toHaveText(weatherSource, { timeout: 15000 });
       await compare(page, info, 'sky');
 
       if (state === 'time') {
