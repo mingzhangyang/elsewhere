@@ -4,7 +4,7 @@ import type { SkyBrightness } from '../domain/starVisibility';
 import { validateObserver } from '../domain/observer';
 import { validateInstant } from '../domain/time';
 import { defaultWeatherValues } from '../domain/weather';
-import { isDeviceLocation, normalizeLocation } from './locations';
+import { isDeviceLocation, normalizeLocation, PRESETS } from './locations';
 
 export interface LayerSettings {
   stars: boolean;
@@ -142,6 +142,170 @@ export function savePreferences(value: Preferences): boolean {
     return false;
   }
 }
+
+/**
+ * Version 2 compact share payload. The fixed tuple avoids repeating keys, and the UTF-8
+ * base64url envelope is safe to copy without an external short-link service.
+ *
+ * [place, epochMilliseconds, heading, altitude, fov, flags, weather?, focus?, subject?]
+ * place = preset ID, or [id (null for device), name, country, lat, lon, elevation, timezone].
+ * flags: stars=1, lines=2, labels=4, clearSky=true=8, clearSky is specified=16.
+ * weather = 39 digits for integer measurements, or an ordered numeric array when fractional
+ * values would otherwise be rounded. The schema is immutable; use a new prefix to change it.
+ */
+const WEATHER_FIELDS = [
+  'cloudCover',
+  'cloudLow',
+  'cloudMid',
+  'cloudHigh',
+  'visibilityKm',
+  'haze',
+  'humidity',
+  'windSpeed',
+  'windDirection',
+  'precipitation',
+  'temperature',
+  'pressure',
+  'weatherCode',
+] as const satisfies readonly Exclude<keyof WeatherValues, 'visibilityAvailable'>[];
+
+// 100% cloud cover and humidity need three digits; temperature uses an offset of 100.
+// Decoding never truncates fractional input: those cases use the lossless array above.
+const WEATHER_WIDTHS = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 2] as const;
+const WEATHER_DIGIT_COUNT = WEATHER_WIDTHS.reduce((total, width) => total + width, 0);
+
+function compactWeather(value: WeatherValues): string | number[] {
+  const fields = WEATHER_FIELDS.map((field) => value[field]);
+  const digits = fields.map((number, i) => {
+    const adjusted = number + (WEATHER_FIELDS[i] === 'temperature' ? 100 : 0);
+    const width = WEATHER_WIDTHS[i];
+    return Number.isInteger(adjusted) && adjusted >= 0 && adjusted < 10 ** width
+      ? String(adjusted).padStart(width, '0')
+      : null;
+  });
+  return digits.every((value) => value !== null)
+    ? digits.join('')
+    : fields;
+}
+
+function expandedWeather(data: unknown): unknown {
+  if (Array.isArray(data)) {
+    if (data.length !== WEATHER_FIELDS.length) throw new Error('Invalid custom weather');
+  } else if (typeof data === 'string') {
+    if (data.length !== WEATHER_DIGIT_COUNT || !/^[0-9]+$/.test(data))
+      throw new Error('Invalid numeric weather');
+    let offset = 0;
+    data = WEATHER_WIDTHS.map((width, index) => {
+      const value = Number(data!.slice(offset, offset + width));
+      offset += width;
+      return value - (WEATHER_FIELDS[index] === 'temperature' ? 100 : 0);
+    });
+  } else {
+    throw new Error('Invalid custom weather');
+  }
+  return Object.fromEntries(WEATHER_FIELDS.map((field, i) => [field, (data as number[])[i]]));
+}
+
+function compactLocation(location: LocationInfo): string | (string | number | null)[] {
+  const preset = !isDeviceLocation(location)
+    ? PRESETS.find(
+        (place) =>
+          place.id === location.id &&
+          place.name === location.name &&
+          place.country === location.country &&
+          place.timezone === location.timezone &&
+          place.latitude === location.latitude &&
+          place.longitude === location.longitude &&
+          place.elevation === location.elevation,
+      )
+    : undefined;
+  if (preset) return preset.id;
+  return [
+    isDeviceLocation(location) ? null : location.id,
+    location.name,
+    location.country,
+    location.latitude,
+    location.longitude,
+    location.elevation,
+    location.timezone,
+  ];
+}
+
+function expandedLocation(data: unknown): unknown {
+  if (typeof data === 'string') {
+    const preset = PRESETS.find((place) => place.id === data);
+    if (!preset) throw new Error('Unknown shared place');
+    return preset;
+  }
+  if (!Array.isArray(data) || data.length !== 7) throw new Error('Invalid shared place');
+  const [id, name, country, latitude, longitude, elevation, timezone] = data;
+  return {
+    id: id === null ? 'device-location' : id,
+    name,
+    country,
+    latitude,
+    longitude,
+    elevation,
+    timezone,
+    ...(id === null ? { source: 'device' } : {}),
+  };
+}
+
+function encodeCompact(value: Exploration): string {
+  const flags =
+    (value.layers.stars ? 1 : 0) |
+    (value.layers.lines ? 2 : 0) |
+    (value.layers.labels ? 4 : 0) |
+    (value.clearSky ? 8 : 0) |
+    (value.clearSky === undefined ? 0 : 16);
+  const tuple: unknown[] = [
+    compactLocation(value.location),
+    Date.parse(value.instant),
+    value.camera.heading,
+    value.camera.altitude,
+    value.camera.fov,
+    flags,
+    value.custom === null ? null : compactWeather(value.custom),
+    value.focus ?? null,
+    value.subject ?? null,
+  ];
+  while (tuple[tuple.length - 1] === null) tuple.pop();
+  const bytes = new TextEncoder().encode(JSON.stringify(tuple));
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return '2.' + btoa(binary).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
+}
+
+function decodeCompact(token: string): unknown {
+  if (!/^[A-Za-z0-9_-]+$/.test(token)) throw new Error('Invalid compact link');
+  const bytes = Uint8Array.from(atob(token.replaceAll('-', '+').replaceAll('_', '/')), (c) =>
+    c.charCodeAt(0),
+  );
+  const tuple: unknown = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
+  if (!Array.isArray(tuple) || tuple.length < 6 || tuple.length > 9)
+    throw new Error('Invalid compact state');
+  const [place, millis, heading, altitude, fov, flags, weather, focus, subject] = tuple;
+  if (
+    !Number.isSafeInteger(millis) ||
+    !Number.isInteger(flags) ||
+    flags < 0 ||
+    flags > 31 ||
+    ((flags & 8) !== 0 && (flags & 16) === 0)
+  )
+    throw new Error('Invalid compact time or flags');
+  return {
+    version: 1,
+    location: expandedLocation(place),
+    instant: new Date(millis).toISOString(),
+    camera: { heading, altitude, fov },
+    layers: { stars: !!(flags & 1), lines: !!(flags & 2), labels: !!(flags & 4) },
+    custom: weather === null || weather === undefined ? null : expandedWeather(weather),
+    ...((flags & 16) !== 0 ? { clearSky: !!(flags & 8) } : {}),
+    ...(focus === undefined || focus === null ? {} : { focus }),
+    ...(subject === undefined || subject === null ? {} : { subject }),
+  };
+}
+
 /**
  * Shared links carry no language: whoever opens one reads it in their own. A language field from
  * anywhere else is ignored, like any unknown field.
@@ -150,7 +314,10 @@ export function parseExploration(hash: string): { value: Exploration | null; not
   if (!hash.startsWith('#sky=')) return { value: null, notice: null };
   try {
     if (hash.length > 6000) throw new Error('Oversized link');
-    const data: unknown = JSON.parse(decodeURIComponent(hash.slice(5)));
+    const encoded = hash.slice(5);
+    const data: unknown = encoded.startsWith('2.')
+      ? decodeCompact(encoded.slice(2))
+      : JSON.parse(decodeURIComponent(encoded));
     if (!isObject(data) || data.version !== 1 || typeof data.instant !== 'string' || !isObject(data.camera))
       throw new Error('Invalid link');
     validateInstant(new Date(data.instant));
@@ -233,6 +400,6 @@ export function cityLevel(location: LocationInfo): LocationInfo {
 export function explorationUrl(exploration: Exploration): string {
   const url = new URL(window.location.href);
   url.search = '';
-  url.hash = `sky=${encodeURIComponent(JSON.stringify(exploration))}`;
+  url.hash = `sky=${encodeCompact(exploration)}`;
   return url.toString();
 }
