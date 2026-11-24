@@ -466,7 +466,7 @@ export default function App({
         </div>
         <SkyCompass view={view} />
         <div className={`view-controls ${viewToolsOpen ? 'tools-open' : ''}`} data-occludes-sky>
-          <div id="view-tools-actions" className="view-tools-actions">
+          <div id="view-tools-actions" className="view-tools-actions" data-occludes-sky>
             <button
               className="icon-button"
               aria-label={m.controls.zoomIn}
