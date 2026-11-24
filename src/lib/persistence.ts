@@ -195,8 +195,9 @@ function expandedWeather(data: unknown): unknown {
     if (data.length !== WEATHER_DIGIT_COUNT || !/^[0-9]+$/.test(data))
       throw new Error('Invalid numeric weather');
     let offset = 0;
+    const digits = data;
     data = WEATHER_WIDTHS.map((width, index) => {
-      const value = Number(data!.slice(offset, offset + width));
+      const value = Number(digits.slice(offset, offset + width));
       offset += width;
       return value - (WEATHER_FIELDS[index] === 'temperature' ? 100 : 0);
     });
@@ -286,7 +287,9 @@ function decodeCompact(token: string): unknown {
     throw new Error('Invalid compact state');
   const [place, millis, heading, altitude, fov, flags, weather, focus, subject] = tuple;
   if (
+    typeof millis !== 'number' ||
     !Number.isSafeInteger(millis) ||
+    typeof flags !== 'number' ||
     !Number.isInteger(flags) ||
     flags < 0 ||
     flags > 31 ||
