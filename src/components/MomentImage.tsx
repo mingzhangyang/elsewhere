@@ -64,15 +64,12 @@ export default function MomentImage({
   const [horizon, setHorizon] = useState<HorizonVariant>('ridge');
   const [clearSkyImage, setClearSkyImage] = useState(true);
   const [framing, setFraming] = useState<MomentFraming>('auto');
-  const imageSnapshot = useMemo(
-    () => {
-      const framed = frameMoment(momentImageSnapshot(snapshot, clearSkyImage), framing);
-      return style === 'illustrated'
-        ? { ...framed, layers: { ...framed.layers, labels: illustrationLabels } }
-        : framed;
-    },
-    [snapshot, clearSkyImage, framing, style, illustrationLabels],
-  );
+  const imageSnapshot = useMemo(() => {
+    const framed = frameMoment(momentImageSnapshot(snapshot, clearSkyImage), framing);
+    return style === 'illustrated'
+      ? { ...framed, layers: { ...framed.layers, labels: illustrationLabels } }
+      : framed;
+  }, [snapshot, clearSkyImage, framing, style, illustrationLabels]);
   const [image, setImage] = useState<PreviewImage | null>(null);
   const [pendingImage, setPendingImage] = useState<PreviewImage | null>(null);
   const [status, setStatus] = useState<'drawing' | 'failed' | 'ready'>('drawing');
