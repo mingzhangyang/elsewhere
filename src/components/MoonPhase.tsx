@@ -24,38 +24,58 @@ export default function MoonPhase({
   );
 }
 
+export type MoonClockMode = 'live' | 'playback' | 'paused';
+
 /** Small live portrait with a synchronous, accessible SVG fallback. */
 export function MoonPortraitThumbnail({
   snapshot,
+  clockMode,
   label,
   openLabel,
   onOpen,
 }: {
   snapshot: MomentSnapshot;
+  clockMode: MoonClockMode;
   label: string;
   openLabel: string;
   onOpen: () => void;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
-  const [rendered, setRendered] = useState<MomentSnapshot | null>(null);
+  const [ready, setReady] = useState(false);
+  const latestSnapshot = useRef(snapshot);
+  useEffect(() => {
+    latestSnapshot.current = snapshot;
+  }, [snapshot]);
+  const [portraitSnapshot, setPortraitSnapshot] = useState(snapshot);
+  const pausedInstant = clockMode === 'paused' ? snapshot.instant.getTime() : null;
+  const { latitude, longitude, elevation } = snapshot.location;
+  useEffect(() => {
+    const sample = () => setPortraitSnapshot(latestSnapshot.current);
+    sample();
+    if (pausedInstant !== null) return;
+    const timer = window.setInterval(sample, 30_000);
+    return () => window.clearInterval(timer);
+  }, [clockMode, pausedInstant, latitude, longitude, elevation]);
   useEffect(() => {
     const controller = new AbortController();
     void import('../moment/moonPortrait')
-      .then(({ drawMoonPortrait }) => drawMoonPortrait(snapshot, 128, undefined, controller.signal))
+      .then(({ drawMoonPortrait }) => drawMoonPortrait(portraitSnapshot, 128, undefined, controller.signal))
       .then((image) => {
         if (controller.signal.aborted || !canvas.current) return;
         const ctx = canvas.current.getContext('2d');
-        if (!ctx) return;
+        if (!ctx) {
+          setReady(false);
+          return;
+        }
         ctx.clearRect(0, 0, 128, 128);
         ctx.drawImage(image, 0, 0);
-        setRendered(snapshot);
+        setReady(true);
       })
       .catch(() => {
-        // The original SVG remains visible when the texture, renderer or canvas is unavailable.
+        if (!controller.signal.aborted) setReady(false);
       });
     return () => controller.abort();
-  }, [snapshot]);
-  const ready = rendered === snapshot;
+  }, [portraitSnapshot]);
   return (
     <button className="moon-portrait-trigger" type="button" aria-label={openLabel} onClick={onOpen}>
       <canvas

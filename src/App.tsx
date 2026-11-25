@@ -660,6 +660,7 @@ export default function App({
                   onClearSky={() => setClearSky(!clearSky)}
                   stars={stars}
                   onRetryStars={retryStars}
+                  clockMode={following ? 'live' : playing ? 'playback' : 'paused'}
                   moonSnapshot={moonSnapshot}
                   onOpenMoon={() => share('moon')}
                 />

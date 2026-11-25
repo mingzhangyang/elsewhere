@@ -5,6 +5,7 @@ import type { Preferences } from '../lib/persistence';
 import {
   aboveHorizon,
   angularDiameter,
+  findSkyObject,
   objectVisibility,
   skyObjects,
   type SkyObject,
@@ -12,7 +13,7 @@ import {
 import { useI18n, type I18n } from '../i18n';
 import type { PlanetShape } from '../i18n/en';
 import { objectName, objectNameLang, searchNames } from '../i18n/names';
-import MoonPhase, { MoonPortraitThumbnail } from './MoonPhase';
+import MoonPhase, { MoonPortraitThumbnail, type MoonClockMode } from './MoonPhase';
 import type { MomentSnapshot } from '../lib/moment';
 import { sdkImageCopy } from '../moment/imageCopy';
 
@@ -32,6 +33,7 @@ export default function ObjectPanel({
   onRise,
   onClearSky,
   onRetryStars,
+  clockMode = 'paused',
   moonSnapshot,
   onOpenMoon,
 }: {
@@ -48,6 +50,7 @@ export default function ObjectPanel({
   onRise: (id: BodyId) => void;
   onClearSky: () => void;
   onRetryStars?: () => void;
+  clockMode?: MoonClockMode;
   moonSnapshot?: MomentSnapshot;
   onOpenMoon?: () => void;
 }) {
@@ -62,8 +65,9 @@ export default function ObjectPanel({
   const heading = useRef<HTMLHeadingElement>(null);
   const search = useRef<HTMLInputElement>(null);
   const previousSelection = useRef(selectedId);
-  const objects = useMemo(() => skyObjects(sky), [sky]);
-  const selected = objects.find((object) => object.id === selectedId);
+  const selected = findSkyObject(sky, selectedId);
+  const showList = !selected;
+  const objects = useMemo(() => (showList ? skyObjects(sky) : []), [sky, showList]);
   useEffect(() => {
     if (selectedId) heading.current?.focus({ preventScroll: true });
     else if (previousSelection.current) search.current?.focus({ preventScroll: true });
@@ -98,6 +102,7 @@ export default function ObjectPanel({
           {isMoon ? (
             moonSnapshot && onOpenMoon ? (
               <MoonPortraitThumbnail
+                clockMode={clockMode}
                 snapshot={moonSnapshot}
                 label={moonPhase}
                 openLabel={sdkImageCopy[i18n.locale].moonOpen}
