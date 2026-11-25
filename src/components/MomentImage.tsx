@@ -58,14 +58,20 @@ export default function MomentImage({
   const [renderSize, setRenderSize] = useState(512);
   const [theme, setTheme] = useState<'midnight' | 'paper'>('midnight');
   const [lines, setLines] = useState(snapshot.layers.lines);
+  const [illustrationLabels, setIllustrationLabels] = useState(false);
   const [retry, setRetry] = useState(0);
   const postcard = style === 'realistic' || style === 'illustrated';
   const [horizon, setHorizon] = useState<HorizonVariant>('ridge');
   const [clearSkyImage, setClearSkyImage] = useState(true);
   const [framing, setFraming] = useState<MomentFraming>('auto');
   const imageSnapshot = useMemo(
-    () => frameMoment(momentImageSnapshot(snapshot, clearSkyImage), framing),
-    [snapshot, clearSkyImage, framing],
+    () => {
+      const framed = frameMoment(momentImageSnapshot(snapshot, clearSkyImage), framing);
+      return style === 'illustrated'
+        ? { ...framed, layers: { ...framed.layers, labels: illustrationLabels } }
+        : framed;
+    },
+    [snapshot, clearSkyImage, framing, style, illustrationLabels],
   );
   const [image, setImage] = useState<PreviewImage | null>(null);
   const [pendingImage, setPendingImage] = useState<PreviewImage | null>(null);
@@ -316,6 +322,20 @@ export default function MomentImage({
               <option value="midnight">{sdkCopy.midnight}</option>
               <option value="paper">{sdkCopy.paper}</option>
             </select>
+          </label>
+        )}
+        {style === 'illustrated' && (
+          <label className="moment-field">
+            <input
+              type="checkbox"
+              checked={illustrationLabels}
+              onChange={(event) => {
+                request.current++;
+                setStatus('drawing');
+                setIllustrationLabels(event.target.checked);
+              }}
+            />
+            {m.settings.layerNames.labels}
           </label>
         )}
         {style === 'minimal' && (
