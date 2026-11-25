@@ -5,6 +5,7 @@ import type { MomentSnapshot } from '../lib/moment';
 import { labelFontReady } from '../renderer/labelFont';
 import { PAPER } from '../../packages/sky-engine/src/moment/paintFinish';
 import { sdkImageCopy } from './imageCopy';
+import { moonCardWidth } from './moonCardLayout';
 import { drawMoonPortrait, type MoonPortraitSettings } from './moonPortrait';
 import { FONT, wrap } from './postcard';
 
@@ -57,9 +58,9 @@ const WIDTH = 1200;
 const PAD = 48;
 
 /**
- * The share-only Moon card. Keep the existing square PNG sizes (including the 4096px
- * canvas limit), reserving space for a paper information panel instead of enlarging
- * the bitmap. The inspector thumbnail and SDK still render a bare Moon.
+ * The share-only 4:5 Moon card. The selected size is the long edge, keeping the
+ * 4096px canvas limit while fitting the paper information panel into the card.
+ * The inspector thumbnail and SDK still render a bare Moon.
  */
 export async function drawMoonCard({
   snapshot,
@@ -92,32 +93,35 @@ export async function drawMoonCard({
   });
   const panelHeight =
     PAD * 2 + lines.reduce((sum, line) => sum + line.rows.length * line.size * 1.3 + line.gap, 0);
-  const scale = size / WIDTH;
+  const height = size;
+  const width = moonCardWidth(height);
+  const scale = width / WIDTH;
   // Long localized place/time labels can wrap. Preserve at least 58% for the Moon
   // and fit the complete measured panel into the remaining space.
-  const moonHeight = Math.max(Math.round(size * 0.58), size - Math.ceil(panelHeight * scale));
-  const panelScale = Math.min(scale, (size - moonHeight) / panelHeight);
+  const moonHeight = Math.max(Math.round(height * 0.58), height - Math.ceil(panelHeight * scale));
+  const panelScale = Math.min(scale, (height - moonHeight) / panelHeight);
   // Keep the Moon centered with breathing room above and below, without changing
   // the SDK's bare portrait or resampling the lunar texture.
-  const inset = Math.round(moonHeight * 0.06);
-  const portraitSize = moonHeight - 2 * inset;
+  const portraitSize = Math.round(Math.min(width, moonHeight) * 0.88);
+  const top = Math.round((moonHeight - portraitSize) / 2);
   const portrait = await drawMoonPortrait(snapshot, portraitSize, settings, signal);
   try {
     if (signal?.aborted) throw new Error('Moon card cancelled.');
-    canvas.width = canvas.height = size;
+    canvas.width = width;
+    canvas.height = height;
     if (settings.background !== 'transparent') {
       // The SDK's corner is the selected solid background; extend it over the
       // entire lunar panel so the inset never introduces transparent seams.
-      ctx.drawImage(portrait, 0, 0, 1, 1, 0, 0, size, moonHeight);
+      ctx.drawImage(portrait, 0, 0, 1, 1, 0, 0, width, moonHeight);
     }
-    ctx.drawImage(portrait, Math.round((size - portraitSize) / 2), inset);
+    ctx.drawImage(portrait, Math.round((width - portraitSize) / 2), top);
   } finally {
     // Release the temporary high-resolution lunar raster before PNG encoding.
     portrait.width = portrait.height = 1;
   }
   ctx.fillStyle = PAPER;
-  ctx.fillRect(0, moonHeight, size, size - moonHeight);
-  ctx.translate((size - WIDTH * panelScale) / 2, moonHeight);
+  ctx.fillRect(0, moonHeight, width, height - moonHeight);
+  ctx.translate((width - WIDTH * panelScale) / 2, moonHeight);
   ctx.scale(panelScale, panelScale);
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
