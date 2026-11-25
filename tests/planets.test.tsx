@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import type { MomentSnapshot } from '../src/lib/moment';
 import ObjectPanel from '../src/components/ObjectPanel';
 import { calculateSky, nextBodyRise } from '../src/domain/astronomy';
 import { PLANET_IDS } from '../src/domain/planets';
@@ -251,6 +252,65 @@ describe('the Objects panel', () => {
     onRise: () => {},
     onClearSky: () => {},
   });
+  it('only builds the catalog when the list is visible', () => {
+    const panel = props('moon');
+    const map = vi.spyOn(panel.sky.stars, 'map');
+    try {
+      const view = render(<ObjectPanel {...panel} />);
+      expect(map).not.toHaveBeenCalled();
+      view.rerender(<ObjectPanel {...panel} selectedId={null} />);
+      expect(map).toHaveBeenCalled();
+    } finally {
+      map.mockRestore();
+    }
+  });
+
+  it('samples fast playback on the real clock and refreshes immediately after a manual jump', async () => {
+    const portrait = await import('../src/moment/moonPortrait');
+    const draw = vi.spyOn(portrait, 'drawMoonPortrait').mockRejectedValue(new Error('no canvas'));
+    const panel = props('moon');
+    const snapshot: MomentSnapshot = {
+      sky: panel.sky,
+      location: NEW_YORK,
+      instant: EVENING_VENUS,
+      weather: clear,
+      view: { heading: 0, altitude: 20, fov: 66 },
+      layers: preferences.layers,
+      skyBrightness: preferences.skyBrightness,
+      provenance: { kind: 'none' },
+      aspect: 1,
+    };
+    const show = (elapsed: number, clockRunning: boolean) => (
+      <ObjectPanel
+        {...panel}
+        clockRunning={clockRunning}
+        onOpenMoon={() => {}}
+        moonSnapshot={{ ...snapshot, instant: new Date(EVENING_VENUS.getTime() + elapsed) }}
+      />
+    );
+    vi.useFakeTimers();
+    try {
+      const view = render(show(0, true));
+      await act(async () => {});
+      view.rerender(show(600 * 29_000, true));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(29_999);
+      });
+      expect(draw).toHaveBeenCalledTimes(1);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1);
+      });
+      expect(draw).toHaveBeenCalledTimes(2);
+      expect(draw.mock.calls[1][0].instant.getTime()).toBe(EVENING_VENUS.getTime() + 600 * 29_000);
+      view.rerender(show(1000, false));
+      await act(async () => {});
+      expect(draw).toHaveBeenCalledTimes(3);
+    } finally {
+      vi.useRealTimers();
+      draw.mockRestore();
+    }
+  });
+
   it('shows Venus’s phase, brightness, place relative to the Sun, and rise and set', () => {
     render(<ObjectPanel {...props('venus')} />);
     expect(screen.getByRole('heading', { name: 'Venus' })).toBeInTheDocument();

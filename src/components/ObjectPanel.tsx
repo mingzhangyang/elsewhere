@@ -5,6 +5,7 @@ import type { Preferences } from '../lib/persistence';
 import {
   aboveHorizon,
   angularDiameter,
+  findSkyObject,
   objectVisibility,
   skyObjects,
   type SkyObject,
@@ -32,6 +33,7 @@ export default function ObjectPanel({
   onRise,
   onClearSky,
   onRetryStars,
+  clockRunning = false,
   moonSnapshot,
   onOpenMoon,
 }: {
@@ -48,6 +50,7 @@ export default function ObjectPanel({
   onRise: (id: BodyId) => void;
   onClearSky: () => void;
   onRetryStars?: () => void;
+  clockRunning?: boolean;
   moonSnapshot?: MomentSnapshot;
   onOpenMoon?: () => void;
 }) {
@@ -62,8 +65,9 @@ export default function ObjectPanel({
   const heading = useRef<HTMLHeadingElement>(null);
   const search = useRef<HTMLInputElement>(null);
   const previousSelection = useRef(selectedId);
-  const objects = useMemo(() => skyObjects(sky), [sky]);
-  const selected = objects.find((object) => object.id === selectedId);
+  const selected = findSkyObject(sky, selectedId);
+  const showList = !selected;
+  const objects = useMemo(() => (showList ? skyObjects(sky) : []), [sky, showList]);
   useEffect(() => {
     if (selectedId) heading.current?.focus({ preventScroll: true });
     else if (previousSelection.current) search.current?.focus({ preventScroll: true });
@@ -98,6 +102,7 @@ export default function ObjectPanel({
           {isMoon ? (
             moonSnapshot && onOpenMoon ? (
               <MoonPortraitThumbnail
+                clockRunning={clockRunning}
                 snapshot={moonSnapshot}
                 label={moonPhase}
                 openLabel={sdkImageCopy[i18n.locale].moonOpen}

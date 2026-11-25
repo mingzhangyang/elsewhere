@@ -27,11 +27,13 @@ export default function MoonPhase({
 /** Small live portrait with a synchronous, accessible SVG fallback. */
 export function MoonPortraitThumbnail({
   snapshot,
+  clockRunning,
   label,
   openLabel,
   onOpen,
 }: {
   snapshot: MomentSnapshot;
+  clockRunning: boolean;
   label: string;
   openLabel: string;
   onOpen: () => void;
@@ -42,10 +44,17 @@ export function MoonPortraitThumbnail({
   useEffect(() => {
     latestSnapshot.current = snapshot;
   }, [snapshot]);
-  const timeSlot = Math.floor(snapshot.instant.getTime() / 30_000);
+  const [portraitSnapshot, setPortraitSnapshot] = useState(snapshot);
+  const pausedInstant = clockRunning ? null : snapshot.instant.getTime();
   const { latitude, longitude, elevation } = snapshot.location;
   useEffect(() => {
-    const portraitSnapshot = latestSnapshot.current;
+    const sample = () => setPortraitSnapshot(latestSnapshot.current);
+    sample();
+    if (pausedInstant !== null) return;
+    const timer = window.setInterval(sample, 30_000);
+    return () => window.clearInterval(timer);
+  }, [pausedInstant, latitude, longitude, elevation]);
+  useEffect(() => {
     const controller = new AbortController();
     void import('../moment/moonPortrait')
       .then(({ drawMoonPortrait }) => drawMoonPortrait(portraitSnapshot, 128, undefined, controller.signal))
@@ -61,7 +70,7 @@ export function MoonPortraitThumbnail({
         // Keep the previous portrait, or the SVG if the first render failed.
       });
     return () => controller.abort();
-  }, [timeSlot, latitude, longitude, elevation]);
+  }, [portraitSnapshot]);
   return (
     <button className="moon-portrait-trigger" type="button" aria-label={openLabel} onClick={onOpen}>
       <canvas
