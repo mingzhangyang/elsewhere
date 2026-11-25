@@ -97,11 +97,20 @@ export async function drawMoonCard({
   // and fit the complete measured panel into the remaining space.
   const moonHeight = Math.max(Math.round(size * 0.58), size - Math.ceil(panelHeight * scale));
   const panelScale = Math.min(scale, (size - moonHeight) / panelHeight);
-  const portrait = await drawMoonPortrait(snapshot, size, settings, signal, moonHeight);
+  // Keep the Moon centered with breathing room above and below, without changing
+  // the SDK's bare portrait or resampling the lunar texture.
+  const inset = Math.round(moonHeight * 0.06);
+  const portraitSize = moonHeight - 2 * inset;
+  const portrait = await drawMoonPortrait(snapshot, portraitSize, settings, signal);
   try {
     if (signal?.aborted) throw new Error('Moon card cancelled.');
     canvas.width = canvas.height = size;
-    ctx.drawImage(portrait, 0, 0);
+    if (settings.background !== 'transparent') {
+      // The SDK's corner is the selected solid background; extend it over the
+      // entire lunar panel so the inset never introduces transparent seams.
+      ctx.drawImage(portrait, 0, 0, 1, 1, 0, 0, size, moonHeight);
+    }
+    ctx.drawImage(portrait, Math.round((size - portraitSize) / 2), inset);
   } finally {
     // Release the temporary high-resolution lunar raster before PNG encoding.
     portrait.width = portrait.height = 1;

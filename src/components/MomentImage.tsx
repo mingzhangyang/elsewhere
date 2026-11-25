@@ -390,7 +390,7 @@ export default function MomentImage({
   return (
     <section className="moment-image" aria-labelledby="moment-title" style={{ fontFamily: FONT }}>
       {controlsTarget ? createPortal(controls, controlsTarget) : controls}
-      <div className="moment-preview-slot" aria-busy={status === 'drawing'}>
+      <div className="moment-preview-slot" data-style={style} aria-busy={status === 'drawing'}>
         {image && (
           <img
             className="moment-preview"

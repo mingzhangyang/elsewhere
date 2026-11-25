@@ -148,6 +148,9 @@
   border-radius: 10px;
   background: radial-gradient(ellipse at 45% 35%, #314b6b, transparent 64%), #091322;
 }
+.moment-preview-slot[data-style='moon'] {
+  aspect-ratio: 1 / 1;
+}
 .moment-preview-slot::before {
   content: '';
   position: absolute;

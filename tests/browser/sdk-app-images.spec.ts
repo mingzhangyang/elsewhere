@@ -21,7 +21,25 @@ async function decoded(image: Locator) {
     for (let i = 205 * 256 * 4; i < pixels.length; i += 4) {
       if (pixels[i + 3] === 255 && pixels[i] < 150 && pixels[i + 1] < 150 && pixels[i + 2] < 150) footerInk++;
     }
+    const background = Array.from(pixels.slice(0, 4));
+    // The left edge of the lunar panel is all background. Its first colour
+    // change marks the paper boundary, even if downsampling blends one row.
+    const pixelAt = (x: number, y: number) =>
+      Array.from(pixels.slice((y * 256 + x) * 4, (y * 256 + x + 1) * 4));
+    let footerStart = 0;
+    while (footerStart < 256 && pixelAt(2, footerStart).every((value, i) => value === background[i])) {
+      footerStart++;
+    }
+    let moonTop = 0;
+    while (moonTop < footerStart && pixels[(moonTop * 256 + 128) * 4 + 3] === 0) moonTop++;
+    let moonBottom = footerStart - 1;
+    while (moonBottom >= 0 && pixels[(moonBottom * 256 + 128) * 4 + 3] === 0) moonBottom--;
     return {
+      moonTopGap: moonTop,
+      moonBottomGap: footerStart - 1 - moonBottom,
+      moonSpan: moonBottom - moonTop + 1,
+      background,
+      skyBottom: pixelAt(128, Math.max(0, footerStart - 2)),
       width: element.naturalWidth,
       height: element.naturalHeight,
       alpha: pixels[3],
@@ -30,6 +48,25 @@ async function decoded(image: Locator) {
       footerInk,
     };
   });
+}
+
+function expectMoonMargins(card: Awaited<ReturnType<typeof decoded>>) {
+  // At 256px, the old 92%-diameter portrait had only about 6–7px of
+  // vertical clearance. Require a meaningful, balanced gap on both sides.
+  expect(card.moonTopGap).toBeGreaterThanOrEqual(12);
+  expect(card.moonBottomGap).toBeGreaterThanOrEqual(12);
+  expect(Math.abs(card.moonTopGap - card.moonBottomGap)).toBeLessThanOrEqual(2);
+  expect(card.moonSpan).toBeGreaterThan(100);
+}
+
+async function expectSquarePreview(image: Locator) {
+  const slot = image.locator('..');
+  await expect
+    .poll(async () => {
+      const box = await slot.boundingBox();
+      return box ? Math.abs(box.width - box.height) : Infinity;
+    })
+    .toBeLessThan(2);
 }
 
 test('Moon inspector opens a real portrait and exports all three PNG sizes', async ({ page }, info) => {
@@ -54,6 +91,8 @@ test('Moon inspector opens a real portrait and exports all three PNG sizes', asy
   expect(preview).toMatchObject({ width: 512, height: 512, alpha: 0, footerPaper: [246, 241, 231, 255] });
   expect(preview.lunarTones).toBeGreaterThan(8);
   expect(preview.footerInk).toBeGreaterThan(30);
+  expectMoonMargins(preview);
+  await expectSquarePreview(image);
   const initial = await image.getAttribute('src');
   const orientation = dialog.getByLabel('Moon orientation');
   await orientation.focus();
@@ -67,6 +106,14 @@ test('Moon inspector opens a real portrait and exports all three PNG sizes', asy
   const light = await decoded(image);
   expect(light.alpha).toBe(255);
   expect(light.lunarTones).toBeGreaterThan(8);
+  expect(light.background).toEqual([245, 244, 240, 255]);
+  expect(light.skyBottom).toEqual(light.background);
+  const lightSrc = await image.getAttribute('src');
+  await dialog.getByLabel('Moon background').selectOption('dark');
+  await expect(image).not.toHaveAttribute('src', lightSrc!);
+  const dark = await decoded(image);
+  expect(dark.background).toEqual([12, 15, 22, 255]);
+  expect(dark.skyBottom).toEqual(dark.background);
   await dialog.getByLabel('Moon background').selectOption('transparent');
   for (const size of [1024, 2048, 4096]) {
     await dialog.getByLabel('PNG resolution').selectOption(String(size));
@@ -79,6 +126,8 @@ test('Moon inspector opens a real portrait and exports all three PNG sizes', asy
     expect(card).toMatchObject({ width: size, height: size, alpha: 0, footerPaper: [246, 241, 231, 255] });
     expect(card.lunarTones).toBeGreaterThan(8);
     expect(card.footerInk).toBeGreaterThan(30);
+    expectMoonMargins(card);
+    await expectSquarePreview(image);
   }
   await info.attach('moon-portrait.png', { body: await image.screenshot(), contentType: 'image/png' });
   await page.keyboard.press('Escape');
@@ -122,6 +171,7 @@ for (const { locale, shareName, styleName, styles, moonAlt, closeName } of [
         tops.push(box!.y);
       }
       expect(Math.max(...tops) - Math.min(...tops)).toBeLessThan(1);
+      await expect(dialog.locator('.moment-preview-slot')).toHaveCSS('aspect-ratio', '4 / 5');
       await choices.last().click();
       const image = dialog.getByRole('img', { name: moonAlt });
       await expect(image).toBeVisible({ timeout: 30000 });
@@ -129,10 +179,14 @@ for (const { locale, shareName, styleName, styles, moonAlt, closeName } of [
       expect(card.footerPaper).toEqual([246, 241, 231, 255]);
       expect(card.lunarTones).toBeGreaterThan(8);
       expect(card.footerInk).toBeGreaterThan(30);
+      expectMoonMargins(card);
+      await expectSquarePreview(image);
       await info.attach('moon-card-' + locale + '.png', {
         body: await image.screenshot(),
         contentType: 'image/png',
       });
+      await choices.first().click();
+      await expect(dialog.locator('.moment-preview-slot')).toHaveCSS('aspect-ratio', '4 / 5');
       await dialog.getByRole('button', { name: closeName }).click();
       await expect(dialog).toBeHidden();
 

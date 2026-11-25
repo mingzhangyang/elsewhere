@@ -11,10 +11,10 @@ import { objectName } from '../i18n/names';
 // Load the image drawing code when the share dialog opens, not on the main exploration screen.
 // An interrupted chunk download still leaves the dialog usable.
 const MomentImage = lazy(() => import('./MomentImage').catch(() => ({ default: MomentUnavailable })));
-export function MomentUnavailable() {
+export function MomentUnavailable({ initialStyle }: { initialStyle?: 'moon' }) {
   const { m } = useI18n();
   return (
-    <div className="moment-preview-slot" aria-busy="false">
+    <div className="moment-preview-slot" data-style={initialStyle} aria-busy="false">
       <div className="moment-preview-transition" role="status">
         {m.moment.failed}
       </div>
@@ -157,7 +157,7 @@ const ShareDialog = forwardRef<ShareDialogHandle, Props>(function ShareDialog(
           {request && (
             <Suspense
               fallback={
-                <div className="moment-preview-slot" aria-busy="true">
+                <div className="moment-preview-slot" data-style={request.initialStyle} aria-busy="true">
                   <div className="moment-preview-transition" role="status">
                     <span className="moment-preview-orbit" aria-hidden="true" />
                     {m.moment.drawing}
