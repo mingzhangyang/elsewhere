@@ -1,3 +1,4 @@
+import type { MoonClockMode } from '../src/components/MoonPhase';
 import * as THREE from 'three';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
@@ -267,7 +268,12 @@ describe('the Objects panel', () => {
 
   it('samples fast playback on the real clock and refreshes immediately after a manual jump', async () => {
     const portrait = await import('../src/moment/moonPortrait');
-    const draw = vi.spyOn(portrait, 'drawMoonPortrait').mockRejectedValue(new Error('no canvas'));
+    const image = document.createElement('canvas');
+    const draw = vi.spyOn(portrait, 'drawMoonPortrait').mockResolvedValue(image);
+    const context = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+      clearRect: vi.fn(),
+      drawImage: vi.fn(),
+    } as unknown as CanvasRenderingContext2D);
     const panel = props('moon');
     const snapshot: MomentSnapshot = {
       sky: panel.sky,
@@ -280,19 +286,19 @@ describe('the Objects panel', () => {
       provenance: { kind: 'none' },
       aspect: 1,
     };
-    const show = (elapsed: number, clockRunning: boolean) => (
+    const show = (elapsed: number, clockMode: MoonClockMode) => (
       <ObjectPanel
         {...panel}
-        clockRunning={clockRunning}
+        clockMode={clockMode}
         onOpenMoon={() => {}}
         moonSnapshot={{ ...snapshot, instant: new Date(EVENING_VENUS.getTime() + elapsed) }}
       />
     );
     vi.useFakeTimers();
     try {
-      const view = render(show(0, true));
+      const view = render(show(0, 'playback'));
       await act(async () => {});
-      view.rerender(show(600 * 29_000, true));
+      view.rerender(show(600 * 29_000, 'playback'));
       await act(async () => {
         await vi.advanceTimersByTimeAsync(29_999);
       });
@@ -302,11 +308,32 @@ describe('the Objects panel', () => {
       });
       expect(draw).toHaveBeenCalledTimes(2);
       expect(draw.mock.calls[1][0].instant.getTime()).toBe(EVENING_VENUS.getTime() + 600 * 29_000);
-      view.rerender(show(1000, false));
+      const jump = 180 * 86_400_000;
+      view.rerender(show(jump, 'live'));
       await act(async () => {});
-      expect(draw).toHaveBeenCalledTimes(3);
+      expect(draw.mock.calls[2][0].instant.getTime()).toBe(EVENING_VENUS.getTime() + jump);
+      const canvas = view.container.querySelector('canvas')!;
+      expect(canvas.hidden).toBe(false);
+      let rejectDraw!: (error: Error) => void;
+      draw.mockImplementationOnce(
+        () =>
+          new Promise((_, reject) => {
+            rejectDraw = reject;
+          }),
+      );
+      view.rerender(show(1000, 'paused'));
+      await act(async () => {});
+      expect(canvas.hidden).toBe(false);
+      await act(async () => {
+        rejectDraw(new Error('draw failed'));
+      });
+      expect(canvas.hidden).toBe(true);
+      expect(view.container.querySelector('.moon-portrait-trigger svg')).toBeInTheDocument();
+      await act(async () => {});
+      expect(draw).toHaveBeenCalledTimes(4);
     } finally {
       vi.useRealTimers();
+      context.mockRestore();
       draw.mockRestore();
     }
   });

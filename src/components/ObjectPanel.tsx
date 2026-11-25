@@ -13,7 +13,7 @@ import {
 import { useI18n, type I18n } from '../i18n';
 import type { PlanetShape } from '../i18n/en';
 import { objectName, objectNameLang, searchNames } from '../i18n/names';
-import MoonPhase, { MoonPortraitThumbnail } from './MoonPhase';
+import MoonPhase, { MoonPortraitThumbnail, type MoonClockMode } from './MoonPhase';
 import type { MomentSnapshot } from '../lib/moment';
 import { sdkImageCopy } from '../moment/imageCopy';
 
@@ -33,7 +33,7 @@ export default function ObjectPanel({
   onRise,
   onClearSky,
   onRetryStars,
-  clockRunning = false,
+  clockMode = 'paused',
   moonSnapshot,
   onOpenMoon,
 }: {
@@ -50,7 +50,7 @@ export default function ObjectPanel({
   onRise: (id: BodyId) => void;
   onClearSky: () => void;
   onRetryStars?: () => void;
-  clockRunning?: boolean;
+  clockMode?: MoonClockMode;
   moonSnapshot?: MomentSnapshot;
   onOpenMoon?: () => void;
 }) {
@@ -102,7 +102,7 @@ export default function ObjectPanel({
           {isMoon ? (
             moonSnapshot && onOpenMoon ? (
               <MoonPortraitThumbnail
-                clockRunning={clockRunning}
+                clockMode={clockMode}
                 snapshot={moonSnapshot}
                 label={moonPhase}
                 openLabel={sdkImageCopy[i18n.locale].moonOpen}

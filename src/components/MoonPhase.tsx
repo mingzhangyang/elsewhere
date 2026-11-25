@@ -24,16 +24,18 @@ export default function MoonPhase({
   );
 }
 
+export type MoonClockMode = 'live' | 'playback' | 'paused';
+
 /** Small live portrait with a synchronous, accessible SVG fallback. */
 export function MoonPortraitThumbnail({
   snapshot,
-  clockRunning,
+  clockMode,
   label,
   openLabel,
   onOpen,
 }: {
   snapshot: MomentSnapshot;
-  clockRunning: boolean;
+  clockMode: MoonClockMode;
   label: string;
   openLabel: string;
   onOpen: () => void;
@@ -45,7 +47,7 @@ export function MoonPortraitThumbnail({
     latestSnapshot.current = snapshot;
   }, [snapshot]);
   const [portraitSnapshot, setPortraitSnapshot] = useState(snapshot);
-  const pausedInstant = clockRunning ? null : snapshot.instant.getTime();
+  const pausedInstant = clockMode === 'paused' ? snapshot.instant.getTime() : null;
   const { latitude, longitude, elevation } = snapshot.location;
   useEffect(() => {
     const sample = () => setPortraitSnapshot(latestSnapshot.current);
@@ -53,7 +55,7 @@ export function MoonPortraitThumbnail({
     if (pausedInstant !== null) return;
     const timer = window.setInterval(sample, 30_000);
     return () => window.clearInterval(timer);
-  }, [pausedInstant, latitude, longitude, elevation]);
+  }, [clockMode, pausedInstant, latitude, longitude, elevation]);
   useEffect(() => {
     const controller = new AbortController();
     void import('../moment/moonPortrait')
@@ -61,13 +63,16 @@ export function MoonPortraitThumbnail({
       .then((image) => {
         if (controller.signal.aborted || !canvas.current) return;
         const ctx = canvas.current.getContext('2d');
-        if (!ctx) return;
+        if (!ctx) {
+          setReady(false);
+          return;
+        }
         ctx.clearRect(0, 0, 128, 128);
         ctx.drawImage(image, 0, 0);
         setReady(true);
       })
       .catch(() => {
-        // Keep the previous portrait, or the SVG if the first render failed.
+        if (!controller.signal.aborted) setReady(false);
       });
     return () => controller.abort();
   }, [portraitSnapshot]);
