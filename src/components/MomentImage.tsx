@@ -95,9 +95,16 @@ export default function MomentImage({
         : null;
     const draw = async (): Promise<Blob | null> => {
       if (style === 'moon') {
-        const { drawMoonPortrait } = await import('../moment/moonPortrait');
+        const { drawMoonCard } = await import('../moment/moonCard');
         if (controller.signal.aborted) return null;
-        const canvas = await drawMoonPortrait(snapshot, renderSize, moonSettings, controller.signal);
+        const canvas = await drawMoonCard({
+          snapshot,
+          size: renderSize,
+          settings: moonSettings,
+          i18n,
+          site: window.location.host,
+          signal: controller.signal,
+        });
         return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
       }
       const [, landscapeArt] = await Promise.all([
@@ -234,7 +241,7 @@ export default function MomentImage({
                 setStyle(value);
               }}
             >
-              {value === 'realistic' || value === 'illustrated' ? m.moment.styles[value] : sdkCopy[value]}
+              {value === 'moon' ? sdkCopy.moonStyle : m.moment.styles[value]}
             </button>
           ))}
         </div>

@@ -40,6 +40,7 @@ export async function drawMoonPortrait(
   size: number,
   settings: MoonPortraitSettings = DEFAULT_MOON_SETTINGS,
   signal?: AbortSignal,
+  height = size,
 ): Promise<HTMLCanvasElement> {
   await prepareTexture();
   // Large images are an explicit export action. Let the busy UI paint before the CPU work.
@@ -47,7 +48,7 @@ export async function drawMoonPortrait(
   if (signal?.aborted) throw new Error('Moon portrait cancelled.');
   const canvas = document.createElement('canvas');
   canvas.width = size;
-  canvas.height = size;
+  canvas.height = height;
   await renderMoonPhase(canvas, snapshot, { style: 'realistic', ...settings, signal });
   return canvas;
 }
