@@ -430,3 +430,19 @@
     padding: 0 max(18px, env(safe-area-inset-right)) 20px max(18px, env(safe-area-inset-left));
   }
 }
+
+.moon-portrait-trigger {
+  display: grid;
+  place-items: center;
+  flex: 0 0 52px;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+.moon-portrait-trigger canvas[hidden] {
+  display: none;
+}
