@@ -57,33 +57,48 @@ test('Moon inspector opens a real portrait and exports all three PNG sizes', asy
     expect(await decoded(image)).toMatchObject({ width: size, height: size, alpha: 0 });
   }
   await info.attach('moon-portrait.png', { body: await image.screenshot(), contentType: 'image/png' });
-  for (const name of ['All-sky chart', 'Minimal sky map']) {
-    await dialog.getByRole('button', { name, exact: true }).click();
-    const chart = dialog.getByRole('img', { name: new RegExp('^' + name) });
-    await expect(chart).toBeVisible();
-    expect((await decoded(chart)).colors).toBeGreaterThan(5);
-    await info.attach(name + '.png', { body: await chart.screenshot(), contentType: 'image/png' });
-  }
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
   await expect(shortcut).toBeFocused();
 });
 
-test('an early share can retry both diagrams with the catalog restored', async ({ page }) => {
-  let restored = false;
-  await page.route(/\/stars(-[\w-]+)?\.json$/, (route) => (restored ? route.continue() : route.abort()));
-  await page.goto('/?scenario=moon');
-  await page.getByRole('button', { name: 'Share this sky', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'Share this sky' });
-  await dialog.getByRole('button', { name: 'All-sky chart', exact: true }).click();
-  const retry = dialog.getByRole('button', { name: 'Retry image' });
-  await expect(retry).toBeVisible();
-  restored = true;
-  await retry.click();
-  await expect(dialog.getByRole('img', { name: /^All-sky chart/ })).toBeVisible();
-  await dialog.getByRole('button', { name: 'Minimal sky map', exact: true }).click();
-  await expect(dialog.getByRole('img', { name: /^Minimal sky map/ })).toBeVisible();
-});
+for (const { locale, shareName, styleName, styles, closeName } of [
+  {
+    locale: 'en-US',
+    shareName: 'Share this sky',
+    styleName: 'Style',
+    styles: ['Realistic', 'Illustrated', 'Realistic Moon'],
+    closeName: 'Close sharing',
+  },
+  {
+    locale: 'zh-CN',
+    shareName: '分享这片天空',
+    styleName: '风格',
+    styles: ['写实', '插画', '高清真实月相'],
+    closeName: '关闭分享',
+  },
+]) {
+  test.describe(`share image styles in ${locale}`, () => {
+    test.use({ locale });
+
+    test('offers only the three keepsake styles', async ({ page }) => {
+      await page.goto('/?scenario=moon');
+      await page.getByRole('button', { name: shareName, exact: true }).click();
+      const dialog = page.getByRole('dialog', { name: shareName });
+      const choices = dialog.getByRole('group', { name: styleName, exact: true }).getByRole('button');
+      await expect(choices).toHaveText(styles);
+      await expect(choices.first()).toHaveAttribute('aria-pressed', 'true');
+      await dialog.getByRole('button', { name: closeName }).click();
+      await expect(dialog).toBeHidden();
+
+      if (locale === 'en-US') {
+        await page.getByRole('link', { name: 'Make my sky' }).click();
+        await expect(page).toHaveURL(/#create$/);
+        await expect(page.getByRole('heading', { name: 'The sky remembers' })).toBeVisible();
+      }
+    });
+  });
+}
 
 test('a failed Moon texture keeps the SVG inspector fallback', async ({ page }, info) => {
   test.skip(info.project.name !== 'chromium', 'Texture failure evidence');
