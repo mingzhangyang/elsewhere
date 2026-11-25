@@ -312,7 +312,10 @@
   grid-column: 1 / -1;
 }
 .moment-options .segmented.moment-types {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.moment-options .segmented.moment-types button {
+  white-space: nowrap;
 }
 .moment-field {
   display: flex;

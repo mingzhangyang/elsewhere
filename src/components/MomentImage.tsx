@@ -1,5 +1,3 @@
-import { calculateSky } from '../domain/astronomy';
-import { loadStars } from '../services/starCatalog';
 import { landscapeSeason } from '../moment/seasons';
 import { loadLandscapeArt } from '../moment/landscapeArt';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -20,13 +18,13 @@ import { HORIZON_VARIANTS, type HorizonVariant } from '../moment/scenery';
 import { getZonedParts } from '../domain/time';
 
 type PreviewImage = { url: string; blob: Blob };
-type ImageStyle = MomentStyle | 'chart' | 'minimal' | 'moon';
-const IMAGE_STYLES: ImageStyle[] = [...MOMENT_STYLES, 'chart', 'minimal', 'moon'];
+type ImageStyle = MomentStyle | 'moon';
+const IMAGE_STYLES: ImageStyle[] = [...MOMENT_STYLES, 'moon'];
 
 /**
  * The keepsake image in the share dialog (ROADMAP phase 3 prototype), loaded only when asked for.
- * Two variant pairs for the test sessions: realistic or illustrated, and the ridge or a scenery
- * silhouette. The image is worded in the language shown, the sender's, and redrawn if it changes.
+ * Realistic and illustrated postcards offer horizon variants; the Moon has its own portrait settings.
+ * The image is worded in the sender's language and redrawn if it changes.
  */
 export default function MomentImage({
   snapshot,
@@ -56,8 +54,6 @@ export default function MomentImage({
   });
   const [resolution, setResolution] = useState(1024);
   const [renderSize, setRenderSize] = useState(512);
-  const [theme, setTheme] = useState<'midnight' | 'paper'>('midnight');
-  const [lines, setLines] = useState(snapshot.layers.lines);
   const [illustrationLabels, setIllustrationLabels] = useState(false);
   const [retry, setRetry] = useState(0);
   const postcard = style === 'realistic' || style === 'illustrated';
@@ -99,36 +95,16 @@ export default function MomentImage({
         : null;
     const draw = async (): Promise<Blob | null> => {
       if (style === 'moon') {
-        const { drawMoonPortrait } = await import('../moment/moonPortrait');
+        const { drawMoonCard } = await import('../moment/moonCard');
         if (controller.signal.aborted) return null;
-        const canvas = await drawMoonPortrait(snapshot, renderSize, moonSettings, controller.signal);
-        return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
-      }
-      if (style === 'chart' || style === 'minimal') {
-        const { renderSkyChart, renderMinimalSkyMap } = await import(
-          '../../packages/sky-engine/src/moment/diagram'
-        );
-        if (controller.signal.aborted) return null;
-        let diagramSnapshot = snapshot;
-        if (!snapshot.sky.stars.length) {
-          await loadStars();
-          if (controller.signal.aborted) return null;
-          diagramSnapshot = {
-            ...snapshot,
-            sky: calculateSky(snapshot.location, snapshot.instant, snapshot.sky.events),
-          };
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = 1200;
-        canvas.height = 1200;
-        const options = { theme, locale: i18n.locale };
-        if (style === 'chart') renderSkyChart(canvas, diagramSnapshot, options);
-        else
-          renderMinimalSkyMap(canvas, diagramSnapshot, {
-            ...options,
-            composition: framing,
-            layers: { lines },
-          });
+        const canvas = await drawMoonCard({
+          snapshot,
+          size: renderSize,
+          settings: moonSettings,
+          i18n,
+          site: window.location.host,
+          signal: controller.signal,
+        });
         return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
       }
       const [, landscapeArt] = await Promise.all([
@@ -186,8 +162,6 @@ export default function MomentImage({
     place,
     moonSettings,
     renderSize,
-    theme,
-    lines,
     retry,
   ]);
   useEffect(
@@ -225,9 +199,7 @@ export default function MomentImage({
   // The moment's own civil date, as printed on the image, not the UTC one.
   const date = getZonedParts(snapshot.instant, snapshot.location.timezone).date;
   const filename =
-    style === 'moon'
-      ? `elsewhere-moon-${date}-${renderSize}.png`
-      : `elsewhere-${style === 'chart' || style === 'minimal' ? style : 'sky'}-${date}.png`;
+    style === 'moon' ? `elsewhere-moon-${date}-${renderSize}.png` : `elsewhere-sky-${date}.png`;
   const file =
     ready && image && (style !== 'moon' || renderSize === resolution)
       ? new File([image.blob], filename, { type: 'image/png' })
@@ -269,11 +241,11 @@ export default function MomentImage({
                 setStyle(value);
               }}
             >
-              {value === 'realistic' || value === 'illustrated' ? m.moment.styles[value] : sdkCopy[value]}
+              {value === 'moon' ? sdkCopy.moonStyle : m.moment.styles[value]}
             </button>
           ))}
         </div>
-        {(postcard || style === 'minimal') && (
+        {postcard && (
           <div role="group" aria-label={copy.framing} className="segmented">
             {(['auto', 'current'] as const).map((value) => (
               <button
@@ -305,22 +277,6 @@ export default function MomentImage({
             ))}
           </div>
         )}
-        {(style === 'chart' || style === 'minimal') && (
-          <label className="moment-field">
-            {sdkCopy.theme}
-            <select
-              value={theme}
-              onChange={(event) => {
-                request.current++;
-                setStatus('drawing');
-                setTheme(event.target.value as typeof theme);
-              }}
-            >
-              <option value="midnight">{sdkCopy.midnight}</option>
-              <option value="paper">{sdkCopy.paper}</option>
-            </select>
-          </label>
-        )}
         {style === 'illustrated' && (
           <label className="moment-field">
             <input
@@ -333,20 +289,6 @@ export default function MomentImage({
               }}
             />
             {m.settings.layerNames.labels}
-          </label>
-        )}
-        {style === 'minimal' && (
-          <label className="moment-field">
-            <input
-              type="checkbox"
-              checked={lines}
-              onChange={(event) => {
-                request.current++;
-                setStatus('drawing');
-                setLines(event.target.checked);
-              }}
-            />
-            {sdkCopy.lines}
           </label>
         )}
         {style === 'moon' && (
@@ -456,9 +398,7 @@ export default function MomentImage({
             alt={
               style === 'moon'
                 ? sdkCopy.moon + ' · ' + m.phases[snapshot.sky.moon.phase] + ' · ' + place
-                : style === 'chart' || style === 'minimal'
-                  ? sdkCopy[style] + ' · ' + place
-                  : m.moment.alt({ place })
+                : m.moment.alt({ place })
             }
             aria-hidden={!ready}
           />
