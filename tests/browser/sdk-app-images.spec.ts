@@ -115,7 +115,12 @@ for (const { locale, shareName, styleName, styles, moonAlt, closeName } of [
       const choices = dialog.getByRole('group', { name: styleName, exact: true }).getByRole('button');
       await expect(choices).toHaveText(styles);
       await expect(choices.first()).toHaveAttribute('aria-pressed', 'true');
-      const tops = await choices.evaluateAll((buttons) => buttons.map((b) => b.getBoundingClientRect().top));
+      const tops = [];
+      for (const button of await choices.all()) {
+        const box = await button.boundingBox();
+        expect(box).not.toBeNull();
+        tops.push(box!.y);
+      }
       expect(Math.max(...tops) - Math.min(...tops)).toBeLessThan(1);
       await choices.last().click();
       const image = dialog.getByRole('img', { name: moonAlt });
