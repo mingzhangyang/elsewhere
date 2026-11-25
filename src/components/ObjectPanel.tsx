@@ -12,7 +12,9 @@ import {
 import { useI18n, type I18n } from '../i18n';
 import type { PlanetShape } from '../i18n/en';
 import { objectName, objectNameLang, searchNames } from '../i18n/names';
-import MoonPhase from './MoonPhase';
+import MoonPhase, { MoonPortraitThumbnail } from './MoonPhase';
+import type { MomentSnapshot } from '../lib/moment';
+import { sdkImageCopy } from '../moment/imageCopy';
 
 /** At most this many objects are listed; search finds the rest. */
 const LIST_LIMIT = 40;
@@ -30,6 +32,8 @@ export default function ObjectPanel({
   onRise,
   onClearSky,
   onRetryStars,
+  moonSnapshot,
+  onOpenMoon,
 }: {
   sky: SkyState;
   timeZone: string;
@@ -44,6 +48,8 @@ export default function ObjectPanel({
   onRise: (id: BodyId) => void;
   onClearSky: () => void;
   onRetryStars?: () => void;
+  moonSnapshot?: MomentSnapshot;
+  onOpenMoon?: () => void;
 }) {
   const i18n = useI18n();
   const { m } = i18n;
@@ -90,11 +96,20 @@ export default function ObjectPanel({
         </button>
         <div className="object-detail-heading">
           {isMoon ? (
-            <MoonPhase
-              illumination={sky.moon.illumination}
-              angle={sky.moon.brightLimbAngle}
-              label={moonPhase}
-            />
+            moonSnapshot && onOpenMoon ? (
+              <MoonPortraitThumbnail
+                snapshot={moonSnapshot}
+                label={moonPhase}
+                openLabel={sdkImageCopy[i18n.locale].moonOpen}
+                onOpen={onOpenMoon}
+              />
+            ) : (
+              <MoonPhase
+                illumination={sky.moon.illumination}
+                angle={sky.moon.brightLimbAngle}
+                label={moonPhase}
+              />
+            )
           ) : isSun ? (
             <Sun size={32} className="gold" />
           ) : planet && phase ? (

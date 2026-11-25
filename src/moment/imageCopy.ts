@@ -32,3 +32,51 @@ export const momentImageCopy = {
     clearSkyBadge: string;
   }
 >;
+
+/** Shared labels for the inspector shortcut and the keepsake image controls. */
+export const sdkImageCopy = {
+  en: {
+    chart: 'All-sky chart',
+    minimal: 'Minimal sky map',
+    moon: 'Realistic Moon',
+    moonOpen: 'Open high-resolution Moon image',
+    orientation: 'Moon orientation',
+    observer: 'Observer view',
+    northUp: 'Lunar north up',
+    earthshine: 'Earthshine',
+    background: 'Background',
+    transparent: 'Transparent',
+    dark: 'Dark',
+    light: 'Light',
+    theme: 'Chart theme',
+    midnight: 'Midnight',
+    paper: 'Paper',
+    lines: 'Constellation lines',
+    resolution: 'PNG resolution',
+    prepare: 'Prepare PNG',
+    retry: 'Retry image',
+    credit: 'NASA LROC lunar map · rendered for this sky moment',
+  },
+  'zh-Hans': {
+    chart: '圆形全天星图',
+    minimal: '极简星图',
+    moon: '高清真实月相',
+    moonOpen: '查看高清真实月相图',
+    orientation: '月相方向',
+    observer: '观察者视角',
+    northUp: '月球北极朝上',
+    earthshine: '地球照',
+    background: '背景',
+    transparent: '透明',
+    dark: '深色',
+    light: '浅色',
+    theme: '星图主题',
+    midnight: '深色',
+    paper: '纸色',
+    lines: '星座连线',
+    resolution: 'PNG 分辨率',
+    prepare: '生成 PNG',
+    retry: '重试图片',
+    credit: 'NASA LROC 月面地图 · 根据此刻的天空绘制',
+  },
+} satisfies Record<Locale, Record<string, string>>;

@@ -1,3 +1,6 @@
+import { useEffect, useRef, useState } from 'react';
+import type { MomentSnapshot } from '../lib/moment';
+
 /** Orthographic projection of a sphere's terminator; illumination is its lit area fraction. */
 export default function MoonPhase({
   illumination,
@@ -18,5 +21,59 @@ export default function MoonPhase({
       <path d={path} fill="#dce0db" transform={`rotate(${angle - 90})`} />
       <circle r="1" fill="none" stroke="#91a0b2" strokeWidth="0.02" />
     </svg>
+  );
+}
+
+/** Small live portrait with a synchronous, accessible SVG fallback. */
+export function MoonPortraitThumbnail({
+  snapshot,
+  label,
+  openLabel,
+  onOpen,
+}: {
+  snapshot: MomentSnapshot;
+  label: string;
+  openLabel: string;
+  onOpen: () => void;
+}) {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const [rendered, setRendered] = useState<MomentSnapshot | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    void import('../moment/moonPortrait')
+      .then(({ drawMoonPortrait }) => drawMoonPortrait(snapshot, 128, undefined, controller.signal))
+      .then((image) => {
+        if (controller.signal.aborted || !canvas.current) return;
+        const ctx = canvas.current.getContext('2d');
+        if (!ctx) return;
+        ctx.clearRect(0, 0, 128, 128);
+        ctx.drawImage(image, 0, 0);
+        setRendered(snapshot);
+      })
+      .catch(() => {
+        // The original SVG remains visible when the texture, renderer or canvas is unavailable.
+      });
+    return () => controller.abort();
+  }, [snapshot]);
+  const ready = rendered === snapshot;
+  return (
+    <button className="moon-portrait-trigger" type="button" aria-label={openLabel} onClick={onOpen}>
+      <canvas
+        ref={canvas}
+        className="moon-phase"
+        width={128}
+        height={128}
+        hidden={!ready}
+        role="img"
+        aria-label={label}
+      />
+      {!ready && (
+        <MoonPhase
+          illumination={snapshot.sky.moon.illumination}
+          angle={snapshot.sky.moon.brightLimbAngle}
+          label={label}
+        />
+      )}
+    </button>
   );
 }

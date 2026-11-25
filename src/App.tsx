@@ -49,6 +49,7 @@ import {
   momentProvenance,
   subjectField,
   type MomentSubject,
+  type MomentSnapshot,
 } from './lib/moment';
 import {
   DEFAULT_FOV,
@@ -146,6 +147,36 @@ export default function App({
   const panelTrigger = useRef<HTMLElement | null>(null);
   const objectsTrigger = useRef<HTMLButtonElement>(null);
   const layers = state.sharedLayers ?? preferences.layers;
+  // Lunar portraits are independent of the camera and horizon; reuse the simulation's ephemeris.
+  const moonSnapshot = useMemo<MomentSnapshot | undefined>(
+    () =>
+      panel === 'objects' && selectedId === 'moon'
+        ? {
+            sky,
+            weather,
+            view: { heading: 0, altitude: 20, fov: 66 },
+            aspect: 1,
+            layers,
+            location,
+            instant: simTime,
+            skyBrightness: preferences.skyBrightness,
+            provenance: momentProvenance(selection, custom, clearSky),
+          }
+        : undefined,
+    [
+      panel,
+      selectedId,
+      sky,
+      weather,
+      layers,
+      location,
+      simTime,
+      preferences.skyBrightness,
+      selection,
+      custom,
+      clearSky,
+    ],
+  );
   const setNotice = (notice: AppNotice) => dispatch({ type: 'notice', notice });
   const setClearSky = (value: boolean) => dispatch({ type: 'clear-sky', value });
   const sourceText = clearSky
@@ -294,7 +325,7 @@ export default function App({
       setNotice({ code: 'rise-failed' });
     }
   };
-  const share = () => {
+  const share = (initialStyle?: 'moon') => {
     setPlaying(false);
     const camera = view.get();
     // The link opens centered on the selected object only if the view still is; otherwise its
@@ -309,6 +340,7 @@ export default function App({
     const subjectId = subjectField(subject);
     const host = skyRef.current?.size();
     shareDialog.current?.open({
+      initialStyle,
       exploration: {
         version: 1,
         location,
@@ -363,7 +395,7 @@ export default function App({
           onSave={saveLocation}
         />
         <div className="header-actions">
-          <button className="icon-button" aria-label={m.controls.share} onClick={share}>
+          <button className="icon-button" aria-label={m.controls.share} onClick={() => share()}>
             <Share2 size={19} />
           </button>
         </div>
@@ -628,6 +660,8 @@ export default function App({
                   onClearSky={() => setClearSky(!clearSky)}
                   stars={stars}
                   onRetryStars={retryStars}
+                  moonSnapshot={moonSnapshot}
+                  onOpenMoon={() => share('moon')}
                 />
               )}
               {panel === 'weather' && (

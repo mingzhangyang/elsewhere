@@ -20,6 +20,8 @@ export function useDrawerFocus(ref: RefObject<HTMLElement>, open: boolean) {
       let branch: HTMLElement = drawer;
       while (branch.parentElement && branch !== document.body) {
         for (const sibling of branch.parentElement.children) {
+          // Closed dialogs are already unfocusable. Explicit inert would survive showModal().
+          if (sibling.matches('dialog:not([open])')) continue;
           if (sibling !== branch && sibling instanceof HTMLElement) {
             background.set(sibling, sibling.inert);
             sibling.inert = true;

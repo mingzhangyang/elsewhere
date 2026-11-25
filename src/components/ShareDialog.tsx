@@ -27,6 +27,7 @@ export interface ShareRequest {
   exploration: Exploration;
   /** What the keepsake image is drawn from; its subject is the object or pattern the link turns to. */
   snapshot: MomentSnapshot;
+  initialStyle?: 'moon';
 }
 export interface ShareDialogHandle {
   open: (request: ShareRequest) => void;
@@ -166,6 +167,7 @@ const ShareDialog = forwardRef<ShareDialogHandle, Props>(function ShareDialog(
             >
               <MomentImage
                 snapshot={request.snapshot}
+                initialStyle={request.initialStyle}
                 capture={capture}
                 link={link}
                 controlsTarget={controls.current}
