@@ -1,7 +1,7 @@
 {
   "name": "@orangely/sky-engine",
   "version": "0.2.0",
-  "description": "Shared astronomy, sky illustrations and star charts for browser Canvas 2D",
+  "description": "Shared astronomy, sky illustrations, star charts and lunar portraits for Canvas 2D",
   "license": "MIT AND CC-BY-SA-4.0",
   "type": "module",
   "main": "./sky-engine.mjs",
@@ -23,6 +23,7 @@
     "THIRD-PARTY.txt",
     "HYG.txt",
     "CATALOG-ATTRIBUTION.md",
+    "MOON-TEXTURE.md",
     "README.md"
   ],
   "repository": {

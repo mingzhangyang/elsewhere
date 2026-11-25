@@ -1,4 +1,4 @@
-# Sky Engine — browser illustrations and star diagrams (v0.2.0)
+# Sky Engine — browser sky illustrations, star diagrams and lunar portraits (v0.2.0)
 
 This directory is the single source of truth for the shared sky calculations and Canvas 2D illustration
 pipeline. Elsewhere's existing `src/domain`, `src/moment`, `src/lib` and ridge entry points re-export
@@ -93,18 +93,18 @@ const framed = await renderIllustration(canvas, scene, {
 
 ## Image types
 
-The same `MomentSnapshot` can be rendered in three image styles, without recalculating astronomy:
+The same `MomentSnapshot` can be rendered in four image types, without recalculating astronomy:
 
 | Image              | Public API            | Meaning                                                            |
 | ------------------ | --------------------- | ------------------------------------------------------------------ |
 | Watercolor sky     | `renderIllustration`  | Weather and light-dependent perspective scene with landscape       |
 | Circular sky chart | `renderSkyChart`      | Whole above-horizon hemisphere; north up, east left, zenith center |
 | Minimal star map   | `renderMinimalSkyMap` | Perspective position diagram with optional custom star lines       |
+| Realistic Moon     | `renderMoonPhase`     | Textured lunar portrait with observer or lunar-north orientation   |
 
-All three use Canvas 2D, the same catalog and calculated apparent horizon positions. The
+All four use Canvas 2D and the same calculated astronomy. The
 interactive WebGL/Three.js explorer and its realistic screenshot remain **outside the SDK**.
-There are no new dependencies, no external fonts or asset fetches for the diagram types, and no
-new image resource pack.
+The diagram types require no optional assets; the Moon portrait alone uses the optional lunar texture.
 
 ```ts
 import { renderSkyChart, renderMinimalSkyMap } from '@orangely/sky-engine';
@@ -158,19 +158,21 @@ remain separate resources. The app's own lazy Temporal import is unchanged.
 
 Release assets for version **0.2.0**:
 
-| Asset                                      | Purpose                                                        |
-| ------------------------------------------ | -------------------------------------------------------------- |
-| `sky-engine.mjs`                           | Self-contained browser ESM, served with a JavaScript MIME type |
-| `stars.json`                               | Exact HYG v4.1 columnar catalog used by Elsewhere              |
-| `orangely-sky-engine-0.2.0.tgz`            | npm-installable ESM, declarations, catalog and notices         |
-| `orangely-sky-engine-landscapes-0.2.0.tgz` | Optional city/mountain artwork and license                     |
-| `sky-engine-NOTICES.txt`                   | MIT, runtime dependency notices and HYG attribution/license    |
-| `manifest.json` / `SHA256SUMS`             | Version, source commit, file sizes and SHA-256 integrity       |
+| Asset                                        | Purpose                                                        |
+| -------------------------------------------- | -------------------------------------------------------------- |
+| `sky-engine.mjs`                             | Self-contained browser ESM, served with a JavaScript MIME type |
+| `stars.json`                                 | Exact HYG v4.1 columnar catalog used by Elsewhere              |
+| `orangely-sky-engine-0.2.0.tgz`              | npm-installable ESM, declarations, catalog and notices         |
+| `orangely-sky-engine-landscapes-0.2.0.tgz`   | Optional city/mountain artwork and license                     |
+| `orangely-sky-engine-moon-texture-0.2.0.tgz` | Optional NASA lunar texture with provenance and license        |
+| `moon-lroc.jpg`                              | Standalone optional lunar texture for browser hosts            |
+| `sky-engine-NOTICES.txt`                     | MIT, runtime dependency notices and HYG attribution/license    |
+| `manifest.json` / `SHA256SUMS`               | Version, source commit, file sizes and SHA-256 integrity       |
 
 No npm registry publication is required. For npm applications, install the downloaded core tarball
 (`npm install ./orangely-sky-engine-0.2.0.tgz`) and import from `@orangely/sky-engine`. Its package
 export `@orangely/sky-engine/stars.json` is available to copy into the host's static assets.
-Both archives are tested with an isolated offline installation, and the core package with a strict
+All three archives are tested with an isolated offline installation, and the core package with a strict
 NodeNext TypeScript consumer. The package's license expression covers the MIT code and the separately
 CC BY-SA 4.0 catalog; the bundled runtime dependencies retain their own license notices.
 
@@ -184,10 +186,10 @@ season/light request to the appropriate WebP (see `LANDSCAPES.md` in the source)
 
 The core module has initial independent limits of 750,000 raw and 250,000 gzip bytes; catalog
 gzip is capped at 120,000 bytes, the core npm archive at 400,000 bytes, and the optional artwork
-archive at 5 MB. Existing app limits are unchanged. CI checks the SDK on Node 24 on Linux and Windows,
+archive at 5 MB. The separate lunar texture archive is capped at 600,000 bytes. Existing app limits are unchanged. CI checks the SDK on Node 24 on Linux and Windows,
 and the Chromium distribution test serves the actual generated files on an independent host,
-forces the bundled Temporal fallback, renders all three image types, checks diagram positions and
-custom line pixels, then verifies identical offline reloads.
+forces the bundled Temporal fallback, renders all four image types, checks diagram positions, custom line pixels, lunar phase area,
+orientation and texture landmarks, then verifies identical offline reloads.
 
 ### Publishing after merge
 
@@ -218,3 +220,49 @@ tagging. Release assets remain unpublished until this explicit tag step.
 M1 and M2 preserve the current sky science, default rendering, share links and app behavior. The existing
 validation and browser suites remain the release gate. Run `npm run validate`, `npm run format:check`,
 and `npm run test:browser` from the repository root.
+
+## Fourth image type: realistic Moon portrait
+
+The standalone portrait does not render a sky or require WebGL. Install the optional
+`@orangely/sky-engine-moon-texture` archive separately (or use the release's `moon-lroc.jpg`).
+Host the asset at a local URL or precache it using your application's service worker.
+
+```ts
+import { installMoonTexture, loadMoonTexture, renderMoonPhase } from '@orangely/sky-engine';
+
+installMoonTexture(await loadMoonTexture('/assets/moon-lroc.jpg'));
+
+canvas.width = 2048;
+canvas.height = 2048;
+await renderMoonPhase(canvas, scene, {
+  style: 'realistic',
+  orientation: 'observer',
+  background: 'transparent',
+  earthshine: true,
+});
+```
+
+- `scene` is the existing `MomentSnapshot` from `createSkyScene`; its geometric Sun and Moon
+  positions, illuminated fraction and IAU body axes drive the portrait. The apparent bright-limb
+  angle remains for sky icons. The Moon can be rendered even below the horizon.
+- `orientation`: `'observer'` (zenith up) or `'north-up'` (lunar north up, not celestial north).
+- `background`: `'transparent'`, `'dark'` or `'light'`. Only the exterior is transparent;
+  the unilluminated lunar surface is opaque. Earthshine defaults to false.
+- `texture`: decoded `ImageData`, `ImageBitmap` or `HTMLImageElement`, with a 2:1 equirectangular
+  map. Treat injected pixels as immutable. Decoded images are cached by identity. Alternatively,
+  pass a host-owned `loadTexture(signal)` callback, or call `installMoonTexture` once. Per-call
+  resources take precedence; `installMoonTexture(null)` clears the default. No implicit requests.
+- `assetTimeoutMs` and `signal` bound asynchronous resource loading. Pixel rendering itself is
+  synchronous CPU work; the returned promise resolves after writing the caller's canvas.
+- The output is the existing canvas size (1–4096 per dimension, aspect 0.1–10), centered with
+  transparent or solid margins. A 4096px portrait upsamples the supplied 2048×1024 NASA map;
+  it does not create new terrain detail. Use a higher-resolution compatible map if available.
+
+The renderer uses orthographic projection and bilinear sampling, wraps longitude at the seam,
+and rotates the body frame into the local viewing frame to preserve libration. Lighting follows
+the topocentric illuminated fraction and the airless bright-limb direction of the geometric Sun
+and Moon. Surface photometry and earthshine are approximate; topographic shadows, eclipses, atmospheric
+distortion across the disc and watercolor portraits are not modeled.
+
+The optional archive, raw image, and release SHA-256 manifest are produced by
+`npm run sdk:build`. See [Moon texture provenance](MOON-TEXTURE.md) in the source tree.

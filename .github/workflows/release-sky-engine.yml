@@ -39,4 +39,4 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" dist-sdk/release/* --verify-tag --latest=false \
             --title "Sky Engine ${GITHUB_REF_NAME#sky-engine-}" \
-            --notes "Browser ESM, npm archive with declarations and HYG catalog, optional landscape archive, notices, and SHA-256 manifest. See packages/sky-engine/README.md at this tag."
+            --notes "Browser ESM, npm archive with declarations and HYG catalog, optional landscape and NASA Moon texture archives, notices, and SHA-256 manifest. See packages/sky-engine/README.md at this tag."

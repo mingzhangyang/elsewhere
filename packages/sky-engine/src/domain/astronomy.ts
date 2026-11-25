@@ -193,6 +193,7 @@ export function calculateSky(
       phase: getPhase(phaseAngle),
       distanceKm: moonEq.dist * AU_KM,
       waxing: phaseAngle < 180,
+      // Refracted horizon angle for sky icons. Lunar portraits recompute the airless limb.
       brightLimbAngle: brightLimbAngle(sun, moon),
       north: localVector(axis.north),
       prime: localVector(prime),
