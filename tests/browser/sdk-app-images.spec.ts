@@ -30,13 +30,18 @@ test('Moon inspector opens a real portrait and exports all three PNG sizes', asy
   const shortcut = page.getByRole('button', { name: 'Open high-resolution Moon image' });
   await expect(shortcut.locator('canvas')).toBeVisible();
   await info.attach('moon-inspector.png', { body: await shortcut.screenshot(), contentType: 'image/png' });
-  await shortcut.click();
+  if (info.project.name === 'mobile-chromium') await shortcut.tap();
+  else await shortcut.click();
   const dialog = page.getByRole('dialog', { name: 'Share this sky' });
   const image = dialog.getByRole('img', { name: /^Realistic Moon/ });
   await expect(image).toBeVisible({ timeout: 30000 });
   expect(await decoded(image)).toMatchObject({ width: 512, height: 512, alpha: 0 });
   const initial = await image.getAttribute('src');
-  await dialog.getByLabel('Moon orientation').selectOption('north-up');
+  const orientation = dialog.getByLabel('Moon orientation');
+  await orientation.focus();
+  await expect(orientation).toBeFocused();
+  await orientation.press('ArrowDown');
+  await expect(orientation).toHaveValue('north-up');
   await dialog.getByLabel('Background').selectOption('light');
   await dialog.getByLabel('Earthshine').uncheck();
   await expect(image).toBeVisible();
@@ -59,6 +64,25 @@ test('Moon inspector opens a real portrait and exports all three PNG sizes', asy
     expect((await decoded(chart)).colors).toBeGreaterThan(5);
     await info.attach(name + '.png', { body: await chart.screenshot(), contentType: 'image/png' });
   }
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(shortcut).toBeFocused();
+});
+
+test('an early share can retry both diagrams with the catalog restored', async ({ page }) => {
+  let restored = false;
+  await page.route(/\/stars(-[\w-]+)?\.json$/, (route) => (restored ? route.continue() : route.abort()));
+  await page.goto('/?scenario=moon');
+  await page.getByRole('button', { name: 'Share this sky', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Share this sky' });
+  await dialog.getByRole('button', { name: 'All-sky chart', exact: true }).click();
+  const retry = dialog.getByRole('button', { name: 'Retry image' });
+  await expect(retry).toBeVisible();
+  restored = true;
+  await retry.click();
+  await expect(dialog.getByRole('img', { name: /^All-sky chart/ })).toBeVisible();
+  await dialog.getByRole('button', { name: 'Minimal sky map', exact: true }).click();
+  await expect(dialog.getByRole('img', { name: /^Minimal sky map/ })).toBeVisible();
 });
 
 test('a failed Moon texture keeps the SVG inspector fallback', async ({ page }, info) => {

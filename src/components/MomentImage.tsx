@@ -1,3 +1,5 @@
+import { calculateSky } from '../domain/astronomy';
+import { loadStars } from '../services/starCatalog';
 import { landscapeSeason } from '../moment/seasons';
 import { loadLandscapeArt } from '../moment/landscapeArt';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -104,12 +106,26 @@ export default function MomentImage({
           '../../packages/sky-engine/src/moment/diagram'
         );
         if (controller.signal.aborted) return null;
+        let diagramSnapshot = snapshot;
+        if (!snapshot.sky.stars.length) {
+          await loadStars();
+          if (controller.signal.aborted) return null;
+          diagramSnapshot = {
+            ...snapshot,
+            sky: calculateSky(snapshot.location, snapshot.instant, snapshot.sky.events),
+          };
+        }
         const canvas = document.createElement('canvas');
         canvas.width = 1200;
         canvas.height = 1200;
         const options = { theme, locale: i18n.locale };
-        if (style === 'chart') renderSkyChart(canvas, snapshot, options);
-        else renderMinimalSkyMap(canvas, snapshot, { ...options, composition: framing, layers: { lines } });
+        if (style === 'chart') renderSkyChart(canvas, diagramSnapshot, options);
+        else
+          renderMinimalSkyMap(canvas, diagramSnapshot, {
+            ...options,
+            composition: framing,
+            layers: { lines },
+          });
         return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
       }
       const [, landscapeArt] = await Promise.all([
