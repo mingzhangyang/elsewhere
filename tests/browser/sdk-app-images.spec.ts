@@ -9,15 +9,23 @@ async function decoded(image: Locator) {
     ctx.drawImage(element, 0, 0, 256, 256);
     const pixels = ctx.getImageData(0, 0, 256, 256).data;
     const footerPaper = Array.from(pixels.slice((255 * 256 + 2) * 4, (255 * 256 + 3) * 4));
+    // Sample inside the portrait, above the highest possible paper footer.
+    const lunarTones = new Set<number>();
+    for (let y = 48; y < 128; y++) {
+      for (let x = 96; x < 160; x++) {
+        const i = (y * 256 + x) * 4;
+        if (pixels[i + 3] === 255) lunarTones.add(pixels[i]);
+      }
+    }
     let footerInk = 0;
     for (let i = 205 * 256 * 4; i < pixels.length; i += 4) {
-      if (pixels[i + 3] === 255 && pixels[i] < 150 && pixels[i + 1] < 150 && pixels[i + 2] < 150)
-        footerInk++;
+      if (pixels[i + 3] === 255 && pixels[i] < 150 && pixels[i + 1] < 150 && pixels[i + 2] < 150) footerInk++;
     }
     return {
       width: element.naturalWidth,
       height: element.naturalHeight,
       alpha: pixels[3],
+      lunarTones: lunarTones.size,
       footerPaper,
       footerInk,
     };
@@ -44,6 +52,7 @@ test('Moon inspector opens a real portrait and exports all three PNG sizes', asy
   await expect(image).toBeVisible({ timeout: 30000 });
   const preview = await decoded(image);
   expect(preview).toMatchObject({ width: 512, height: 512, alpha: 0, footerPaper: [246, 241, 231, 255] });
+  expect(preview.lunarTones).toBeGreaterThan(8);
   expect(preview.footerInk).toBeGreaterThan(30);
   const initial = await image.getAttribute('src');
   const orientation = dialog.getByLabel('Moon orientation');
@@ -55,7 +64,9 @@ test('Moon inspector opens a real portrait and exports all three PNG sizes', asy
   await dialog.getByLabel('Earthshine').uncheck();
   await expect(image).toBeVisible();
   await expect(image).not.toHaveAttribute('src', initial!);
-  expect(await decoded(image)).toMatchObject({ alpha: 255 });
+  const light = await decoded(image);
+  expect(light.alpha).toBe(255);
+  expect(light.lunarTones).toBeGreaterThan(8);
   await dialog.getByLabel('Moon background').selectOption('transparent');
   for (const size of [1024, 2048, 4096]) {
     await dialog.getByLabel('PNG resolution').selectOption(String(size));
@@ -66,6 +77,7 @@ test('Moon inspector opens a real portrait and exports all three PNG sizes', asy
     await expect(save).toHaveAttribute('href', (await image.getAttribute('src'))!);
     const card = await decoded(image);
     expect(card).toMatchObject({ width: size, height: size, alpha: 0, footerPaper: [246, 241, 231, 255] });
+    expect(card.lunarTones).toBeGreaterThan(8);
     expect(card.footerInk).toBeGreaterThan(30);
   }
   await info.attach('moon-portrait.png', { body: await image.screenshot(), contentType: 'image/png' });
@@ -110,6 +122,7 @@ for (const { locale, shareName, styleName, styles, moonAlt, closeName } of [
       await expect(image).toBeVisible({ timeout: 30000 });
       const card = await decoded(image);
       expect(card.footerPaper).toEqual([246, 241, 231, 255]);
+      expect(card.lunarTones).toBeGreaterThan(8);
       expect(card.footerInk).toBeGreaterThan(30);
       await info.attach('moon-card-' + locale + '.png', {
         body: await image.screenshot(),

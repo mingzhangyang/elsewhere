@@ -42,7 +42,7 @@ describe('Moon keepsake text', () => {
       i18n,
       'example.test',
     );
-    expect(text.title).toBe(i18n.m.places['new-york'].name);
+    expect(text.title).toBe(locale === 'en' ? 'New York' : '纽约');
     expect(text.when).toContain(i18n.m.f.date(instant, location.timezone));
     expect(text.when).not.toContain(i18n.m.f.date(instant, 'UTC'));
     expect(text.phase).toBe(i18n.m.moment.moon({ phase: i18n.m.phases.full, illumination: 98, up: false }));
