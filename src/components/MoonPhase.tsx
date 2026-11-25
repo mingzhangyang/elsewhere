@@ -37,25 +37,31 @@ export function MoonPortraitThumbnail({
   onOpen: () => void;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
-  const [rendered, setRendered] = useState<MomentSnapshot | null>(null);
+  const [ready, setReady] = useState(false);
+  const latestSnapshot = useRef(snapshot);
   useEffect(() => {
+    latestSnapshot.current = snapshot;
+  }, [snapshot]);
+  const timeSlot = Math.floor(snapshot.instant.getTime() / 30_000);
+  const { latitude, longitude, elevation } = snapshot.location;
+  useEffect(() => {
+    const portraitSnapshot = latestSnapshot.current;
     const controller = new AbortController();
     void import('../moment/moonPortrait')
-      .then(({ drawMoonPortrait }) => drawMoonPortrait(snapshot, 128, undefined, controller.signal))
+      .then(({ drawMoonPortrait }) => drawMoonPortrait(portraitSnapshot, 128, undefined, controller.signal))
       .then((image) => {
         if (controller.signal.aborted || !canvas.current) return;
         const ctx = canvas.current.getContext('2d');
         if (!ctx) return;
         ctx.clearRect(0, 0, 128, 128);
         ctx.drawImage(image, 0, 0);
-        setRendered(snapshot);
+        setReady(true);
       })
       .catch(() => {
-        // The original SVG remains visible when the texture, renderer or canvas is unavailable.
+        // Keep the previous portrait, or the SVG if the first render failed.
       });
     return () => controller.abort();
-  }, [snapshot]);
-  const ready = rendered === snapshot;
+  }, [timeSlot, latitude, longitude, elevation]);
   return (
     <button className="moon-portrait-trigger" type="button" aria-label={openLabel} onClick={onOpen}>
       <canvas
