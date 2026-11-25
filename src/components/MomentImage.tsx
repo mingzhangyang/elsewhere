@@ -7,6 +7,7 @@ import type { MomentSnapshot } from '../lib/moment';
 import { momentImageSnapshot } from '../moment/imageWeather';
 import { frameMoment, type MomentFraming } from '../moment/framing';
 import { momentImageCopy, sdkImageCopy } from '../moment/imageCopy';
+import { moonCardWidth } from '../moment/moonCardLayout';
 import type { MoonPortraitSettings } from '../moment/moonPortrait';
 import type { SkyCapture, SkyCaptureOptions } from '../renderer/createSkyRenderer';
 import { useI18n } from '../i18n';
@@ -341,7 +342,7 @@ export default function MomentImage({
               >
                 {[1024, 2048, 4096].map((size) => (
                   <option key={size} value={size}>
-                    {size} × {size}
+                    {moonCardWidth(size)} × {size}
                   </option>
                 ))}
               </select>

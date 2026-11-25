@@ -5,6 +5,7 @@ import { loadLanguage } from '../src/i18n';
 import { PRESETS } from '../src/lib/locations';
 import type { MomentSnapshot } from '../src/lib/moment';
 import { moonCardText } from '../src/moment/moonCard';
+import { moonCardWidth } from '../src/moment/moonCardLayout';
 import { DEFAULT_MOON_SETTINGS } from '../src/moment/moonPortrait';
 
 const location = PRESETS[0];
@@ -63,5 +64,18 @@ describe('Moon keepsake text', () => {
     expect(text.title).toBe(i18n.m.moment.devicePlace);
     expect(text.credit).toContain('Observer view');
     expect(Object.values(text).join(' ')).not.toMatch(/Private address|Private country|40\.7128|-74\.006/);
+  });
+});
+
+describe('Moon card dimensions', () => {
+  it.each([
+    [512, 410],
+    [1024, 819],
+    [2048, 1638],
+    [4096, 3277],
+  ])('uses a 4:5 portrait at long edge %i', (height, width) => {
+    expect(moonCardWidth(height)).toBe(width);
+    expect(Math.abs(width - (height * 4) / 5)).toBeLessThanOrEqual(0.5);
+    expect(Math.max(width, height)).toBeLessThanOrEqual(4096);
   });
 });
