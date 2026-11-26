@@ -259,6 +259,13 @@ the sorted runtime export names of `@orangely/sky-engine` and compares them with
 removed names. To change the API deliberately, run `SKY_ENGINE_UPDATE_API=1 npm run sdk:build`,
 review the rewritten file and commit it. Removing or renaming an export is a breaking change.
 
+`npm run sdk:bench` (after `npm run sdk:build`) records rendering timings of the built module in
+Playwright's Chromium: a Moon portrait at 1024, 2048 and 4096 px, a 1200×1000 illustration with the
+Milky Way and paper finish, and a 1000×1000 sky chart, each with one warm-up run. It prints JSON and
+writes `dist-sdk/bench.json`. Set `SKY_ENGINE_BENCH_CHROMIUM` to a Chromium executable and
+`SKY_ENGINE_BENCH_RUNS` (default 5) as needed. The numbers depend on the machine and are recorded
+for comparison only; they are not a CI threshold.
+
 Before a release, run `npm run validate`, `npm run format:check` and `npm run test:browser` from
 the repository root; the existing validation and browser suites remain the release gate.
 
