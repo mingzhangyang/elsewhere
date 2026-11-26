@@ -62,6 +62,15 @@ describe('SkyEngineError', () => {
 describe('INVALID_INPUT', () => {
   it('reports invalid observers, options and resource timeouts', async () => {
     expect(() => validateObserver({ ...NEW_YORK, latitude: 91 })).toThrow(INVALID_INPUT);
+    const zone = (() => {
+      try {
+        validateObserver({ ...NEW_YORK, timezone: 'Mars/Olympus_Mons' });
+      } catch (error) {
+        return error;
+      }
+    })();
+    expect(zone).toMatchObject({ name: 'SkyEngineError', code: 'INVALID_INPUT' });
+    expect((zone as Error).cause).toBeInstanceOf(RangeError);
     await expect(createSkyScene({ ...options, timezone: '' })).rejects.toThrow(INVALID_INPUT);
     // Resource timeouts are validated even when no loader runs (the catalog is already installed).
     await expect(createSkyScene({ ...options, assetTimeoutMs: 0 })).rejects.toThrow(INVALID_INPUT);
