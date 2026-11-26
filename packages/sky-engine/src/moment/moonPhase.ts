@@ -34,6 +34,14 @@ function projected(v: Vec, normal: Vec): Vec {
   return unit([v[0] - d * normal[0], v[1] - d * normal[1], v[2] - d * normal[2]]);
 }
 
+const CROSS_ORIGIN_TEXTURE =
+  'Moon texture pixels cannot be read because the image is cross-origin and taints the canvas. ' +
+  'Serve the texture from the same origin, or from a server that sends CORS headers ' +
+  '(Access-Control-Allow-Origin) and set crossOrigin = "anonymous" on the HTMLImageElement ' +
+  'before assigning its src, or pass already decoded ImageData.';
+const isSecurityError = (error: unknown) =>
+  typeof error === 'object' && error !== null && (error as { name?: unknown }).name === 'SecurityError';
+
 const decoded = new WeakMap<MoonTexture, ImageData>();
 let installed: ImageData | undefined;
 function decodeTexture(texture: MoonTexture): ImageData {
@@ -54,7 +62,12 @@ function decodeTexture(texture: MoonTexture): ImageData {
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) throw new Error('Canvas 2D is unavailable.');
     ctx.drawImage(texture, 0, 0, w, h);
-    result = ctx.getImageData(0, 0, w, h);
+    try {
+      result = ctx.getImageData(0, 0, w, h);
+    } catch (error) {
+      if (isSecurityError(error)) throw new Error(CROSS_ORIGIN_TEXTURE, { cause: error });
+      throw error;
+    }
   }
   decoded.set(texture, result);
   return result;

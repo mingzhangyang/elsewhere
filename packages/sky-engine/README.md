@@ -65,6 +65,11 @@ const framed = await renderIllustration(canvas, scene, {
   does not cancel another consumer's load, including a fetch the host already started. Failed
   installations are cleared so a later call can retry. Decoded rows are checked for shape, finite
   coordinates, ranges and unique HYG ids before they replace the shared catalog.
+- The low-level `loadStarCatalog(load)` installs one catalog per module instance. While an
+  installation is in flight, or after it has succeeded, a new `load` function is **ignored and not
+  called**; the existing promise is returned. Only a failed attempt lets a later `load` run. Passing
+  a different function while one is in flight logs one `console.warn`. Use
+  `starCatalogInstallation()` to check for an existing installation first.
 - `renderIllustration` owns the **whole** canvas (dimensions set by the caller, 1–4096 px each,
   aspect 0.1–10). It resets the drawing state after resources are ready and returns the actual
   composed snapshot. It does not generate app-specific text, compass, link, or a download.
@@ -252,6 +257,12 @@ await renderMoonPhase(canvas, scene, {
   map. Treat injected pixels as immutable. Decoded images are cached by identity. Alternatively,
   pass a host-owned `loadTexture(signal)` callback, or call `installMoonTexture` once. Per-call
   resources take precedence; `installMoonTexture(null)` clears the default. No implicit requests.
+- Decoding an `HTMLImageElement` or `ImageBitmap` reads its pixels through a canvas, so the image
+  must be **same-origin or CORS-enabled**. For a cross-origin `<img>`, the server must send
+  `Access-Control-Allow-Origin` and you must set `img.crossOrigin = 'anonymous'` before `src`.
+  Otherwise the browser taints the canvas and the engine throws an `Error` explaining this (the
+  original `SecurityError` is its `cause`). `loadMoonTexture(url)` uses `fetch`, which follows
+  the same CORS rules.
 - `assetTimeoutMs` and `signal` bound asynchronous resource loading. Pixel rendering itself is
   synchronous CPU work; the returned promise resolves after writing the caller's canvas.
 - The output is the existing canvas size (1–4096 per dimension, aspect 0.1–10), centered with

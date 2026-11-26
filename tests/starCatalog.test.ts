@@ -26,3 +26,38 @@ it('starts over after a failed download or a catalog that cannot be installed', 
   await stars.loadStarCatalog(again);
   expect(again).not.toHaveBeenCalled();
 });
+
+it('ignores a second load function while one is in flight, warning once without changing the result', async () => {
+  vi.resetModules();
+  const stars = await import('../src/domain/stars');
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  let release: (value: CatalogRow[]) => void = () => {};
+  const first = vi.fn(
+    () =>
+      new Promise<CatalogRow[]>((resolve) => {
+        release = resolve;
+      }),
+  );
+  const pending = stars.loadStarCatalog(first);
+  expect(stars.starCatalogInstallation()).toBe(pending);
+  // The same function again joins silently.
+  expect(stars.loadStarCatalog(first)).toBe(pending);
+  expect(warn).not.toHaveBeenCalled();
+  const second = vi.fn(rows);
+  const third = vi.fn(rows);
+  expect(stars.loadStarCatalog(second)).toBe(pending);
+  expect(stars.loadStarCatalog(third)).toBe(pending);
+  expect(second).not.toHaveBeenCalled();
+  expect(third).not.toHaveBeenCalled();
+  expect(first).toHaveBeenCalledOnce();
+  expect(warn).toHaveBeenCalledOnce();
+  expect(warn.mock.calls[0][0]).toMatch(/already in progress/);
+  release(await rows());
+  await pending;
+  expect(stars.STAR_CATALOG).toHaveLength(5070);
+  // After completion every load function is ignored silently and the completed promise returned.
+  const late = vi.fn(rows);
+  expect(stars.loadStarCatalog(late)).toBe(pending);
+  expect(late).not.toHaveBeenCalled();
+  expect(warn).toHaveBeenCalledOnce();
+});
