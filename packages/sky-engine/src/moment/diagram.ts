@@ -24,6 +24,7 @@ import {
 } from './chartPaint';
 import { requireImageSize, resetImageCanvas } from './imageCanvas';
 import { invalidInput } from '../errors';
+import { validateInstant } from '../domain/time';
 
 export interface SkyChartOptions {
   theme?: SkyArtworkTheme;
@@ -49,7 +50,7 @@ function paletteFor(options: SkyChartOptions): SkyChartPalette {
 function chartSnapshot(scene: MomentSnapshot, limit?: number): SkyChartSnapshot {
   return buildSkyChartSnapshot(
     {
-      time: { kind: 'utc', utc: scene.instant.toISOString() },
+      time: { kind: 'utc', utc: Date.prototype.toISOString.call(validateInstant(scene.instant)) },
       location: {
         ...scene.location,
         name: scene.location.name.trim() || 'Unspecified',

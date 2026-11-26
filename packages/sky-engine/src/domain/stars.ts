@@ -7,15 +7,15 @@ import { assetFailed, validateTimeout } from '../resources';
 // Rows: HYG ID, name, J2000 RA hours, Dec degrees, V magnitude, B-V, pmRA*cosDec and pmDec (mas/year).
 // Provenance and reproducible import: public/credits.html and scripts/import-stars.mjs.
 export interface CatalogStar {
-  id: string;
-  catalogId: number;
-  name: string;
-  ra: number;
-  dec: number;
-  magnitude: number;
-  colorIndex: number | null;
-  pmra: number;
-  pmdec: number;
+  readonly id: string;
+  readonly catalogId: number;
+  readonly name: string;
+  readonly ra: number;
+  readonly dec: number;
+  readonly magnitude: number;
+  readonly colorIndex: number | null;
+  readonly pmra: number;
+  readonly pmdec: number;
 }
 /** One decoded HYG row; the shipped JSON stores exactly the same values column-wise. */
 export type CatalogRow = (string | number | null)[];
@@ -24,9 +24,9 @@ export type CatalogRow = (string | number | null)[];
 export type PatternId = 'big-dipper' | 'orion' | 'crux' | 'summer-triangle';
 
 export interface Constellation {
-  id: PatternId;
+  readonly id: PatternId;
   /** Pairs of catalog star IDs. */
-  lines: readonly (readonly string[])[];
+  readonly lines: readonly (readonly string[])[];
 }
 
 /**

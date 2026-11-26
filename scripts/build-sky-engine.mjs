@@ -283,6 +283,18 @@ const catalog: readonly CatalogStar[] = getStarCatalog();
 const patterns: readonly Constellation[] = getPatterns();
 // @ts-expect-error The installed catalog is read-only.
 catalog.push(catalog[0]);
+// @ts-expect-error Catalog entries are frozen too.
+getStarCatalog()[0].magnitude = 0;
+// @ts-expect-error Pattern arrays are read-only.
+patterns.push(patterns[0]);
+// @ts-expect-error Pattern entries are frozen too.
+getPatterns()[0].id = 'orion';
+// @ts-expect-error Pattern lines cannot be replaced.
+getPatterns()[0].lines = [];
+// @ts-expect-error Pattern lines are read-only arrays.
+getPatterns()[0].lines.push(['a', 'b']);
+// @ts-expect-error Individual pattern pairs are read-only.
+getPatterns()[0].lines[0][0] = 'a';
 console.log(patterns.length);
 const projection: advanced.Projection = advanced.createProjection(scene.view, scene.aspect);
 const point: advanced.Projected = projection(scene.sky.sun.altitude, scene.sky.sun.azimuth);

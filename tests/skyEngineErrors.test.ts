@@ -87,6 +87,26 @@ describe('INVALID_INPUT', () => {
     expect(() => renderSkyChart(untouched(), moment, { theme: 'neon' as never })).toThrow(INVALID_INPUT);
   });
 
+  it('rejects malformed scene instants before loading or drawing', async () => {
+    const moment = await scene();
+    const invalidInstants: unknown[] = [
+      new Date(NaN),
+      new Date('1899-12-31T23:59:59.999Z'),
+      new Date('2101-01-01T00:00:00Z'),
+      options.instant.toISOString(),
+      undefined,
+      null,
+      { getTime: () => options.instant.getTime() },
+    ];
+    for (const value of invalidInstants) {
+      const instant = value as Date;
+      await expect(createSkyScene({ ...options, instant })).rejects.toThrow(INVALID_INPUT);
+      const invalidMoment = { ...moment, instant };
+      expect(() => renderSkyChart(untouched(), invalidMoment)).toThrow(INVALID_INPUT);
+      expect(() => renderMinimalSkyMap(untouched(), invalidMoment)).toThrow(INVALID_INPUT);
+    }
+  });
+
   it('uses one message for a malformed composition in both perspective renderers', async () => {
     const moment = await scene();
     const composition = { pattern: 1 } as never;

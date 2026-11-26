@@ -48,7 +48,7 @@ export async function createSkyScene(options: SkySceneOptions): Promise<MomentSn
     throw invalidInput('An explicit observer time zone is required.');
   }
   validateObserver(location);
-  const instant = validateInstant(new Date(options.instant.getTime()));
+  const instant = new Date(validateInstant(options.instant));
   const aspect = options.aspect ?? 1;
   validateAspect(aspect);
   const view = { ...(options.view ?? { heading: 0, altitude: 20, fov: 66 }) };
