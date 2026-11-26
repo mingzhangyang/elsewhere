@@ -24,7 +24,9 @@
     "HYG.txt",
     "CATALOG-ATTRIBUTION.md",
     "MOON-TEXTURE.md",
-    "README.md"
+    "README.md",
+    "API.md",
+    "CHANGELOG.md"
   ],
   "repository": {
     "type": "git",

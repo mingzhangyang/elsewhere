@@ -99,6 +99,8 @@ await prune(types);
 await copy('packages/sky-engine/package.json', join(stage, 'package.json'));
 await copy('packages/sky-engine/README.md', join(stage, 'README.md'));
 await copy('packages/sky-engine/MOON-TEXTURE.md', join(stage, 'MOON-TEXTURE.md'));
+await copy('packages/sky-engine/API.md', join(stage, 'API.md'));
+await copy('packages/sky-engine/CHANGELOG.md', join(stage, 'CHANGELOG.md'));
 await copy('LICENSE', join(stage, 'LICENSE'));
 await copy('public/licenses/THIRD-PARTY.txt', join(stage, 'THIRD-PARTY.txt'));
 await copy('public/licenses/HYG.txt', join(stage, 'HYG.txt'));
@@ -197,6 +199,10 @@ for (const file of [
   'HYG.txt',
   'THIRD-PARTY.txt',
   'CATALOG-ATTRIBUTION.md',
+  'MOON-TEXTURE.md',
+  'README.md',
+  'API.md',
+  'CHANGELOG.md',
 ]) {
   assert(
     core.files.some((entry) => entry.path === file),
