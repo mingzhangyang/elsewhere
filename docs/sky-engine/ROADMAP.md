@@ -24,7 +24,7 @@ realistic Moon portrait (#50).
 
 ## Improvement plan
 
-- **Phase 0 (v0.2.1):** backward-compatible hardening: a readable cross-origin Moon texture error,
+- **Phase 0 (0.2.1, not released separately; shipped in v0.3.0):** backward-compatible hardening: a readable cross-origin Moon texture error,
   documented catalog loader behavior, a locked runtime export list, split usage/internal
   documentation with a changelog and API reference, and a recorded (non-gating) performance
   benchmark (`npm run sdk:bench`).

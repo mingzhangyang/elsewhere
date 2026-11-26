@@ -56,6 +56,13 @@ Read [Migrating from 0.2.x](#migrating-from-02x) before upgrading.
 
 ### Migrating from 0.2.x
 
+Upgrading from 0.2.0 also brings in the changes of
+[0.2.1](#021--not-released-separately-shipped-in-030), which was not released separately: the readable
+cross-origin Moon texture error, the documented `loadStarCatalog` behavior (one warning for an ignored
+load function, which is released once its installation settles), the runtime export lock, the README /
+API reference / changelog split and the `npm run sdk:bench` benchmark. Those changes are compatible;
+the rest of this section lists what 0.3.0 itself changes.
+
 Moved to `advanced` (same signatures; use `advanced.<name>`, and `advanced.<Type>` for types):
 
 | 0.2.x                                                                                                                                                                          | 0.3.0                                |
@@ -108,7 +115,9 @@ Options: pass `assetTimeoutMs` only with a valid value (1–30000) to `renderIll
 `renderMoonPhase`. `createSkyScene` can now take `assetTimeoutMs` and `signal`. The other option
 names and defaults are unchanged; see the shared-options table in `API.md`.
 
-## 0.2.1 — unreleased
+## 0.2.1 — not released separately (shipped in 0.3.0)
+
+There is no `sky-engine-v0.2.1` tag or GitHub Release; the changes below are included in 0.3.0.
 
 Backward-compatible maintenance release. No exports are added, removed or renamed, and rendering
 output is unchanged.
