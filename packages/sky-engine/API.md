@@ -156,7 +156,10 @@ Installs the catalog once per module instance. While an installation is in fligh
 succeeded, `load` is **ignored and not called** and the existing promise is returned; passing a
 different function while one is in flight logs one `console.warn`. A failure (loading, or validating
 rows: shape, finite coordinates, ranges, unique HYG ids, the built-in pattern stars) rejects and
-clears the attempt so that a later call retries.
+clears the attempt so that a later call retries. A `load` that throws synchronously, instead of
+returning a rejected promise, makes `loadStarCatalog` itself throw synchronously; nothing is
+installed or retained and a later call can retry. Use an `async` function to get a rejection in both
+cases. The load function is released once its installation settles.
 
 ### `starCatalogInstallation(): Promise<void> | null`
 

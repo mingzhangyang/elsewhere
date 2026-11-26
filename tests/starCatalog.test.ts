@@ -61,3 +61,52 @@ it('ignores a second load function while one is in flight, warning once without 
   expect(late).not.toHaveBeenCalled();
   expect(warn).toHaveBeenCalledOnce();
 });
+
+it('propagates a synchronous loader throw without starting or retaining an installation', async () => {
+  vi.resetModules();
+  const stars = await import('../src/domain/stars');
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  const broken = (): Promise<CatalogRow[]> => {
+    throw new Error('offline');
+  };
+  expect(() => stars.loadStarCatalog(broken)).toThrow('offline');
+  expect(stars.starCatalogInstallation()).toBeNull();
+  expect(stars.starCatalogLoaded()).toBe(false);
+  // The next call starts over; the same failed function passed meanwhile is a different loader.
+  let release: (value: CatalogRow[]) => void = () => {};
+  const pending = stars.loadStarCatalog(
+    () =>
+      new Promise<CatalogRow[]>((resolve) => {
+        release = resolve;
+      }),
+  );
+  expect(stars.loadStarCatalog(broken)).toBe(pending);
+  expect(warn).toHaveBeenCalledOnce();
+  release(await rows());
+  await pending;
+  expect(stars.STAR_CATALOG).toHaveLength(5070);
+});
+
+it('releases the load function once the installation succeeds', async () => {
+  const { setFlagsFromString } = await import('node:v8');
+  const { runInNewContext } = await import('node:vm');
+  setFlagsFromString('--expose-gc');
+  const gc = runInNewContext('gc') as () => void;
+  vi.resetModules();
+  const stars = await import('../src/domain/stars');
+  const data = await rows();
+  let reference: WeakRef<object> | undefined;
+  await (async () => {
+    // A loader whose closure holds a host resource; only the SDK could keep it alive afterwards.
+    const resource = { rows: data };
+    const load = async () => resource.rows;
+    reference = new WeakRef(load);
+    await stars.loadStarCatalog(load);
+  })();
+  expect(stars.starCatalogLoaded()).toBe(true);
+  for (let i = 0; i < 10 && reference?.deref(); i += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    gc();
+  }
+  expect(reference?.deref()).toBeUndefined();
+});
