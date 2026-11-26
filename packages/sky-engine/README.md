@@ -1,4 +1,4 @@
-# Sky Engine (v0.2.0)
+# Sky Engine (v0.2.1)
 
 Browser sky illustrations, star diagrams and lunar portraits from one calculated sky, for Canvas 2D.
 `@orangely/sky-engine` is distributed through versioned GitHub Releases, not the npm registry.
@@ -13,21 +13,21 @@ Browser sky illustrations, star diagrams and lunar portraits from one calculated
 Download the assets of an **exact** GitHub Release tag (`sky-engine-v<version>`) and verify them with
 `sha256sum --check SHA256SUMS`. Never depend on a "latest" URL at runtime.
 
-Release assets for version **0.2.0**:
+Release assets for version **0.2.1**:
 
 | Asset                                        | Purpose                                                        |
 | -------------------------------------------- | -------------------------------------------------------------- |
 | `sky-engine.mjs`                             | Self-contained browser ESM, served with a JavaScript MIME type |
 | `stars.json`                                 | Exact HYG v4.1 columnar catalog used by Elsewhere              |
-| `orangely-sky-engine-0.2.0.tgz`              | npm-installable ESM, declarations, catalog and notices         |
-| `orangely-sky-engine-landscapes-0.2.0.tgz`   | Optional city/mountain artwork and license                     |
-| `orangely-sky-engine-moon-texture-0.2.0.tgz` | Optional NASA lunar texture with provenance and license        |
+| `orangely-sky-engine-0.2.1.tgz`              | npm-installable ESM, declarations, catalog and notices         |
+| `orangely-sky-engine-landscapes-0.2.1.tgz`   | Optional city/mountain artwork and license                     |
+| `orangely-sky-engine-moon-texture-0.2.1.tgz` | Optional NASA lunar texture with provenance and license        |
 | `moon-lroc.jpg`                              | Standalone optional lunar texture for browser hosts            |
 | `sky-engine-NOTICES.txt`                     | MIT, runtime dependency notices and HYG attribution/license    |
 | `manifest.json` / `SHA256SUMS`               | Version, source commit, file sizes and SHA-256 integrity       |
 
 No npm registry publication is required. For npm applications, install the downloaded core tarball
-(`npm install ./orangely-sky-engine-0.2.0.tgz`) and import from `@orangely/sky-engine`. Its package
+(`npm install ./orangely-sky-engine-0.2.1.tgz`) and import from `@orangely/sky-engine`. Its package
 export `@orangely/sky-engine/stars.json` is available to copy into the host's static assets.
 All three archives are tested with an isolated offline installation, and the core package with a strict
 NodeNext TypeScript consumer. The package's license expression covers the MIT code and the separately
@@ -272,7 +272,7 @@ the repository root; the existing validation and browser suites remain the relea
 ### Publishing after merge
 
 The SDK version comes from `packages/sky-engine/package.json`. After the release PR is merged
-and CI passes, push an annotated tag `sky-engine-v0.2.0` on the merged main commit. The release
+and CI passes, push an annotated tag `sky-engine-v0.2.1` on the merged main commit. The release
 workflow accepts only a tag matching the package version and reachable from main, validates the
 app, rebuilds/tests the SDK, checks hashes and creates a GitHub Release without overwriting an
 existing release. It does not publish to npm or deploy either app. Never move or reuse a version
