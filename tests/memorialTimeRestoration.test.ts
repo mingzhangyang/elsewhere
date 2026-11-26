@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { INVALID_INPUT } from './skyEngineErrorMatchers';
 import { MAX_INSTANT, MIN_INSTANT, validateInstant } from '../src/domain/time';
 import {
   assertMemorialTimeConsistency,
@@ -244,8 +245,8 @@ describe('memorial-time restoration and UTC boundary (SM1-C)', () => {
     ]);
     expect(() => validateInstant(instants[1])).not.toThrow();
     expect(() => validateInstant(instants[2])).not.toThrow();
-    expect(() => validateInstant(instants[0])).toThrow(RangeError);
-    expect(() => validateInstant(instants[3])).toThrow(RangeError);
+    expect(() => validateInstant(instants[0])).toThrow(INVALID_INPUT);
+    expect(() => validateInstant(instants[3])).toThrow(INVALID_INPUT);
     // A hypothetical fold straddling the endpoint yields one eligible candidate,
     // never a default selection of the invalid sibling.
     expect(supportedMemorialInstants(instants.slice(0, 2))).toEqual([instants[1]]);

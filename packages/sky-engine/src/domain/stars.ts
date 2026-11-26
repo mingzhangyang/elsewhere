@@ -1,19 +1,21 @@
 import * as Astronomy from 'astronomy-engine';
 import type { Star } from '../types';
+import { invalidInput, SkyEngineError } from '../errors';
+import { assetFailed, validateTimeout } from '../resources';
 
 // HYG v4.1 derivative, David Nash / Astronexus, CC BY-SA 4.0.
 // Rows: HYG ID, name, J2000 RA hours, Dec degrees, V magnitude, B-V, pmRA*cosDec and pmDec (mas/year).
 // Provenance and reproducible import: public/credits.html and scripts/import-stars.mjs.
 export interface CatalogStar {
-  id: string;
-  catalogId: number;
-  name: string;
-  ra: number;
-  dec: number;
-  magnitude: number;
-  colorIndex: number | null;
-  pmra: number;
-  pmdec: number;
+  readonly id: string;
+  readonly catalogId: number;
+  readonly name: string;
+  readonly ra: number;
+  readonly dec: number;
+  readonly magnitude: number;
+  readonly colorIndex: number | null;
+  readonly pmra: number;
+  readonly pmdec: number;
 }
 /** One decoded HYG row; the shipped JSON stores exactly the same values column-wise. */
 export type CatalogRow = (string | number | null)[];
@@ -22,23 +24,35 @@ export type CatalogRow = (string | number | null)[];
 export type PatternId = 'big-dipper' | 'orion' | 'crux' | 'summer-triangle';
 
 export interface Constellation {
-  id: PatternId;
+  readonly id: PatternId;
   /** Pairs of catalog star IDs. */
-  lines: string[][];
+  readonly lines: readonly (readonly string[])[];
 }
 
 /**
  * The catalog is about 96 kB compressed, so it loads after the first screen rather than before it.
  * Until `loadStarCatalog()` resolves, these are empty and the sky shows the Sun and Moon only. They
- * are live bindings: importers see the catalog once it arrives.
+ * are live bindings for the app and the engine's own modules: importers see the catalog once it
+ * arrives. Both are frozen (the arrays and every element) when installed; they are internal, and the
+ * public API exposes them only through `getStarCatalog()` and `getPatterns()`.
  */
-export let STAR_CATALOG: CatalogStar[] = [];
-export let CONSTELLATIONS: Constellation[] = [];
+export let STAR_CATALOG: readonly CatalogStar[] = Object.freeze([]);
+export let CONSTELLATIONS: readonly Constellation[] = Object.freeze([]);
 let loading: Promise<void> | null = null;
 let loadingWith: (() => Promise<CatalogRow[]>) | null = null;
 let warnedIgnoredLoader = false;
 
 export const starCatalogLoaded = () => STAR_CATALOG.length > 0;
+
+/** The installed catalog, frozen once at installation (never copied per call); empty until loaded. */
+export function getStarCatalog(): readonly CatalogStar[] {
+  return STAR_CATALOG;
+}
+
+/** The built-in line patterns, with catalog star IDs; frozen, and empty until the catalog loads. */
+export function getPatterns(): readonly Constellation[] {
+  return CONSTELLATIONS;
+}
 
 /** In-flight or completed installation for this module. Null only before the first attempt
  * and after a failed one, so another caller can join instead of starting a second load. */
@@ -51,17 +65,15 @@ export function starCatalogInstallation(): Promise<void> | null {
  * waiter: it does not clear `loading` or abort the consumer that started the work.
  */
 export function awaitStarCatalog(timeoutMs = 15000): Promise<void> {
-  if (!Number.isFinite(timeoutMs) || timeoutMs < 1 || timeoutMs > 30000) {
-    throw new RangeError('Resource timeout must be between 1 and 30000 ms.');
-  }
+  validateTimeout(timeoutMs);
   if (!loading) {
     return starCatalogLoaded()
       ? Promise.resolve()
-      : Promise.reject(new Error('Star catalog is not loading.'));
+      : Promise.reject(new SkyEngineError('MISSING_ASSET', 'Star catalog is not loading.'));
   }
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error('Star catalog cancelled or timed out.')), timeoutMs);
+    timer = setTimeout(() => reject(new SkyEngineError('TIMEOUT', 'Star catalog timed out.')), timeoutMs);
   });
   return Promise.race([loading, timeout]).finally(() => clearTimeout(timer));
 }
@@ -77,9 +89,11 @@ export function awaitStarCatalog(timeoutMs = 15000): Promise<void> {
  * different function while one is in flight logs a single `console.warn` per module instance; the
  * return value is the same either way.
  *
- * Failures of the returned promise (a rejected `load`, or rows that cannot be installed) reject it.
- * A `load` that throws synchronously instead of returning a promise throws synchronously from this
- * call; nothing is installed or retained, and a later call can start over.
+ * Failures of the returned promise reject it with a `SkyEngineError`: `ASSET_FAILED` (with the
+ * original error as `cause`) for a rejected `load`, `INVALID_INPUT` for rows that cannot be
+ * installed. A `load` that throws synchronously instead of returning a promise throws synchronously
+ * from this call, as an `ASSET_FAILED` `SkyEngineError` with the same `cause`; nothing is installed
+ * or retained, and a later call can start over.
  */
 export function loadStarCatalog(load: () => Promise<CatalogRow[]>): Promise<void> {
   if (loading) {
@@ -92,29 +106,38 @@ export function loadStarCatalog(load: () => Promise<CatalogRow[]>): Promise<void
     return loading;
   }
   // A synchronous throw from `load` propagates to the caller as before, with nothing retained.
-  const rows = load();
+  let rows: Promise<CatalogRow[]>;
+  try {
+    rows = load();
+  } catch (error) {
+    throw assetFailed('Star catalog', error);
+  }
   // Kept only while in flight, to recognise a different function; released once settled so the
   // host's loader and its closure are not retained for the module's lifetime.
   loadingWith = load;
-  loading = rows.then(installCatalog).then(
-    () => {
-      loadingWith = null;
-    },
-    (error: unknown) => {
-      loading = null;
-      loadingWith = null;
-      throw error;
-    },
-  );
+  loading = rows
+    .then(installCatalog, (error: unknown) => {
+      throw assetFailed('Star catalog', error);
+    })
+    .then(
+      () => {
+        loadingWith = null;
+      },
+      (error: unknown) => {
+        loading = null;
+        loadingWith = null;
+        throw error;
+      },
+    );
   return loading;
 }
 
 function installCatalog(rows: CatalogRow[]) {
-  if (!Array.isArray(rows) || rows.length === 0) throw new Error('Invalid star catalog.');
+  if (!Array.isArray(rows) || rows.length === 0) throw invalidInput('Invalid star catalog.');
   const seen = new Set<number>();
   const catalog = rows.map((row) => {
     const star = catalogStar(row);
-    if (seen.has(star.catalogId)) throw new Error(`Duplicate star catalog id: ${star.catalogId}`);
+    if (seen.has(star.catalogId)) throw invalidInput(`Duplicate star catalog id: ${star.catalogId}`);
     seen.add(star.catalogId);
     return star;
   });
@@ -123,13 +146,19 @@ function installCatalog(rows: CatalogRow[]) {
     lines: pattern.lines.map((pair) =>
       pair.map((name) => {
         const star = catalog.find((s) => s.name.toLowerCase() === name);
-        if (!star) throw new Error(`Missing pattern star: ${name}`);
+        if (!star) throw invalidInput(`Missing pattern star: ${name}`);
         return star.id;
       }),
     ),
   }));
-  CONSTELLATIONS = constellations;
-  STAR_CATALOG = catalog;
+  for (const star of catalog) Object.freeze(star);
+  for (const pattern of constellations) {
+    for (const pair of pattern.lines) Object.freeze(pair);
+    Object.freeze(pattern.lines);
+    Object.freeze(pattern);
+  }
+  CONSTELLATIONS = Object.freeze(constellations);
+  STAR_CATALOG = Object.freeze(catalog);
 }
 
 function catalogId(value: unknown): number {
@@ -139,7 +168,7 @@ function catalogId(value: unknown): number {
       : typeof value === 'string' && value.trim() !== ''
         ? Number(value)
         : NaN;
-  if (!Number.isSafeInteger(id) || id <= 0) throw new Error('Invalid star catalog identifier.');
+  if (!Number.isSafeInteger(id) || id <= 0) throw invalidInput('Invalid star catalog identifier.');
   return id;
 }
 
@@ -150,30 +179,30 @@ function finiteField(value: unknown, label: string): number {
       : typeof value === 'string' && value.trim() !== ''
         ? Number(value)
         : NaN;
-  if (!Number.isFinite(n)) throw new Error(`Invalid star catalog ${label}.`);
+  if (!Number.isFinite(n)) throw invalidInput(`Invalid star catalog ${label}.`);
   return n;
 }
 
 /** Reject rows that would corrupt the shared catalog before that catalog is published. */
 function catalogStar(row: CatalogRow): CatalogStar {
-  if (!Array.isArray(row) || row.length !== 8) throw new Error('Invalid star catalog row.');
+  if (!Array.isArray(row) || row.length !== 8) throw invalidInput('Invalid star catalog row.');
   const id = catalogId(row[0]);
-  if (typeof row[1] !== 'string') throw new Error('Invalid star catalog name.');
+  if (typeof row[1] !== 'string') throw invalidInput('Invalid star catalog name.');
   const ra = finiteField(row[2], 'right ascension');
   const dec = finiteField(row[3], 'declination');
-  if (ra < 0 || ra > 24) throw new Error('Invalid star catalog right ascension.');
-  if (dec < -90 || dec > 90) throw new Error('Invalid star catalog declination.');
+  if (ra < 0 || ra > 24) throw invalidInput('Invalid star catalog right ascension.');
+  if (dec < -90 || dec > 90) throw invalidInput('Invalid star catalog declination.');
   const magnitude = finiteField(row[4], 'magnitude');
-  if (magnitude < -5 || magnitude > 15) throw new Error('Invalid star catalog magnitude.');
+  if (magnitude < -5 || magnitude > 15) throw invalidInput('Invalid star catalog magnitude.');
   let colorIndex: number | null = null;
   if (row[5] !== null) {
     colorIndex = finiteField(row[5], 'color index');
-    if (colorIndex < -2 || colorIndex > 6) throw new Error('Invalid star catalog color index.');
+    if (colorIndex < -2 || colorIndex > 6) throw invalidInput('Invalid star catalog color index.');
   }
   const pmra = finiteField(row[6], 'proper motion');
   const pmdec = finiteField(row[7], 'proper motion');
   if (Math.abs(pmra) > 20000 || Math.abs(pmdec) > 20000)
-    throw new Error('Invalid star catalog proper motion.');
+    throw invalidInput('Invalid star catalog proper motion.');
   return { id: 'hyg-' + id, catalogId: id, name: row[1], ra, dec, magnitude, colorIndex, pmra, pmdec };
 }
 
@@ -326,7 +355,7 @@ export interface StarField {
 
 const DAY_MS = 86_400_000;
 const J2000_MS = Date.UTC(2000, 0, 1, 12);
-let vectorCache: { day: number; catalog: CatalogStar[]; vectors: Float32Array } | null = null;
+let vectorCache: { day: number; catalog: readonly CatalogStar[]; vectors: Float32Array } | null = null;
 
 /**
  * Proper motion and precession move a star by well under an arcsecond a day, so the catalog is

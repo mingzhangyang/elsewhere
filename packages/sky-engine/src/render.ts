@@ -9,8 +9,9 @@ import { frameMoment, framePattern } from './moment/framing';
 import { paintIllustrationPanel, type IllustrationPanelOptions } from './moment/panel';
 import { HORIZON_VARIANTS } from './moment/scenery';
 import { landscapeLight, landscapeSeason, type LandscapeSeason } from './moment/seasons';
-import { loadResource } from './resources';
+import { loadResource, validateTimeout } from './resources';
 import { mergeLayers, validateAspect, validateView } from './validation';
+import { cancelled, canvasUnavailable, invalidInput, SkyEngineError } from './errors';
 
 export interface LandscapeRequest {
   landscape: 'city' | 'mountains';
@@ -29,7 +30,7 @@ export interface RenderIllustrationOptions extends IllustrationPanelOptions {
 
 function validatePatterns(patterns?: readonly IllustrationPattern[]): void {
   if (patterns === undefined) return;
-  if (!Array.isArray(patterns) || patterns.length > 32) throw new RangeError('Too many patterns.');
+  if (!Array.isArray(patterns) || patterns.length > 32) throw invalidInput('Too many patterns.');
   const ids = new Set<string>();
   let edges = 0;
   for (const pattern of patterns) {
@@ -42,11 +43,11 @@ function validatePatterns(patterns?: readonly IllustrationPattern[]): void {
       (pattern.label !== undefined && (typeof pattern.label !== 'string' || pattern.label.length > 200)) ||
       !Array.isArray(pattern.lines)
     ) {
-      throw new TypeError('Invalid illustration pattern.');
+      throw invalidInput('Invalid illustration pattern.');
     }
     ids.add(pattern.id);
     edges += pattern.lines.length;
-    if (edges > 256) throw new RangeError('Too many pattern edges.');
+    if (edges > 256) throw invalidInput('Too many pattern edges.');
     for (const pair of pattern.lines) {
       if (
         !Array.isArray(pair) ||
@@ -54,7 +55,7 @@ function validatePatterns(patterns?: readonly IllustrationPattern[]): void {
         !pair.every((id: unknown) => typeof id === 'string' && id.length > 0 && id.length <= 100) ||
         pair[0] === pair[1]
       ) {
-        throw new TypeError('Invalid illustration pattern edge.');
+        throw invalidInput('Invalid illustration pattern edge.');
       }
     }
   }
@@ -62,7 +63,7 @@ function validatePatterns(patterns?: readonly IllustrationPattern[]): void {
 
 function outputAspect(width: number, height: number): number {
   if (![width, height].every((n) => Number.isInteger(n) && n >= 1 && n <= 4096)) {
-    throw new RangeError('Canvas dimensions must be integers between 1 and 4096.');
+    throw invalidInput('Canvas dimensions must be integers between 1 and 4096.');
   }
   const aspect = width / height;
   validateAspect(aspect);
@@ -85,10 +86,10 @@ export function prepareIllustrationScene(
   if (mode === 'current') return snapshot;
   if (mode === 'auto') return frameMoment(snapshot, mode, { aspect, milkyWay: options.milkyWay });
   if (typeof mode !== 'object' || mode === null || typeof mode.pattern !== 'string') {
-    throw new TypeError('Invalid illustration composition.');
+    throw invalidInput('Invalid illustration composition.');
   }
   const pattern = (options.patterns ?? CONSTELLATIONS).find((candidate) => candidate.id === mode.pattern);
-  if (!pattern) throw new RangeError('Unknown illustration pattern: ' + mode.pattern);
+  if (!pattern) throw invalidInput('Unknown illustration pattern: ' + mode.pattern);
   return framePattern(snapshot, pattern.lines, aspect);
 }
 
@@ -101,10 +102,11 @@ export async function renderIllustration(
   const { width, height } = canvas;
   const snapshot = prepareIllustrationScene(scene, width, height, options);
   const landscape = options.landscape ?? 'ridge';
-  if (!HORIZON_VARIANTS.includes(landscape)) throw new RangeError('Invalid landscape.');
-  if (options.signal?.aborted) throw new Error('Illustration cancelled.');
+  if (!HORIZON_VARIANTS.includes(landscape)) throw invalidInput('Invalid landscape.');
+  const assetTimeoutMs = validateTimeout(options.assetTimeoutMs ?? 10000);
+  if (options.signal?.aborted) throw cancelled('Illustration cancelled.');
   const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Canvas 2D is unavailable.');
+  if (!ctx) throw canvasUnavailable();
   let landscapeArt = options.landscapeArt;
   if (landscape === 'city' || landscape === 'mountains') {
     const loader = options.loadLandscape;
@@ -116,18 +118,18 @@ export async function renderIllustration(
       };
       landscapeArt = await loadResource(
         (signal) => loader(request, signal),
-        options.assetTimeoutMs ?? 10000,
+        assetTimeoutMs,
         'Landscape art',
         options.signal,
       );
     }
     if (!landscapeArt?.complete || !landscapeArt.naturalWidth || !landscapeArt.naturalHeight) {
-      throw new Error('This landscape requires decoded artwork.');
+      throw new SkyEngineError('MISSING_ASSET', 'This landscape requires decoded artwork.');
     }
   }
-  if (options.signal?.aborted) throw new Error('Illustration cancelled.');
+  if (options.signal?.aborted) throw cancelled('Illustration cancelled.');
   if (canvas.width !== width || canvas.height !== height) {
-    throw new Error('Canvas size changed while loading illustration resources.');
+    throw invalidInput('Canvas size changed while loading illustration resources.');
   }
   // Only reset after loading succeeds. Standalone calls must not inherit transforms, clips or alpha.
   canvas.width = width;

@@ -1,4 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
+import { SkyEngineError } from '../packages/sky-engine/src/errors';
 import { installMoonTexture } from '../packages/sky-engine/src/moment/moonPhase';
 
 function stubCanvas(getImageData: () => ImageData) {
@@ -30,23 +31,39 @@ it('explains a canvas tainted by a cross-origin Moon texture', () => {
   }
   expect(thrown).toBeInstanceOf(Error);
   expect(thrown).not.toBeInstanceOf(DOMException);
+  expect(thrown).toBeInstanceOf(SkyEngineError);
+  expect((thrown as SkyEngineError).code).toBe('ASSET_FAILED');
   expect((thrown as Error).message).toMatch(/same origin/);
   expect((thrown as Error).message).toMatch(/CORS/);
   expect((thrown as Error).message).toMatch(/crossOrigin/);
   expect((thrown as Error).cause).toBe(securityError);
 });
 
-it('rethrows other texture read failures unchanged', () => {
+it('reports other texture read failures as ASSET_FAILED with the original error as cause', () => {
   const failure = new DOMException('Out of memory.', 'IndexSizeError');
   stubCanvas(() => {
     throw failure;
   });
-  expect(() => installMoonTexture(image())).toThrow(failure);
+  expect(() => installMoonTexture(image())).toThrow(
+    expect.objectContaining({
+      name: 'SkyEngineError',
+      code: 'ASSET_FAILED',
+      message: 'Out of memory.',
+      cause: failure,
+    }),
+  );
   const plain = new TypeError('broken');
   stubCanvas(() => {
     throw plain;
   });
-  expect(() => installMoonTexture(image())).toThrow(plain);
+  expect(() => installMoonTexture(image())).toThrow(
+    expect.objectContaining({
+      name: 'SkyEngineError',
+      code: 'ASSET_FAILED',
+      message: 'broken',
+      cause: plain,
+    }),
+  );
 });
 
 it('still decodes readable images', () => {

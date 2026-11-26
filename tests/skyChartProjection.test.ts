@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { INVALID_INPUT } from './skyEngineErrorMatchers';
 import { projectSkyChart, type SkyChartPoint } from '../src/domain/skyChartProjection';
 
 // Independent synthetic analytic anchors, not values computed by a production helper.
@@ -93,12 +94,12 @@ describe('azimuthal equidistant sky chart (north up, east left)', () => {
 
   it('rejects invalid apparent altitudes and non-finite azimuths instead of clamping', () => {
     for (const altitude of [-90.0001, 90.0001, NaN, Infinity, -Infinity]) {
-      expect(() => projectSkyChart(altitude, 0)).toThrow(RangeError);
+      expect(() => projectSkyChart(altitude, 0)).toThrow(INVALID_INPUT);
     }
     for (const azimuth of [NaN, Infinity, -Infinity]) {
-      expect(() => projectSkyChart(45, azimuth)).toThrow(RangeError);
-      expect(() => projectSkyChart(90, azimuth)).toThrow(RangeError);
-      expect(() => projectSkyChart(-1, azimuth)).toThrow(RangeError);
+      expect(() => projectSkyChart(45, azimuth)).toThrow(INVALID_INPUT);
+      expect(() => projectSkyChart(90, azimuth)).toThrow(INVALID_INPUT);
+      expect(() => projectSkyChart(-1, azimuth)).toThrow(INVALID_INPUT);
     }
   });
 

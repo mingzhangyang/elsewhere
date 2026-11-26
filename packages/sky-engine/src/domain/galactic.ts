@@ -48,7 +48,7 @@ export function createSceneToGalactic(field: { rotation: readonly number[]; prec
 }
 
 /** The same large-scale Galaxy in the shader and the painting; noise and pigment are independent. */
-export const MILKY_WAY_SHAPE = {
+export const MILKY_WAY_SHAPE = Object.freeze({
   base: 0.3,
   inner: 0.7,
   innerWidth: 60,
@@ -66,4 +66,4 @@ export const MILKY_WAY_SHAPE = {
   latitudeCutoff: 42,
   airStart: -0.02,
   airEnd: 0.22,
-} as const;
+} as const);

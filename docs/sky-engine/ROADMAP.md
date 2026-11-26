@@ -24,10 +24,15 @@ realistic Moon portrait (#50).
 
 ## Improvement plan
 
-- **Phase 0 (v0.2.1):** backward-compatible hardening: a readable cross-origin Moon texture error,
+- **Phase 0 (0.2.1, not released separately; shipped in v0.3.0):** backward-compatible hardening: a readable cross-origin Moon texture error,
   documented catalog loader behavior, a locked runtime export list, split usage/internal
   documentation with a changelog and API reference, and a recorded (non-gating) performance
   benchmark (`npm run sdk:bench`).
+- **Phase 1 (v0.3.0):** the one planned incompatible release, to settle the public API before
+  now-and-more adopts it: a stable root and an experimental `advanced` namespace in the same single
+  module, read-only catalog accessors (`getStarCatalog`, `getPatterns`) instead of mutable exports,
+  one coded `SkyEngineError` type, aligned option validation, and an export lock that covers the
+  namespace. Later phases must stay backward compatible for the stable API.
 
 The milestones preserve the current sky science, default rendering, share links and app behavior. The
 existing validation and browser suites remain the release gate: run `npm run validate`,

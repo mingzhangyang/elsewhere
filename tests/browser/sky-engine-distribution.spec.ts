@@ -66,7 +66,7 @@ try {
   comparison.width = map.width;
   comparison.height = map.height;
   sdk.renderMinimalSkyMap(comparison, framed, { composition: 'current', patterns: [], layers: { lines: true } });
-  const project = sdk.createCoverProjection(framed.view, framed.aspect, map.width, map.height - 57).toCanvas;
+  const project = sdk.advanced.createCoverProjection(framed.view, framed.aspect, map.width, map.height - 57).toCanvas;
   const a = project(pair[0].altitude, pair[0].azimuth);
   const b = project(pair[1].altitude, pair[1].azimuth);
   const mx = Math.round((a.x + b.x) / 2);
@@ -104,7 +104,7 @@ try {
     ...day, aspect: map.width / (map.height - 57),
     view: { heading: day.sky.sun.azimuth, altitude: day.sky.sun.altitude, fov: 66 },
   };
-  const dayProject = sdk.createCoverProjection(
+  const dayProject = sdk.advanced.createCoverProjection(
     dayView.view, dayView.aspect, map.width, map.height - 57,
   ).toCanvas;
   const sun = dayProject(day.sky.sun.altitude, day.sky.sun.azimuth);

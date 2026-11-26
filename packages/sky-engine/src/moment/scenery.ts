@@ -6,7 +6,13 @@ import { ridgeAltitude } from './ridge';
  * by azimuth, kept under 2° so it never hides an object the app reports as visible.
  */
 export type HorizonVariant = 'ridge' | 'mountains' | 'sea' | 'city';
-export const HORIZON_VARIANTS: HorizonVariant[] = ['ridge', 'mountains', 'sea', 'city'];
+/** The accepted `landscape` values. Frozen. */
+export const HORIZON_VARIANTS: readonly HorizonVariant[] = Object.freeze([
+  'ridge',
+  'mountains',
+  'sea',
+  'city',
+]);
 
 /** Deterministic noise in [0, 1) from an integer. */
 const hash = (n: number) => {

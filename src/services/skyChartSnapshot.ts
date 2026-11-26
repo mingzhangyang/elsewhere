@@ -10,6 +10,7 @@ import {
   type PreparedSkyChartSnapshotInput,
 } from '../domain/skyChartSnapshot';
 import { STAR_CATALOG, starCatalogLoaded, type CatalogStar } from '../domain/stars';
+import { SkyEngineError } from '../../packages/sky-engine/src/errors';
 import type { LocationInfo, SkyState } from '../types';
 
 /** The SM1 branch is validated here: domain code never imports from lib/. */
@@ -76,6 +77,8 @@ const defaultDependencies: SkyChartSnapshotDependencies = {
 
 function diagnostic(error: unknown): string {
   // Avoid copying URLs or location/time values from provider exceptions into diagnostic state.
+  // Every Sky Engine failure is named SkyEngineError, so keep its code to tell them apart.
+  if (error instanceof SkyEngineError) return error.name + ':' + error.code;
   if (error instanceof Error) return error.name;
   return 'UnknownError';
 }

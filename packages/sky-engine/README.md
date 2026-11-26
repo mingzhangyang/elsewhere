@@ -1,10 +1,10 @@
-# Sky Engine (v0.2.1)
+# Sky Engine (v0.3.0)
 
 Browser sky illustrations, star diagrams and lunar portraits from one calculated sky, for Canvas 2D.
 `@orangely/sky-engine` is distributed through versioned GitHub Releases, not the npm registry.
 
 - [API reference](API.md): every public export with its parameters and errors.
-- [Changelog](CHANGELOG.md).
+- [Changelog](CHANGELOG.md), including [migrating from 0.2.x](CHANGELOG.md#migrating-from-02x).
 - Internal design: [architecture](../../docs/sky-engine/ARCHITECTURE.md) and
   [roadmap](../../docs/sky-engine/ROADMAP.md) (source repository only).
 
@@ -13,21 +13,21 @@ Browser sky illustrations, star diagrams and lunar portraits from one calculated
 Download the assets of an **exact** GitHub Release tag (`sky-engine-v<version>`) and verify them with
 `sha256sum --check SHA256SUMS`. Never depend on a "latest" URL at runtime.
 
-Release assets for version **0.2.1**:
+Release assets for version **0.3.0**:
 
 | Asset                                        | Purpose                                                        |
 | -------------------------------------------- | -------------------------------------------------------------- |
 | `sky-engine.mjs`                             | Self-contained browser ESM, served with a JavaScript MIME type |
 | `stars.json`                                 | Exact HYG v4.1 columnar catalog used by Elsewhere              |
-| `orangely-sky-engine-0.2.1.tgz`              | npm-installable ESM, declarations, catalog and notices         |
-| `orangely-sky-engine-landscapes-0.2.1.tgz`   | Optional city/mountain artwork and license                     |
-| `orangely-sky-engine-moon-texture-0.2.1.tgz` | Optional NASA lunar texture with provenance and license        |
+| `orangely-sky-engine-0.3.0.tgz`              | npm-installable ESM, declarations, catalog and notices         |
+| `orangely-sky-engine-landscapes-0.3.0.tgz`   | Optional city/mountain artwork and license                     |
+| `orangely-sky-engine-moon-texture-0.3.0.tgz` | Optional NASA lunar texture with provenance and license        |
 | `moon-lroc.jpg`                              | Standalone optional lunar texture for browser hosts            |
 | `sky-engine-NOTICES.txt`                     | MIT, runtime dependency notices and HYG attribution/license    |
 | `manifest.json` / `SHA256SUMS`               | Version, source commit, file sizes and SHA-256 integrity       |
 
 No npm registry publication is required. For npm applications, install the downloaded core tarball
-(`npm install ./orangely-sky-engine-0.2.1.tgz`) and import from `@orangely/sky-engine`. Its package
+(`npm install ./orangely-sky-engine-0.3.0.tgz`) and import from `@orangely/sky-engine`. Its package
 export `@orangely/sky-engine/stars.json` is available to copy into the host's static assets.
 All three archives are tested with an isolated offline installation, and the core package with a strict
 NodeNext TypeScript consumer. The package's license expression covers the MIT code and the separately
@@ -45,6 +45,11 @@ season/light request to the appropriate WebP (see `LANDSCAPES.md` in the source)
 
 Import the bundled ESM from a pinned release or the installed npm package. A plain browser consumer supplies
 its observer and data; there is no geolocation prompt, live weather request, or site dependency.
+
+The package root is the **stable API**. Lower-level building blocks (astronomy, projection, framing,
+painting and chart selection) are grouped in the `advanced` namespace of the same module
+(`advanced.createProjection`, …). They are **experimental** and may change in a minor version; see
+the [API reference](API.md#advanced-api-advanced-experimental).
 
 ```ts
 import { createSkyScene, decodeStarColumns, renderIllustration } from './vendor/sky-engine/sky-engine.mjs';
@@ -78,17 +83,23 @@ const framed = await renderIllustration(canvas, scene, {
   not a measured weather report. Explicit weather values are copied and recorded as custom.
   The input date, view, weather and layers are copied. A catalog loader is required only when this
   module has neither an installed catalog nor an in-flight installation. Concurrent calls join that
-  installation (`awaitStarCatalog`). Each caller's wait is bounded to 15 s, and a joiner timing out
-  does not cancel another consumer's load, including a fetch the host already started. Failed
+  installation (`awaitStarCatalog`). Each caller's wait is bounded by `assetTimeoutMs` (15 s by
+  default) and can be cancelled with `signal`; a joiner timing out or being cancelled does not cancel
+  another consumer's load, including a fetch the host already started. Failed
   installations are cleared so a later call can retry. Decoded rows are checked for shape, finite
   coordinates, ranges and unique HYG ids before they replace the shared catalog.
-- `createSkyScene` prepares civil time and the catalog. The low-level functions instead need
-  `ensureTemporal()` before civil-time work and an installed catalog from `loadStarCatalog()`.
+- `createSkyScene` prepares civil time and the catalog. The experimental low-level functions in
+  `advanced` instead need `advanced.ensureTemporal()` before civil-time work and an installed catalog
+  from `loadStarCatalog()`.
+- `getStarCatalog()` and `getPatterns()` return the installed catalog and built-in line patterns as
+  frozen, read-only arrays (empty until installation). They are frozen once when installed, so the
+  calls are cheap.
 - The low-level `loadStarCatalog(load)` installs one catalog per module instance. While an
   installation is in flight, or after it has succeeded, a new `load` function is **ignored and not
   called**; the existing promise is returned. Only a failed attempt lets a later `load` run. Passing
-  a different function while one is in flight logs one `console.warn`. Use
-  `starCatalogInstallation()` to check for an existing installation first.
+  a different function while one is in flight logs one `console.warn`. Use `starCatalogLoaded()`
+  (or the experimental `advanced.starCatalogInstallation()`) to check for an existing installation
+  first.
 - `renderIllustration` owns the **whole** canvas (dimensions set by the caller, 1–4096 px each,
   aspect 0.1–10). It resets the drawing state after resources are ready and returns the actual
   composed snapshot. It does not generate app-specific text, compass, link, or a download.
@@ -107,13 +118,31 @@ const framed = await renderIllustration(canvas, scene, {
   or a host-provided `loadLandscape(request, signal)` (season and light are selected by the engine).
   There is no bundled Vite URL or implicit network request. The wait is bounded (10 s by default;
   1–30000 ms configurable), and cancellation or failure is reported before drawing. The catalog
-  loader has a 15 s bound. Hosts should pass the signal into their I/O; uncooperative loaders
+  wait has a 15 s default bound. Hosts should pass the signal into their I/O; uncooperative loaders
   cannot be forcibly stopped. Cancel an earlier render with an AbortController before starting
   a replacement on the same canvas.
 - Existing apps can use `paintIllustrationPanel` synchronously on an already prepared snapshot and
   decoded artwork, to retain their own overlays and text layout. Elsewhere's postcard uses that
-  entry point and the same `createCoverProjection` as the realistic capture. The legacy low-level
-  API is still available. Rendering requires browser Canvas 2D and DOM; pure scene creation does not.
+  entry point and the same cover projection (`advanced.createCoverProjection`) as the realistic
+  capture. Rendering requires browser Canvas 2D and DOM; pure scene creation does not.
+
+### Errors
+
+Every failure is a `SkyEngineError` with a `code`: `INVALID_INPUT`, `TIMEOUT`, `CANCELLED`,
+`MISSING_ASSET`, `ASSET_FAILED` or `UNSUPPORTED`. A failing host loader is reported as
+`ASSET_FAILED` with the original error as `cause`. Cancellation is named `AbortError`.
+
+```ts
+import { renderMoonPhase, SkyEngineError } from '@orangely/sky-engine';
+
+try {
+  await renderMoonPhase(canvas, scene, { signal });
+} catch (error) {
+  if (error instanceof SkyEngineError && error.code === 'CANCELLED') return; // superseded
+  if (error instanceof SkyEngineError && error.code === 'MISSING_ASSET') showTextureHint();
+  throw error;
+}
+```
 
 ## Image types
 
@@ -206,8 +235,8 @@ await renderMoonPhase(canvas, scene, {
 - Decoding an `HTMLImageElement` or `ImageBitmap` reads its pixels through a canvas, so the image
   must be **same-origin or CORS-enabled**. For a cross-origin `<img>`, the server must send
   `Access-Control-Allow-Origin` and you must set `img.crossOrigin = 'anonymous'` before `src`.
-  Otherwise the browser taints the canvas and the engine throws an `Error` explaining this (the
-  original `SecurityError` is its `cause`). `loadMoonTexture(url)` uses `fetch`, which follows
+  Otherwise the browser taints the canvas and the engine throws an `ASSET_FAILED` `SkyEngineError`
+  explaining this (the original `SecurityError` is its `cause`). `loadMoonTexture(url)` uses `fetch`, which follows
   the same CORS rules.
 - `assetTimeoutMs` and `signal` bound asynchronous resource loading. Pixel rendering itself is
   synchronous CPU work; the returned promise resolves after writing the caller's canvas.
@@ -228,7 +257,8 @@ texture are separate resources that the host serves and passes in.
 
 - **Star catalog** (`stars.json`): the exact HYG v4.1 columnar derivative used by Elsewhere, licensed
   CC BY-SA 4.0 (`HYG.txt`, `CATALOG-ATTRIBUTION.md`). Decode it with `decodeStarColumns` and pass it
-  to `createSkyScene({ loadCatalog })`. There is one live catalog per module instance.
+  to `createSkyScene({ loadCatalog })`. There is one catalog per module instance; read it with
+  `getStarCatalog()`.
 - **Landscape artwork** (optional archive): city and mountain WebP renders under the MIT license;
   see `LANDSCAPES.md` in the source. Ridge and sea need no artwork.
 - **Moon texture** (optional archive or `moon-lroc.jpg`): NASA public-domain imagery with its
@@ -254,10 +284,12 @@ forces the bundled Temporal fallback, renders all four image types, checks diagr
 orientation and texture landmarks, then verifies identical offline reloads.
 
 The build also locks the public runtime API. After installing the core tarball offline it reads
-the sorted runtime export names of `@orangely/sky-engine` and compares them with the committed
+the sorted runtime export names of `@orangely/sky-engine`, plus the members of its `advanced`
+namespace as `advanced.<name>`, and compares them with the committed
 [`api-exports.json`](api-exports.json); any difference fails the build and lists the added and
 removed names. To change the API deliberately, run `SKY_ENGINE_UPDATE_API=1 npm run sdk:build`,
-review the rewritten file and commit it. Removing or renaming an export is a breaking change.
+review the rewritten file and commit it. Removing or renaming a root export is a breaking change;
+`advanced` members are experimental and may change in a minor version (record it in the changelog).
 
 `npm run sdk:bench` (after `npm run sdk:build`) records rendering timings of the built module in
 Playwright's Chromium: a Moon portrait at 1024, 2048 and 4096 px, a 1200×1000 illustration with the
@@ -272,7 +304,7 @@ the repository root; the existing validation and browser suites remain the relea
 ### Publishing after merge
 
 The SDK version comes from `packages/sky-engine/package.json`. After the release PR is merged
-and CI passes, push an annotated tag `sky-engine-v0.2.1` on the merged main commit. The release
+and CI passes, push an annotated tag `sky-engine-v0.3.0` on the merged main commit. The release
 workflow accepts only a tag matching the package version and reachable from main, validates the
 app, rebuilds/tests the SDK, checks hashes and creates a GitHub Release without overwriting an
 existing release. It does not publish to npm or deploy either app. Never move or reuse a version

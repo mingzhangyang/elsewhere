@@ -39,7 +39,7 @@ test('standalone SDK renders the same pixels as the shared panel and respects pa
       if (i % 4 === 3 && first[i] === 255) opaque++;
     }
     const stars = scene.sky.stars.filter((star) => {
-      const p = sdk.createProjection(scene.view, scene.aspect)(star.altitude, star.azimuth);
+      const p = sdk.advanced.createProjection(scene.view, scene.aspect)(star.altitude, star.azimuth);
       return star.altitude > 5 && p.front && Math.abs(p.x) < 0.5 && Math.abs(p.y) < 0.5;
     });
     if (stars.length < 2) throw new Error('Fixture needs two projected stars.');

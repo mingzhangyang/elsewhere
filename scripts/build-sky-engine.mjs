@@ -151,13 +151,14 @@ const lunarTexture = await readFile(join(moonStage, 'moon-lroc.jpg'));
 const lunarChecksum = 'f7130a1822681fa7512d7dcfd40db8c10b9ba4f06777910348698260ed7a2170';
 assert.equal(sha256(lunarTexture), lunarChecksum, 'NASA lunar texture checksum mismatch.');
 
-// The installed runtime export names must match the committed list. Removing or renaming an export
-// breaks consumers, so any change must be deliberate: SKY_ENGINE_UPDATE_API=1 rewrites the list.
+// The installed runtime export names must match the committed list: the root exports and, as
+// "advanced.<name>", the members of the experimental advanced namespace. Removing or renaming an
+// export breaks consumers, so any change must be deliberate: SKY_ENGINE_UPDATE_API=1 rewrites it.
 async function checkExports(actual) {
   const file = join(sdk, 'api-exports.json');
   if (process.env.SKY_ENGINE_UPDATE_API === '1') {
     await writeFile(file, JSON.stringify(actual, null, 2) + '\n');
-    console.log('Updated packages/sky-engine/api-exports.json (' + actual.length + ' exports).');
+    console.log('Updated packages/sky-engine/api-exports.json (' + actual.length + ' names).');
     return;
   }
   const expected = JSON.parse(await readFile(file, 'utf8'));
@@ -269,12 +270,47 @@ try {
   await writeFile(
     join(consumer, 'consumer.ts'),
     `import {
-  createSkyScene, renderIllustration, renderSkyChart, renderMinimalSkyMap, renderMoonPhase,
-  installMoonTexture, loadMoonTexture, type MoonPhaseOptions, type MomentSnapshot,
+  advanced, createSkyScene, renderIllustration, renderSkyChart, renderMinimalSkyMap, renderMoonPhase,
+  installMoonTexture, loadMoonTexture, getStarCatalog, getPatterns, SkyEngineError,
+  type CatalogStar, type Constellation, type MoonPhaseOptions, type MomentSnapshot,
+  type SkyEngineErrorCode,
 } from '@orangely/sky-engine';
 const scene: MomentSnapshot = await createSkyScene({
   latitude: 40, longitude: -74, timezone: 'UTC', instant: new Date(),
+  assetTimeoutMs: 15000, signal: new AbortController().signal,
 });
+const catalog: readonly CatalogStar[] = getStarCatalog();
+const patterns: readonly Constellation[] = getPatterns();
+// @ts-expect-error The installed catalog is read-only.
+catalog.push(catalog[0]);
+// @ts-expect-error Catalog entries are frozen too.
+getStarCatalog()[0].magnitude = 0;
+// @ts-expect-error Pattern arrays are read-only.
+patterns.push(patterns[0]);
+// @ts-expect-error Pattern entries are frozen too.
+getPatterns()[0].id = 'orion';
+// @ts-expect-error Pattern lines cannot be replaced.
+getPatterns()[0].lines = [];
+// @ts-expect-error Pattern lines are read-only arrays.
+getPatterns()[0].lines.push(['a', 'b']);
+// @ts-expect-error Individual pattern pairs are read-only.
+getPatterns()[0].lines[0][0] = 'a';
+console.log(patterns.length);
+const projection: advanced.Projection = advanced.createProjection(scene.view, scene.aspect);
+const point: advanced.Projected = projection(scene.sky.sun.altitude, scene.sky.sun.azimuth);
+console.log(point.front, advanced.calculateSky(scene.location, scene.instant).sunAltitude);
+await advanced.ensureTemporal();
+try {
+  await renderMoonPhase(document.createElement('canvas'), scene);
+} catch (error) {
+  if (error instanceof SkyEngineError) {
+    const code: SkyEngineErrorCode = error.code;
+    if (code === 'MISSING_ASSET' || code === 'CANCELLED') console.log(error.name, error.cause);
+  }
+}
+// @ts-expect-error Unknown error codes are rejected.
+const wrong: SkyEngineErrorCode = 'NOT_A_CODE';
+console.log(wrong);
 await renderIllustration(document.createElement('canvas'), scene, { composition: 'auto' });
 renderSkyChart(document.createElement('canvas'), scene, { theme: 'paper' });
 renderMinimalSkyMap(document.createElement('canvas'), scene, { composition: 'current' });
@@ -293,12 +329,51 @@ Object.defineProperty(globalThis, 'Temporal', { value: undefined, configurable: 
 const sdk = await import('@orangely/sky-engine');
 const catalogUrl = new URL(import.meta.resolve('@orangely/sky-engine/stars.json'));
 const data = JSON.parse(await readFile(catalogUrl, 'utf8'));
+const observer = {
+  latitude: 40.7128, longitude: -74.006, timezone: 'America/New_York',
+  instant: new Date('2026-03-20T17:00:00Z'),
+};
+const coded = (code) => (error) => {
+  assert(error instanceof sdk.SkyEngineError);
+  assert(error instanceof Error);
+  assert.equal(error.code, code);
+  assert.equal(error.name, code === 'CANCELLED' ? 'AbortError' : 'SkyEngineError');
+  return true;
+};
+// Before any catalog exists: read-only accessors are empty, and every failure is a coded error.
+assert.deepEqual(sdk.getStarCatalog(), []);
+assert.deepEqual(sdk.getPatterns(), []);
+assert.throws(() => sdk.validateObserver({ ...observer, latitude: 91, elevation: 0 }), coded('INVALID_INPUT'));
+await assert.rejects(sdk.createSkyScene(observer), coded('MISSING_ASSET'));
+const aborted = AbortSignal.abort();
+await assert.rejects(
+  sdk.createSkyScene({ ...observer, signal: aborted, loadCatalog: async () => [] }),
+  coded('CANCELLED'),
+);
+await assert.rejects(
+  sdk.createSkyScene({ ...observer, assetTimeoutMs: 1, loadCatalog: () => new Promise(() => {}) }),
+  coded('TIMEOUT'),
+);
+const offline = new Error('offline');
+await assert.rejects(
+  sdk.createSkyScene({ ...observer, loadCatalog: async () => { throw offline; } }),
+  (error) => coded('ASSET_FAILED')(error) && error.cause === offline,
+);
+assert.equal(sdk.starCatalogLoaded(), false);
 const scene = await sdk.createSkyScene({
   latitude: 40.7128, longitude: -74.006, timezone: 'America/New_York',
   instant: new Date('2026-03-20T17:00:00Z'), weather: 'clear',
   loadCatalog: async () => sdk.decodeStarColumns(data),
 });
 assert.equal(scene.sky.stars.length, 5070);
+assert.equal(sdk.getStarCatalog().length, 5070);
+assert(Object.isFrozen(sdk.getStarCatalog()) && Object.isFrozen(sdk.getStarCatalog()[0]));
+assert.equal(sdk.getStarCatalog(), sdk.getStarCatalog());
+assert(sdk.getPatterns().length > 0 && Object.isFrozen(sdk.getPatterns()[0].lines));
+assert.equal(sdk.advanced.calculateSky(scene.location, scene.instant).stars.length, 5070);
+assert.equal(typeof sdk.advanced.createProjection(scene.view, scene.aspect), 'function');
+const noCanvas = { width: 400, height: 400, getContext: () => null };
+assert.throws(() => sdk.renderSkyChart(noCanvas, scene), coded('UNSUPPORTED'));
 assert.equal(scene.sky.planets.length, 5);
 assert(Number.isFinite(scene.sky.moon.altitude));
 assert.equal(sdk.prepareIllustrationScene(scene, 800, 600).aspect, 800 / 600);
@@ -316,7 +391,8 @@ assert.equal(typeof sdk.loadMoonTexture, 'function');
 const moonUrl = new URL(import.meta.resolve('@orangely/sky-engine-moon-texture/moon-lroc.jpg'));
 assert.equal((await readFile(moonUrl)).length, 457942);
 // Last line of output: the installed package's runtime export names, for the API lock below.
-console.log(JSON.stringify(Object.keys(sdk).sort()));
+const advancedNames = Object.keys(sdk.advanced).map((name) => 'advanced.' + name);
+console.log(JSON.stringify([...Object.keys(sdk), ...advancedNames].sort()));
 `,
   );
   const smokeOutput = run(join(consumer, 'smoke.mjs'), [], consumer).trim().split('\n');

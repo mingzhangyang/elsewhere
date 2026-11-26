@@ -11,6 +11,9 @@ it('starts over after a failed download or a catalog that cannot be installed', 
   vi.resetModules();
   const stars = await import('../src/domain/stars');
   expect(stars.starCatalogLoaded()).toBe(false);
+  expect(stars.getStarCatalog()).toEqual([]);
+  expect(Object.isFrozen(stars.getStarCatalog())).toBe(true);
+  expect(stars.getPatterns()).toEqual([]);
   await expect(stars.loadStarCatalog(() => Promise.reject(new Error('offline')))).rejects.toThrow('offline');
   expect(stars.starCatalogLoaded()).toBe(false);
   // Downloaded but unusable (the pattern stars are missing): installing throws, and is retryable too.
@@ -21,6 +24,8 @@ it('starts over after a failed download or a catalog that cannot be installed', 
   await stars.loadStarCatalog(rows);
   expect(stars.STAR_CATALOG).toHaveLength(5070);
   expect(stars.CONSTELLATIONS.length).toBeGreaterThan(0);
+  expect(stars.getStarCatalog()).toBe(stars.STAR_CATALOG);
+  expect(stars.getPatterns()).toBe(stars.CONSTELLATIONS);
   // Once installed, later calls do not load again.
   const again = vi.fn(rows);
   await stars.loadStarCatalog(again);

@@ -1,8 +1,8 @@
 import { expect, it } from 'vitest';
 import {
+  advanced,
   buildSkyChartSnapshot,
   createSkyScene,
-  projectSkyChart,
   renderMinimalSkyMap,
   renderSkyChart,
 } from '../packages/sky-engine/src';
@@ -28,7 +28,7 @@ it('builds a daylight chart with only real above-horizon objects independent of 
   const stars = new Map(scene.sky.stars.map((star) => [star.id, star]));
   for (const object of chart.objects) {
     expect(object.altitude).toBeGreaterThanOrEqual(0);
-    expect({ x: object.x, y: object.y }).toEqual(projectSkyChart(object.altitude, object.azimuth));
+    expect({ x: object.x, y: object.y }).toEqual(advanced.projectSkyChart(object.altitude, object.azimuth));
     if (object.kind === 'star') {
       expect(stars.get(object.id)?.altitude).toBe(object.altitude);
       expect(stars.get(object.id)?.magnitude).toBe(object.magnitude);

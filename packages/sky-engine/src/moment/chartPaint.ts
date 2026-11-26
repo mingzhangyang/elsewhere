@@ -1,4 +1,5 @@
 import type { SkyChartSnapshotObject } from '../domain/skyChartSnapshot';
+import { invalidInput } from '../errors';
 
 const TWO_PI = 2 * Math.PI;
 export type SkyArtworkTheme = 'midnight' | 'paper';
@@ -30,7 +31,7 @@ export function chartDrawObject(
   const px = disc.cx + object.x * disc.radius;
   const py = disc.cy + object.y * disc.radius;
   if (!Number.isFinite(px) || !Number.isFinite(py) || Math.hypot(object.x, object.y) > 1 + 1e-12) {
-    throw new RangeError('Invalid drawable sky chart coordinate.');
+    throw invalidInput('Invalid drawable sky chart coordinate.');
   }
   return Object.freeze({
     id: object.id,

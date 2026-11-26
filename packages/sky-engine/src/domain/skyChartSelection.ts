@@ -1,4 +1,5 @@
 import type { PlanetId, SkyState, Star } from '../types';
+import { invalidInput, SkyEngineError } from '../errors';
 
 /** Independent diagram policy, not the explorer's environment-dependent visibility limit. */
 export const DEFAULT_SKY_CHART_LIMITING_MAGNITUDE = 6.0;
@@ -43,16 +44,16 @@ export interface SkyChartSelection {
 }
 
 /** SM2-C must wait for starCatalogLoaded() before supplying complete candidates. */
-export class SkyChartCatalogNotReadyError extends Error {
+/** A `MISSING_ASSET` SkyEngineError; the subclass exists only so the app can recognise it. */
+export class SkyChartCatalogNotReadyError extends SkyEngineError {
   constructor() {
-    super('Sky chart star catalog is not ready.');
-    this.name = 'SkyChartCatalogNotReadyError';
+    super('MISSING_ASSET', 'Sky chart star catalog is not ready.');
   }
 }
 
 function requireRecord(value: unknown, label: string): asserts value is Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    throw new TypeError(`${label} must be an object.`);
+    throw invalidInput(`${label} must be an object.`);
   }
 }
 
@@ -61,10 +62,10 @@ function requirePosition<T>(value: T, label: string): asserts value is T & Posit
   const { altitude, azimuth } = value;
   // The same input contract as projectSkyChart; validate even excluded objects.
   if (typeof altitude !== 'number' || !Number.isFinite(altitude) || altitude < -90 || altitude > 90) {
-    throw new RangeError(`${label} apparent center altitude must be finite and within [-90, 90].`);
+    throw invalidInput(`${label} apparent center altitude must be finite and within [-90, 90].`);
   }
   if (typeof azimuth !== 'number' || !Number.isFinite(azimuth)) {
-    throw new RangeError(`${label} azimuth must be finite.`);
+    throw invalidInput(`${label} azimuth must be finite.`);
   }
 }
 
@@ -93,22 +94,22 @@ export function selectSkyChartObjects(
     limit < SKY_CHART_MAGNITUDE_RANGE.min ||
     limit > SKY_CHART_MAGNITUDE_RANGE.max
   ) {
-    throw new RangeError('Sky chart limiting magnitude must be finite and within [-5, 20].');
+    throw invalidInput('Sky chart limiting magnitude must be finite and within [-5, 20].');
   }
   if (typeof candidates.starCatalogReady !== 'boolean') {
-    throw new TypeError('starCatalogReady must be a boolean.');
+    throw invalidInput('starCatalogReady must be a boolean.');
   }
   if (!Array.isArray(candidates.planets) || !Array.isArray(candidates.stars)) {
-    throw new TypeError('Sky chart planets and stars must be arrays.');
+    throw invalidInput('Sky chart planets and stars must be arrays.');
   }
   if (!candidates.starCatalogReady) throw new SkyChartCatalogNotReadyError();
 
   const ids = new Set<string>();
   const registerId = (id: unknown, label: string) => {
     if (typeof id !== 'string' || id.trim().length === 0) {
-      throw new TypeError(`${label} ID must be a nonempty string.`);
+      throw invalidInput(`${label} ID must be a nonempty string.`);
     }
-    if (ids.has(id)) throw new RangeError(`Duplicate sky chart object ID: ${id}`);
+    if (ids.has(id)) throw invalidInput(`Duplicate sky chart object ID: ${id}`);
     ids.add(id);
   };
   const objects: SkyChartSelectedObject[] = [];
@@ -130,7 +131,7 @@ export function selectSkyChartObjects(
   const planets: Extract<SkyChartSelectedObject, { kind: 'planet' }>[] = [];
   for (const planet of candidates.planets) {
     requirePosition(planet, 'planet');
-    if (!PLANET_ORDER.includes(planet.id)) throw new RangeError(`Unknown sky chart planet: ${planet.id}`);
+    if (!PLANET_ORDER.includes(planet.id)) throw invalidInput(`Unknown sky chart planet: ${planet.id}`);
     registerId(planet.id, 'planet');
     if (planet.altitude >= 0) {
       planets.push({
@@ -148,15 +149,15 @@ export function selectSkyChartObjects(
   for (const star of candidates.stars) {
     requirePosition(star, 'star');
     registerId(star.id, 'star');
-    if (typeof star.name !== 'string') throw new TypeError(`Star ${star.id} name must be a string.`);
+    if (typeof star.name !== 'string') throw invalidInput(`Star ${star.id} name must be a string.`);
     if (typeof star.magnitude !== 'number' || !Number.isFinite(star.magnitude)) {
-      throw new RangeError(`Star ${star.id} magnitude must be finite.`);
+      throw invalidInput(`Star ${star.id} magnitude must be finite.`);
     }
     if (
       star.colorIndex != null &&
       (typeof star.colorIndex !== 'number' || !Number.isFinite(star.colorIndex))
     ) {
-      throw new RangeError(`Star ${star.id} color index must be finite or null.`);
+      throw invalidInput(`Star ${star.id} color index must be finite or null.`);
     }
     if (star.altitude >= 0 && star.magnitude <= limit) {
       stars.push({

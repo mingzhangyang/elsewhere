@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
+import { INVALID_INPUT } from './skyEngineErrorMatchers';
 import rows from '../src/data/stars.json';
 import { calculateSky } from '../src/domain/astronomy';
 import {
@@ -176,8 +177,8 @@ describe('SM2-C snapshot: pure calculation and data contracts (synthetic)', () =
   });
   it('rejects invalid positions and star magnitudes through the unchanged SM2-B selector', () => {
     const sky = sampleSky();
-    expect(() => snapshot({ ...sky, sun: { ...sky.sun, altitude: 95 } })).toThrow(RangeError);
-    expect(() => snapshot({ ...sky, moon: { ...sky.moon, azimuth: NaN } })).toThrow(RangeError);
+    expect(() => snapshot({ ...sky, sun: { ...sky.sun, altitude: 95 } })).toThrow(INVALID_INPUT);
+    expect(() => snapshot({ ...sky, moon: { ...sky.moon, azimuth: NaN } })).toThrow(INVALID_INPUT);
     expect(() => snapshot({ ...sky, stars: [{ ...sky.stars[0], altitude: Infinity }] })).toThrow();
     expect(() =>
       snapshot({ ...sky, planets: [{ ...sky.planets[0], altitude: NaN }, ...sky.planets.slice(1)] }),
@@ -350,7 +351,7 @@ describe('SM2-C resource coordinator (synthetic injection)', () => {
     const base = { catalogLoaded: () => true, loadCatalog: async () => {}, calculate: () => sampleSky() };
     expect(
       await createSkyChartSnapshotCoordinator({ ...base, getCatalog: () => [] }).generate(input()),
-    ).toMatchObject({ status: 'error', code: 'catalog-data' });
+    ).toMatchObject({ status: 'error', code: 'catalog-data', message: 'SkyEngineError:MISSING_ASSET' });
     expect(
       await createSkyChartSnapshotCoordinator({
         ...base,
@@ -359,7 +360,7 @@ describe('SM2-C resource coordinator (synthetic injection)', () => {
           throw new Error('fatal');
         },
       }).generate(input()),
-    ).toMatchObject({ status: 'error', code: 'calculation' });
+    ).toMatchObject({ status: 'error', code: 'calculation', message: 'Error' });
     expect(
       await createSkyChartSnapshotCoordinator({
         ...base,
@@ -413,7 +414,7 @@ describe('SM2-C resource coordinator (synthetic injection)', () => {
     });
     for (const timezone of [undefined, null, '', '   ', 42]) {
       const malformed = invalid({ ...input(), location: { ...NEW_YORK, timezone } });
-      expect(() => prepareSkyChartSnapshotInput(malformed)).toThrow(TypeError);
+      expect(() => prepareSkyChartSnapshotInput(malformed)).toThrow(INVALID_INPUT);
       expect(await coordinator.generate(malformed)).toMatchObject({ status: 'error', code: 'input' });
     }
     expect(loads).toBe(0);

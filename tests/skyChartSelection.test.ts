@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { INVALID_INPUT } from './skyEngineErrorMatchers';
 import {
   DEFAULT_SKY_CHART_LIMITING_MAGNITUDE,
   SKY_CHART_MAGNITUDE_RANGE,
@@ -79,9 +80,11 @@ describe('SM2-B independent sky chart object selection', () => {
 
   it('rejects invalid custom limits, including explicit null rather than defaulting', () => {
     for (const limitingMagnitude of [-5.0001, 20.0001, NaN, Infinity, -Infinity, null, '6']) {
-      expect(() => selectSkyChartObjects(candidates(), { limitingMagnitude } as never)).toThrow(RangeError);
+      expect(() => selectSkyChartObjects(candidates(), { limitingMagnitude } as never)).toThrow(
+        INVALID_INPUT,
+      );
     }
-    expect(() => selectSkyChartObjects(candidates(), null as never)).toThrow(TypeError);
+    expect(() => selectSkyChartObjects(candidates(), null as never)).toThrow(INVALID_INPUT);
   });
 
   it('never applies a stellar magnitude cutoff to Sun, Moon, or the five planets', () => {
@@ -184,26 +187,34 @@ describe('SM2-B independent sky chart object selection', () => {
 
   it('rejects non-finite or physically impossible apparent altitudes for every kind', () => {
     for (const altitude of [-90.00001, 90.00001, NaN, Infinity, -Infinity]) {
-      expect(() => selectSkyChartObjects(candidates({ sun: { altitude, azimuth: 0 } }))).toThrow(RangeError);
-      expect(() => selectSkyChartObjects(candidates({ moon: { altitude, azimuth: 0 } }))).toThrow(RangeError);
+      expect(() => selectSkyChartObjects(candidates({ sun: { altitude, azimuth: 0 } }))).toThrow(
+        INVALID_INPUT,
+      );
+      expect(() => selectSkyChartObjects(candidates({ moon: { altitude, azimuth: 0 } }))).toThrow(
+        INVALID_INPUT,
+      );
       expect(() =>
         selectSkyChartObjects(candidates({ planets: [{ id: 'mars', altitude, azimuth: 0 }] })),
-      ).toThrow(RangeError);
-      expect(() => selectSkyChartObjects(candidates({ stars: [star('bad', altitude)] }))).toThrow(RangeError);
+      ).toThrow(INVALID_INPUT);
+      expect(() => selectSkyChartObjects(candidates({ stars: [star('bad', altitude)] }))).toThrow(
+        INVALID_INPUT,
+      );
     }
   });
 
   it('rejects non-finite azimuth even when a center is already below the horizon', () => {
     for (const azimuth of [NaN, Infinity, -Infinity]) {
-      expect(() => selectSkyChartObjects(candidates({ sun: { altitude: -5, azimuth } }))).toThrow(RangeError);
+      expect(() => selectSkyChartObjects(candidates({ sun: { altitude: -5, azimuth } }))).toThrow(
+        INVALID_INPUT,
+      );
       expect(() => selectSkyChartObjects(candidates({ moon: { altitude: 90, azimuth } }))).toThrow(
-        RangeError,
+        INVALID_INPUT,
       );
       expect(() =>
         selectSkyChartObjects(candidates({ planets: [{ id: 'mars', altitude: -4, azimuth }] })),
-      ).toThrow(RangeError);
+      ).toThrow(INVALID_INPUT);
       expect(() => selectSkyChartObjects(candidates({ stars: [star('bad', -5, 50, azimuth)] }))).toThrow(
-        RangeError,
+        INVALID_INPUT,
       );
     }
   });
@@ -212,16 +223,16 @@ describe('SM2-B independent sky chart object selection', () => {
     for (const magnitude of [NaN, Infinity, -Infinity, null, '5']) {
       expect(() =>
         selectSkyChartObjects(candidates({ stars: [{ ...star('bad', -1), magnitude }] as never })),
-      ).toThrow(RangeError);
+      ).toThrow(INVALID_INPUT);
     }
     for (const colorIndex of [NaN, Infinity, 'red']) {
       expect(() =>
         selectSkyChartObjects(candidates({ stars: [{ ...star('bad', -1), colorIndex }] as never })),
-      ).toThrow(RangeError);
+      ).toThrow(INVALID_INPUT);
     }
     expect(() =>
       selectSkyChartObjects(candidates({ stars: [{ ...star('bad'), name: null }] as never })),
-    ).toThrow(TypeError);
+    ).toThrow(INVALID_INPUT);
     expect(
       selectSkyChartObjects(candidates({ stars: [{ ...star('okay'), colorIndex: null }] })).objects,
     ).toHaveLength(1);
@@ -230,9 +241,9 @@ describe('SM2-B independent sky chart object selection', () => {
   it('rejects unknown planets, missing star IDs and duplicates even when below horizon', () => {
     expect(() =>
       selectSkyChartObjects(candidates({ planets: [{ id: 'pluto', altitude: 40, azimuth: 0 }] as never })),
-    ).toThrow(RangeError);
-    expect(() => selectSkyChartObjects(candidates({ stars: [star('')] }))).toThrow(TypeError);
-    expect(() => selectSkyChartObjects(candidates({ stars: [star('sun')] }))).toThrow(RangeError);
+    ).toThrow(INVALID_INPUT);
+    expect(() => selectSkyChartObjects(candidates({ stars: [star('')] }))).toThrow(INVALID_INPUT);
+    expect(() => selectSkyChartObjects(candidates({ stars: [star('sun')] }))).toThrow(INVALID_INPUT);
     expect(() =>
       selectSkyChartObjects(
         candidates({
@@ -242,10 +253,10 @@ describe('SM2-B independent sky chart object selection', () => {
           ],
         }),
       ),
-    ).toThrow(RangeError);
+    ).toThrow(INVALID_INPUT);
     expect(() =>
       selectSkyChartObjects(candidates({ stars: [star('duplicate', -1), star('duplicate', 50)] })),
-    ).toThrow(RangeError);
+    ).toThrow(INVALID_INPUT);
   });
 
   it('does not modify frozen candidate arrays or leak source references to results', () => {
