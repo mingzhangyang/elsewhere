@@ -10,6 +10,7 @@ import {
 } from './skyChartSelection';
 import { STAR_CATALOG, starCatalogLoaded, type CatalogStar } from './stars';
 import { validateInstant } from './time';
+import { invalidInput } from '../errors';
 
 /** Pure domain input: a canonical UTC instant plus one explicit observer. */
 export interface SkyChartSnapshotInput {
@@ -91,19 +92,19 @@ const PHASES: readonly MoonPhaseKey[] = [
 
 function requireRecord(value: unknown, name: string): asserts value is Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new TypeError(`${name} must be an object.`);
+    throw invalidInput(`${name} must be an object.`);
   }
 }
 
 function finite(value: unknown, label: string, min = -Infinity, max = Infinity): asserts value is number {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max) {
-    throw new RangeError(`${label} must be finite and in its valid range.`);
+    throw invalidInput(`${label} must be finite and in its valid range.`);
   }
 }
 
 function nonempty(value: unknown, label: string): asserts value is string {
   if (typeof value !== 'string' || value.trim().length === 0) {
-    throw new TypeError(`${label} must be a nonempty string.`);
+    throw invalidInput(`${label} must be a nonempty string.`);
   }
 }
 
@@ -113,7 +114,7 @@ function copyLocation(location: LocationInfo): Readonly<LocationInfo> {
   validateObserver(location);
   for (const key of ['id', 'name', 'country'] as const) nonempty(location[key], `Location ${key}`);
   if (location.source !== undefined && location.source !== 'device') {
-    throw new TypeError('Unknown location source.');
+    throw invalidInput('Unknown location source.');
   }
   return Object.freeze({
     id: location.id,
@@ -133,14 +134,14 @@ export function prepareSkyChartSnapshotInput(input: SkyChartSnapshotInput): Prep
   requireRecord(input.time, 'Snapshot time');
   const time = input.time;
   if (time.kind !== 'utc') {
-    throw new TypeError('Expected a canonical UTC instant; resolved SM1 times must use the service adapter.');
+    throw invalidInput('Expected a canonical UTC instant; resolved SM1 times must use the service adapter.');
   }
   const utc = time.utc;
   const timeMetadata: PreparedSkyChartSnapshotInput['time'] = { kind: 'utc', disambiguation: null };
-  if (typeof utc !== 'string') throw new TypeError('UTC must be a canonical ISO string.');
+  if (typeof utc !== 'string') throw invalidInput('UTC must be a canonical ISO string.');
   const date = new Date(utc);
   validateInstant(date);
-  if (utc !== date.toISOString()) throw new RangeError('UTC must be a canonical millisecond ISO instant.');
+  if (utc !== date.toISOString()) throw invalidInput('UTC must be a canonical millisecond ISO instant.');
   const magnitude = input.limitingMagnitude ?? DEFAULT_SKY_CHART_LIMITING_MAGNITUDE;
   finite(magnitude, 'Limiting magnitude', SKY_CHART_MAGNITUDE_RANGE.min, SKY_CHART_MAGNITUDE_RANGE.max);
   return Object.freeze({
@@ -158,12 +159,12 @@ export function assertSkyChartCatalog(catalog: readonly CatalogStar[]): void {
   for (const star of catalog) {
     requireRecord(star, 'Catalog star');
     nonempty(star.id, 'Catalog star ID');
-    if (typeof star.name !== 'string') throw new TypeError(`Catalog star ${star.id} name must be a string.`);
+    if (typeof star.name !== 'string') throw invalidInput(`Catalog star ${star.id} name must be a string.`);
     finite(star.catalogId, `Catalog star ${star.id} catalog ID`, 0);
     if (!Number.isSafeInteger(star.catalogId) || star.id !== `hyg-${star.catalogId}`) {
-      throw new RangeError('Invalid HYG catalog star identifier.');
+      throw invalidInput('Invalid HYG catalog star identifier.');
     }
-    if (ids.has(star.id)) throw new RangeError(`Duplicate catalog star: ${star.id}`);
+    if (ids.has(star.id)) throw invalidInput(`Duplicate catalog star: ${star.id}`);
     ids.add(star.id);
     finite(star.ra, `Catalog star ${star.id} RA`, 0, 24);
     finite(star.dec, `Catalog star ${star.id} declination`, -90, 90);
@@ -183,16 +184,16 @@ function assertSkyComplete(sky: SkyState, catalog: readonly CatalogStar[]): void
   finite(sky.moon.illumination, 'Moon illumination', 0, 1);
   finite(sky.moon.phaseAngle, 'Moon phase angle', 0, 360);
   if (!PHASES.includes(sky.moon.phase) || typeof sky.moon.waxing !== 'boolean') {
-    throw new RangeError('Incomplete Moon phase information.');
+    throw invalidInput('Incomplete Moon phase information.');
   }
   if (!Array.isArray(sky.planets) || sky.planets.length !== PLANET_IDS.length) {
-    throw new RangeError('A complete five-planet calculation is required.');
+    throw invalidInput('A complete five-planet calculation is required.');
   }
   const seenPlanets = new Set<PlanetId>();
   for (const planet of sky.planets) {
     requireRecord(planet, 'Calculated planet');
     if (!PLANET_IDS.includes(planet.id) || seenPlanets.has(planet.id)) {
-      throw new RangeError('Unknown or duplicate calculated planet.');
+      throw invalidInput('Unknown or duplicate calculated planet.');
     }
     seenPlanets.add(planet.id);
     nonempty(planet.name, `Planet ${planet.id} name`);
@@ -203,18 +204,18 @@ function assertSkyComplete(sky: SkyState, catalog: readonly CatalogStar[]): void
     finite(planet.distanceKm, `Planet ${planet.id} distance`, Number.MIN_VALUE);
     finite(planet.radiusKm, `Planet ${planet.id} radius`, Number.MIN_VALUE);
     if (planet.apparition !== 'morning' && planet.apparition !== 'evening') {
-      throw new RangeError(`Planet ${planet.id} apparition is missing.`);
+      throw invalidInput(`Planet ${planet.id} apparition is missing.`);
     }
   }
   if (!Array.isArray(sky.stars) || sky.stars.length !== catalog.length) {
-    throw new RangeError('Calculated star positions do not match the loaded catalog.');
+    throw invalidInput('Calculated star positions do not match the loaded catalog.');
   }
   const byId = new Map(catalog.map((star) => [star.id, star]));
   const seenStars = new Set<string>();
   for (const star of sky.stars) {
     requireRecord(star, 'Calculated star');
     const catalogStar = byId.get(star.id);
-    if (!catalogStar || seenStars.has(star.id)) throw new RangeError('Missing or duplicate calculated star.');
+    if (!catalogStar || seenStars.has(star.id)) throw invalidInput('Missing or duplicate calculated star.');
     seenStars.add(star.id);
     if (
       star.name !== catalogStar.name ||
@@ -223,7 +224,7 @@ function assertSkyComplete(sky: SkyState, catalog: readonly CatalogStar[]): void
       star.ra !== catalogStar.ra ||
       star.dec !== catalogStar.dec
     ) {
-      throw new RangeError(`Calculated star ${star.id} does not match loaded catalog.`);
+      throw invalidInput(`Calculated star ${star.id} does not match loaded catalog.`);
     }
   }
   // The original field is not copied into the snapshot, but its integrity must be checked.
@@ -239,7 +240,7 @@ function assertSkyComplete(sky: SkyState, catalog: readonly CatalogStar[]): void
     !sky.starField.precession.every(Number.isFinite) ||
     !sky.starField.vectors.every(Number.isFinite)
   ) {
-    throw new RangeError('Incomplete calculated star field.');
+    throw invalidInput('Incomplete calculated star field.');
   }
 }
 
@@ -261,7 +262,7 @@ export function buildPreparedSkyChartSnapshot(
   if (catalog === STAR_CATALOG && !starCatalogLoaded()) throw new SkyChartCatalogNotReadyError();
   assertSkyChartCatalog(catalog);
   if (catalog === STAR_CATALOG && catalog.length !== EXPECTED_HYG_DERIVATIVE_STAR_COUNT) {
-    throw new RangeError('Incomplete bundled HYG derivative catalog.');
+    throw invalidInput('Incomplete bundled HYG derivative catalog.');
   }
   assertSkyComplete(sky, catalog);
   const selected = selectSkyChartObjects(
@@ -277,7 +278,7 @@ export function buildPreparedSkyChartSnapshot(
       !Number.isFinite(point.y) ||
       Math.hypot(point.x, point.y) > 1 + 1e-12
     ) {
-      throw new RangeError(`Invalid projected sky chart object: ${object.id}`);
+      throw invalidInput(`Invalid projected sky chart object: ${object.id}`);
     }
     const pointCoordinates = { x: point.x, y: point.y };
     switch (object.kind) {
@@ -295,7 +296,7 @@ export function buildPreparedSkyChartSnapshot(
         });
       case 'planet': {
         const planet = planets.get(object.id);
-        if (!planet) throw new RangeError(`Calculated planet missing: ${object.id}`);
+        if (!planet) throw invalidInput(`Calculated planet missing: ${object.id}`);
         return Object.freeze({
           ...object,
           ...pointCoordinates,

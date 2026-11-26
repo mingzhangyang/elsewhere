@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { INVALID_INPUT } from './skyEngineErrorMatchers';
 import { MAX_INSTANT, MIN_INSTANT, validateInstant } from '../src/domain/time';
 import {
   assertMemorialTimeConsistency,
@@ -125,8 +126,8 @@ describe('memorial event time (SM1-A)', () => {
     expect((await resolved(exact(utc, '2100-12-31', '23:59'))).utc).toBe('2100-12-31T23:59:00.000Z');
     expect(() => validateInstant(new Date(MIN_INSTANT))).not.toThrow();
     expect(() => validateInstant(new Date(MAX_INSTANT))).not.toThrow();
-    expect(() => validateInstant(new Date(MIN_INSTANT - 1))).toThrow(RangeError);
-    expect(() => validateInstant(new Date(MAX_INSTANT + 1))).toThrow(RangeError);
+    expect(() => validateInstant(new Date(MIN_INSTANT - 1))).toThrow(INVALID_INPUT);
+    expect(() => validateInstant(new Date(MAX_INSTANT + 1))).toThrow(INVALID_INPUT);
     expect(await resolveMemorialTime(exact(utc, '1899-12-31', '23:59'))).toMatchObject({
       status: 'error',
       code: 'out-of-range',

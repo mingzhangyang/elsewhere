@@ -1,3 +1,4 @@
+import { invalidInput } from '../errors';
 /** A point in the unit sky-chart disc: origin at zenith, x right, y down. */
 export interface SkyChartPoint {
   readonly x: number;
@@ -19,10 +20,10 @@ const RADIANS_PER_DEGREE = Math.PI / 180;
  */
 export function projectSkyChart(altitude: number, azimuth: number): SkyChartPoint | null {
   if (!Number.isFinite(altitude) || altitude < -90 || altitude > 90) {
-    throw new RangeError('Apparent altitude must be finite and between -90 and 90 degrees.');
+    throw invalidInput('Apparent altitude must be finite and between -90 and 90 degrees.');
   }
   if (!Number.isFinite(azimuth)) {
-    throw new RangeError('Azimuth must be a finite number of degrees.');
+    throw invalidInput('Azimuth must be a finite number of degrees.');
   }
   if (altitude < 0) return null;
   if (altitude === 90) return { x: 0, y: 0 };

@@ -1,7 +1,8 @@
 import type { MomentSnapshot } from '../contracts';
 import { brightLimbAngle } from '../domain/planets';
-import { loadResource } from '../resources';
+import { assetFailed, loadResource, validateTimeout } from '../resources';
 import { requireImageSize, resetImageCanvas } from './imageCanvas';
+import { cancelled, canvasUnavailable, invalidInput, SkyEngineError } from '../errors';
 
 export type MoonTexture = ImageData | ImageBitmap | HTMLImageElement;
 export interface MoonPhaseOptions {
@@ -26,7 +27,7 @@ const cross = (a: Vec, b: Vec): Vec => [
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
 function unit(v: Vec): Vec {
   const length = Math.hypot(...v);
-  if (!Number.isFinite(length) || length < 1e-10) throw new RangeError('Invalid lunar basis.');
+  if (!Number.isFinite(length) || length < 1e-10) throw invalidInput('Invalid lunar basis.');
   return [v[0] / length, v[1] / length, v[2] / length];
 }
 function projected(v: Vec, normal: Vec): Vec {
@@ -50,7 +51,7 @@ function decodeTexture(texture: MoonTexture): ImageData {
   const w = 'naturalWidth' in texture ? texture.naturalWidth : texture.width;
   const h = 'naturalHeight' in texture ? texture.naturalHeight : texture.height;
   if (!Number.isInteger(w) || !Number.isInteger(h) || h < 2 || h > 4096 || w !== 2 * h) {
-    throw new RangeError('Moon texture must be a decoded 2:1 equirectangular image, at most 8192 x 4096.');
+    throw invalidInput('Moon texture must be a decoded 2:1 equirectangular image, at most 8192 x 4096.');
   }
   let result: ImageData;
   if ('data' in texture) {
@@ -60,13 +61,15 @@ function decodeTexture(texture: MoonTexture): ImageData {
     canvas.width = w;
     canvas.height = h;
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    if (!ctx) throw new Error('Canvas 2D is unavailable.');
+    if (!ctx) throw canvasUnavailable();
     ctx.drawImage(texture, 0, 0, w, h);
     try {
       result = ctx.getImageData(0, 0, w, h);
     } catch (error) {
-      if (isSecurityError(error)) throw new Error(CROSS_ORIGIN_TEXTURE, { cause: error });
-      throw error;
+      if (isSecurityError(error)) {
+        throw new SkyEngineError('ASSET_FAILED', CROSS_ORIGIN_TEXTURE, { cause: error });
+      }
+      throw assetFailed('Moon texture', error);
     }
   }
   decoded.set(texture, result);
@@ -75,11 +78,19 @@ function decodeTexture(texture: MoonTexture): ImageData {
 
 /** Load only an explicitly supplied URL; callers can use a local or service-worker-cached asset. */
 export async function loadMoonTexture(url: string | URL, signal?: AbortSignal): Promise<ImageData> {
-  const response = await fetch(url, { signal });
-  if (!response.ok) throw new Error('Moon texture unavailable: ' + response.status);
-  const bitmap = await createImageBitmap(await response.blob());
+  if (signal?.aborted) throw cancelled('Moon texture cancelled.');
+  let bitmap: ImageBitmap;
   try {
-    if (signal?.aborted) throw new Error('Moon texture cancelled.');
+    const response = await fetch(url, { signal });
+    if (!response.ok)
+      throw new SkyEngineError('ASSET_FAILED', 'Moon texture unavailable: ' + response.status);
+    bitmap = await createImageBitmap(await response.blob());
+  } catch (error) {
+    if (signal?.aborted) throw new SkyEngineError('CANCELLED', 'Moon texture cancelled.', { cause: error });
+    throw assetFailed('Moon texture', error);
+  }
+  try {
+    if (signal?.aborted) throw cancelled('Moon texture cancelled.');
     return decodeTexture(bitmap);
   } finally {
     bitmap.close();
@@ -107,7 +118,7 @@ export async function renderMoonPhase(
     !['transparent', 'dark', 'light'].includes(background) ||
     typeof earthshine !== 'boolean'
   ) {
-    throw new RangeError('Invalid Moon portrait options.');
+    throw invalidInput('Invalid Moon portrait options.');
   }
   const moon = scene.sky.moon;
   const sun = scene.sky.sun;
@@ -125,7 +136,7 @@ export async function renderMoonPhase(
     Math.abs(moon.geometricAltitude) > 90 ||
     Math.abs(sun.geometricAltitude) > 90
   ) {
-    throw new RangeError('Invalid Moon ephemeris.');
+    throw invalidInput('Invalid Moon ephemeris.');
   }
   // East, zenith, south: the same right-handed horizon frame as the existing renderer.
   const az = moon.azimuth * DEG;
@@ -159,26 +170,27 @@ export async function renderMoonPhase(
   const n = coefficients(north);
   const e = coefficients(east);
 
-  if (options.signal?.aborted) throw new Error('Moon portrait cancelled.');
+  const assetTimeoutMs = validateTimeout(options.assetTimeoutMs ?? 10000);
+  if (options.signal?.aborted) throw cancelled('Moon portrait cancelled.');
   let texture = options.texture ? decodeTexture(options.texture) : undefined;
   if (!texture && options.loadTexture) {
     texture = decodeTexture(
-      await loadResource(
-        options.loadTexture,
-        options.assetTimeoutMs ?? 10000,
-        'Moon texture',
-        options.signal,
-      ),
+      await loadResource(options.loadTexture, assetTimeoutMs, 'Moon texture', options.signal),
     );
   }
   texture ??= installed;
-  if (!texture) throw new Error('Supply a Moon texture or install one with installMoonTexture().');
-  if (options.signal?.aborted) throw new Error('Moon portrait cancelled.');
+  if (!texture) {
+    throw new SkyEngineError(
+      'MISSING_ASSET',
+      'Supply a Moon texture or install one with installMoonTexture().',
+    );
+  }
+  if (options.signal?.aborted) throw cancelled('Moon portrait cancelled.');
   if (canvas.width !== width || canvas.height !== height) {
-    throw new Error('Canvas size changed while loading Moon texture.');
+    throw invalidInput('Canvas size changed while loading Moon texture.');
   }
   const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Canvas 2D is unavailable.');
+  if (!ctx) throw canvasUnavailable();
   const image = ctx.createImageData(width, height);
   const pixels = image.data;
   const bg = background === 'dark' ? [12, 15, 22] : [245, 244, 240];

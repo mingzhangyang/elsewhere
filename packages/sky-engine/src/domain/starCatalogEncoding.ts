@@ -1,4 +1,5 @@
 import type { CatalogRow } from './stars';
+import { invalidInput } from '../errors';
 
 /**
  * Lossless columnar HYG format: ID/name are unchanged; RA/Dec are scaled by 1e6,
@@ -8,24 +9,24 @@ import type { CatalogRow } from './stars';
  */
 export function decodeStarColumns(data: unknown): CatalogRow[] {
   if (!Array.isArray(data) || data.length !== 8 || !data.every(Array.isArray)) {
-    throw new Error('Invalid star catalog: expected eight columns.');
+    throw invalidInput('Invalid star catalog: expected eight columns.');
   }
   const columns = data as unknown[][];
   const size = columns[0].length;
   if (!size || columns.some((column) => column.length !== size)) {
-    throw new Error('Invalid star catalog: inconsistent column lengths.');
+    throw invalidInput('Invalid star catalog: inconsistent column lengths.');
   }
   const number = (value: unknown, factor: number) => {
     const decoded =
       typeof value === 'string' ? Number(value) : typeof value === 'number' ? value / factor : NaN;
-    if (!Number.isFinite(decoded)) throw new Error('Invalid star catalog numeric value.');
+    if (!Number.isFinite(decoded)) throw invalidInput('Invalid star catalog numeric value.');
     return decoded;
   };
   return Array.from({ length: size }, (_, i) => {
     const id = columns[0][i];
     const name = columns[1][i];
     if (!Number.isSafeInteger(id) || typeof name !== 'string') {
-      throw new Error('Invalid star catalog identifier or name.');
+      throw invalidInput('Invalid star catalog identifier or name.');
     }
     const colour = columns[5][i];
     return [

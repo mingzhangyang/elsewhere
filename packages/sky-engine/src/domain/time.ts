@@ -1,11 +1,12 @@
 import { Temporal } from './temporal';
+import { invalidInput } from '../errors';
 
 export const MIN_INSTANT = Date.UTC(1900, 0, 1);
 export const MAX_INSTANT = Date.UTC(2101, 0, 1) - 1;
 
 export function validateInstant(date: Date): Date {
   if (!Number.isFinite(date.getTime()) || date.getTime() < MIN_INSTANT || date.getTime() > MAX_INSTANT) {
-    throw new RangeError('Choose a date between 1900 and 2100.');
+    throw invalidInput('Choose a date between 1900 and 2100.');
   }
   return date;
 }

@@ -1,4 +1,5 @@
 import type { LocationInfo } from '../types';
+import { invalidInput } from '../errors';
 
 export function validateObserver(location: LocationInfo): void {
   if (
@@ -10,7 +11,7 @@ export function validateObserver(location: LocationInfo): void {
     location.elevation < -500 ||
     location.elevation > 10000
   ) {
-    throw new RangeError('Choose valid coordinates and an elevation between −500 and 10,000 meters.');
+    throw invalidInput('Choose valid coordinates and an elevation between −500 and 10,000 meters.');
   }
   new Intl.DateTimeFormat('en', { timeZone: location.timezone }).format();
 }

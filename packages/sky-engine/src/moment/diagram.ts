@@ -23,6 +23,7 @@ import {
   type SkyChartPalette,
 } from './chartPaint';
 import { requireImageSize, resetImageCanvas } from './imageCanvas';
+import { invalidInput } from '../errors';
 
 export interface SkyChartOptions {
   theme?: SkyArtworkTheme;
@@ -38,9 +39,9 @@ export interface MinimalSkyMapOptions extends SkyChartOptions {
 
 function paletteFor(options: SkyChartOptions): SkyChartPalette {
   const theme = options.theme ?? 'midnight';
-  if (theme !== 'midnight' && theme !== 'paper') throw new RangeError('Unknown chart theme.');
+  if (theme !== 'midnight' && theme !== 'paper') throw invalidInput('Unknown chart theme.');
   if (options.locale !== undefined && options.locale !== 'en' && options.locale !== 'zh-Hans') {
-    throw new RangeError('Unsupported chart locale.');
+    throw invalidInput('Unsupported chart locale.');
   }
   return SKY_CHART_PALETTES[theme];
 }
@@ -191,9 +192,9 @@ export function renderMinimalSkyMap(
   });
   let framed = prepared;
   if (typeof mode === 'object') {
-    if (!mode || typeof mode.pattern !== 'string') throw new TypeError('Invalid pattern composition.');
+    if (!mode || typeof mode.pattern !== 'string') throw invalidInput('Invalid pattern composition.');
     const pattern = patterns.find((entry) => entry.id === mode.pattern);
-    if (!pattern) throw new RangeError('Unknown illustration pattern: ' + mode.pattern);
+    if (!pattern) throw invalidInput('Unknown illustration pattern: ' + mode.pattern);
     const selected = new Set(
       snapshot.objects.filter((object) => object.kind === 'star').map((object) => object.id),
     );

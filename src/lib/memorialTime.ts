@@ -261,7 +261,12 @@ export function assertMemorialTimeConsistency(value: MemorialTime): void {
   }
   if (typeof value.utc !== 'string') throw new RangeError('Invalid UTC instant.');
   const utc = new Date(value.utc);
-  validateInstant(utc);
+  try {
+    validateInstant(utc);
+  } catch (error) {
+    // Saved-state failures stay RangeErrors for this module's callers; the SDK reports SkyEngineError.
+    throw new RangeError(error instanceof Error ? error.message : 'Invalid UTC instant.', { cause: error });
+  }
   if (utc.toISOString() !== value.utc)
     throw new RangeError('UTC must be a canonical millisecond ISO instant.');
   if (typeof value.offset !== 'string') throw new RangeError('Invalid saved UTC offset.');

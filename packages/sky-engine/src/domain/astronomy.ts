@@ -4,6 +4,7 @@ import type { BodyId, LocationInfo, MoonPhaseKey, PlanetId, RiseSet, SkyEvents, 
 import { localDayBounds, validateInstant, MIN_INSTANT, MAX_INSTANT } from './time';
 import { calculateStarField, calculateStarPositions } from './stars';
 import { brightLimbAngle, calculatePlanets, PLANETS } from './planets';
+import { invalidInput } from '../errors';
 
 const AU_KM = 149_597_870.7;
 const DEG = Math.PI / 180;
@@ -56,7 +57,7 @@ export function calculateDailyEvents(location: LocationInfo, date: Date): SkyEve
   const { start, end } = localDayBounds(date, location.timezone);
   // A valid UTC boundary instant can belong to an adjacent local calendar year.
   if (end.getTime() <= MIN_INSTANT || start.getTime() > MAX_INSTANT)
-    throw new RangeError('Choose a date between 1900 and 2100 UTC.');
+    throw invalidInput('Choose a date between 1900 and 2100 UTC.');
   const search = (body: Astronomy.Body, direction: number): Date[] => {
     const events: Date[] = [];
     let cursor = start;
