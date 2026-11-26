@@ -26,21 +26,33 @@ export type PatternId = 'big-dipper' | 'orion' | 'crux' | 'summer-triangle';
 export interface Constellation {
   id: PatternId;
   /** Pairs of catalog star IDs. */
-  lines: string[][];
+  lines: readonly (readonly string[])[];
 }
 
 /**
  * The catalog is about 96 kB compressed, so it loads after the first screen rather than before it.
  * Until `loadStarCatalog()` resolves, these are empty and the sky shows the Sun and Moon only. They
- * are live bindings: importers see the catalog once it arrives.
+ * are live bindings for the app and the engine's own modules: importers see the catalog once it
+ * arrives. Both are frozen (the arrays and every element) when installed; they are internal, and the
+ * public API exposes them only through `getStarCatalog()` and `getPatterns()`.
  */
-export let STAR_CATALOG: CatalogStar[] = [];
-export let CONSTELLATIONS: Constellation[] = [];
+export let STAR_CATALOG: readonly CatalogStar[] = Object.freeze([]);
+export let CONSTELLATIONS: readonly Constellation[] = Object.freeze([]);
 let loading: Promise<void> | null = null;
 let loadingWith: (() => Promise<CatalogRow[]>) | null = null;
 let warnedIgnoredLoader = false;
 
 export const starCatalogLoaded = () => STAR_CATALOG.length > 0;
+
+/** The installed catalog, frozen once at installation (never copied per call); empty until loaded. */
+export function getStarCatalog(): readonly CatalogStar[] {
+  return STAR_CATALOG;
+}
+
+/** The built-in line patterns, with catalog star IDs; frozen, and empty until the catalog loads. */
+export function getPatterns(): readonly Constellation[] {
+  return CONSTELLATIONS;
+}
 
 /** In-flight or completed installation for this module. Null only before the first attempt
  * and after a failed one, so another caller can join instead of starting a second load. */
@@ -139,8 +151,14 @@ function installCatalog(rows: CatalogRow[]) {
       }),
     ),
   }));
-  CONSTELLATIONS = constellations;
-  STAR_CATALOG = catalog;
+  for (const star of catalog) Object.freeze(star);
+  for (const pattern of constellations) {
+    for (const pair of pattern.lines) Object.freeze(pair);
+    Object.freeze(pattern.lines);
+    Object.freeze(pattern);
+  }
+  CONSTELLATIONS = Object.freeze(constellations);
+  STAR_CATALOG = Object.freeze(catalog);
 }
 
 function catalogId(value: unknown): number {
@@ -337,7 +355,7 @@ export interface StarField {
 
 const DAY_MS = 86_400_000;
 const J2000_MS = Date.UTC(2000, 0, 1, 12);
-let vectorCache: { day: number; catalog: CatalogStar[]; vectors: Float32Array } | null = null;
+let vectorCache: { day: number; catalog: readonly CatalogStar[]; vectors: Float32Array } | null = null;
 
 /**
  * Proper motion and precession move a star by well under an arcsecond a day, so the catalog is
