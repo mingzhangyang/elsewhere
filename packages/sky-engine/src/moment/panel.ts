@@ -2,7 +2,8 @@ import type { MomentSnapshot } from '../contracts';
 import { drawIllustration, type IllustrationDetails, type IllustrationText } from './illustration';
 import { paintFinish } from './paintFinish';
 import { createCoverProjection } from './projection';
-import type { HorizonVariant } from './scenery';
+import { invalidInput } from '../errors';
+import { HORIZON_VARIANTS, type HorizonVariant } from './scenery';
 
 export interface IllustrationPanelOptions extends IllustrationDetails {
   landscape?: HorizonVariant;
@@ -22,6 +23,9 @@ export function paintIllustrationPanel(
   snapshot: MomentSnapshot,
   options: IllustrationPanelOptions = {},
 ): void {
+  const landscape = options.landscape ?? 'ridge';
+  // The same check as renderIllustration, before anything is drawn.
+  if (!HORIZON_VARIANTS.includes(landscape)) throw invalidInput('Invalid landscape.');
   const { toCanvas } = createCoverProjection(snapshot.view, snapshot.aspect, width, height);
   ctx.save();
   try {
@@ -34,7 +38,7 @@ export function paintIllustrationPanel(
       height,
       snapshot,
       toCanvas,
-      options.landscape ?? 'ridge',
+      landscape,
       options.text ?? defaultText,
       options.font ?? 'system-ui, sans-serif',
       options.landscapeArt,

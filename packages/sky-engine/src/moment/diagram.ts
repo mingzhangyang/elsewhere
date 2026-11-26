@@ -192,7 +192,7 @@ export function renderMinimalSkyMap(
   });
   let framed = prepared;
   if (typeof mode === 'object') {
-    if (!mode || typeof mode.pattern !== 'string') throw invalidInput('Invalid pattern composition.');
+    if (!mode || typeof mode.pattern !== 'string') throw invalidInput('Invalid illustration composition.');
     const pattern = patterns.find((entry) => entry.id === mode.pattern);
     if (!pattern) throw invalidInput('Unknown illustration pattern: ' + mode.pattern);
     const selected = new Set(
