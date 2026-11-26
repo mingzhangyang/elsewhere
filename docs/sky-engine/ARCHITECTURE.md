@@ -13,8 +13,15 @@ SDK distribution bundles `src/index.ts`.
 
 ## Boundaries
 
-- `src/index.ts`: the common host-neutral source entry point for the distribution. Its runtime export
-  names are locked by `packages/sky-engine/api-exports.json` (checked by `npm run sdk:build`).
+- `src/index.ts`: the common host-neutral source entry point for the distribution; its direct exports
+  are the stable API. `src/advanced.ts` is re-exported from it as the `advanced` namespace
+  (`export * as advanced`) of experimental building blocks. It is deliberately not a separate subpath
+  file: the release must stay one self-contained `sky-engine.mjs`, and a second entry would need
+  either a shared chunk or a second module instance with its own catalog. Root names and
+  `advanced.<name>` members are locked by `packages/sky-engine/api-exports.json` (checked by
+  `npm run sdk:build`).
+- `src/errors.ts`: `SkyEngineError` and its codes. Every throw in the engine uses it; host loader
+  failures are wrapped as `ASSET_FAILED` in `src/resources.ts` (and by `loadStarCatalog`).
 - `src/types.ts` and `src/contracts.ts`: astronomy, weather values, camera, layers and moment contracts.
 - `src/domain/`: observer and time validation, ephemerides, star catalog/encoding, Galactic coordinates,
   visibility, all-sky position selection and azimuthal-equidistant projection, and clear-weather defaults.
@@ -38,7 +45,9 @@ The low-level functions need civil time via `ensureTemporal()` and decoded HYG r
 (`src/services/starCatalog.ts`) and data are deliberately unchanged. The catalog and license remain in
 `src/data/stars.json` and `public/licenses/HYG.txt` (CC BY-SA 4.0); source code remains MIT.
 
-The loader has one live catalog per module instance: `STAR_CATALOG` and `CONSTELLATIONS` are live
-bindings. An in-flight or completed installation ignores later load functions; a failed one is cleared
-so that a later call retries. Scene creation joins an in-flight installation with a per-caller 15 s
-bound that never cancels the installation itself.
+The loader has one catalog per module instance. Internally `STAR_CATALOG` and `CONSTELLATIONS` are
+live bindings that the engine and Elsewhere import directly; they are frozen (arrays and elements)
+when installed, and the public API exposes them only through `getStarCatalog()` and `getPatterns()`,
+which return those same frozen arrays without copying. An in-flight or completed installation ignores later load functions; a failed one is cleared
+so that a later call retries. Scene creation joins an in-flight installation with a per-caller bound
+(`assetTimeoutMs`, 15 s by default) and `signal` that never cancel the installation itself.
