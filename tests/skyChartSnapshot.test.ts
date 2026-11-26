@@ -351,7 +351,7 @@ describe('SM2-C resource coordinator (synthetic injection)', () => {
     const base = { catalogLoaded: () => true, loadCatalog: async () => {}, calculate: () => sampleSky() };
     expect(
       await createSkyChartSnapshotCoordinator({ ...base, getCatalog: () => [] }).generate(input()),
-    ).toMatchObject({ status: 'error', code: 'catalog-data' });
+    ).toMatchObject({ status: 'error', code: 'catalog-data', message: 'SkyEngineError:MISSING_ASSET' });
     expect(
       await createSkyChartSnapshotCoordinator({
         ...base,
@@ -360,7 +360,7 @@ describe('SM2-C resource coordinator (synthetic injection)', () => {
           throw new Error('fatal');
         },
       }).generate(input()),
-    ).toMatchObject({ status: 'error', code: 'calculation' });
+    ).toMatchObject({ status: 'error', code: 'calculation', message: 'Error' });
     expect(
       await createSkyChartSnapshotCoordinator({
         ...base,
