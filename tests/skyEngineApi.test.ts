@@ -1,18 +1,17 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it, vi } from 'vitest';
 import {
-  createCoverProjection,
-  createProjection,
-  createSkyRay,
+  advanced,
   createSkyScene,
   decodeStarColumns,
-  drawIllustration,
   prepareIllustrationScene,
   renderIllustration,
   type CatalogRow,
   type MomentSnapshot,
   type SkySceneOptions,
 } from '../packages/sky-engine/src';
+
+const { createCoverProjection, createProjection, createSkyRay, drawIllustration } = advanced;
 import { loadResource } from '../packages/sky-engine/src/resources';
 import { calculateSky } from '../src/domain/astronomy';
 import { NEW_YORK } from './fixtures/locations';

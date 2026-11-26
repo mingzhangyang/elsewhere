@@ -36,16 +36,47 @@ it('keeps the shared engine independent of Elsewhere, React, Three and network c
 });
 
 it('uses exactly the same implementations and live catalog through legacy and engine entries', () => {
-  expect(engine.calculateSky).toBe(calculateSky);
+  expect(engine.advanced.calculateSky).toBe(calculateSky);
   expect(engine.defaultWeatherValues).toBe(defaultWeatherValues);
-  expect(engine.createProjection).toBe(createProjection);
-  expect(engine.projectSkyChart).toBe(projectSkyChart);
-  expect(engine.selectSkyChartObjects).toBe(selectSkyChartObjects);
+  expect(engine.advanced.createProjection).toBe(createProjection);
+  expect(engine.advanced.projectSkyChart).toBe(projectSkyChart);
+  expect(engine.advanced.selectSkyChartObjects).toBe(selectSkyChartObjects);
   expect(engine.buildSkyChartSnapshot).toBe(buildSkyChartSnapshot);
-  expect(engine.drawIllustration).toBe(drawIllustration);
-  expect(engine.frameMoment).toBe(frameMoment);
+  expect(engine.advanced.drawIllustration).toBe(drawIllustration);
+  expect(engine.advanced.frameMoment).toBe(frameMoment);
   expect(engine.loadStarCatalog).toBe(loadStarCatalog);
-  expect(engine.STAR_CATALOG).toBe(STAR_CATALOG);
-  expect(engine.CONSTELLATIONS).toBe(CONSTELLATIONS);
-  expect(engine.STAR_CATALOG.length).toBeGreaterThan(0);
+  expect(engine.getStarCatalog()).toBe(STAR_CATALOG);
+  expect(engine.getPatterns()).toBe(CONSTELLATIONS);
+  expect(engine.getStarCatalog().length).toBeGreaterThan(0);
+});
+
+it('no longer exposes the mutable catalog bindings or moved functions at the package root', () => {
+  const root = engine as unknown as Record<string, unknown>;
+  for (const name of [
+    'STAR_CATALOG',
+    'CONSTELLATIONS',
+    'calculateSky',
+    'createProjection',
+    'ensureTemporal',
+  ]) {
+    expect(root[name], name).toBeUndefined();
+  }
+});
+
+it('returns the frozen installed catalog and patterns without copying them per call', () => {
+  const catalog = engine.getStarCatalog();
+  const patterns = engine.getPatterns();
+  expect(engine.getStarCatalog()).toBe(catalog);
+  expect(engine.getPatterns()).toBe(patterns);
+  expect(Object.isFrozen(catalog)).toBe(true);
+  expect(catalog.every((star) => Object.isFrozen(star))).toBe(true);
+  expect(Object.isFrozen(patterns)).toBe(true);
+  for (const pattern of patterns) {
+    expect(Object.isFrozen(pattern)).toBe(true);
+    expect(Object.isFrozen(pattern.lines)).toBe(true);
+    expect(pattern.lines.every((pair) => Object.isFrozen(pair))).toBe(true);
+  }
+  expect(() => ((catalog[0] as { name: string }).name = 'Changed')).toThrow(TypeError);
+  expect(() => (catalog as unknown[]).push({})).toThrow(TypeError);
+  expect(catalog[0].name).not.toBe('Changed');
 });
