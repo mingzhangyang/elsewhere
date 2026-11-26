@@ -35,6 +35,8 @@ export interface Constellation {
 export let STAR_CATALOG: CatalogStar[] = [];
 export let CONSTELLATIONS: Constellation[] = [];
 let loading: Promise<void> | null = null;
+let loadingWith: (() => Promise<CatalogRow[]>) | null = null;
+let warnedIgnoredLoader = false;
 
 export const starCatalogLoaded = () => STAR_CATALOG.length > 0;
 
@@ -68,14 +70,42 @@ export function awaitStarCatalog(timeoutMs = 15000): Promise<void> {
  * Installs the catalog once from `load` (services/starCatalog.ts in the app, the file system in
  * tests and scripts). Any failure, in loading or in installing, clears the attempt so a later call
  * starts over.
+ *
+ * There is one installation per module instance. While an installation is in flight, or after one
+ * has succeeded, the `load` argument is ignored and **not called**: the call returns the existing
+ * promise, whichever function started it. Only a failed attempt lets a later `load` run. Passing a
+ * different function while one is in flight logs a single `console.warn` per module instance; the
+ * return value is the same either way.
+ *
+ * Failures of the returned promise (a rejected `load`, or rows that cannot be installed) reject it.
+ * A `load` that throws synchronously instead of returning a promise throws synchronously from this
+ * call; nothing is installed or retained, and a later call can start over.
  */
 export function loadStarCatalog(load: () => Promise<CatalogRow[]>): Promise<void> {
-  loading ??= load()
-    .then(installCatalog)
-    .catch((error: unknown) => {
+  if (loading) {
+    if (!starCatalogLoaded() && load !== loadingWith && !warnedIgnoredLoader) {
+      warnedIgnoredLoader = true;
+      console.warn(
+        'Sky Engine: a star catalog installation is already in progress; the new load function is ignored.',
+      );
+    }
+    return loading;
+  }
+  // A synchronous throw from `load` propagates to the caller as before, with nothing retained.
+  const rows = load();
+  // Kept only while in flight, to recognise a different function; released once settled so the
+  // host's loader and its closure are not retained for the module's lifetime.
+  loadingWith = load;
+  loading = rows.then(installCatalog).then(
+    () => {
+      loadingWith = null;
+    },
+    (error: unknown) => {
       loading = null;
+      loadingWith = null;
       throw error;
-    });
+    },
+  );
   return loading;
 }
 
