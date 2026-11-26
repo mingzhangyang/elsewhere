@@ -189,6 +189,12 @@ omit the optional landscape archive for procedural ridge or sea scenes. For the 
 extract its `package/landscapes` directory into the host's static resources and resolve the SDK's
 season/light request to the appropriate WebP (see `LANDSCAPES.md` in the source).
 
+The build also locks the public runtime API. After installing the core tarball offline it reads
+the sorted runtime export names of `@orangely/sky-engine` and compares them with the committed
+[`api-exports.json`](api-exports.json); any difference fails the build and lists the added and
+removed names. To change the API deliberately, run `SKY_ENGINE_UPDATE_API=1 npm run sdk:build`,
+review the rewritten file and commit it. Removing or renaming an export is a breaking change.
+
 The core module has initial independent limits of 750,000 raw and 250,000 gzip bytes; catalog
 gzip is capped at 120,000 bytes, the core npm archive at 400,000 bytes, and the optional artwork
 archive at 5 MB. The separate lunar texture archive is capped at 600,000 bytes. Existing app limits are unchanged. CI checks the SDK on Node 24 on Linux and Windows,

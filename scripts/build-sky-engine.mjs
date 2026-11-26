@@ -149,6 +149,29 @@ const lunarTexture = await readFile(join(moonStage, 'moon-lroc.jpg'));
 const lunarChecksum = 'f7130a1822681fa7512d7dcfd40db8c10b9ba4f06777910348698260ed7a2170';
 assert.equal(sha256(lunarTexture), lunarChecksum, 'NASA lunar texture checksum mismatch.');
 
+// The installed runtime export names must match the committed list. Removing or renaming an export
+// breaks consumers, so any change must be deliberate: SKY_ENGINE_UPDATE_API=1 rewrites the list.
+async function checkExports(actual) {
+  const file = join(sdk, 'api-exports.json');
+  if (process.env.SKY_ENGINE_UPDATE_API === '1') {
+    await writeFile(file, JSON.stringify(actual, null, 2) + '\n');
+    console.log('Updated packages/sky-engine/api-exports.json (' + actual.length + ' exports).');
+    return;
+  }
+  const expected = JSON.parse(await readFile(file, 'utf8'));
+  const added = actual.filter((name) => !expected.includes(name));
+  const removed = expected.filter((name) => !actual.includes(name));
+  if (added.length || removed.length) {
+    throw new Error(
+      'Sky Engine runtime exports differ from packages/sky-engine/api-exports.json.\n' +
+        (added.length ? '  Added:   ' + added.join(', ') + '\n' : '') +
+        (removed.length ? '  Removed: ' + removed.join(', ') + '\n' : '') +
+        'If the change is intended, run SKY_ENGINE_UPDATE_API=1 npm run sdk:build and commit the file.',
+    );
+  }
+  assert.deepEqual(actual, [...expected].sort(), 'api-exports.json must be sorted.');
+}
+
 function pack(directory) {
   const [packed] = JSON.parse(
     run(npm, ['pack', directory, '--json', '--offline', '--ignore-scripts', '--pack-destination', release]),
@@ -286,9 +309,12 @@ assert.equal(typeof sdk.installMoonTexture, 'function');
 assert.equal(typeof sdk.loadMoonTexture, 'function');
 const moonUrl = new URL(import.meta.resolve('@orangely/sky-engine-moon-texture/moon-lroc.jpg'));
 assert.equal((await readFile(moonUrl)).length, 457942);
+// Last line of output: the installed package's runtime export names, for the API lock below.
+console.log(JSON.stringify(Object.keys(sdk).sort()));
 `,
   );
-  run(join(consumer, 'smoke.mjs'), [], consumer);
+  const smokeOutput = run(join(consumer, 'smoke.mjs'), [], consumer).trim().split('\n');
+  await checkExports(JSON.parse(smokeOutput[smokeOutput.length - 1]));
 } finally {
   await rm(consumer, { recursive: true, force: true });
 }
