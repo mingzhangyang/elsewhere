@@ -298,10 +298,10 @@ try {
         types: [],
       },
       // The Worker example is type-checked against the installed declarations as well.
-      files: ['consumer.ts', 'worker-render.ts', 'worker-main.ts'],
+      files: ['consumer.ts', 'worker-main.ts', 'worker-protocol.ts'],
     }),
   );
-  for (const file of ['worker-render.ts', 'worker-main.ts']) {
+  for (const file of ['worker-render.ts', 'worker-main.ts', 'worker-protocol.ts']) {
     await copyFile(join(sdk, 'examples', file), join(consumer, file));
   }
   await writeFile(
@@ -375,6 +375,50 @@ installTemporal({});
 `,
   );
   run(tsc, ['--project', join(consumer, 'tsconfig.json')], consumer);
+  // A Worker-only project: no DOM library, strict, and the package declarations checked too
+  // (skipLibCheck stays false). It compiles the Worker example and uses both builds.
+  await writeFile(
+    join(consumer, 'tsconfig.worker.json'),
+    JSON.stringify({
+      compilerOptions: {
+        strict: true,
+        noEmit: true,
+        skipLibCheck: false,
+        target: 'ES2022',
+        module: 'NodeNext',
+        lib: ['ES2022', 'WebWorker', 'WebWorker.Iterable'],
+        types: [],
+      },
+      files: ['worker-consumer.ts', 'worker-render.ts', 'worker-protocol.ts'],
+    }),
+  );
+  await writeFile(
+    join(consumer, 'worker-consumer.ts'),
+    `import {
+  createSkyScene, installMoonTexture, installTemporal, loadMoonTexture, paintIllustrationPanel,
+  renderIllustration, renderMinimalSkyMap, renderMoonPhase, renderSkyChart,
+  type MoonTexture, type RenderCanvas, type RenderImage,
+} from '@orangely/sky-engine';
+import * as lite from '@orangely/sky-engine/lite';
+lite.installTemporal({});
+installTemporal({});
+const scene = await createSkyScene({ latitude: 0, longitude: 0, timezone: 'UTC', instant: new Date() });
+const canvas: RenderCanvas = new OffscreenCanvas(800, 600);
+const art: RenderImage = await createImageBitmap(new Blob());
+await renderIllustration(canvas, scene, { landscape: 'city', landscapeArt: art });
+await renderIllustration(canvas, scene, { landscape: 'mountains', loadLandscape: async () => art });
+paintIllustrationPanel(new OffscreenCanvas(10, 10).getContext('2d')!, 10, 10, scene);
+renderSkyChart(canvas, scene);
+renderMinimalSkyMap(canvas, scene);
+const texture: MoonTexture = await loadMoonTexture('/moon-lroc.jpg');
+installMoonTexture(texture);
+await renderMoonPhase(canvas, scene, { texture: art });
+await lite.renderMoonPhase(new OffscreenCanvas(64, 64), scene);
+// @ts-expect-error Without the DOM library only an OffscreenCanvas is a canvas.
+renderSkyChart({ width: 400, height: 400 }, scene);
+`,
+  );
+  run(tsc, ['--project', join(consumer, 'tsconfig.worker.json')], consumer);
   await writeFile(
     join(consumer, 'smoke.mjs'),
     `import assert from 'node:assert/strict';

@@ -25,7 +25,14 @@ export {
 export type { SkyBrightness } from './domain/starVisibility';
 export type { IllustrationDetails, IllustrationText } from './moment/illustration';
 export { HORIZON_VARIANTS, type HorizonVariant } from './moment/scenery';
-export type { RenderCanvas, RenderContext2D, RenderImage } from './moment/scratchCanvas';
+export type {
+  DomCanvas,
+  DomContext2D,
+  DomImage,
+  RenderCanvas,
+  RenderContext2D,
+  RenderImage,
+} from './moment/scratchCanvas';
 export type { LandscapeSeason } from './moment/seasons';
 export { createSkyScene, type SkySceneOptions } from './scene';
 export {

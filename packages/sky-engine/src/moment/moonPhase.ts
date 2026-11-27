@@ -2,10 +2,10 @@ import type { MomentSnapshot } from '../contracts';
 import { brightLimbAngle } from '../domain/planets';
 import { assetFailed, loadResource, validateTimeout } from '../resources';
 import { requireContext, requireImageSize, resetImageCanvas } from './imageCanvas';
-import { requireScratchContext, type RenderCanvas } from './scratchCanvas';
+import { requireScratchContext, type DomImage, type RenderCanvas } from './scratchCanvas';
 import { cancelled, invalidInput, SkyEngineError } from '../errors';
 
-export type MoonTexture = ImageData | ImageBitmap | HTMLImageElement;
+export type MoonTexture = ImageData | ImageBitmap | DomImage;
 export interface MoonPhaseOptions {
   style?: 'realistic';
   orientation?: 'observer' | 'north-up';

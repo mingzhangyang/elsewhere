@@ -265,6 +265,10 @@ contains no Worker of its own: [`examples/worker-render.ts`](examples/worker-ren
 side [`examples/worker-main.ts`](examples/worker-main.ts) (in the source repository) show the whole
 exchange.
 
+- **TypeScript.** The declarations compile in a Worker-only project (`lib: ["ES2022", "WebWorker"]`,
+  no DOM library, `skipLibCheck: false`): the DOM-only parts of `RenderCanvas`, `RenderContext2D`,
+  `RenderImage` and `MoonTexture` resolve to `never` there, leaving `OffscreenCanvas`,
+  `OffscreenCanvasRenderingContext2D`, `ImageBitmap` and `ImageData`.
 - **Assets.** Load the catalog with `fetch` in the Worker as usual. A Worker has no `<img>`:
   `loadMoonTexture(url)` works unchanged (it decodes with `createImageBitmap`), and city or
   mountain artwork must be an `ImageBitmap`, for example

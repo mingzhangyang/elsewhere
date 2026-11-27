@@ -279,7 +279,8 @@ installed (or supplied) catalog.
 
 All type-only exports: `RenderCanvas` (`HTMLCanvasElement | OffscreenCanvas`), `RenderContext2D`
 (`CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D`), `RenderImage`
-(`HTMLImageElement | ImageBitmap`), `MomentSnapshot`, `CameraView`, `LayerSettings`, `IllustrationPattern`,
+(`HTMLImageElement | ImageBitmap`), `DomCanvas`, `DomContext2D` and `DomImage` (the DOM-only members
+of those unions; each is `never` in a project compiled without the DOM library, such as a Worker), `MomentSnapshot`, `CameraView`, `LayerSettings`, `IllustrationPattern`,
 `IllustrationComposition`, `SkySceneOptions`, `RenderIllustrationOptions`, `LandscapeRequest`,
 `LandscapeSeason`, `IllustrationPanelOptions`, `IllustrationDetails`, `IllustrationText`,
 `HorizonVariant`, `SkyChartOptions`, `MinimalSkyMapOptions`, `SkyArtworkTheme`, `SkyChartSnapshot`,

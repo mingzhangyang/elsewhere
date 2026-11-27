@@ -1,16 +1,28 @@
 import { canvasUnavailable } from '../errors';
 
+// The DOM-only types, by name, only where the host's TypeScript library declares them. A project
+// compiled for a Worker alone (lib "WebWorker", no "DOM") has no HTMLCanvasElement: there these
+// resolve to never, so the public declarations still type-check and accept the Worker types.
+type DomType<Name extends string> =
+  typeof globalThis extends Record<Name, { prototype: infer T }> ? T : never;
+/** `HTMLCanvasElement` where the DOM library is present, otherwise `never`. */
+export type DomCanvas = DomType<'HTMLCanvasElement'>;
+/** `CanvasRenderingContext2D` where the DOM library is present, otherwise `never`. */
+export type DomContext2D = DomType<'CanvasRenderingContext2D'>;
+/** `HTMLImageElement` where the DOM library is present, otherwise `never`. */
+export type DomImage = DomType<'HTMLImageElement'>;
+
 /** A canvas Sky Engine renders into: a DOM canvas, or an OffscreenCanvas (for example in a Worker). */
-export type RenderCanvas = HTMLCanvasElement | OffscreenCanvas;
+export type RenderCanvas = DomCanvas | OffscreenCanvas;
 /** The 2D context of a {@link RenderCanvas}. */
-export type RenderContext2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+export type RenderContext2D = DomContext2D | OffscreenCanvasRenderingContext2D;
 /** Decoded artwork: an `<img>` element, or an ImageBitmap (the only choice inside a Worker). */
-export type RenderImage = HTMLImageElement | ImageBitmap;
+export type RenderImage = DomImage | ImageBitmap;
 
 /** The 2D context of either kind of canvas (one call site for the two DOM overload sets). */
 export function context2d(
   canvas: RenderCanvas,
-  settings?: CanvasRenderingContext2DSettings,
+  settings?: { willReadFrequently?: boolean },
 ): RenderContext2D | null {
   return (canvas as OffscreenCanvas).getContext('2d', settings);
 }
@@ -36,7 +48,7 @@ export function createScratchCanvas(width: number, height: number): RenderCanvas
 export function requireScratchContext(
   width: number,
   height: number,
-  settings?: CanvasRenderingContext2DSettings,
+  settings?: { willReadFrequently?: boolean },
 ): RenderContext2D {
   const canvas = createScratchCanvas(width, height);
   const ctx = canvas && context2d(canvas, settings);

@@ -23,7 +23,9 @@ portrait may differ by at most 1 in an RGB channel (alpha is identical).
   core npm archive. Use one build per page or Worker; each has its own catalog and Moon texture.
 - `installTemporal(temporal)`: supply the host's Temporal implementation (both builds). Without a
   native or installed Temporal, the lite build's civil-time functions report `UNSUPPORTED`.
-- Type exports `RenderCanvas`, `RenderContext2D` and `RenderImage`.
+- Type exports `RenderCanvas`, `RenderContext2D` and `RenderImage`, and `DomCanvas`, `DomContext2D`
+  and `DomImage`. The declarations compile in a Worker-only TypeScript project without the DOM
+  library; `sdk:build` checks this with a strict `WebWorker` consumer.
 
 ### Changed
 
