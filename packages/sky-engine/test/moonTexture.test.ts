@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { SkyEngineError } from '../packages/sky-engine/src/errors';
-import { installMoonTexture } from '../packages/sky-engine/src/moment/moonPhase';
+import { SkyEngineError } from '../src/errors';
+import { installMoonTexture } from '../src/moment/moonPhase';
 
 function stubCanvas(getImageData: () => ImageData) {
   const context = { drawImage: vi.fn(), getImageData: vi.fn(getImageData) };

@@ -13,6 +13,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "sdk:test": "vitest run --project sdk",
     "validate": "node scripts/validate.mjs",
     "sdk:build": "node scripts/build-sky-engine.mjs",
     "sdk:bench": "node scripts/bench-sky-engine.mjs",

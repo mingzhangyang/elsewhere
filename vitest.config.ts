@@ -15,6 +15,15 @@ export default defineConfig({
     clearMocks: true,
     projects: [
       {
+        // The Sky Engine package's own tests (npm run sdk:test): package sources only.
+        test: {
+          name: 'sdk',
+          environment: 'node',
+          include: ['packages/sky-engine/test/**/*.test.ts'],
+          setupFiles: ['packages/sky-engine/test/setup.ts'],
+        },
+      },
+      {
         test: {
           name: 'domain',
           environment: 'node',

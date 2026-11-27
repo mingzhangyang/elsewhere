@@ -17,5 +17,12 @@
     // The Sky Engine examples import the package by name, as a host would.
     "paths": { "@orangely/sky-engine": ["./packages/sky-engine/src/index.ts"] }
   },
-  "include": ["src", "packages/sky-engine/src", "packages/sky-engine/examples", "tests", "*.config.ts"]
+  "include": [
+    "src",
+    "packages/sky-engine/src",
+    "packages/sky-engine/examples",
+    "packages/sky-engine/test",
+    "tests",
+    "*.config.ts"
+  ]
 }

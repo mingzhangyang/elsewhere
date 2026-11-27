@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import type { WorkerReply, WorkerRequest } from '../packages/sky-engine/examples/worker-protocol';
+import type { WorkerReply, WorkerRequest } from '../examples/worker-protocol';
 
 // The Worker example (packages/sky-engine/examples) with the engine mocked: requests are
 // serialized on the shared canvas, and the page side settles every request when the Worker fails.
@@ -48,7 +48,7 @@ async function startWorkerScript() {
     postMessage(reply: WorkerReply): void;
   } = { onmessage: null, postMessage: (reply) => replies.push(reply) };
   vi.stubGlobal('self', scope);
-  await import('../packages/sky-engine/examples/worker-render');
+  await import('../examples/worker-render');
   const send = (data: WorkerRequest) => scope.onmessage!({ data });
   return { replies, send };
 }
@@ -126,7 +126,7 @@ class FakeWorker {
 async function startPage() {
   vi.stubGlobal('Worker', FakeWorker);
   vi.stubGlobal('devicePixelRatio', 1);
-  const { startSkyWorker } = await import('../packages/sky-engine/examples/worker-main');
+  const { startSkyWorker } = await import('../examples/worker-main');
   const target = {
     transferControlToOffscreen: () => ({}),
     getBoundingClientRect: () => ({ width: 300, height: 200 }),

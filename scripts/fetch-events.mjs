@@ -20,6 +20,6 @@ for (const place of cases) {
   console.log(place.id, JSON.stringify(data));
 }
 await writeFile(
-  'tests/fixtures/usno-events.json',
+  'packages/sky-engine/test/fixtures/usno-events.json',
   JSON.stringify({ retrieved: new Date().toISOString(), cases: result }, null, 2) + '\n',
 );

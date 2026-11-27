@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { INVALID_INPUT } from './skyEngineErrorMatchers';
+import { INVALID_INPUT } from './errorMatchers';
 import { projectSkyChart, type SkyChartPoint } from '../src/domain/skyChartProjection';
 
 // Independent synthetic analytic anchors, not values computed by a production helper.

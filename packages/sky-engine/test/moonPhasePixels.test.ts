@@ -1,8 +1,8 @@
 import * as Astronomy from 'astronomy-engine';
 import { describe, expect, it } from 'vitest';
-import type { MomentSnapshot } from '../packages/sky-engine/src/contracts';
+import type { MomentSnapshot } from '../src/contracts';
 import { calculateSky } from '../src/domain/astronomy';
-import { moonPortraitPixels } from '../packages/sky-engine/src/moment/moonPhase';
+import { moonPortraitPixels } from '../src/moment/moonPhase';
 import { referenceMoonPixels, type ReferenceTexture } from './fixtures/moonPhaseReference';
 
 // The optimised lunar renderer (lookup tables, hoisted row and column terms, whole-pixel writes)
