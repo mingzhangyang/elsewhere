@@ -18,7 +18,9 @@ function files(dir: string): string[] {
 }
 
 /** Every static, re-export and dynamic import specifier, and vi.mock targets. */
-function specifiers(source: string): string[] {
+function specifiers(text: string): string[] {
+  // Comments may show usage (such as the fixture checker's example); they are not imports.
+  const source = text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   const patterns = [
     /(?:^|[\s;])(?:import|export)\s[^'"`;]*?from\s*['"]([^'"]+)['"]/g,
     /(?:^|[\s;])import\s*['"]([^'"]+)['"]/g,
@@ -71,9 +73,14 @@ it('package tests import only package files, the dependencies, Vitest and Node b
         specifier === 'vitest' ||
         specifier.startsWith('node:') ||
         specifier === '@orangely/sky-engine' ||
-        inside(specifier, file, 'src', 'test', 'examples'),
+        inside(specifier, file, 'src', 'test', 'examples', 'fixtures'),
     ),
   ).toEqual([]);
+});
+
+it('the shared fixture checker imports nothing, so any consumer can run it as it is', () => {
+  const source = readFileSync(join(packageRoot, 'fixtures', 'verify.mjs'), 'utf8');
+  expect(specifiers(source)).toEqual([]);
 });
 
 it('the import scanner sees the kinds of imports it must police', () => {
@@ -87,6 +94,7 @@ it('the import scanner sees the kinds of imports it must police', () => {
         // Split so that this sample is not itself an import of the app.
         'const c = await imp' + "ort('../../../src/app');",
         "vi.mock('../src/y', () => ({}));",
+        '// imp' + "ort z from 'not-an-import';",
       ].join('\n'),
     ),
   ).toEqual(['../../src/x', 'three', 'react', './side-effect', '../../../src/app', '../src/y']);

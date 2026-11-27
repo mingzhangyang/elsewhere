@@ -18,13 +18,19 @@
       "import": "./sky-engine.lite.mjs",
       "default": "./sky-engine.lite.mjs"
     },
-    "./stars.json": "./stars.json"
+    "./stars.json": "./stars.json",
+    "./fixtures.json": "./fixtures/sky-engine-fixtures.json",
+    "./fixtures/verify.mjs": {
+      "types": "./fixtures/verify.d.mts",
+      "default": "./fixtures/verify.mjs"
+    }
   },
   "files": [
     "sky-engine.mjs",
     "sky-engine.lite.mjs",
     "types",
     "stars.json",
+    "fixtures",
     "LICENSE",
     "THIRD-PARTY.txt",
     "HYG.txt",
