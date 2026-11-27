@@ -1,5 +1,6 @@
 import { type Palette, type Rgb, clamp01, css, lerp, mark, mix, washAt } from './paint';
 import { paintCloudField } from './cloudField';
+import type { RenderContext2D } from './scratchCanvas';
 
 /**
  * Atmospheric watercolour clouds for postcard illustrations. The shape vocabulary is deliberately
@@ -30,7 +31,7 @@ function midpoint(a: Point, b: Point): Point {
  * One closed, gently torn silhouette. The broad undulations are connected with quadratic curves,
  * including the underside. A single path means no visible spherical seams or repeated ball shapes.
  */
-function smoothCloudPath(ctx: CanvasRenderingContext2D, upper: Point[], lower: Point[]) {
+function smoothCloudPath(ctx: RenderContext2D, upper: Point[], lower: Point[]) {
   const all = [...upper, ...lower];
   const first = midpoint(all[all.length - 1], all[0]);
   ctx.moveTo(first.x, first.y);
@@ -43,7 +44,7 @@ function smoothCloudPath(ctx: CanvasRenderingContext2D, upper: Point[], lower: P
 
 /** A translucent, irregularly tapered horizontal wash, not an opaque line or repeated ellipse. */
 function veil(
-  ctx: CanvasRenderingContext2D,
+  ctx: RenderContext2D,
   x: number,
   y: number,
   length: number,
@@ -87,7 +88,7 @@ function veil(
  * canvas. The live 3D weather renderer is not involved.
  */
 export function cumulus(
-  ctx: CanvasRenderingContext2D,
+  ctx: RenderContext2D,
   x: number,
   y: number,
   size: number,
@@ -101,7 +102,7 @@ export function cumulus(
 
 /** Near-horizon stratus: thin horizontal washes with broken, nonparallel feathered edges. */
 export function stratus(
-  ctx: CanvasRenderingContext2D,
+  ctx: RenderContext2D,
   x: number,
   y: number,
   length: number,
@@ -124,7 +125,7 @@ export function stratus(
 
 /** Mid-level fields are interrupted ribbons, not an evenly spaced matrix of round puffs. */
 export function altocumulus(
-  ctx: CanvasRenderingContext2D,
+  ctx: RenderContext2D,
   x: number,
   y: number,
   size: number,
@@ -145,7 +146,7 @@ export function altocumulus(
 
 /** High cirrus: sparse and low-contrast trailing ink-washes, never a comb of hard parallel lines. */
 export function cirrus(
-  ctx: CanvasRenderingContext2D,
+  ctx: RenderContext2D,
   x: number,
   y: number,
   length: number,
@@ -184,7 +185,7 @@ export function overcastDeckOpacity(amount: number): number {
 
 /** Overcast: a coherent diffuse cloud deck above the formerly sparse atmospheric veils. */
 export function cloudSheet(
-  ctx: CanvasRenderingContext2D,
+  ctx: RenderContext2D,
   width: number,
   top: number,
   bottom: number,

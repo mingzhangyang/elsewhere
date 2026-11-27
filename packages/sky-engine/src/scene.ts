@@ -4,7 +4,7 @@ import { calculateSky } from './domain/astronomy';
 import { validateObserver } from './domain/observer';
 import { loadStarCatalog, starCatalogInstallation, starCatalogLoaded, type CatalogRow } from './domain/stars';
 import type { SkyBrightness } from './domain/starVisibility';
-import { ensureTemporal } from './domain/temporal';
+import { ensureTemporal, requireTemporal, Temporal, temporalPolyfillBundled } from './domain/temporal';
 import { validateInstant } from './domain/time';
 import { defaultWeatherValues } from './domain/weather';
 import { loadResource, validateTimeout } from './resources';
@@ -65,6 +65,8 @@ export async function createSkyScene(options: SkySceneOptions): Promise<MomentSn
   if (options.signal?.aborted) throw cancelled('Sky scene cancelled.');
   const provenance: MomentSnapshot['provenance'] =
     options.weather === 'clear' ? { kind: 'clear' } : options.weather ? { kind: 'custom' } : { kind: 'none' };
+  // The lite build bundles no polyfill: without any Temporal, fail before starting a catalog load.
+  if (!Temporal && !temporalPolyfillBundled) requireTemporal();
   const pending = starCatalogInstallation();
   const load = options.loadCatalog;
   if (!starCatalogLoaded() && !pending && !load) {

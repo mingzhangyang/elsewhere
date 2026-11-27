@@ -20,6 +20,7 @@ import {
   mix,
   noise1,
 } from './paint';
+import { imageSize, type RenderContext2D, type RenderImage } from './scratchCanvas';
 
 /**
  * The land under the illustrated sky. Above the horizon line there is only the chosen horizon
@@ -32,7 +33,7 @@ type ToCanvas = (altitude: number, azimuth: number) => { x: number; y: number; f
 
 export interface LandScene {
   season: LandscapeSeason;
-  ctx: CanvasRenderingContext2D;
+  ctx: RenderContext2D;
   width: number;
   height: number;
   unit: number;
@@ -53,18 +54,11 @@ export interface LandScene {
   /** Half the horizontal field of view, in degrees. */
   halfWidth: number;
   horizon: HorizonVariant;
-  landscapeArt?: HTMLImageElement | null;
+  landscapeArt?: RenderImage | null;
 }
 
 /** Mist lying in a valley: a band of the horizon's colour that fades upward. */
-function mist(
-  ctx: CanvasRenderingContext2D,
-  y: number,
-  width: number,
-  colour: Rgb,
-  alpha: number,
-  depth: number,
-) {
+function mist(ctx: RenderContext2D, y: number, width: number, colour: Rgb, alpha: number, depth: number) {
   const g = ctx.createLinearGradient(0, y - depth, 0, y + depth * 0.4);
   g.addColorStop(0, css(colour, 0));
   g.addColorStop(0.75, css(colour, alpha));
@@ -207,7 +201,7 @@ interface TreeColours {
 
 /** A handful of small leaf-shaped dabs around a point: what breaks a round mass into foliage. */
 function leaves(
-  ctx: CanvasRenderingContext2D,
+  ctx: RenderContext2D,
   cx: number,
   cy: number,
   spread: number,
@@ -233,7 +227,7 @@ function leaves(
  * values (shade, body, light) with ragged leaf edges and gaps where the sky shows through.
  */
 function broadleaf(
-  ctx: CanvasRenderingContext2D,
+  ctx: RenderContext2D,
   x: number,
   y: number,
   h: number,
@@ -335,7 +329,7 @@ interface HouseColours {
  * once the light fades (`glow` 0 to 1).
  */
 function cottage(
-  ctx: CanvasRenderingContext2D,
+  ctx: RenderContext2D,
   x: number,
   y: number,
   h: number,
@@ -686,9 +680,10 @@ export function paintLandscape(scene: LandScene) {
   if (horizon === 'city' || horizon === 'mountains') {
     const art = scene.landscapeArt;
     if (art) {
-      const scale = Math.max(width / art.naturalWidth, ground / art.naturalHeight);
-      const w = art.naturalWidth * scale;
-      const fullHeight = art.naturalHeight * scale;
+      const { width: artWidth, height: artHeight } = imageSize(art);
+      const scale = Math.max(width / artWidth, ground / artHeight);
+      const w = artWidth * scale;
+      const fullHeight = artHeight * scale;
       // Keep the valley floor in shallow postcard strips. Cap the compression for high sky views.
       const h = horizon === 'mountains' ? Math.max(ground, fullHeight * 0.52) : fullHeight;
       const x = (width - w) / 2;
@@ -696,9 +691,9 @@ export function paintLandscape(scene: LandScene) {
       if (horizon === 'mountains') {
         // The valley renders have a small gap at the bottom. Extend an opaque foreground row
         // behind it, preserving each season's rock/snow colours and the transparent skyline.
-        const row = Math.floor(art.naturalHeight * 0.94);
-        const top = (row / art.naturalHeight) * h;
-        ctx.drawImage(art, 0, row, art.naturalWidth, 1, x, y + top, w, h - top);
+        const row = Math.floor(artHeight * 0.94);
+        const top = (row / artHeight) * h;
+        ctx.drawImage(art, 0, row, artWidth, 1, x, y + top, w, h - top);
       }
       ctx.drawImage(art, x, y, w, h);
     }

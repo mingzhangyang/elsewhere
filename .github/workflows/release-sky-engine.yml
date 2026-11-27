@@ -29,7 +29,7 @@ jobs:
       - run: npm run format:check
       - run: npm run validate
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:browser -- --project=chromium tests/browser/sky-engine-distribution.spec.ts
+      - run: npm run test:browser -- --project=chromium tests/browser/sky-engine-distribution.spec.ts tests/browser/sky-engine-worker.spec.ts
       - name: Verify release checksums
         working-directory: dist-sdk/release
         run: sha256sum --check SHA256SUMS
@@ -39,4 +39,4 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" dist-sdk/release/* --verify-tag --latest=false \
             --title "Sky Engine ${GITHUB_REF_NAME#sky-engine-}" \
-            --notes "Browser ESM, npm archive with declarations and HYG catalog, optional landscape and NASA Moon texture archives, notices, and SHA-256 manifest. See packages/sky-engine/README.md and CHANGELOG.md at this tag."
+            --notes "Browser ESM (full, and lite without the Temporal polyfill), npm archive with declarations and HYG catalog, optional landscape and NASA Moon texture archives, notices, and SHA-256 manifest. See packages/sky-engine/README.md and CHANGELOG.md at this tag."

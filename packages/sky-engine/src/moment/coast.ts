@@ -1,5 +1,6 @@
 import { seededRandom } from '../lib/random';
 import type { LandScene } from './landscape';
+import { imageSize } from './scratchCanvas';
 import { css, deepen, hex, lerp, mix, noise1, type Rgb } from './paint';
 import { seasonalColours } from './seasons';
 
@@ -86,8 +87,9 @@ export function paintCove(scene: LandScene) {
 
   const rock = scene.landscapeArt;
   if (rock) {
+    const { width: rockWidth, height: rockHeight } = imageSize(rock);
     const w = reach * 0.93;
-    const h = (w * rock.naturalHeight) / rock.naturalWidth;
+    const h = (w * rockHeight) / rockWidth;
     const base = yAt(0.14);
     // Break the reflected cliff into short horizontal bands as the water recedes from its foot.
     ctx.save();
@@ -96,12 +98,12 @@ export function paintCove(scene: LandScene) {
     for (let i = 0; i < 13; i++) {
       const v = i / 13;
       ctx.globalAlpha = 0.24 * (1 - v);
-      const slice = rock.naturalHeight / 13;
+      const slice = rockHeight / 13;
       ctx.drawImage(
         rock,
         0,
-        rock.naturalHeight - (i + 1) * slice,
-        rock.naturalWidth,
+        rockHeight - (i + 1) * slice,
+        rockWidth,
         slice * 0.75,
         (weathering(i * 0.7) - 0.5) * 12 * unit,
         (-(i + 1) * h) / 13,

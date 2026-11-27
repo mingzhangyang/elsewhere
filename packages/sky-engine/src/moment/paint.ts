@@ -1,4 +1,5 @@
 import { seededRandom } from '../lib/random';
+import type { RenderContext2D } from './scratchCanvas';
 
 /**
  * The paintbox of the illustrated sky: colours keyed to the Sun's altitude and a few brush marks
@@ -136,7 +137,7 @@ export function hashOf(text: string): number {
 
 /** A soft round dab of colour that fades to nothing at `radius`. */
 export function glowAt(
-  ctx: CanvasRenderingContext2D,
+  ctx: RenderContext2D,
   x: number,
   y: number,
   radius: number,
@@ -156,7 +157,7 @@ export function glowAt(
 
 /** A soft dab stretched into a long horizontal wash. */
 export function washAt(
-  ctx: CanvasRenderingContext2D,
+  ctx: RenderContext2D,
   x: number,
   y: number,
   radius: number,
@@ -176,7 +177,7 @@ export function washAt(
  * joined by smooth curves. `wobble` is the unevenness, as a share of the radius.
  */
 export function blob(
-  ctx: CanvasRenderingContext2D,
+  ctx: RenderContext2D,
   cx: number,
   cy: number,
   rx: number,
@@ -207,7 +208,7 @@ export function blob(
  * ends, `length` long and `thickness` at its widest, turned by `angle` and bowed by `bow`.
  */
 export function mark(
-  ctx: CanvasRenderingContext2D,
+  ctx: RenderContext2D,
   x: number,
   y: number,
   length: number,
@@ -232,14 +233,7 @@ export function mark(
 }
 
 /** Adds a grass blade to the current path: rooted at (x, y), `h` tall, leaning by `lean`. */
-export function blade(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  h: number,
-  lean: number,
-  w: number,
-) {
+export function blade(ctx: RenderContext2D, x: number, y: number, h: number, lean: number, w: number) {
   ctx.moveTo(x - w, y);
   ctx.quadraticCurveTo(x - w * 0.6 + lean * 0.35, y - h * 0.6, x + lean, y - h);
   ctx.quadraticCurveTo(x + w * 0.9 + lean * 0.3, y - h * 0.5, x + w, y);

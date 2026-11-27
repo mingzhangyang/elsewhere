@@ -1,10 +1,12 @@
-# Sky Engine (v0.3.0)
+# Sky Engine (v0.4.0)
 
 Browser sky illustrations, star diagrams and lunar portraits from one calculated sky, for Canvas 2D.
 `@orangely/sky-engine` is distributed through versioned GitHub Releases, not the npm registry.
 
 - [API reference](API.md): every public export with its parameters and errors.
 - [Changelog](CHANGELOG.md), including [migrating from 0.2.x](CHANGELOG.md#migrating-from-02x).
+- [Worker example](examples/worker-render.ts) with its [page side](examples/worker-main.ts) (source
+  repository only).
 - Internal design: [architecture](../../docs/sky-engine/ARCHITECTURE.md) and
   [roadmap](../../docs/sky-engine/ROADMAP.md) (source repository only).
 
@@ -13,22 +15,24 @@ Browser sky illustrations, star diagrams and lunar portraits from one calculated
 Download the assets of an **exact** GitHub Release tag (`sky-engine-v<version>`) and verify them with
 `sha256sum --check SHA256SUMS`. Never depend on a "latest" URL at runtime.
 
-Release assets for version **0.3.0**:
+Release assets for version **0.4.0**:
 
-| Asset                                        | Purpose                                                        |
-| -------------------------------------------- | -------------------------------------------------------------- |
-| `sky-engine.mjs`                             | Self-contained browser ESM, served with a JavaScript MIME type |
-| `stars.json`                                 | Exact HYG v4.1 columnar catalog used by Elsewhere              |
-| `orangely-sky-engine-0.3.0.tgz`              | npm-installable ESM, declarations, catalog and notices         |
-| `orangely-sky-engine-landscapes-0.3.0.tgz`   | Optional city/mountain artwork and license                     |
-| `orangely-sky-engine-moon-texture-0.3.0.tgz` | Optional NASA lunar texture with provenance and license        |
-| `moon-lroc.jpg`                              | Standalone optional lunar texture for browser hosts            |
-| `sky-engine-NOTICES.txt`                     | MIT, runtime dependency notices and HYG attribution/license    |
-| `manifest.json` / `SHA256SUMS`               | Version, source commit, file sizes and SHA-256 integrity       |
+| Asset                                        | Purpose                                                                            |
+| -------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `sky-engine.mjs`                             | Self-contained browser ESM, served with a JavaScript MIME type                     |
+| `sky-engine.lite.mjs`                        | The same API without the bundled Temporal polyfill (see [Lite build](#lite-build)) |
+| `stars.json`                                 | Exact HYG v4.1 columnar catalog used by Elsewhere                                  |
+| `orangely-sky-engine-0.4.0.tgz`              | npm-installable ESM (both builds), declarations, catalog and notices               |
+| `orangely-sky-engine-landscapes-0.4.0.tgz`   | Optional city/mountain artwork and license                                         |
+| `orangely-sky-engine-moon-texture-0.4.0.tgz` | Optional NASA lunar texture with provenance and license                            |
+| `moon-lroc.jpg`                              | Standalone optional lunar texture for browser hosts                                |
+| `sky-engine-NOTICES.txt`                     | MIT, runtime dependency notices and HYG attribution/license                        |
+| `manifest.json` / `SHA256SUMS`               | Version, source commit, file sizes and SHA-256 integrity                           |
 
 No npm registry publication is required. For npm applications, install the downloaded core tarball
-(`npm install ./orangely-sky-engine-0.3.0.tgz`) and import from `@orangely/sky-engine`. Its package
-export `@orangely/sky-engine/stars.json` is available to copy into the host's static assets.
+(`npm install ./orangely-sky-engine-0.4.0.tgz`) and import from `@orangely/sky-engine` (or
+`@orangely/sky-engine/lite`). Its package export `@orangely/sky-engine/stars.json` is available to
+copy into the host's static assets.
 All three archives are tested with an isolated offline installation, and the core package with a strict
 NodeNext TypeScript consumer. The package's license expression covers the MIT code and the separately
 CC BY-SA 4.0 catalog; the bundled runtime dependencies retain their own license notices.
@@ -124,7 +128,8 @@ const framed = await renderIllustration(canvas, scene, {
 - Existing apps can use `paintIllustrationPanel` synchronously on an already prepared snapshot and
   decoded artwork, to retain their own overlays and text layout. Elsewhere's postcard uses that
   entry point and the same cover projection (`advanced.createCoverProjection`) as the realistic
-  capture. Rendering requires browser Canvas 2D and DOM; pure scene creation does not.
+  capture. Rendering requires Canvas 2D: a DOM canvas, or an `OffscreenCanvas` (also inside a
+  Worker, see [Rendering in a Worker](#rendering-in-a-worker)); pure scene creation needs neither.
 
 ### Errors
 
@@ -250,6 +255,70 @@ the topocentric illuminated fraction and the airless bright-limb direction of th
 and Moon. Surface photometry and earthshine are approximate; topographic shadows, eclipses, atmospheric
 distortion across the disc and watercolor portraits are not modeled.
 
+## Rendering in a Worker
+
+`renderIllustration`, `renderSkyChart`, `renderMinimalSkyMap` and `renderMoonPhase` accept an
+`HTMLCanvasElement` or an `OffscreenCanvas`, and `paintIllustrationPanel` either kind of 2D context.
+Import the module inside a dedicated module Worker and render there; a page canvas handed over with
+`canvas.transferControlToOffscreen()` shows the result without blocking the main thread. Sky Engine
+contains no Worker of its own: [`examples/worker-render.ts`](examples/worker-render.ts) and its page
+side [`examples/worker-main.ts`](examples/worker-main.ts) (in the source repository) show the whole
+exchange.
+
+- **TypeScript.** The declarations compile in a Worker-only project (`lib: ["ES2022", "WebWorker"]`,
+  no DOM library, `skipLibCheck: false`): the DOM-only parts of `RenderCanvas`, `RenderContext2D`,
+  `RenderImage` and `MoonTexture` resolve to `never` there, leaving `OffscreenCanvas`,
+  `OffscreenCanvasRenderingContext2D`, `ImageBitmap` and `ImageData`.
+- **Assets.** Load the catalog with `fetch` in the Worker as usual. A Worker has no `<img>`:
+  `loadMoonTexture(url)` works unchanged (it decodes with `createImageBitmap`), and city or
+  mountain artwork must be an `ImageBitmap`, for example
+  `loadLandscape: async (request, signal) => createImageBitmap(await (await fetch(url, { signal })).blob())`.
+- **One copy per context.** The Worker's module instance has its own star catalog and Moon texture;
+  install them in the Worker. Pass scenes or options between threads as plain data if needed.
+- **Text and fonts.** The renderers draw text (chart captions and credits, and labels when
+  `layers.labels` is on). In a Worker only system fonts and fonts added to the Worker's own
+  `self.fonts` are available; a font the page loaded (CSS `@font-face`, `document.fonts`) is not.
+  If labels use a web font (the `font` option of `renderIllustration`), load it in the Worker first:
+  `const face = new FontFace('Caveat', 'url(/fonts/caveat.woff2)'); self.fonts.add(face); await face.load();`.
+  Where `self.fonts` is missing, labels fall back to the next font in the list. The charts' fixed
+  `system-ui` captions need nothing.
+- **Pixels.** Inside a Worker the engine's private working canvases are `OffscreenCanvas`; on the main
+  thread they stay DOM canvases, so main-thread output is exactly as before. In Chromium, Worker output
+  equals main-thread output drawn into an `OffscreenCanvas` pixel for pixel. Compared with a DOM
+  canvas, Chromium itself rasterises a few operations (a shadow inside a clip) very slightly
+  differently. Browsers without `ctx.filter` on `OffscreenCanvas` (Safari) are unaffected: the engine
+  does not use it.
+
+## Lite build
+
+`sky-engine.lite.mjs` (package subpath `@orangely/sky-engine/lite`) has exactly the same exports and
+behavior as `sky-engine.mjs` but does not bundle the Temporal polyfill, which makes it about half the
+size. It needs a Temporal implementation from the runtime or the host:
+
+- Browsers with a native `Temporal` (current Chrome, Edge and Firefox) need nothing.
+- Elsewhere, call `installTemporal(Temporal)` once before `createSkyScene()`, with an implementation
+  such as the `Temporal` export of `@js-temporal/polyfill` (for example one the host already loads):
+
+```ts
+import { installTemporal, createSkyScene } from '@orangely/sky-engine/lite';
+import { Temporal } from '@js-temporal/polyfill';
+
+if (!('Temporal' in globalThis)) installTemporal(Temporal);
+const scene = await createSkyScene({
+  /* … */
+});
+```
+
+Without either, the functions that need civil time (`createSkyScene`, `advanced.ensureTemporal`,
+`advanced.calculateSky` and `advanced.calculateDailyEvents`) fail with an
+`UNSUPPORTED` `SkyEngineError` whose message names both remedies; `createSkyScene` fails before it
+starts loading the catalog. Rendering an existing scene needs no Temporal. `installTemporal` exists
+in both builds, so code written for one runs with the other.
+
+**Use only one build per page (or per Worker).** Each build is a separate module instance with its own
+star catalog, Moon texture and Temporal: loading both would hold two copies of that state, and a
+catalog installed through one is invisible to the other.
+
 ## Resources and licenses
 
 The engine never makes an implicit network request: the star catalog, landscape artwork and Moon
@@ -272,20 +341,27 @@ texture are separate resources that the host serves and passes in.
 From a clean repository checkout run `npm ci` and `npm run sdk:build`. The SDK build is isolated
 from the Elsewhere app's `dist/` and Service Worker: output is in ignored `dist-sdk/release/`.
 The standalone ESM contains Astronomy Engine, Temporal fallback and its dependencies, with no
-additional JS chunks, app dependencies, runtime CDN or import map. Catalog and optional imagery
-remain separate resources. The app's own lazy Temporal import is unchanged.
+additional JS chunks, app dependencies, runtime CDN or import map. The lite ESM is built from the
+same entry with `@js-temporal/polyfill` replaced by a stub; the build checks that only the full
+module contains the polyfill. Catalog and optional imagery remain separate resources. The app's own
+lazy Temporal import is unchanged.
 
 The optional archives, the raw Moon image and the release SHA-256 manifest are produced by the same
-command. The core module has initial independent limits of 750,000 raw and 250,000 gzip bytes; catalog
+command. The core module has initial independent limits of 750,000 raw and 250,000 gzip bytes, the lite
+module 275,000 raw and 100,000 gzip bytes; catalog
 gzip is capped at 120,000 bytes, the core npm archive at 400,000 bytes, and the optional artwork
 archive at 5 MB. The separate lunar texture archive is capped at 600,000 bytes. Existing app limits are unchanged. CI checks the SDK on Node 24 on Linux and Windows,
 and the Chromium distribution test serves the actual generated files on an independent host,
 forces the bundled Temporal fallback, renders all four image types, checks diagram positions, custom line pixels, lunar phase area,
-orientation and texture landmarks, then verifies identical offline reloads.
+orientation and texture landmarks, then verifies identical offline reloads. The lite module is checked
+there too (`UNSUPPORTED` without Temporal, then identical scenes and pixels to the full module after
+`installTemporal`), as it is in the offline Node smoke test. A separate browser test renders all four
+image types inside a Worker into `OffscreenCanvas` and compares them with the main thread.
 
 The build also locks the public runtime API. After installing the core tarball offline it reads
 the sorted runtime export names of `@orangely/sky-engine`, plus the members of its `advanced`
-namespace as `advanced.<name>`, and compares them with the committed
+namespace as `advanced.<name>`, checks that `@orangely/sky-engine/lite` has exactly the same names,
+and compares them with the committed
 [`api-exports.json`](api-exports.json); any difference fails the build and lists the added and
 removed names. To change the API deliberately, run `SKY_ENGINE_UPDATE_API=1 npm run sdk:build`,
 review the rewritten file and commit it. Removing or renaming a root export is a breaking change;
@@ -304,7 +380,7 @@ the repository root; the existing validation and browser suites remain the relea
 ### Publishing after merge
 
 The SDK version comes from `packages/sky-engine/package.json`. After the release PR is merged
-and CI passes, push an annotated tag `sky-engine-v0.3.0` on the merged main commit. The release
+and CI passes, push an annotated tag `sky-engine-v0.4.0` on the merged main commit. The release
 workflow accepts only a tag matching the package version and reachable from main, validates the
 app, rebuilds/tests the SDK, checks hashes and creates a GitHub Release without overwriting an
 existing release. It does not publish to npm or deploy either app. Never move or reuse a version

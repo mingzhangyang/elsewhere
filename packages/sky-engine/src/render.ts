@@ -11,7 +11,9 @@ import { HORIZON_VARIANTS } from './moment/scenery';
 import { landscapeLight, landscapeSeason, type LandscapeSeason } from './moment/seasons';
 import { loadResource, validateTimeout } from './resources';
 import { mergeLayers, validateAspect, validateView } from './validation';
-import { cancelled, canvasUnavailable, invalidInput, SkyEngineError } from './errors';
+import { cancelled, invalidInput, SkyEngineError } from './errors';
+import { requireContext } from './moment/imageCanvas';
+import { isDecodedImage, type RenderCanvas, type RenderImage } from './moment/scratchCanvas';
 
 export interface LandscapeRequest {
   landscape: 'city' | 'mountains';
@@ -22,8 +24,11 @@ export interface LandscapeRequest {
 export interface RenderIllustrationOptions extends IllustrationPanelOptions {
   composition?: IllustrationComposition;
   layers?: Partial<LayerSettings>;
-  /** Return a decoded image for the requested season and light, using host-owned URLs. */
-  loadLandscape?: (request: LandscapeRequest, signal: AbortSignal) => Promise<HTMLImageElement>;
+  /**
+   * Return decoded artwork for the requested season and light, using host-owned URLs: a loaded
+   * `<img>`, or an ImageBitmap (inside a Worker, where there is no `<img>`).
+   */
+  loadLandscape?: (request: LandscapeRequest, signal: AbortSignal) => Promise<RenderImage>;
   assetTimeoutMs?: number;
   signal?: AbortSignal;
 }
@@ -93,9 +98,12 @@ export function prepareIllustrationScene(
   return framePattern(snapshot, pattern.lines, aspect);
 }
 
-/** Render a whole caller-owned browser canvas; no network requests except explicitly injected loaders. */
+/**
+ * Render a whole caller-owned canvas (a DOM canvas, or an OffscreenCanvas in a Worker); no network
+ * requests except explicitly injected loaders.
+ */
 export async function renderIllustration(
-  canvas: HTMLCanvasElement,
+  canvas: RenderCanvas,
   scene: MomentSnapshot,
   options: RenderIllustrationOptions = {},
 ): Promise<MomentSnapshot> {
@@ -105,8 +113,7 @@ export async function renderIllustration(
   if (!HORIZON_VARIANTS.includes(landscape)) throw invalidInput('Invalid landscape.');
   const assetTimeoutMs = validateTimeout(options.assetTimeoutMs ?? 10000);
   if (options.signal?.aborted) throw cancelled('Illustration cancelled.');
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw canvasUnavailable();
+  const ctx = requireContext(canvas);
   let landscapeArt = options.landscapeArt;
   if (landscape === 'city' || landscape === 'mountains') {
     const loader = options.loadLandscape;
@@ -123,7 +130,7 @@ export async function renderIllustration(
         options.signal,
       );
     }
-    if (!landscapeArt?.complete || !landscapeArt.naturalWidth || !landscapeArt.naturalHeight) {
+    if (!isDecodedImage(landscapeArt)) {
       throw new SkyEngineError('MISSING_ASSET', 'This landscape requires decoded artwork.');
     }
   }

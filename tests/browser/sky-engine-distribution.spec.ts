@@ -560,3 +560,104 @@ test('realistic lunar portraits preserve phase, axes, optional texture and offli
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
 });
+
+// The host's own Temporal: the polyfill's self-contained UMD file, which defines only the global
+// `temporal` namespace (not `Temporal`), so neither build sees a native Temporal.
+const liteHtml = `<!doctype html><meta charset="utf-8">
+<script src="./temporal.js"></script>
+<script type="module">
+try {
+  const check = (condition, message) => { if (!condition) throw new Error(message); };
+  const full = await import('./sky-engine.mjs');
+  const lite = await import('./sky-engine.lite.mjs');
+  check(full !== lite && full.SkyEngineError !== lite.SkyEngineError, 'Builds share one module instance');
+  const names = (sdk) =>
+    [...Object.keys(sdk), ...Object.keys(sdk.advanced).map((name) => 'advanced.' + name)].sort();
+  check(JSON.stringify(names(full)) === JSON.stringify(names(lite)), 'Full and lite exports differ');
+  const options = (sdk) => ({
+    latitude: 40.7128, longitude: -74.006, timezone: 'America/New_York',
+    instant: new Date('2026-09-18T04:00:00Z'), weather: 'clear',
+    view: { heading: 180, altitude: 25, fov: 66 }, aspect: 4 / 3,
+    loadCatalog: async (signal) => sdk.decodeStarColumns(await (await fetch('./stars.json', { signal })).json()),
+  });
+  const unsupported = (error) =>
+    error instanceof lite.SkyEngineError && error.code === 'UNSUPPORTED' &&
+    /installTemporal\\(\\)/.test(error.message) && /full Sky Engine build/.test(error.message);
+  let loads = 0;
+  const rejected = await lite
+    .createSkyScene({ ...options(lite), loadCatalog: async () => { loads++; return []; } })
+    .then(() => null, (error) => error);
+  check(unsupported(rejected), 'Lite scene without Temporal: ' + rejected);
+  check(loads === 0 && !lite.starCatalogLoaded(), 'Lite build started a catalog load without Temporal');
+  check(unsupported(await lite.advanced.ensureTemporal().then(() => null, (error) => error)),
+    'Lite ensureTemporal without Temporal');
+  lite.installTemporal(globalThis.temporal.Temporal);
+  const a = await full.createSkyScene(options(full));
+  const b = await lite.createSkyScene(options(lite));
+  check(JSON.stringify(a) === JSON.stringify(b), 'Lite scene differs from the full build');
+  const pixels = async (render) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 640;
+    canvas.height = 480;
+    await render(canvas);
+    return canvas.getContext('2d').getImageData(0, 0, 640, 480).data;
+  };
+  for (const [name, render] of [
+    ['illustration', (sdk, scene) => (canvas) => sdk.renderIllustration(canvas, scene, { composition: 'current' })],
+    ['chart', (sdk, scene) => (canvas) => sdk.renderSkyChart(canvas, scene, { theme: 'paper' })],
+    ['map', (sdk, scene) => (canvas) => sdk.renderMinimalSkyMap(canvas, scene, { layers: { lines: true } })],
+  ]) {
+    const x = await pixels(render(full, a));
+    const y = await pixels(render(lite, b));
+    check(x.every((value, index) => value === y[index]), 'Lite ' + name + ' pixels differ');
+  }
+  document.body.dataset.ready = 'true';
+} catch (error) {
+  document.body.dataset.error = String(error);
+}
+</script>`;
+
+test('lite browser ESM needs a host Temporal, then matches the full build', async ({ page }, info) => {
+  test.skip(info.project.name !== 'chromium', 'Standalone lite distribution is checked in Chromium.');
+  test.setTimeout(90000);
+  const directory = join(process.cwd(), 'dist-sdk', 'release');
+  const polyfill = join(process.cwd(), 'node_modules', '@js-temporal', 'polyfill', 'dist', 'index.umd.js');
+  const assets = new Map([
+    ['/', { type: 'text/html', content: Buffer.from(liteHtml) }],
+    [
+      '/sky-engine.mjs',
+      { type: 'text/javascript', content: await readFile(join(directory, 'sky-engine.mjs')) },
+    ],
+    [
+      '/sky-engine.lite.mjs',
+      { type: 'text/javascript', content: await readFile(join(directory, 'sky-engine.lite.mjs')) },
+    ],
+    ['/temporal.js', { type: 'text/javascript', content: await readFile(polyfill) }],
+    ['/stars.json', { type: 'application/json', content: await readFile(join(directory, 'stars.json')) }],
+  ]);
+  const server = createServer((req, res) => {
+    const asset = assets.get(req.url ?? '/');
+    if (!asset) {
+      res.writeHead(404).end();
+      return;
+    }
+    res.writeHead(200, { 'Content-Type': asset.type, 'Cache-Control': 'no-store' }).end(asset.content);
+  });
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  try {
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('Missing test server address');
+    // Neither build may find a native Temporal: the full one uses its bundled polyfill.
+    await page.addInitScript(() =>
+      Object.defineProperty(globalThis, 'Temporal', { value: undefined, configurable: true }),
+    );
+    await page.goto('http://127.0.0.1:' + address.port);
+    await expectDistributionReady(page);
+  } finally {
+    server.closeAllConnections();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});

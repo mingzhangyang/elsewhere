@@ -33,36 +33,66 @@ await rm(output, { recursive: true, force: true });
 await mkdir(stage, { recursive: true });
 await mkdir(release, { recursive: true });
 
-// Isolated library build. Never load the host Vite config or its offline plugin.
-const built = await build({
-  configFile: false,
-  root,
-  publicDir: false,
-  build: {
-    outDir: stage,
-    emptyOutDir: false,
-    target: 'es2022',
-    minify: 'esbuild',
-    sourcemap: false,
-    modulePreload: false,
-    lib: { entry: join(sdk, 'src/index.ts'), formats: ['es'], fileName: () => 'sky-engine.mjs' },
-    rollupOptions: { output: { inlineDynamicImports: true } },
-  },
+// Isolated library builds. Never load the host Vite config or its offline plugin. The full build
+// bundles the Temporal polyfill; the lite build replaces it with a stub that has no Temporal, so it
+// needs a native Temporal or one installed by the host with installTemporal().
+async function buildModule(fileName, { alias = {}, define = {} } = {}) {
+  const built = await build({
+    configFile: false,
+    root,
+    publicDir: false,
+    logLevel: 'warn',
+    resolve: { alias },
+    define,
+    build: {
+      outDir: stage,
+      emptyOutDir: false,
+      target: 'es2022',
+      minify: 'esbuild',
+      sourcemap: false,
+      modulePreload: false,
+      lib: { entry: join(sdk, 'src/index.ts'), formats: ['es'], fileName: () => fileName },
+      rollupOptions: { output: { inlineDynamicImports: true } },
+    },
+  });
+  const outputs = Array.isArray(built) ? built : [built];
+  assert.equal(outputs.length, 1);
+  const chunks = outputs.flatMap((item) => item.output);
+  assert.equal(chunks.length, 1);
+  const chunk = chunks[0];
+  assert.equal(chunk.type, 'chunk');
+  assert.equal(chunk.fileName, fileName);
+  assert.deepEqual(chunk.imports, [], fileName + ' must not require external module imports.');
+  assert.deepEqual(chunk.dynamicImports, [], fileName + ' must not fetch additional JavaScript chunks.');
+  const bytes = await readFile(join(stage, fileName));
+  return { bytes, gzip: gzipSync(bytes).length, modules: Object.keys(chunk.modules) };
+}
+const temporalPolyfill = /[\\/]@js-temporal[\\/]polyfill[\\/]/;
+const full = await buildModule('sky-engine.mjs');
+const lite = await buildModule('sky-engine.lite.mjs', {
+  alias: { '@js-temporal/polyfill': join(sdk, 'src/temporalUnavailable.ts') },
+  define: { __SKY_ENGINE_LITE__: 'true' },
 });
-const outputs = Array.isArray(built) ? built : [built];
-assert.equal(outputs.length, 1);
-const chunks = outputs.flatMap((item) => item.output);
-assert.equal(chunks.length, 1);
-const chunk = chunks[0];
-assert.equal(chunk.type, 'chunk');
-assert.deepEqual(chunk.imports, [], 'SDK must not require external module imports.');
-assert.deepEqual(chunk.dynamicImports, [], 'SDK must not fetch additional JavaScript chunks.');
-const bundle = await readFile(join(stage, 'sky-engine.mjs'));
-const bundleGzip = gzipSync(bundle).length;
-// Independent initial SDK budgets; the app's existing 500,000 B aggregate limit is untouched.
+assert(
+  full.modules.some((id) => temporalPolyfill.test(id)),
+  'The full build must bundle the Temporal polyfill.',
+);
+assert(
+  !lite.modules.some((id) => temporalPolyfill.test(id)),
+  'The lite build must not bundle the Temporal polyfill.',
+);
+const bundle = full.bytes;
+const bundleGzip = full.gzip;
+// Independent SDK budgets; the app's existing 500,000 B aggregate limit is untouched.
 assert(bundle.length < 750000, 'SDK JavaScript exceeds 750,000 raw bytes.');
 assert(bundleGzip < 250000, 'SDK JavaScript exceeds 250,000 gzip bytes.');
-assert.deepEqual(await readdir(stage), ['sky-engine.mjs'], 'SDK must be one self-contained browser module.');
+assert(lite.bytes.length < 275000, 'Lite SDK JavaScript exceeds 275,000 raw bytes.');
+assert(lite.gzip < 100000, 'Lite SDK JavaScript exceeds 100,000 gzip bytes.');
+assert.deepEqual(
+  (await readdir(stage)).sort(),
+  ['sky-engine.lite.mjs', 'sky-engine.mjs'],
+  'SDK must be two self-contained browser modules (full and lite).',
+);
 
 run(tsc, ['--project', join(sdk, 'tsconfig.build.json')]);
 
@@ -194,6 +224,7 @@ await copyFile(join(moonStage, 'moon-lroc.jpg'), join(release, 'moon-lroc.jpg'))
 assert.equal(landscapes.files.filter((file) => file.path.endsWith('.webp')).length, 32);
 for (const file of [
   'sky-engine.mjs',
+  'sky-engine.lite.mjs',
   'types/index.d.ts',
   'stars.json',
   'LICENSE',
@@ -210,7 +241,9 @@ for (const file of [
     'Missing npm archive file: ' + file,
   );
 }
-for (const file of ['sky-engine.mjs', 'stars.json']) await copyFile(join(stage, file), join(release, file));
+for (const file of ['sky-engine.mjs', 'sky-engine.lite.mjs', 'stars.json']) {
+  await copyFile(join(stage, file), join(release, file));
+}
 const notices = await Promise.all(
   ['LICENSE', 'THIRD-PARTY.txt', 'HYG.txt', 'CATALOG-ATTRIBUTION.md'].map((file) =>
     readFile(join(stage, file), 'utf8'),
@@ -261,20 +294,31 @@ try {
         noEmit: true,
         target: 'ES2022',
         module: 'NodeNext',
-        lib: ['ES2022', 'DOM'],
+        lib: ['ES2022', 'DOM', 'DOM.Iterable'],
         types: [],
       },
-      files: ['consumer.ts'],
+      // The Worker example is type-checked against the installed declarations as well.
+      files: ['consumer.ts', 'worker-main.ts', 'worker-protocol.ts'],
     }),
   );
+  for (const file of ['worker-render.ts', 'worker-main.ts', 'worker-protocol.ts']) {
+    await copyFile(join(sdk, 'examples', file), join(consumer, file));
+  }
   await writeFile(
     join(consumer, 'consumer.ts'),
-    `import {
+    `import * as lite from '@orangely/sky-engine/lite';
+import {
   advanced, createSkyScene, renderIllustration, renderSkyChart, renderMinimalSkyMap, renderMoonPhase,
-  installMoonTexture, loadMoonTexture, getStarCatalog, getPatterns, SkyEngineError,
+  installMoonTexture, loadMoonTexture, getStarCatalog, getPatterns, SkyEngineError, installTemporal,
   type CatalogStar, type Constellation, type MoonPhaseOptions, type MomentSnapshot,
   type SkyEngineErrorCode,
 } from '@orangely/sky-engine';
+// The lite build has the same declarations as the package root.
+lite.installTemporal({});
+const liteScene: MomentSnapshot = await lite.createSkyScene({
+  latitude: 0, longitude: 0, timezone: 'UTC', instant: new Date(),
+});
+lite.renderSkyChart(new OffscreenCanvas(400, 400), liteScene);
 const scene: MomentSnapshot = await createSkyScene({
   latitude: 40, longitude: -74, timezone: 'UTC', instant: new Date(),
   assetTimeoutMs: 15000, signal: new AbortController().signal,
@@ -318,9 +362,63 @@ const texture = await loadMoonTexture('/moon-lroc.jpg');
 installMoonTexture(texture);
 const moonOptions: MoonPhaseOptions = { orientation: 'north-up', background: 'transparent' };
 await renderMoonPhase(document.createElement('canvas'), scene, moonOptions);
+// Worker rendering: an OffscreenCanvas and ImageBitmap artwork are accepted everywhere.
+const offscreen = new OffscreenCanvas(800, 600);
+await renderIllustration(offscreen, scene, {
+  landscape: 'city',
+  loadLandscape: async () => createImageBitmap(new Blob()),
+});
+renderSkyChart(offscreen, scene);
+renderMinimalSkyMap(offscreen, scene);
+await renderMoonPhase(offscreen, scene, { texture: await createImageBitmap(new Blob()) });
+installTemporal({});
 `,
   );
   run(tsc, ['--project', join(consumer, 'tsconfig.json')], consumer);
+  // A Worker-only project: no DOM library, strict, and the package declarations checked too
+  // (skipLibCheck stays false). It compiles the Worker example and uses both builds.
+  await writeFile(
+    join(consumer, 'tsconfig.worker.json'),
+    JSON.stringify({
+      compilerOptions: {
+        strict: true,
+        noEmit: true,
+        skipLibCheck: false,
+        target: 'ES2022',
+        module: 'NodeNext',
+        lib: ['ES2022', 'WebWorker', 'WebWorker.Iterable'],
+        types: [],
+      },
+      files: ['worker-consumer.ts', 'worker-render.ts', 'worker-protocol.ts'],
+    }),
+  );
+  await writeFile(
+    join(consumer, 'worker-consumer.ts'),
+    `import {
+  createSkyScene, installMoonTexture, installTemporal, loadMoonTexture, paintIllustrationPanel,
+  renderIllustration, renderMinimalSkyMap, renderMoonPhase, renderSkyChart,
+  type MoonTexture, type RenderCanvas, type RenderImage,
+} from '@orangely/sky-engine';
+import * as lite from '@orangely/sky-engine/lite';
+lite.installTemporal({});
+installTemporal({});
+const scene = await createSkyScene({ latitude: 0, longitude: 0, timezone: 'UTC', instant: new Date() });
+const canvas: RenderCanvas = new OffscreenCanvas(800, 600);
+const art: RenderImage = await createImageBitmap(new Blob());
+await renderIllustration(canvas, scene, { landscape: 'city', landscapeArt: art });
+await renderIllustration(canvas, scene, { landscape: 'mountains', loadLandscape: async () => art });
+paintIllustrationPanel(new OffscreenCanvas(10, 10).getContext('2d')!, 10, 10, scene);
+renderSkyChart(canvas, scene);
+renderMinimalSkyMap(canvas, scene);
+const texture: MoonTexture = await loadMoonTexture('/moon-lroc.jpg');
+installMoonTexture(texture);
+await renderMoonPhase(canvas, scene, { texture: art });
+await lite.renderMoonPhase(new OffscreenCanvas(64, 64), scene);
+// @ts-expect-error Without the DOM library only an OffscreenCanvas is a canvas.
+renderSkyChart({ width: 400, height: 400 }, scene);
+`,
+  );
+  run(tsc, ['--project', join(consumer, 'tsconfig.worker.json')], consumer);
   await writeFile(
     join(consumer, 'smoke.mjs'),
     `import assert from 'node:assert/strict';
@@ -333,8 +431,8 @@ const observer = {
   latitude: 40.7128, longitude: -74.006, timezone: 'America/New_York',
   instant: new Date('2026-03-20T17:00:00Z'),
 };
-const coded = (code) => (error) => {
-  assert(error instanceof sdk.SkyEngineError);
+const coded = (code, module = sdk) => (error) => {
+  assert(error instanceof module.SkyEngineError);
   assert(error instanceof Error);
   assert.equal(error.code, code);
   assert.equal(error.name, code === 'CANCELLED' ? 'AbortError' : 'SkyEngineError');
@@ -390,12 +488,60 @@ assert.equal(typeof sdk.installMoonTexture, 'function');
 assert.equal(typeof sdk.loadMoonTexture, 'function');
 const moonUrl = new URL(import.meta.resolve('@orangely/sky-engine-moon-texture/moon-lroc.jpg'));
 assert.equal((await readFile(moonUrl)).length, 457942);
+
+// The lite build: a separate module instance without the Temporal polyfill.
+const lite = await import('@orangely/sky-engine/lite');
+assert.notEqual(lite, sdk);
+assert.deepEqual(lite.getStarCatalog(), []);
+const unsupported = (error) => {
+  coded('UNSUPPORTED', lite)(error);
+  assert.match(error.message, /installTemporal\\(\\)/);
+  assert.match(error.message, /full Sky Engine build/);
+  return true;
+};
+await assert.rejects(lite.advanced.ensureTemporal(), unsupported);
+// Fails before starting the catalog load.
+let catalogRequested = false;
+await assert.rejects(
+  lite.createSkyScene({ ...observer, loadCatalog: async () => { catalogRequested = true; return []; } }),
+  unsupported,
+);
+assert.equal(catalogRequested, false);
+assert.equal(lite.starCatalogLoaded(), false);
+assert.throws(() => lite.advanced.calculateDailyEvents(scene.location, observer.instant), unsupported);
+assert.throws(() => lite.installTemporal({}), coded('INVALID_INPUT', lite));
+assert.throws(() => lite.installTemporal(null), coded('INVALID_INPUT', lite));
+const { Temporal: hostTemporal } = await import(process.env.SKY_ENGINE_TEMPORAL_POLYFILL);
+lite.installTemporal(hostTemporal);
+await lite.advanced.ensureTemporal();
+const liteScene = await lite.createSkyScene({
+  latitude: 40.7128, longitude: -74.006, timezone: 'America/New_York',
+  instant: new Date('2026-03-20T17:00:00Z'), weather: 'clear',
+  loadCatalog: async () => lite.decodeStarColumns(data),
+});
+assert.deepEqual(JSON.parse(JSON.stringify(liteScene)), JSON.parse(JSON.stringify(scene)));
+assert.throws(() => lite.renderSkyChart(noCanvas, liteScene), coded('UNSUPPORTED', lite));
+const dayStart = new Date('2026-11-01T12:00:00Z');
+assert.deepEqual(
+  JSON.parse(JSON.stringify(lite.advanced.calculateDailyEvents(scene.location, dayStart))),
+  JSON.parse(JSON.stringify(sdk.advanced.calculateDailyEvents(scene.location, dayStart))),
+);
+const names = (module) =>
+  [...Object.keys(module), ...Object.keys(module.advanced).map((name) => 'advanced.' + name)].sort();
+assert.deepEqual(names(lite), names(sdk), 'The full and lite builds must export the same names.');
 // Last line of output: the installed package's runtime export names, for the API lock below.
-const advancedNames = Object.keys(sdk.advanced).map((name) => 'advanced.' + name);
-console.log(JSON.stringify([...Object.keys(sdk), ...advancedNames].sort()));
+console.log(JSON.stringify(names(sdk)));
 `,
   );
-  const smokeOutput = run(join(consumer, 'smoke.mjs'), [], consumer).trim().split('\n');
+  const smokeOutput = execFileSync(process.execPath, [join(consumer, 'smoke.mjs')], {
+    cwd: consumer,
+    stdio: 'pipe',
+    encoding: 'utf8',
+    // The host's own Temporal implementation for the lite build, from outside the consumer.
+    env: { ...process.env, SKY_ENGINE_TEMPORAL_POLYFILL: import.meta.resolve('@js-temporal/polyfill') },
+  })
+    .trim()
+    .split('\n');
   await checkExports(JSON.parse(smokeOutput[smokeOutput.length - 1]));
 } finally {
   await rm(consumer, { recursive: true, force: true });
@@ -412,6 +558,7 @@ const releaseManifest = {
   tag: 'sky-engine-v' + version,
   sourceCommit,
   bundle: { rawBytes: bundle.length, gzipBytes: bundleGzip },
+  liteBundle: { rawBytes: lite.bytes.length, gzipBytes: lite.gzip },
   catalog: { rawBytes: catalog.length, gzipBytes: gzipSync(catalog).length, license: 'CC-BY-SA-4.0' },
   moonTexture: {
     rawBytes: lunarTexture.length,
