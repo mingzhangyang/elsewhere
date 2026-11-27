@@ -3,6 +3,47 @@
 All notable changes to `@orangely/sky-engine`. Versions follow [Semantic Versioning](https://semver.org/);
 each version is distributed as a GitHub Release tagged `sky-engine-v<version>` (no npm registry).
 
+## 0.4.0 — unreleased
+
+Performance and runtime environments. Backward compatible: the stable API only gains exports and
+accepts wider parameter types. Main-thread rendering output is unchanged, except that the Moon
+portrait may differ by at most 1 in an RGB channel (alpha is identical).
+
+### Added
+
+- **Rendering in a Worker.** `renderIllustration`, `renderSkyChart`, `renderMinimalSkyMap` and
+  `renderMoonPhase` accept an `OffscreenCanvas` as well as an `HTMLCanvasElement`, and
+  `paintIllustrationPanel` an `OffscreenCanvasRenderingContext2D` as well. Landscape artwork
+  (`landscapeArt`, `loadLandscape`) may be an `ImageBitmap` as well as a decoded `<img>`. Inside a
+  Worker the engine's working canvases are `OffscreenCanvas`; wherever a `document` exists they are
+  still DOM canvases, so main-thread pixels do not change. See the README for fonts in a Worker and
+  `examples/worker-render.ts` (source repository) for a complete example.
+- **Lite build.** `sky-engine.lite.mjs` (`@orangely/sky-engine/lite`): the same exports without the
+  bundled Temporal polyfill, about 209 KB instead of 411 KB. It is in the release assets and the
+  core npm archive. Use one build per page or Worker; each has its own catalog and Moon texture.
+- `installTemporal(temporal)`: supply the host's Temporal implementation (both builds). Without a
+  native or installed Temporal, the lite build's civil-time functions report `UNSUPPORTED`.
+- Type exports `RenderCanvas`, `RenderContext2D` and `RenderImage`.
+
+### Changed
+
+- The Moon portrait renders about 2.4 to 2.5 times faster (`npm run sdk:bench`, medians of three
+  runs on the same machine: 1319 → 519 ms at 4096 px, 358 → 149 ms at 2048 px): per-row and
+  per-column terms are computed once, and `Math.pow`, `Math.atan2` and `Math.asin` in the pixel loop
+  are replaced by interpolated tables. A frozen copy of the 0.3.0 pixel loop is the test reference:
+  RGB channels stay within 1, alpha is identical.
+- A civil-time function called before any Temporal is available (for example an `advanced` function
+  before `advanced.ensureTemporal()` on a runtime without a native Temporal) now throws an
+  `UNSUPPORTED` `SkyEngineError` instead of a `TypeError`.
+
+### Build and documentation
+
+- `npm run sdk:build` builds both modules, checks that only the full one bundles the polyfill, gives
+  the lite module its own budgets (275,000 raw and 100,000 gzip bytes), and checks that both have the
+  same runtime export names as `api-exports.json`. The offline Node smoke test and a browser
+  distribution test cover the lite build; a new browser test compares Worker and main-thread pixels.
+- The Worker example is type-checked against the shipped declarations.
+
 ## 0.3.0 — unreleased
 
 The one planned incompatible release: it settles the public API before now-and-more adopts the

@@ -1,6 +1,6 @@
 # Sky Engine API reference
 
-The public API of `@orangely/sky-engine` 0.3. It has two layers:
+The public API of `@orangely/sky-engine` 0.4. It has two layers:
 
 - **Stable API**: every export of the package root except `advanced`. These names follow Semantic
   Versioning: they change incompatibly only in a new major version.
@@ -16,6 +16,12 @@ const project = advanced.createProjection(scene.view, scene.aspect);
 `advanced` is a namespace of the same single `sky-engine.mjs` module, not a separate file, so there is
 still exactly one star catalog and one default Moon texture per module instance. Both layers are
 locked by `api-exports.json` (root names, and namespace members as `advanced.<name>`).
+
+The **lite build** (`sky-engine.lite.mjs`, package subpath `@orangely/sky-engine/lite`) has the same
+exports, declarations and behavior, except that it bundles no Temporal polyfill (see
+[`installTemporal`](#installtemporaltemporal-unknown-void)). The export lock covers both builds. Use
+one build per page or Worker: each is its own module instance with its own catalog, Moon texture and
+Temporal.
 
 Signatures are abbreviated from the shipped declarations in `types/`; those declarations are
 authoritative. Angles are degrees, azimuths are clockwise from north, and altitudes are above the
@@ -39,7 +45,7 @@ class SkyEngineError extends Error {
 | `CANCELLED`     | `AbortError`     | The caller's `signal` was aborted.                                                     |
 | `MISSING_ASSET` | `SkyEngineError` | A required resource was not supplied: the star catalog, a Moon texture, landscape art. |
 | `ASSET_FAILED`  | `SkyEngineError` | A resource failed to load or decode. `cause` holds the original error.                 |
-| `UNSUPPORTED`   | `SkyEngineError` | The environment lacks a required feature (no Canvas 2D context).                       |
+| `UNSUPPORTED`   | `SkyEngineError` | The environment lacks a required feature: no Canvas 2D context, or no Temporal.        |
 
 Branch on `code`; messages are for people and may be reworded. Cancellation keeps the name
 `AbortError`, so `error.name === 'AbortError'` checks keep working. When a host loader
@@ -55,7 +61,8 @@ added in a minor version.
 #### `createSkyScene(options: SkySceneOptions): Promise<MomentSnapshot>`
 
 Calculates a complete scene for one observer and instant without geolocation, weather services or app
-state. Prepares civil time and the star catalog first.
+state. Prepares civil time and the star catalog first. In the lite build without a native or installed
+Temporal it rejects with `UNSUPPORTED` before starting a catalog load.
 
 | Option                    | Type / default                                                           | Notes                                                                                                                  |
 | ------------------------- | ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
@@ -85,13 +92,30 @@ Errors:
 - `TIMEOUT` (`'Star catalog timed out.'`). A caller that joins another caller's installation times
   out alone; the installation continues. `CANCELLED` (`'Sky scene cancelled.'` or
   `'Star catalog cancelled.'`). `ASSET_FAILED` when `loadCatalog` fails.
+- `UNSUPPORTED` (lite build only) when no Temporal is available; see `installTemporal`.
+
+#### `installTemporal(temporal: unknown): void`
+
+Uses the host's Temporal implementation for all civil-time work, in place of the runtime's own and of
+the bundled polyfill, for example `installTemporal(Temporal)` with `Temporal` from
+`@js-temporal/polyfill`. Call it before `createSkyScene()`. It exists in both builds and is needed only
+by the lite build on runtimes without a native `Temporal`. The implementation must provide `Instant`,
+`ZonedDateTime`, `PlainDate` and `PlainDateTime`; anything else throws `INVALID_INPUT`. The latest call
+wins.
+
+Without a Temporal (lite build, no native one, nothing installed), `createSkyScene`,
+`advanced.ensureTemporal`, `advanced.calculateSky` and `advanced.calculateDailyEvents` fail with
+`UNSUPPORTED`; the message names both remedies (`installTemporal()`, or the full build).
 
 ### Rendering
 
-All renderers need a browser Canvas 2D. Each validates its input, and the asynchronous ones load their
-resources, before resetting the caller's canvas (by reassigning its width), so those failures leave the
-canvas as it was. Common errors: `UNSUPPORTED` (`'Canvas 2D is unavailable.'`) and `INVALID_INPUT`
-for out-of-range canvas sizes or aspect ratios.
+All renderers need Canvas 2D. The `canvas` parameter is a `RenderCanvas`: an `HTMLCanvasElement` or
+an `OffscreenCanvas`, also inside a Worker (see the README's Worker section for fonts and assets there).
+Each validates its input, and the asynchronous ones load their resources, before resetting the caller's
+canvas (by reassigning its width), so those failures leave the canvas as it was. Common errors:
+`UNSUPPORTED` (`'Canvas 2D is unavailable.'`) and `INVALID_INPUT` for out-of-range canvas sizes or
+aspect ratios. The engine's private working canvases are DOM canvases wherever a `document` exists and
+`OffscreenCanvas` otherwise.
 
 Shared options use the same names, types and validation everywhere they apply:
 
@@ -117,7 +141,9 @@ the composed snapshot. `RenderIllustrationOptions`:
 - `layers`: overrides of the scene's layers. `patterns`: custom `IllustrationPattern[]` (at most 32
   patterns and 256 edges; an empty array disables the built-in patterns). `milkyWay`: default `true`.
 - `landscape`: `'ridge'` (default), `'sea'`, `'city'` or `'mountains'` (`HORIZON_VARIANTS`). The last
-  two need a decoded `landscapeArt` image or `loadLandscape(request: LandscapeRequest, signal)`.
+  two need decoded `landscapeArt` or `loadLandscape(request: LandscapeRequest, signal)` resolving to it:
+  a `RenderImage`, that is a loaded `HTMLImageElement` (`complete`, non-zero `naturalWidth` and
+  `naturalHeight`) or an open `ImageBitmap` (non-zero `width` and `height`; the only choice in a Worker).
 - `paintFinish`: paper finish, default `true`. `text`, `font`: label wording and font family.
 - `assetTimeoutMs` (default 10000) and `signal` bound `loadLandscape`.
 
@@ -138,10 +164,12 @@ invalid scene view or aspect.
 
 #### `paintIllustrationPanel(ctx, width, height, snapshot, options?): void`
 
-Paints the illustration into the top-left `width × height` region of an existing context without
+Paints the illustration into the top-left `width × height` region of an existing context
+(`RenderContext2D`: a `CanvasRenderingContext2D` or an `OffscreenCanvasRenderingContext2D`) without
 owning the canvas size, resetting state or loading resources. `IllustrationPanelOptions`:
-`landscape` (validated like `renderIllustration`'s), `landscapeArt`, `text`, `font`, `paintFinish`
-(default `true`), `patterns`, `milkyWay`. Errors: `INVALID_INPUT` for an unknown landscape.
+`landscape` (validated like `renderIllustration`'s), `landscapeArt` (a `RenderImage`), `text`, `font`,
+`paintFinish` (default `true`), `patterns`, `milkyWay`. Errors: `INVALID_INPUT` for an unknown
+landscape.
 
 #### `renderSkyChart(canvas, scene, options?): SkyChartSnapshot`
 
@@ -178,7 +206,8 @@ texture size, timeout value, `'Canvas size changed while loading Moon texture.'`
 
 #### `loadMoonTexture(url: string | URL, signal?): Promise<ImageData>`
 
-Fetches only the given URL, decodes it with `createImageBitmap` and returns its pixels. Errors:
+Fetches only the given URL, decodes it with `createImageBitmap` and returns its pixels; it works the
+same inside a Worker. Errors:
 `ASSET_FAILED` for a non-OK response (`'Moon texture unavailable: <status>'`) or a `fetch` / decoding
 failure such as a CORS error (the original error is `cause`); `CANCELLED`
 (`'Moon texture cancelled.'`) when `signal` is aborted; `INVALID_INPUT` for the texture size.
@@ -248,7 +277,9 @@ installed (or supplied) catalog.
 
 ### Main types
 
-All type-only exports: `MomentSnapshot`, `CameraView`, `LayerSettings`, `IllustrationPattern`,
+All type-only exports: `RenderCanvas` (`HTMLCanvasElement | OffscreenCanvas`), `RenderContext2D`
+(`CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D`), `RenderImage`
+(`HTMLImageElement | ImageBitmap`), `MomentSnapshot`, `CameraView`, `LayerSettings`, `IllustrationPattern`,
 `IllustrationComposition`, `SkySceneOptions`, `RenderIllustrationOptions`, `LandscapeRequest`,
 `LandscapeSeason`, `IllustrationPanelOptions`, `IllustrationDetails`, `IllustrationText`,
 `HorizonVariant`, `SkyChartOptions`, `MinimalSkyMapOptions`, `SkyArtworkTheme`, `SkyChartSnapshot`,
@@ -267,7 +298,8 @@ version. Types are reached the same way, for example `advanced.Projection`.
 These functions need `advanced.ensureTemporal()` to have resolved and, for stars, an installed
 catalog. `createSkyScene` does both. `location` is a `LocationInfo`.
 
-- `ensureTemporal(): Promise<void>`: uses the native `Temporal` or loads the bundled polyfill once.
+- `ensureTemporal(): Promise<void>`: uses an installed or native `Temporal`, or loads the bundled
+  polyfill once. In the lite build it rejects with `UNSUPPORTED` when there is neither.
 - `calculateSky(location, date, events?): SkyState`: Sun, Moon, planets and stars for an instant.
 - `calculateDailyEvents(location, date): SkyEvents`: rise/set and twilight events within the local
   calendar day.
@@ -275,7 +307,8 @@ catalog. `createSkyScene` does both. `location` is a `LocationInfo`.
 - `getPhase(angle): MoonPhaseKey`: phase key for an elongation angle.
 
 Errors: `INVALID_INPUT` for invalid coordinates or elevation, an unknown time zone, or an instant
-outside 1900–2100.
+outside 1900–2100; `UNSUPPORTED` from `calculateSky` and `calculateDailyEvents` when no Temporal is
+available.
 
 ### Catalog installation
 
@@ -306,7 +339,8 @@ outside 1900–2100.
 
 ### Painting
 
-- `drawIllustration(ctx, width, height, snapshot, toCanvas, horizon, text, font, landscapeArt?, details?): void`:
+- `drawIllustration(ctx, width, height, snapshot, toCanvas, horizon, text, font, landscapeArt?, details?): void`
+  (`ctx` a `RenderContext2D`, `landscapeArt` a `RenderImage`):
   the low-level painter used by `paintIllustrationPanel`, with an explicit `ToCanvas` projection.
 - `paintFinish(ctx, x, y, w, h, seed, sky?): void`: the paper finish (bloom, pigment, vignette,
   painted border, grain) over a rectangle. `sky: false` paints the paper only.
