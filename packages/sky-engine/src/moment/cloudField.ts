@@ -1,4 +1,5 @@
 import { clamp01, glowAt, lerp, mix, type Palette, type Rgb } from './paint';
+import { context2d, createScratchCanvas, type RenderContext2D } from './scratchCanvas';
 
 /** Deterministic watercolour clouds for postcard snapshots only. */
 export interface WatercolourCloudLight {
@@ -135,7 +136,7 @@ export function rasterCloudOpacity(field: CloudField, columns: number, rows: num
 
 /** Rasterize a small translucent pigment field, then smooth it onto the full postcard. */
 export function paintCloudField(
-  ctx: CanvasRenderingContext2D,
+  ctx: RenderContext2D,
   x: number,
   y: number,
   size: number,
@@ -147,13 +148,14 @@ export function paintCloudField(
   const field = createCloudField(random, tiers);
   const width = size * 4.66;
   const height = size * 2.54;
-  const offscreen =
-    typeof document !== 'undefined' && typeof ctx.canvas?.width === 'number'
-      ? document.createElement('canvas')
-      : null;
-  const c = offscreen?.getContext('2d');
+  const step = Math.max(1.6, size * 0.026);
+  const columns = Math.max(8, Math.ceil(width / step));
+  const rows = Math.max(8, Math.ceil(height / step));
+  // A document canvas on the main thread, an OffscreenCanvas in a Worker.
+  const offscreen = typeof ctx.canvas?.width === 'number' ? createScratchCanvas(columns, rows) : null;
+  const c = offscreen && context2d(offscreen);
   if (!offscreen || !c) {
-    // A Canvas-less recorder (or a browser lacking an offscreen 2D context) keeps a soft fallback.
+    // A Canvas-less recorder (or an environment without any 2D canvas) keeps a soft fallback.
     ctx.save();
     for (const m of field.masses)
       glowAt(
@@ -167,13 +169,8 @@ export function paintCloudField(
     ctx.restore();
     return field;
   }
-  const step = Math.max(1.6, size * 0.026);
-  offscreen.width = Math.max(8, Math.ceil(width / step));
-  offscreen.height = Math.max(8, Math.ceil(height / step));
-  const image = c.createImageData(offscreen.width, offscreen.height);
+  const image = c.createImageData(columns, rows);
   const pixels = image.data;
-  const columns = offscreen.width;
-  const rows = offscreen.height;
   // Preserve the same seeded density on the final pixel grid, then shade its 2D gradients.
   const densities = rasterCloudOpacity(field, columns, rows);
   const shade = mix(palette.cloudShadow, palette.cloudBody, 0.52);

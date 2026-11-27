@@ -25,6 +25,7 @@ import {
 import { requireImageSize, resetImageCanvas } from './imageCanvas';
 import { invalidInput } from '../errors';
 import { validateInstant } from '../domain/time';
+import type { RenderCanvas, RenderContext2D } from './scratchCanvas';
 
 export interface SkyChartOptions {
   theme?: SkyArtworkTheme;
@@ -63,7 +64,7 @@ function chartSnapshot(scene: MomentSnapshot, limit?: number): SkyChartSnapshot 
 }
 
 function credit(
-  ctx: CanvasRenderingContext2D,
+  ctx: RenderContext2D,
   width: number,
   height: number,
   palette: SkyChartPalette,
@@ -104,7 +105,7 @@ function credit(
 
 /** All-sky position diagram. The established chart selection is independent of weather/daylight. */
 export function renderSkyChart(
-  canvas: HTMLCanvasElement,
+  canvas: RenderCanvas,
   scene: MomentSnapshot,
   options: SkyChartOptions = {},
 ): SkyChartSnapshot {
@@ -176,7 +177,7 @@ function mapPoints(
 
 /** A clean perspective star diagram: no invented background stars, terrain or atmosphere. */
 export function renderMinimalSkyMap(
-  canvas: HTMLCanvasElement,
+  canvas: RenderCanvas,
   scene: MomentSnapshot,
   options: MinimalSkyMapOptions = {},
 ): MomentSnapshot {

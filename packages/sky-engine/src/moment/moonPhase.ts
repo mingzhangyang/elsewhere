@@ -1,8 +1,9 @@
 import type { MomentSnapshot } from '../contracts';
 import { brightLimbAngle } from '../domain/planets';
 import { assetFailed, loadResource, validateTimeout } from '../resources';
-import { requireImageSize, resetImageCanvas } from './imageCanvas';
-import { cancelled, canvasUnavailable, invalidInput, SkyEngineError } from '../errors';
+import { requireContext, requireImageSize, resetImageCanvas } from './imageCanvas';
+import { requireScratchContext, type RenderCanvas } from './scratchCanvas';
+import { cancelled, invalidInput, SkyEngineError } from '../errors';
 
 export type MoonTexture = ImageData | ImageBitmap | HTMLImageElement;
 export interface MoonPhaseOptions {
@@ -56,11 +57,7 @@ function decodeTexture(texture: MoonTexture): ImageData {
   if ('data' in texture) {
     result = texture;
   } else {
-    const canvas = document.createElement('canvas');
-    canvas.width = w;
-    canvas.height = h;
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    if (!ctx) throw canvasUnavailable();
+    const ctx = requireScratchContext(w, h, { willReadFrequently: true });
     ctx.drawImage(texture, 0, 0, w, h);
     try {
       result = ctx.getImageData(0, 0, w, h);
@@ -420,7 +417,7 @@ export function moonPortraitPixels(
 
 /** Orthographic lunar portrait using the existing observer-frame ephemeris and IAU body axes. */
 export async function renderMoonPhase(
-  canvas: HTMLCanvasElement,
+  canvas: RenderCanvas,
   scene: MomentSnapshot,
   options: MoonPhaseOptions = {},
 ): Promise<void> {
@@ -475,9 +472,7 @@ export async function renderMoonPhase(
   if (canvas.width !== width || canvas.height !== height) {
     throw invalidInput('Canvas size changed while loading Moon texture.');
   }
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw canvasUnavailable();
-  const image = ctx.createImageData(width, height);
+  const image = requireContext(canvas).createImageData(width, height);
   shadeMoon(image.data, width, height, shading, texture, background, earthshine);
   resetImageCanvas(canvas).putImageData(image, 0, 0);
 }

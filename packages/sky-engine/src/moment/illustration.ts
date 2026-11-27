@@ -29,6 +29,7 @@ import { type CloudLight, altocumulus, cirrus, cloudSheet, cumulus, stratus } fr
 import { landscapeSeason } from './seasons';
 import { paintLandscape } from './landscape';
 import { paintMilkyWay } from './milkyWayArt';
+import type { RenderContext2D, RenderImage } from './scratchCanvas';
 
 /**
  * The illustrated sky: a painted, picture-book rendering of the same calculated snapshot as the
@@ -70,7 +71,7 @@ const starTint = (colorIndex: number | null | undefined): Rgb =>
  * ones, thin tapered rays, each a little different (`quirk` is the star's own number in [0, 1)).
  */
 function paintStar(
-  ctx: CanvasRenderingContext2D,
+  ctx: RenderContext2D,
   x: number,
   y: number,
   magnitude: number,
@@ -118,7 +119,7 @@ function paintStar(
 
 /** The Moon as a picture book paints it: a soft halo, a creamy disc, watercolour maria, earthshine. */
 function paintMoon(
-  ctx: CanvasRenderingContext2D,
+  ctx: RenderContext2D,
   x: number,
   y: number,
   r: number,
@@ -188,7 +189,7 @@ export function lettering(text: string, size: number, font: string, weight = 600
 
 /** A name lettered onto the painting: cream paint over a soft shadow on a dark sky, ink on a bright one. */
 function label(
-  ctx: CanvasRenderingContext2D,
+  ctx: RenderContext2D,
   text: string,
   x: number,
   y: number,
@@ -218,7 +219,7 @@ const PLANET_FILL: Record<string, [string, string]> = {
 };
 
 export function drawIllustration(
-  ctx: CanvasRenderingContext2D,
+  ctx: RenderContext2D,
   width: number,
   height: number,
   snapshot: MomentSnapshot,
@@ -226,7 +227,7 @@ export function drawIllustration(
   horizon: HorizonVariant,
   text: IllustrationText,
   font: string,
-  landscapeArt?: HTMLImageElement | null,
+  landscapeArt?: RenderImage | null,
   details: IllustrationDetails = {},
 ) {
   const { sky, weather, layers, view } = snapshot;

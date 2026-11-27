@@ -3,6 +3,7 @@ import { createSceneToGalactic, MILKY_WAY_SHAPE as shape } from '../domain/galac
 import { limitingMagnitude, milkyWayVisibility, weatherVisibility } from '../domain/starVisibility';
 import { createSkyRay } from './projection';
 import { type Palette, clamp01, lerp } from './paint';
+import { context2d, createScratchCanvas, type RenderContext2D } from './scratchCanvas';
 
 const RAD = Math.PI / 180;
 const bell = (x: number, width: number) => Math.exp(-(x * x) / (width * width));
@@ -49,7 +50,7 @@ function pigment(x: number, y: number, z: number, l: number, b: number) {
 
 /** Painted diffuse light behind stars, clouds and land. No work on a hidden Galaxy. */
 export function paintMilkyWay(
-  ctx: CanvasRenderingContext2D,
+  ctx: RenderContext2D,
   width: number,
   height: number,
   snapshot: MomentSnapshot,
@@ -71,11 +72,9 @@ export function paintMilkyWay(
   const scale = Math.min(1, 480 / Math.max(width, height));
   const w = Math.max(1, Math.ceil(width * scale));
   const h = Math.max(1, Math.ceil(height * scale));
-  const canvas = document.createElement('canvas');
-  canvas.width = w;
-  canvas.height = h;
-  const buffer = canvas.getContext('2d');
-  if (!buffer) return;
+  const canvas = createScratchCanvas(w, h);
+  const buffer = canvas && context2d(canvas);
+  if (!canvas || !buffer) return;
   const image = buffer.createImageData(w, h);
   const rayAt = createSkyRay(view, aspect, width, height);
   const galactic = createSceneToGalactic(sky.starField);

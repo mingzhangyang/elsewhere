@@ -1,5 +1,6 @@
 import type { SkyChartSnapshotObject } from '../domain/skyChartSnapshot';
 import { invalidInput } from '../errors';
+import type { RenderContext2D } from './scratchCanvas';
 
 const TWO_PI = 2 * Math.PI;
 export type SkyArtworkTheme = 'midnight' | 'paper';
@@ -147,7 +148,7 @@ export const SKY_CHART_PALETTES: Readonly<Record<SkyArtworkTheme, Readonly<SkyCh
 );
 
 export function paintSkyDisc(
-  ctx: CanvasRenderingContext2D,
+  ctx: RenderContext2D,
   palette: SkyChartPalette,
   cx: number,
   cy: number,
@@ -180,7 +181,7 @@ export function paintSkyDisc(
 }
 
 export function paintEngravedRing(
-  ctx: CanvasRenderingContext2D,
+  ctx: RenderContext2D,
   palette: SkyChartPalette,
   cx: number,
   cy: number,
@@ -215,17 +216,13 @@ export function paintEngravedRing(
   ctx.restore();
 }
 
-function dot(ctx: CanvasRenderingContext2D, x: number, y: number, r: number): void {
+function dot(ctx: RenderContext2D, x: number, y: number, r: number): void {
   ctx.beginPath();
   ctx.arc(x, y, r, 0, TWO_PI);
   ctx.fill();
 }
 
-export function drawBody(
-  ctx: CanvasRenderingContext2D,
-  object: SkyChartDrawObject,
-  palette: SkyChartPalette,
-): void {
+export function drawBody(ctx: RenderContext2D, object: SkyChartDrawObject, palette: SkyChartPalette): void {
   const { px, py, radius } = object;
   if (object.kind === 'star') {
     ctx.fillStyle =

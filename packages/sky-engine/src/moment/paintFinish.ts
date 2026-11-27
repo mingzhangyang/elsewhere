@@ -1,16 +1,16 @@
 import { seededRandom } from '../lib/random';
 import { noise1 } from './paint';
+import { requireScratchContext, type RenderCanvas, type RenderContext2D } from './scratchCanvas';
 
 export const PAPER = '#f6f1e7';
 
-let grainTile: HTMLCanvasElement | null = null;
+let grainTile: RenderCanvas | null = null;
 /** A tile of paper grain: fine speckle and a few longer fibres, mid-grey around 128. */
-function paperGrain(): HTMLCanvasElement {
+function paperGrain(): RenderCanvas {
   if (grainTile) return grainTile;
   const size = 384;
-  const tile = document.createElement('canvas');
-  tile.width = tile.height = size;
-  const ctx = tile.getContext('2d')!;
+  const ctx = requireScratchContext(size, size);
+  const tile = ctx.canvas;
   const image = ctx.createImageData(size, size);
   const random = seededRandom(1234);
   for (let i = 0; i < size * size; i++) {
@@ -36,17 +36,16 @@ function paperGrain(): HTMLCanvasElement {
   return tile;
 }
 
-let washTile: HTMLCanvasElement | null = null;
+let washTile: RenderCanvas | null = null;
 /**
  * A tile of uneven pigment, as a wash dries on paper: smooth cloudy noise in three sizes, mid-grey
  * around 128, repeating at its edges. Enlarged over the painting it makes no area quite flat.
  */
-function pigmentWash(): HTMLCanvasElement {
+function pigmentWash(): RenderCanvas {
   if (washTile) return washTile;
   const size = 128;
-  const tile = document.createElement('canvas');
-  tile.width = tile.height = size;
-  const ctx = tile.getContext('2d')!;
+  const ctx = requireScratchContext(size, size);
+  const tile = ctx.canvas;
   const image = ctx.createImageData(size, size);
   const random = seededRandom(4321);
   const octaves = [4, 9, 23].map((cells) => ({
@@ -87,14 +86,7 @@ function pigmentWash(): HTMLCanvasElement {
 }
 
 /** The painted area's outline: a rectangle whose edges wander, as a brush leaves them. */
-function paintedEdge(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  seed: number,
-) {
+function paintedEdge(ctx: RenderContext2D, x: number, y: number, w: number, h: number, seed: number) {
   // Slow drift with a finer tremor, different on each side.
   const drift = noise1(seed + 99),
     tremor = noise1(seed + 199);
@@ -118,7 +110,7 @@ const MARGIN = 22;
  * edge, and paper grain over all of it. `sky` false gives the paper only, for the text panel.
  */
 export function paintFinish(
-  ctx: CanvasRenderingContext2D,
+  ctx: RenderContext2D,
   x: number,
   y: number,
   w: number,
@@ -135,10 +127,8 @@ export function paintFinish(
     // their surroundings and edges soften as they do in wet paint.
     const sw = Math.ceil(w / 14),
       sh = Math.ceil(h / 14);
-    const small = document.createElement('canvas');
-    small.width = sw;
-    small.height = sh;
-    const s = small.getContext('2d')!;
+    const s = requireScratchContext(sw, sh);
+    const small = s.canvas;
     s.imageSmoothingQuality = 'high';
     s.drawImage(ctx.canvas, x, y, w, h, 0, 0, sw, sh);
     ctx.imageSmoothingEnabled = true;

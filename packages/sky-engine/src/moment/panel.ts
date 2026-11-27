@@ -4,10 +4,11 @@ import { paintFinish } from './paintFinish';
 import { createCoverProjection } from './projection';
 import { invalidInput } from '../errors';
 import { HORIZON_VARIANTS, type HorizonVariant } from './scenery';
+import type { RenderContext2D, RenderImage } from './scratchCanvas';
 
 export interface IllustrationPanelOptions extends IllustrationDetails {
   landscape?: HorizonVariant;
-  landscapeArt?: HTMLImageElement | null;
+  landscapeArt?: RenderImage | null;
   text?: IllustrationText;
   font?: string;
   paintFinish?: boolean;
@@ -17,7 +18,7 @@ const defaultText: IllustrationText = { object: (object) => object.name, pattern
 
 /** Paint the top-left sky panel of an existing canvas, without owning its size or text layout. */
 export function paintIllustrationPanel(
-  ctx: CanvasRenderingContext2D,
+  ctx: RenderContext2D,
   width: number,
   height: number,
   snapshot: MomentSnapshot,
