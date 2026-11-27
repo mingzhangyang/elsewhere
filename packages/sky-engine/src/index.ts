@@ -7,6 +7,7 @@ export * as advanced from './advanced';
 export { SkyEngineError, type SkyEngineErrorCode } from './errors';
 export { validateObserver } from './domain/observer';
 export { validateInstant } from './domain/time';
+export { installTemporal } from './temporal';
 export { defaultWeatherValues } from './domain/weather';
 export { decodeStarColumns } from './domain/starCatalogEncoding';
 export {

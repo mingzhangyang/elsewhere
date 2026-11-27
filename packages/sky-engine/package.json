@@ -13,10 +13,16 @@
       "import": "./sky-engine.mjs",
       "default": "./sky-engine.mjs"
     },
+    "./lite": {
+      "types": "./types/index.d.ts",
+      "import": "./sky-engine.lite.mjs",
+      "default": "./sky-engine.lite.mjs"
+    },
     "./stars.json": "./stars.json"
   },
   "files": [
     "sky-engine.mjs",
+    "sky-engine.lite.mjs",
     "types",
     "stars.json",
     "LICENSE",

@@ -1,4 +1,4 @@
-import { Temporal } from './temporal';
+import { requireTemporal } from './temporal';
 import { invalidInput } from '../errors';
 
 export const MIN_INSTANT = Date.UTC(1900, 0, 1);
@@ -70,7 +70,7 @@ export function zonedDateTimeToUtc(
 ): Date {
   return validateInstant(
     new Date(
-      Temporal.ZonedDateTime.from(
+      requireTemporal().ZonedDateTime.from(
         { year, month, day, hour, minute, timeZone },
         { disambiguation, overflow: 'reject' },
       ).epochMilliseconds,
@@ -83,7 +83,7 @@ export function zonedDateTimeToUtc(
  * Explorer callers retain the existing fail-closed range check by default.
  */
 export function wallTimeCandidates(date: string, time: string, timeZone: string, checkRange = true): Date[] {
-  const plain = Temporal.PlainDateTime.from(`${date}T${time}`, { overflow: 'reject' });
+  const plain = requireTemporal().PlainDateTime.from(`${date}T${time}`, { overflow: 'reject' });
   const candidates = ['earlier', 'later'].map((disambiguation) =>
     plain.toZonedDateTime(timeZone, { disambiguation: disambiguation as 'earlier' | 'later' }),
   );
@@ -99,7 +99,7 @@ export function wallTimeCandidates(date: string, time: string, timeZone: string,
   });
 }
 export function localDayBounds(date: Date, timeZone: string): { start: Date; end: Date; minutes: number } {
-  const zoned = Temporal.Instant.fromEpochMilliseconds(date.getTime()).toZonedDateTimeISO(timeZone);
+  const zoned = requireTemporal().Instant.fromEpochMilliseconds(date.getTime()).toZonedDateTimeISO(timeZone);
   const start = zoned.startOfDay();
   const end = start.add({ days: 1 }).startOfDay();
   return {
@@ -110,11 +110,11 @@ export function localDayBounds(date: Date, timeZone: string): { start: Date; end
 }
 
 export function civilDayStart(day: string, timeZone: string): Date {
-  return new Date(Temporal.PlainDate.from(day).toZonedDateTime(timeZone).epochMilliseconds);
+  return new Date(requireTemporal().PlainDate.from(day).toZonedDateTime(timeZone).epochMilliseconds);
 }
 
 export function formatOffset(date: Date, timeZone: string): string {
-  return `UTC${Temporal.Instant.fromEpochMilliseconds(date.getTime()).toZonedDateTimeISO(timeZone).offset}`;
+  return `UTC${requireTemporal().Instant.fromEpochMilliseconds(date.getTime()).toZonedDateTimeISO(timeZone).offset}`;
 }
 
 /**
@@ -173,7 +173,7 @@ export function localDayStart(date: Date, timeZone: string): Date {
 }
 
 export function shiftLocalDate(date: Date, timeZone: string, days: number): Date {
-  const zoned = Temporal.Instant.fromEpochMilliseconds(date.getTime()).toZonedDateTimeISO(timeZone);
+  const zoned = requireTemporal().Instant.fromEpochMilliseconds(date.getTime()).toZonedDateTimeISO(timeZone);
   return validateInstant(new Date(zoned.add({ days }).epochMilliseconds));
 }
 
