@@ -98,7 +98,13 @@ const framed = await renderIllustration(canvas, scene, {
 - `getStarCatalog()` and `getPatterns()` return the installed catalog and built-in line patterns as
   frozen, read-only arrays (empty until installation). They are frozen once when installed, so the
   calls are cheap.
-- The low-level `loadStarCatalog(load)` installs one catalog per module instance. While an
+- **Instanced catalogs.** `createStarCatalog(rows)` validates decoded rows and returns an immutable
+  `StarCatalog` (`stars` and the built-in `patterns`) without installing anything. Pass it as
+  `createSkyScene({ catalog })`: the module's default catalog is then neither required, loaded nor
+  changed. Renderers and `buildSkyChartSnapshot` use the catalog that calculated the scene
+  automatically; give them `catalog` explicitly for a scene rebuilt from plain data (for example
+  sent to a Worker). Without a `catalog`, everything uses the installed default, as before.
+- The low-level `loadStarCatalog(load)` installs one default catalog per module instance. While an
   installation is in flight, or after it has succeeded, a new `load` function is **ignored and not
   called**; the existing promise is returned. Only a failed attempt lets a later `load` run. Passing
   a different function while one is in flight logs one `console.warn`. Use `starCatalogLoaded()`
@@ -326,8 +332,8 @@ texture are separate resources that the host serves and passes in.
 
 - **Star catalog** (`stars.json`): the exact HYG v4.1 columnar derivative used by Elsewhere, licensed
   CC BY-SA 4.0 (`HYG.txt`, `CATALOG-ATTRIBUTION.md`). Decode it with `decodeStarColumns` and pass it
-  to `createSkyScene({ loadCatalog })`. There is one catalog per module instance; read it with
-  `getStarCatalog()`.
+  to `createSkyScene({ loadCatalog })`, or build an independent `createStarCatalog(rows)` and pass
+  `catalog`. There is one default catalog per module instance; read it with `getStarCatalog()`.
 - **Landscape artwork** (optional archive): city and mountain WebP renders under the MIT license;
   see `LANDSCAPES.md` in the source. Ridge and sea need no artwork.
 - **Moon texture** (optional archive or `moon-lroc.jpg`): NASA public-domain imagery with its
@@ -366,6 +372,35 @@ and compares them with the committed
 removed names. To change the API deliberately, run `SKY_ENGINE_UPDATE_API=1 npm run sdk:build`,
 review the rewritten file and commit it. Removing or renaming a root export is a breaking change;
 `advanced` members are experimental and may change in a minor version (record it in the changelog).
+
+### Package tests and shared fixtures
+
+The package's own tests live in `packages/sky-engine/test/` and import only package sources:
+`npm run sdk:test` runs them alone (they also run in `npm test`). An architecture test there keeps
+the package code to its own files plus `astronomy-engine` and `@js-temporal/polyfill`, never the
+Elsewhere app in `src/`.
+
+The release carries shared regression fixtures (milestone M5): reference astronomy results (Sun,
+Moon, planets, bright stars and the day's events for 16 observer and instant cases) and lunar
+portrait pixel references, with a dependency-free checker that uses only the public API.
+Elsewhere runs it against the source and both installed builds; another consumer runs the same
+check against the release it pins, so both share one regression suite and still release
+independently:
+
+```ts
+import * as sdk from '@orangely/sky-engine';
+import fixtures from '@orangely/sky-engine/fixtures.json' with { type: 'json' };
+import { verifySkyEngineFixtures } from '@orangely/sky-engine/fixtures/verify.mjs';
+
+const rows = sdk.decodeStarColumns(starsJson); // the release's stars.json
+const { failures } = await verifySkyEngineFixtures(sdk, fixtures, { catalogRows: rows });
+if (failures.length) throw new Error(failures.join('\n'));
+```
+
+Tolerances: 1e-6 for angles and other values (1e-9 relative for distances), 1 s for event times, 1 per
+RGB channel and exact alpha for the portraits. The checker uses an instanced catalog and an in-memory
+canvas, so it needs no browser and leaves the module's default catalog alone. After a change that is
+meant to alter results, regenerate the references with `npm run sdk:fixtures` and review the diff.
 
 `npm run sdk:bench` (after `npm run sdk:build`) records rendering timings of the built module in
 Playwright's Chromium: a Moon portrait at 1024, 2048 and 4096 px, a 1200×1000 illustration with the

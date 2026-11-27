@@ -76,7 +76,8 @@ Temporal it rejects with `UNSUPPORTED` before starting a catalog load.
 | `view`                    | `CameraView`, `{ heading: 0, altitude: 20, fov: 66 }`                    | Copied.                                                                                                                |
 | `aspect`                  | `number`, `1`                                                            | Source view width / height, 0.1–10.                                                                                    |
 | `layers`                  | `Partial<LayerSettings>`, `{ stars: true, lines: false, labels: false }` | Copied.                                                                                                                |
-| `loadCatalog`             | `(signal: AbortSignal) => Promise<CatalogRow[]>`                         | Needed only when no catalog is installed or installing.                                                                |
+| `catalog`                 | `StarCatalog`                                                            | From `createStarCatalog()`. Used instead of the default catalog, which is then not required, loaded or changed.        |
+| `loadCatalog`             | `(signal: AbortSignal) => Promise<CatalogRow[]>`                         | Needed only when no catalog is installed or installing, and no `catalog` is given.                                     |
 | `assetTimeoutMs`          | `number`, `15000`                                                        | 1–30000. Bounds the wait for the catalog (own load or a joined one). Always validated.                                 |
 | `signal`                  | `AbortSignal`                                                            | Cancels this call, and a catalog load this call started.                                                               |
 
@@ -223,6 +224,20 @@ requirement; its `cause` is the browser's `SecurityError`. Any other pixel-read 
 
 ### Star catalog
 
+#### `createStarCatalog(rows: CatalogRow[]): StarCatalog`
+
+Validates decoded rows exactly as `loadStarCatalog` does and returns an immutable
+`StarCatalog { stars: readonly CatalogStar[]; patterns: readonly Constellation[] }` (every array and
+element frozen), without installing it. `INVALID_INPUT` for rows that fail validation. Only catalogs
+created this way are accepted as a `catalog` option or argument; any other object is `INVALID_INPUT`.
+
+Where a catalog can be given: `createSkyScene({ catalog })`, the `catalog` option of
+`renderIllustration`, `prepareIllustrationScene`, `paintIllustrationPanel`, `renderSkyChart` and
+`renderMinimalSkyMap` (it supplies the chart stars and the built-in patterns), the third argument of
+`buildSkyChartSnapshot`, and the fourth argument of `advanced.calculateSky`. Without one, they use
+the catalog that calculated the scene's `sky` (when that was an instanced catalog), else the module's
+installed default, so existing calls behave as before.
+
 #### `decodeStarColumns(data: unknown): CatalogRow[]`
 
 Decodes the columnar `stars.json`. Throws `INVALID_INPUT` (`'Invalid star catalog: …'`) for a wrong
@@ -270,7 +285,9 @@ copying. Call the function again after installation to see the catalog.
 
 #### `buildSkyChartSnapshot(input: SkyChartSnapshotInput, sky: SkyState, catalog?): SkyChartSnapshot`
 
-Canvas-free chart data, the same that `renderSkyChart` returns. `input` is
+Canvas-free chart data, the same that `renderSkyChart` returns. `catalog` is a `StarCatalog` or an
+array of `CatalogStar`; it defaults to the catalog that calculated `sky`, else the installed default.
+`input` is
 `{ time: { kind: 'utc', utc }, location, limitingMagnitude? }` with a canonical millisecond ISO `utc`.
 Throws `INVALID_INPUT` for invalid input or inconsistent sky data, and `MISSING_ASSET` without an
 installed (or supplied) catalog.
@@ -286,7 +303,7 @@ of those unions; each is `never` in a project compiled without the DOM library, 
 `HorizonVariant`, `SkyChartOptions`, `MinimalSkyMapOptions`, `SkyArtworkTheme`, `SkyChartSnapshot`,
 `SkyChartSnapshotInput`, `SkyChartSnapshotObject`, `MoonPhaseOptions`, `MoonTexture`
 (`ImageData | ImageBitmap | HTMLImageElement`), `CatalogRow`, `CatalogStar`, `Constellation`,
-`PatternId`, `StarField`, `SkyBrightness`, `SkyEngineErrorCode`, and the astronomy types in
+`PatternId`, `StarCatalog`, `StarField`, `SkyBrightness`, `SkyEngineErrorCode`, and the astronomy types in
 `types.ts` (`LocationInfo`, `SkyState`, `WeatherValues`, …).
 
 ## Advanced API (`advanced`, experimental)
@@ -301,7 +318,8 @@ catalog. `createSkyScene` does both. `location` is a `LocationInfo`.
 
 - `ensureTemporal(): Promise<void>`: uses an installed or native `Temporal`, or loads the bundled
   polyfill once. In the lite build it rejects with `UNSUPPORTED` when there is neither.
-- `calculateSky(location, date, events?): SkyState`: Sun, Moon, planets and stars for an instant.
+- `calculateSky(location, date, events?, catalog?): SkyState`: Sun, Moon, planets and stars for an
+  instant, with the stars of `catalog` (a `StarCatalog`) instead of the installed default.
 - `calculateDailyEvents(location, date): SkyEvents`: rise/set and twilight events within the local
   calendar day.
 - `nextBodyRise(location, body: BodyId, date): Date | null`: next rise within about a year, or `null`.

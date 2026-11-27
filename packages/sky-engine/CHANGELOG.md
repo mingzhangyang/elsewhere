@@ -5,7 +5,8 @@ each version is distributed as a GitHub Release tagged `sky-engine-v<version>` (
 
 ## 0.4.0 — unreleased
 
-Performance and runtime environments. Backward compatible: the stable API only gains exports and
+Performance and runtime environments (improvement plan phase 3), and instanced star catalogs, a
+separately testable package and shared regression fixtures (phase 4). Backward compatible: the stable API only gains exports and
 accepts wider parameter types. Main-thread rendering output is unchanged, except that the Moon
 portrait may differ by at most 1 in an RGB channel (alpha is identical).
 
@@ -23,6 +24,16 @@ portrait may differ by at most 1 in an RGB channel (alpha is identical).
   core npm archive. Use one build per page or Worker; each has its own catalog and Moon texture.
 - `installTemporal(temporal)`: supply the host's Temporal implementation (both builds). Without a
   native or installed Temporal, the lite build's civil-time functions report `UNSUPPORTED`.
+- **Instanced star catalogs.** `createStarCatalog(rows)` returns an immutable `StarCatalog`
+  (`stars`, `patterns`) without installing it. `createSkyScene({ catalog })` calculates with it and
+  leaves the module's default catalog alone; the renderers, `prepareIllustrationScene`,
+  `paintIllustrationPanel` and `buildSkyChartSnapshot` take a `catalog` too and otherwise follow the
+  catalog that calculated the scene. `advanced.calculateSky` takes it as a fourth argument. Calls
+  without a catalog are unchanged.
+- **Shared regression fixtures** in the archive: `@orangely/sky-engine/fixtures.json` (reference
+  astronomy results and lunar portrait pixels) and `@orangely/sky-engine/fixtures/verify.mjs`, a
+  checker that uses only the public API, so every consumer can run the same regression suite
+  against the release it pins.
 - Type exports `RenderCanvas`, `RenderContext2D` and `RenderImage`, and `DomCanvas`, `DomContext2D`
   and `DomImage`. The declarations compile in a Worker-only TypeScript project without the DOM
   library; `sdk:build` checks this with a strict `WebWorker` consumer.
@@ -45,6 +56,10 @@ portrait may differ by at most 1 in an RGB channel (alpha is identical).
   same runtime export names as `api-exports.json`. The offline Node smoke test and a browser
   distribution test cover the lite build; a new browser test compares Worker and main-thread pixels.
 - The Worker example is type-checked against the shipped declarations.
+- The package's own tests moved to `packages/sky-engine/test/` (`npm run sdk:test`), with an
+  architecture test that keeps package code to its own files, `astronomy-engine` and
+  `@js-temporal/polyfill`. `npm run sdk:fixtures` regenerates the shared fixtures; the build checks
+  them against both installed builds.
 
 ## 0.3.0 — unreleased
 

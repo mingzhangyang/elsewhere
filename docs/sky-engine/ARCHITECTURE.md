@@ -66,6 +66,23 @@ within 1 and identical alpha across phases, orientations, backgrounds, earthshin
 random-noise texture as the worst case. Interpolating texture coordinates between alternate pixels
 kept that tolerance but was slower in V8 than the exact loop and was not adopted.
 
+## Tests and shared fixtures
+
+The package's own tests are in `packages/sky-engine/test/` (Vitest project `sdk`,
+`npm run sdk:test`) with a setup file that installs Temporal and the default catalog from
+`src/data/stars.json` (read as data; no app code). `test/architecture.test.ts` scans every import
+specifier: package code may import only package files, `astronomy-engine` and `@js-temporal/polyfill`;
+examples only the package; tests only package files, those dependencies, Vitest and Node built-ins.
+Tests that compare with three.js, app modules or `public/` stay in the root `tests/`, and
+`tests/skyEngine.test.ts` still checks that the app's re-export shims are the package's own modules.
+
+`packages/sky-engine/fixtures/` holds the shared regression fixtures (milestone M5):
+`sky-engine-fixtures.json`, generated from the source by `scripts/generate-sky-engine-fixtures.mjs`
+(`npm run sdk:fixtures`), and `verify.mjs`, which imports nothing and checks any module namespace
+through the public API with an instanced catalog and an in-memory canvas for the Moon portraits.
+`test/sharedFixtures.test.ts` checks the source; `sdk:build` checks both installed builds; the files
+ship in the core archive (`./fixtures.json`, `./fixtures/verify.mjs`) for other consumers.
+
 ## Catalog and civil time
 
 The low-level functions need civil time via `ensureTemporal()` and decoded HYG rows via
@@ -80,7 +97,16 @@ Each build is a separate module instance, so a host must use only one of them pe
 (`src/services/starCatalog.ts`) and data are deliberately unchanged. The catalog and license remain in
 `src/data/stars.json` and `public/licenses/HYG.txt` (CC BY-SA 4.0); source code remains MIT.
 
-The loader has one catalog per module instance. Internally `STAR_CATALOG` and `CONSTELLATIONS` are
+Besides that default, `createStarCatalog(rows)` builds independent immutable `StarCatalog` objects
+with the same validation; a module-private `WeakSet` marks the genuine ones, so a hand-made object is
+rejected. `calculateSky(…, catalog)` places that catalog's stars, and records in a `WeakMap` keyed by
+the resulting `SkyState` which catalog produced it. `catalogFor(sky, option)` in `domain/stars.ts`
+resolves the catalog for later work: an explicit option, else the recorded one, else the default.
+The renderers, framing and chart snapshot use it for chart stars and built-in patterns, so a scene
+from `createSkyScene({ catalog })` renders with its own catalog even where no default is installed.
+Snapshot copies keep the same `sky` object; a scene rebuilt from plain data needs the option.
+
+The loader has one default catalog per module instance. Internally `STAR_CATALOG` and `CONSTELLATIONS` are
 live bindings that the engine and Elsewhere import directly; they are frozen (arrays and elements)
 when installed, and the public API exposes them only through `getStarCatalog()` and `getPatterns()`,
 which return those same frozen arrays without copying. An in-flight or completed installation ignores later load functions; a failed one is cleared
