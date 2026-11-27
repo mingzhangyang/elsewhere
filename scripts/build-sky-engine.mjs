@@ -294,12 +294,16 @@ try {
         noEmit: true,
         target: 'ES2022',
         module: 'NodeNext',
-        lib: ['ES2022', 'DOM'],
+        lib: ['ES2022', 'DOM', 'DOM.Iterable'],
         types: [],
       },
-      files: ['consumer.ts'],
+      // The Worker example is type-checked against the installed declarations as well.
+      files: ['consumer.ts', 'worker-render.ts', 'worker-main.ts'],
     }),
   );
+  for (const file of ['worker-render.ts', 'worker-main.ts']) {
+    await copyFile(join(sdk, 'examples', file), join(consumer, file));
+  }
   await writeFile(
     join(consumer, 'consumer.ts'),
     `import * as lite from '@orangely/sky-engine/lite';
