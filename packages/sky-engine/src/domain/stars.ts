@@ -48,7 +48,8 @@ let defaultCatalog: StarCatalog | null = null;
 export function createStarCatalog(rows: CatalogRow[]): StarCatalog {
   if (!Array.isArray(rows) || rows.length === 0) throw invalidInput('Invalid star catalog.');
   const seen = new Set<number>();
-  const stars = rows.map((row) => {
+  // Array.from visits every index, so a hole is an invalid (undefined) row, not a skipped one.
+  const stars = Array.from(rows, (row) => {
     const star = catalogStar(row);
     if (seen.has(star.catalogId)) throw invalidInput(`Duplicate star catalog id: ${star.catalogId}`);
     seen.add(star.catalogId);
@@ -93,13 +94,48 @@ export function recordSkyCatalog(sky: object, catalog: StarCatalog): void {
   skyCatalogs.set(sky, catalog);
 }
 
+const sameStar = (a: CatalogStar, b: CatalogStar) =>
+  a.id === b.id &&
+  a.catalogId === b.catalogId &&
+  a.name === b.name &&
+  a.ra === b.ra &&
+  a.dec === b.dec &&
+  a.magnitude === b.magnitude &&
+  a.colorIndex === b.colorIndex &&
+  a.pmra === b.pmra &&
+  a.pmdec === b.pmdec;
+
 /**
- * The catalog for work on `sky`: an explicit `catalog` option (validated), else the one that
- * calculated `sky`, else null for the module's default (`STAR_CATALOG` / `CONSTELLATIONS`).
+ * INVALID_INPUT unless `stars` could have calculated `sky`: when the catalog that calculated it is
+ * known, every star must match it field for field (an equivalent catalog object is fine). A sky
+ * copied into a new object has no known origin and is not checked.
+ */
+export function assertCatalogFitsSky(sky: object | undefined, stars: readonly CatalogStar[]): void {
+  const origin = sky && typeof sky === 'object' ? skyCatalogs.get(sky) : undefined;
+  if (!origin || origin.stars === stars) return;
+  if (
+    !Array.isArray(stars) ||
+    stars.length !== origin.stars.length ||
+    !origin.stars.every((star, i) => stars[i] && sameStar(star, stars[i]))
+  ) {
+    throw invalidInput('The catalog is not the one this sky was calculated with.');
+  }
+}
+
+/**
+ * The catalog for work on `sky`: an explicit `catalog` option (validated, and checked against the
+ * catalog that calculated `sky` when that is known), else the one that calculated `sky`, else null
+ * for the module's default (`STAR_CATALOG` / `CONSTELLATIONS`).
  */
 export function catalogFor(sky: object | undefined, catalog?: unknown): StarCatalog | null {
-  if (catalog !== undefined) return requireStarCatalog(catalog);
-  return (sky && typeof sky === 'object' && skyCatalogs.get(sky)) || null;
+  if (catalog !== undefined) {
+    const explicit = requireStarCatalog(catalog);
+    assertCatalogFitsSky(sky, explicit.stars);
+    return explicit;
+  }
+  const origin = (sky && typeof sky === 'object' && skyCatalogs.get(sky)) || null;
+  // A sky calculated with the installed default is recorded too; it resolves to the default.
+  return origin && origin === defaultCatalog ? null : origin;
 }
 
 /** The installed default catalog as a StarCatalog, or null before installation. */

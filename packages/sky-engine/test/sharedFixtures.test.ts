@@ -39,3 +39,23 @@ it('does not touch the default catalog of the module it checks', async () => {
   await verifySkyEngineFixtures(sdk, fixtures as never, { catalogRows: await rows() });
   expect(sdk.getStarCatalog()).toBe(before);
 });
+
+it('fails out-of-range and non-finite values, including wrapped azimuths', async () => {
+  const decoded = await rows();
+  for (const azimuth of [370.1, 730, -0.5, Infinity, NaN]) {
+    // The first case's Sun azimuth is replaced; everything else is the real engine output.
+    let first = true;
+    const broken = {
+      ...sdk,
+      createSkyScene: async (options: Parameters<typeof sdk.createSkyScene>[0]) => {
+        const scene = await sdk.createSkyScene(options);
+        if (!first) return scene;
+        first = false;
+        return { ...scene, sky: { ...scene.sky, sun: { ...scene.sky.sun, azimuth } } };
+      },
+    };
+    const { failures } = await verifySkyEngineFixtures(broken, fixtures as never, { catalogRows: decoded });
+    expect(failures, String(azimuth)).toHaveLength(1);
+    expect(failures[0]).toMatch(/^[^:]+\.sun\.azimuth: /);
+  }
+});

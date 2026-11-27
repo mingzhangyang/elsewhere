@@ -236,7 +236,9 @@ Where a catalog can be given: `createSkyScene({ catalog })`, the `catalog` optio
 `renderMinimalSkyMap` (it supplies the chart stars and the built-in patterns), the third argument of
 `buildSkyChartSnapshot`, and the fourth argument of `advanced.calculateSky`. Without one, they use
 the catalog that calculated the scene's `sky` (when that was an instanced catalog), else the module's
-installed default, so existing calls behave as before.
+installed default, so existing calls behave as before. An explicit catalog must match the catalog that calculated the scene's `sky`,
+when that is known, star for star (all fields, proper motion included); an equivalent catalog object is
+accepted, anything else is `INVALID_INPUT`. Rows with holes are `INVALID_INPUT` too.
 
 #### `decodeStarColumns(data: unknown): CatalogRow[]`
 

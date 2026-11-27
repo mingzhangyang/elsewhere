@@ -136,3 +136,43 @@ it('accepts only catalogs made by createStarCatalog()', async () => {
     ),
   ).toThrow(INVALID_INPUT);
 });
+
+it('rejects rows with holes as INVALID_INPUT instead of publishing them', async () => {
+  const decoded = await rows();
+  const trailing = [...decoded];
+  trailing.length += 1;
+  expect(() => shared.createStarCatalog(trailing)).toThrow(INVALID_INPUT);
+  // A hole before the stars the built-in patterns name, not just at the end.
+  const early = [...decoded];
+  delete early[3];
+  expect(() => shared.createStarCatalog(early)).toThrow(INVALID_INPUT);
+  expect(() => shared.createStarCatalog(new Array(decoded.length))).toThrow(INVALID_INPUT);
+});
+
+it('rejects an explicit catalog that differs from the one that calculated the sky', async () => {
+  const decoded = await rows();
+  const a = shared.createStarCatalog(decoded);
+  // B differs from A only in one star's proper motion, which changes where that star is placed.
+  const b = shared.createStarCatalog(
+    decoded.map((row, i) => (i === 10 ? [...row.slice(0, 6), Number(row[6]) + 500, row[7]] : row)),
+  );
+  const input = { time: { kind: 'utc' as const, utc: observer.instant.toISOString() }, location: NEW_YORK };
+  const canvas = { width: 400, height: 400, getContext: () => null } as unknown as OffscreenCanvas;
+  const scene = await shared.createSkyScene({ ...observer, catalog: a });
+  expect(() => shared.buildSkyChartSnapshot(input, scene.sky, b)).toThrow(INVALID_INPUT);
+  expect(() => shared.buildSkyChartSnapshot(input, scene.sky, b.stars)).toThrow(INVALID_INPUT);
+  expect(() => shared.renderSkyChart(canvas, scene, { catalog: b })).toThrow(INVALID_INPUT);
+  expect(() => shared.renderMinimalSkyMap(canvas, scene, { catalog: b })).toThrow(INVALID_INPUT);
+  expect(() => shared.prepareIllustrationScene(scene, 800, 600, { catalog: b })).toThrow(INVALID_INPUT);
+  // An equivalent catalog (another object with the same stars) is accepted.
+  const again = shared.createStarCatalog(decoded);
+  expect(shared.buildSkyChartSnapshot(input, scene.sky, again)).toEqual(
+    shared.buildSkyChartSnapshot(input, scene.sky),
+  );
+  // The same holds for a sky calculated with the installed default catalog.
+  const plain = await shared.createSkyScene(observer);
+  expect(() => shared.buildSkyChartSnapshot(input, plain.sky, b)).toThrow(INVALID_INPUT);
+  expect(shared.buildSkyChartSnapshot(input, plain.sky, again)).toEqual(
+    shared.buildSkyChartSnapshot(input, plain.sky),
+  );
+});

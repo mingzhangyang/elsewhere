@@ -4,7 +4,7 @@ import type {
   LayerSettings,
   MomentSnapshot,
 } from './contracts';
-import { catalogFor, CONSTELLATIONS, requireStarCatalog } from './domain/stars';
+import { catalogFor, CONSTELLATIONS } from './domain/stars';
 import { frameMoment, framePattern } from './moment/framing';
 import { paintIllustrationPanel, type IllustrationPanelOptions } from './moment/panel';
 import { HORIZON_VARIANTS } from './moment/scenery';
@@ -89,7 +89,8 @@ export function prepareIllustrationScene(
   validateView(scene.view);
   validateAspect(scene.aspect);
   validatePatterns(options.patterns);
-  if (options.catalog !== undefined) requireStarCatalog(options.catalog);
+  // A genuine catalog that also fits the catalog this scene was calculated with.
+  if (options.catalog !== undefined) catalogFor(scene.sky, options.catalog);
   const snapshot = { ...scene, layers: mergeLayers(scene.layers, options.layers) };
   const mode = options.composition ?? 'auto';
   if (mode === 'current') return snapshot;

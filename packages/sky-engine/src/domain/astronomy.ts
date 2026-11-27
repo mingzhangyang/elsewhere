@@ -5,6 +5,7 @@ import { localDayBounds, validateInstant, MIN_INSTANT, MAX_INSTANT } from './tim
 import {
   calculateStarField,
   calculateStarPositions,
+  defaultStarCatalog,
   recordSkyCatalog,
   requireStarCatalog,
   STAR_CATALOG,
@@ -215,6 +216,9 @@ export function calculateSky(
     events,
     sunAltitude: sun.altitude,
   };
-  if (catalog) recordSkyCatalog(sky, catalog);
+  // Record the catalog behind these star positions (the installed default too), so a different
+  // catalog passed with this sky later can be detected.
+  const origin = catalog ?? defaultStarCatalog();
+  if (origin && origin.stars === stars) recordSkyCatalog(sky, origin);
   return sky;
 }

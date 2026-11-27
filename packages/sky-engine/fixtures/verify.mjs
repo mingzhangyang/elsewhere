@@ -114,11 +114,24 @@ const fromBase64 = (text) => Uint8Array.from(atob(text), (c) => c.charCodeAt(0))
 export const encodePixels = toBase64;
 
 function compare(path, actual, expected, tolerance, failures) {
-  if (typeof expected === 'number' && typeof actual === 'number') {
+  if (typeof expected === 'number') {
+    if (typeof actual !== 'number' || !Number.isFinite(actual)) {
+      failures.push(`${path}: ${actual} is not a finite number (expected ${expected})`);
+      return;
+    }
     let difference = Math.abs(actual - expected);
-    if (/azimuth$/i.test(path)) difference = Math.min(difference, 360 - difference);
+    if (/azimuth$/i.test(path)) {
+      // Azimuths are reported in [0, 360); compare as a circular (non-negative) distance.
+      if (!(actual >= 0 && actual < 360)) {
+        failures.push(`${path}: ${actual} is outside [0, 360)`);
+        return;
+      }
+      difference = Math.min(difference, 360 - difference);
+    }
     const limit = /distanceKm$/.test(path) ? tolerance.relative * Math.abs(expected) : tolerance.absolute;
-    if (!(difference <= limit)) failures.push(`${path}: ${actual} differs from ${expected} by ${difference}`);
+    if (!(difference >= 0 && difference <= limit)) {
+      failures.push(`${path}: ${actual} differs from ${expected} by ${difference}`);
+    }
   } else if (
     typeof expected === 'string' &&
     /^\d{4}-\d\d-\d\dT/.test(expected) &&

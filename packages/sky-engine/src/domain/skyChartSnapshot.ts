@@ -8,7 +8,14 @@ import {
   selectSkyChartObjects,
   type SkyChartSelectedObject,
 } from './skyChartSelection';
-import { catalogFor, STAR_CATALOG, starCatalogLoaded, type CatalogStar, type StarCatalog } from './stars';
+import {
+  assertCatalogFitsSky,
+  catalogFor,
+  STAR_CATALOG,
+  starCatalogLoaded,
+  type CatalogStar,
+  type StarCatalog,
+} from './stars';
 import { validateInstant } from './time';
 import { invalidInput } from '../errors';
 
@@ -266,6 +273,8 @@ export function buildPreparedSkyChartSnapshot(
     : (catalogFor(sky, source)?.stars ?? STAR_CATALOG);
   if (catalog === STAR_CATALOG && !starCatalogLoaded()) throw new SkyChartCatalogNotReadyError();
   assertSkyChartCatalog(catalog);
+  // An explicit catalog must be the one (or equivalent to the one) that placed the stars.
+  if (source !== undefined) assertCatalogFitsSky(sky, catalog);
   if (catalog === STAR_CATALOG && catalog.length !== EXPECTED_HYG_DERIVATIVE_STAR_COUNT) {
     throw invalidInput('Incomplete bundled HYG derivative catalog.');
   }
