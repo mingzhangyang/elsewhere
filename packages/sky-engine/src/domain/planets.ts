@@ -14,10 +14,6 @@ export const PLANETS: readonly { id: PlanetId; name: string; body: Astronomy.Bod
 ];
 export const PLANET_IDS = PLANETS.map((planet) => planet.id);
 
-export function isPlanetId(id: string): id is PlanetId {
-  return (PLANET_IDS as string[]).includes(id);
-}
-
 /**
  * Apparent bright-limb direction of a body lit by the Sun, in degrees clockwise from the top of the
  * view (toward the zenith): the same construction the Moon's phase icon uses.
