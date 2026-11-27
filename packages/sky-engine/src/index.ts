@@ -16,6 +16,8 @@ export {
   getStarCatalog,
   loadStarCatalog,
   starCatalogLoaded,
+  createStarCatalog,
+  type StarCatalog,
   type CatalogRow,
   type CatalogStar,
   type Constellation,

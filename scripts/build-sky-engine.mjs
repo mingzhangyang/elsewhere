@@ -311,8 +311,10 @@ import {
   advanced, createSkyScene, renderIllustration, renderSkyChart, renderMinimalSkyMap, renderMoonPhase,
   installMoonTexture, loadMoonTexture, getStarCatalog, getPatterns, SkyEngineError, installTemporal,
   type CatalogStar, type Constellation, type MoonPhaseOptions, type MomentSnapshot,
-  type SkyEngineErrorCode,
+  type SkyEngineErrorCode, type StarCatalog, createStarCatalog,
 } from '@orangely/sky-engine';
+const instanced: StarCatalog = createStarCatalog([]);
+console.log(instanced.stars.length, instanced.patterns.length);
 // The lite build has the same declarations as the package root.
 lite.installTemporal({});
 const liteScene: MomentSnapshot = await lite.createSkyScene({
@@ -464,6 +466,13 @@ const scene = await sdk.createSkyScene({
   loadCatalog: async () => sdk.decodeStarColumns(data),
 });
 assert.equal(scene.sky.stars.length, 5070);
+// An instanced catalog gives the same sky without touching the installed default.
+const own = sdk.createStarCatalog(sdk.decodeStarColumns(data));
+assert(Object.isFrozen(own) && own.stars !== sdk.getStarCatalog());
+const ownScene = await sdk.createSkyScene({ ...observer, weather: 'clear', catalog: own });
+assert.deepEqual(ownScene.sky.stars, scene.sky.stars);
+assert.equal(sdk.buildSkyChartSnapshot({ time: { kind: 'utc', utc: scene.instant.toISOString() },
+  location: { ...scene.location, name: 'New York', country: 'US' } }, ownScene.sky).provenance.catalogStarCount, 5070);
 assert.equal(sdk.getStarCatalog().length, 5070);
 assert(Object.isFrozen(sdk.getStarCatalog()) && Object.isFrozen(sdk.getStarCatalog()[0]));
 assert.equal(sdk.getStarCatalog(), sdk.getStarCatalog());

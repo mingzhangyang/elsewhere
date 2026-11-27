@@ -2,7 +2,14 @@ import type { CameraView, LayerSettings, MomentSnapshot } from './contracts';
 import type { LocationInfo, WeatherValues } from './types';
 import { calculateSky } from './domain/astronomy';
 import { validateObserver } from './domain/observer';
-import { loadStarCatalog, starCatalogInstallation, starCatalogLoaded, type CatalogRow } from './domain/stars';
+import {
+  loadStarCatalog,
+  requireStarCatalog,
+  starCatalogInstallation,
+  starCatalogLoaded,
+  type CatalogRow,
+  type StarCatalog,
+} from './domain/stars';
 import type { SkyBrightness } from './domain/starVisibility';
 import { ensureTemporal, requireTemporal, Temporal, temporalPolyfillBundled } from './domain/temporal';
 import { validateInstant } from './domain/time';
@@ -24,6 +31,12 @@ export interface SkySceneOptions {
   view?: CameraView;
   aspect?: number;
   layers?: Partial<LayerSettings>;
+  /**
+   * An immutable catalog from `createStarCatalog()` to calculate with instead of the module's
+   * default catalog. The default is then neither required, loaded nor changed, and `loadCatalog` is
+   * not called. Renderers given this scene use the same catalog's stars and patterns.
+   */
+  catalog?: StarCatalog;
   /** Supply decoded rows only when this module has no installed or in-flight catalog.
    * An in-flight installation is joined; this caller's timeout or signal does not cancel that work. */
   loadCatalog?: (signal: AbortSignal) => Promise<CatalogRow[]>;
@@ -65,8 +78,24 @@ export async function createSkyScene(options: SkySceneOptions): Promise<MomentSn
   if (options.signal?.aborted) throw cancelled('Sky scene cancelled.');
   const provenance: MomentSnapshot['provenance'] =
     options.weather === 'clear' ? { kind: 'clear' } : options.weather ? { kind: 'custom' } : { kind: 'none' };
+  const own = options.catalog === undefined ? undefined : requireStarCatalog(options.catalog);
   // The lite build bundles no polyfill: without any Temporal, fail before starting a catalog load.
   if (!Temporal && !temporalPolyfillBundled) requireTemporal();
+  if (own) {
+    await ensureTemporal();
+    if (options.signal?.aborted) throw cancelled('Sky scene cancelled.');
+    return {
+      sky: calculateSky(location, instant, undefined, own),
+      weather,
+      view,
+      aspect,
+      layers,
+      location,
+      instant,
+      skyBrightness,
+      provenance,
+    };
+  }
   const pending = starCatalogInstallation();
   const load = options.loadCatalog;
   if (!starCatalogLoaded() && !pending && !load) {

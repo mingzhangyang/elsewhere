@@ -3,6 +3,7 @@ import { drawIllustration, type IllustrationDetails, type IllustrationText } fro
 import { paintFinish } from './paintFinish';
 import { createCoverProjection } from './projection';
 import { invalidInput } from '../errors';
+import { requireStarCatalog } from '../domain/stars';
 import { HORIZON_VARIANTS, type HorizonVariant } from './scenery';
 import type { RenderContext2D, RenderImage } from './scratchCanvas';
 
@@ -27,6 +28,7 @@ export function paintIllustrationPanel(
   const landscape = options.landscape ?? 'ridge';
   // The same check as renderIllustration, before anything is drawn.
   if (!HORIZON_VARIANTS.includes(landscape)) throw invalidInput('Invalid landscape.');
+  if (options.catalog !== undefined) requireStarCatalog(options.catalog);
   const { toCanvas } = createCoverProjection(snapshot.view, snapshot.aspect, width, height);
   ctx.save();
   try {
