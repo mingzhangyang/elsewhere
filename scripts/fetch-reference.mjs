@@ -12,7 +12,7 @@ const dates = [
   '2026-11-24T02:00:00Z',
   '2026-12-21T12:00:00Z',
 ];
-await mkdir(new URL('../tests/fixtures/horizons/', import.meta.url), { recursive: true });
+await mkdir(new URL('../packages/sky-engine/test/fixtures/horizons/', import.meta.url), { recursive: true });
 const entries = [];
 for (const place of cases)
   for (const [name, command] of [
@@ -54,7 +54,7 @@ for (const place of cases)
     const filename = `${place.name}-${name}.txt`;
     try {
       if (!process.argv.includes('--refresh')) {
-        await readFile(new URL('../tests/fixtures/horizons/' + filename, import.meta.url));
+        await readFile(new URL('../packages/sky-engine/test/fixtures/horizons/' + filename, import.meta.url));
         entries.push({ place, name, dates, url: url.toString(), file: filename });
         continue;
       }
@@ -66,11 +66,14 @@ for (const place of cases)
     const data = await response.json();
     if (data.error || !data.result?.includes('$$SOE'))
       throw Error(data.error || 'Unexpected Horizons response');
-    await writeFile(new URL('../tests/fixtures/horizons/' + filename, import.meta.url), data.result);
+    await writeFile(
+      new URL('../packages/sky-engine/test/fixtures/horizons/' + filename, import.meta.url),
+      data.result,
+    );
     entries.push({ place, name, dates, url: url.toString(), file: filename, api: data.signature });
     console.log(filename, data.result.split('$$SOE')[1].split('$$EOE')[0].trim());
   }
 await writeFile(
-  new URL('../tests/fixtures/horizons/provenance.json', import.meta.url),
+  new URL('../packages/sky-engine/test/fixtures/horizons/provenance.json', import.meta.url),
   JSON.stringify({ retrieved: new Date().toISOString(), entries }, null, 2) + '\n',
 );

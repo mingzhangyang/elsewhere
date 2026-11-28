@@ -9,10 +9,10 @@ import {
   type CatalogRow,
   type MomentSnapshot,
   type SkySceneOptions,
-} from '../packages/sky-engine/src';
+} from '../src';
 
 const { createCoverProjection, createProjection, createSkyRay, drawIllustration } = advanced;
-import { loadResource } from '../packages/sky-engine/src/resources';
+import { loadResource } from '../src/resources';
 import { calculateSky } from '../src/domain/astronomy';
 import { NEW_YORK } from './fixtures/locations';
 
@@ -203,7 +203,7 @@ const catalogRows = async () =>
 describe('fresh catalog installation', () => {
   it('joins an in-flight installation and does not require a second loader', async () => {
     vi.resetModules();
-    const { createSkyScene: create } = await import('../packages/sky-engine/src/scene');
+    const { createSkyScene: create } = await import('../src/scene');
     const rows = await catalogRows();
     let release: (value: CatalogRow[]) => void = () => {};
     const gate = new Promise<CatalogRow[]>((resolve) => {
@@ -222,7 +222,7 @@ describe('fresh catalog installation', () => {
 
   it('rejects a corrupt decoded catalog, then accepts a valid retry', async () => {
     vi.resetModules();
-    const { createSkyScene: create } = await import('../packages/sky-engine/src/scene');
+    const { createSkyScene: create } = await import('../src/scene');
     const rows = await catalogRows();
     const [id, name, , ...rest] = rows[0];
     const corrupt = rows.map((row, index) =>
@@ -239,8 +239,8 @@ describe('fresh catalog installation', () => {
 
   it('bounds a joined host installation without cancelling it or calling a second loader', async () => {
     vi.resetModules();
-    const stars = await import('../packages/sky-engine/src/domain/stars');
-    const { createSkyScene: create } = await import('../packages/sky-engine/src/scene');
+    const stars = await import('../src/domain/stars');
+    const { createSkyScene: create } = await import('../src/scene');
     const rows = await catalogRows();
     vi.useFakeTimers();
     try {

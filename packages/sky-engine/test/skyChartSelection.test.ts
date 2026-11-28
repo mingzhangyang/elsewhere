@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { INVALID_INPUT } from './skyEngineErrorMatchers';
+import { INVALID_INPUT } from './errorMatchers';
 import {
   DEFAULT_SKY_CHART_LIMITING_MAGNITUDE,
   SKY_CHART_MAGNITUDE_RANGE,

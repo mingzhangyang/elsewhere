@@ -1,12 +1,6 @@
 import { expect, it } from 'vitest';
-import {
-  advanced,
-  buildSkyChartSnapshot,
-  createSkyScene,
-  renderMinimalSkyMap,
-  renderSkyChart,
-} from '../packages/sky-engine/src';
-import { framePattern } from '../packages/sky-engine/src/moment/framing';
+import { advanced, buildSkyChartSnapshot, createSkyScene, renderMinimalSkyMap, renderSkyChart } from '../src';
+import { framePattern } from '../src/moment/framing';
 
 const input = {
   latitude: 40.7128,

@@ -16,7 +16,7 @@ Internal progress notes for `packages/sky-engine`. Released changes are listed i
 4. **M4:** in now-and-more, consume the pinned artifact with local assets and cache-version updates,
    preserve estimated-location/clear-sky disclosure and card layout, replace copied sky calculations
    and rendering only after checking all callers, and remove unused duplicate catalog data.
-5. **M5:** add shared fixtures and cross-consumer browser pixel/astronomy tests. Keep independent releases
+5. **M5 (fixtures shipped in v0.4.0; adoption by now-and-more pending):** add shared fixtures and cross-consumer browser pixel/astronomy tests. Keep independent releases
    and regression gates; no forced simultaneous deploys.
 
 Outside the milestone list, v0.2.0 added the circular sky chart and minimal star map (#49) and the
@@ -43,8 +43,7 @@ realistic Moon portrait (#50).
   `installTemporal()`, and a size review of the engine's own code. Open follow-ups: the Moon targets
   of 500 ms at 4096 px and 120 ms at 2048 px were not reached (about 520 and 150 ms on the benchmark
   machine, from 1320 and 360 ms); the Worker pixel test runs in Chromium only.
-- **Phase 4 (to do, v0.4.x, can run in parallel with phase 3):** internal structure and independent
-  tests.
+- **Phase 4 (completed, v0.4.0):** internal structure and independent tests.
   1. Instanced star catalogs: `createStarCatalog(rows)` returns an immutable catalog object, and
      `createSkyScene` and related functions accept a `catalog` option; without one they keep using
      the global default catalog, so existing callers are unaffected.
@@ -54,6 +53,12 @@ realistic Moon portrait (#50).
   3. Shared test data (milestone M5): a fixed set of reference astronomy results (JSON) and pixel
      references, used by one regression suite in both Elsewhere and now-and-more, while each keeps
      releasing independently.
+
+  Delivered: `createStarCatalog()` with `catalog` options; 18 package-only tests in
+  `packages/sky-engine/test/` plus the architecture test; `fixtures.json` and `fixtures/verify.mjs`
+  in the archive. Open: now-and-more still has to run the checker against its pinned release, and the
+  fixtures cover astronomy and Moon pixels only; canvas images (illustration, charts) need a browser
+  and their pixel checks remain in Elsewhere's browser tests.
 
 The milestones preserve the current sky science, default rendering, share links and app behavior. The
 existing validation and browser suites remain the release gate: run `npm run validate`,

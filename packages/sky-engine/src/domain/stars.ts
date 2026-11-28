@@ -30,6 +30,120 @@ export interface Constellation {
 }
 
 /**
+ * An immutable star catalog made by `createStarCatalog()`: the decoded stars and the built-in line
+ * patterns resolved against them. Every array and element is frozen. Only objects created by
+ * `createStarCatalog()` are accepted where a catalog can be passed.
+ */
+export interface StarCatalog {
+  readonly stars: readonly CatalogStar[];
+  readonly patterns: readonly Constellation[];
+}
+const genuine = new WeakSet<StarCatalog>();
+let defaultCatalog: StarCatalog | null = null;
+
+/**
+ * Validate decoded rows and build an immutable catalog object, without installing it as the module's
+ * default. The same validation as `loadStarCatalog()`; `INVALID_INPUT` for rows that fail it.
+ */
+export function createStarCatalog(rows: CatalogRow[]): StarCatalog {
+  if (!Array.isArray(rows) || rows.length === 0) throw invalidInput('Invalid star catalog.');
+  const seen = new Set<number>();
+  // Array.from visits every index, so a hole is an invalid (undefined) row, not a skipped one.
+  const stars = Array.from(rows, (row) => {
+    const star = catalogStar(row);
+    if (seen.has(star.catalogId)) throw invalidInput(`Duplicate star catalog id: ${star.catalogId}`);
+    seen.add(star.catalogId);
+    return star;
+  });
+  const patterns = PATTERNS.map((pattern) => ({
+    ...pattern,
+    lines: pattern.lines.map((pair) =>
+      pair.map((name) => {
+        const star = stars.find((s) => s.name.toLowerCase() === name);
+        if (!star) throw invalidInput(`Missing pattern star: ${name}`);
+        return star.id;
+      }),
+    ),
+  }));
+  for (const star of stars) Object.freeze(star);
+  for (const pattern of patterns) {
+    for (const pair of pattern.lines) Object.freeze(pair);
+    Object.freeze(pattern.lines);
+    Object.freeze(pattern);
+  }
+  const catalog: StarCatalog = Object.freeze({
+    stars: Object.freeze(stars),
+    patterns: Object.freeze(patterns),
+  });
+  genuine.add(catalog);
+  return catalog;
+}
+
+/** A catalog argument, or INVALID_INPUT for anything `createStarCatalog()` did not create. */
+export function requireStarCatalog(catalog: unknown): StarCatalog {
+  if (typeof catalog !== 'object' || catalog === null || !genuine.has(catalog as StarCatalog)) {
+    throw invalidInput('catalog must be a StarCatalog created by createStarCatalog().');
+  }
+  return catalog as StarCatalog;
+}
+
+// Which catalog a calculated sky came from, so renderers can follow a scene made with an explicit
+// catalog without being told again. Keyed by the SkyState object, which snapshot copies share.
+const skyCatalogs = new WeakMap<object, StarCatalog>();
+export function recordSkyCatalog(sky: object, catalog: StarCatalog): void {
+  skyCatalogs.set(sky, catalog);
+}
+
+const sameStar = (a: CatalogStar, b: CatalogStar) =>
+  a.id === b.id &&
+  a.catalogId === b.catalogId &&
+  a.name === b.name &&
+  a.ra === b.ra &&
+  a.dec === b.dec &&
+  a.magnitude === b.magnitude &&
+  a.colorIndex === b.colorIndex &&
+  a.pmra === b.pmra &&
+  a.pmdec === b.pmdec;
+
+/**
+ * INVALID_INPUT unless `stars` could have calculated `sky`: when the catalog that calculated it is
+ * known, every star must match it field for field (an equivalent catalog object is fine). A sky
+ * copied into a new object has no known origin and is not checked.
+ */
+export function assertCatalogFitsSky(sky: object | undefined, stars: readonly CatalogStar[]): void {
+  const origin = sky && typeof sky === 'object' ? skyCatalogs.get(sky) : undefined;
+  if (!origin || origin.stars === stars) return;
+  if (
+    !Array.isArray(stars) ||
+    stars.length !== origin.stars.length ||
+    !origin.stars.every((star, i) => stars[i] && sameStar(star, stars[i]))
+  ) {
+    throw invalidInput('The catalog is not the one this sky was calculated with.');
+  }
+}
+
+/**
+ * The catalog for work on `sky`: an explicit `catalog` option (validated, and checked against the
+ * catalog that calculated `sky` when that is known), else the one that calculated `sky`, else null
+ * for the module's default (`STAR_CATALOG` / `CONSTELLATIONS`).
+ */
+export function catalogFor(sky: object | undefined, catalog?: unknown): StarCatalog | null {
+  if (catalog !== undefined) {
+    const explicit = requireStarCatalog(catalog);
+    assertCatalogFitsSky(sky, explicit.stars);
+    return explicit;
+  }
+  const origin = (sky && typeof sky === 'object' && skyCatalogs.get(sky)) || null;
+  // A sky calculated with the installed default is recorded too; it resolves to the default.
+  return origin && origin === defaultCatalog ? null : origin;
+}
+
+/** The installed default catalog as a StarCatalog, or null before installation. */
+export function defaultStarCatalog(): StarCatalog | null {
+  return defaultCatalog;
+}
+
+/**
  * The catalog is about 96 kB compressed, so it loads after the first screen rather than before it.
  * Until `loadStarCatalog()` resolves, these are empty and the sky shows the Sun and Moon only. They
  * are live bindings for the app and the engine's own modules: importers see the catalog once it
@@ -133,32 +247,10 @@ export function loadStarCatalog(load: () => Promise<CatalogRow[]>): Promise<void
 }
 
 function installCatalog(rows: CatalogRow[]) {
-  if (!Array.isArray(rows) || rows.length === 0) throw invalidInput('Invalid star catalog.');
-  const seen = new Set<number>();
-  const catalog = rows.map((row) => {
-    const star = catalogStar(row);
-    if (seen.has(star.catalogId)) throw invalidInput(`Duplicate star catalog id: ${star.catalogId}`);
-    seen.add(star.catalogId);
-    return star;
-  });
-  const constellations = PATTERNS.map((pattern) => ({
-    ...pattern,
-    lines: pattern.lines.map((pair) =>
-      pair.map((name) => {
-        const star = catalog.find((s) => s.name.toLowerCase() === name);
-        if (!star) throw invalidInput(`Missing pattern star: ${name}`);
-        return star.id;
-      }),
-    ),
-  }));
-  for (const star of catalog) Object.freeze(star);
-  for (const pattern of constellations) {
-    for (const pair of pattern.lines) Object.freeze(pair);
-    Object.freeze(pattern.lines);
-    Object.freeze(pattern);
-  }
-  CONSTELLATIONS = Object.freeze(constellations);
-  STAR_CATALOG = Object.freeze(catalog);
+  const catalog = createStarCatalog(rows);
+  defaultCatalog = catalog;
+  CONSTELLATIONS = catalog.patterns;
+  STAR_CATALOG = catalog.stars;
 }
 
 function catalogId(value: unknown): number {
@@ -342,7 +434,7 @@ function precessJ2000(
 
 /** Unit vectors of every catalog star in the true equator and equinox of a date (x: equinox, z: pole). */
 export interface StarField {
-  /** Interleaved x, y, z per catalog star, in STAR_CATALOG order. Shared and never mutated. */
+  /** Interleaved x, y, z per catalog star, in catalog order. Shared and never mutated. */
   vectors: Float32Array;
   /**
    * Row-major 3×3 rotation from those vectors into the observer's scene frame (x east, y zenith,
@@ -361,13 +453,13 @@ let vectorCache: { day: number; catalog: readonly CatalogStar[]; vectors: Float3
  * Proper motion and precession move a star by well under an arcsecond a day, so the catalog is
  * placed once per UTC day and reused for every instant in it.
  */
-export function apparentStarVectors(date: Date): Float32Array {
+export function apparentStarVectors(date: Date, stars: readonly CatalogStar[] = STAR_CATALOG): Float32Array {
   const day = Math.floor(date.getTime() / DAY_MS);
-  if (vectorCache?.day === day && vectorCache.catalog === STAR_CATALOG) return vectorCache.vectors;
+  if (vectorCache?.day === day && vectorCache.catalog === stars) return vectorCache.vectors;
   const epoch = new Date((day + 0.5) * DAY_MS);
   const years = (epoch.getTime() - J2000_MS) / (365.25 * DAY_MS);
-  const vectors = new Float32Array(STAR_CATALOG.length * 3);
-  STAR_CATALOG.forEach((star, i) => {
+  const vectors = new Float32Array(stars.length * 3);
+  stars.forEach((star, i) => {
     const moved = movedEquatorial(star, years);
     const { raHours, decDegrees } = precessJ2000(moved.ra, moved.dec, epoch);
     const ra = (raHours * Math.PI) / 12,
@@ -376,7 +468,7 @@ export function apparentStarVectors(date: Date): Float32Array {
     vectors[i * 3 + 1] = Math.cos(dec) * Math.sin(ra);
     vectors[i * 3 + 2] = Math.sin(dec);
   });
-  vectorCache = { day, catalog: STAR_CATALOG, vectors };
+  vectorCache = { day, catalog: stars, vectors };
   return vectors;
 }
 
@@ -398,19 +490,23 @@ export function calculateStarField(
   longitude: number,
   date: Date,
   greenwichSiderealHours: number,
+  stars: readonly CatalogStar[] = STAR_CATALOG,
 ): StarField {
   // apparentStarVectors samples its epoch at UTC noon and reuses it for the entire UTC day.
   const catalogDay = Math.floor(date.getTime() / DAY_MS);
   return {
-    vectors: apparentStarVectors(date),
+    vectors: apparentStarVectors(date, stars),
     rotation: equatorialToScene(latitude, longitude, greenwichSiderealHours),
     precession: precessionMatrixJ2000ToDate(new Date((catalogDay + 0.5) * DAY_MS)),
   };
 }
 
-export function calculateStarPositions(field: StarField): Star[] {
+export function calculateStarPositions(
+  field: StarField,
+  stars: readonly CatalogStar[] = STAR_CATALOG,
+): Star[] {
   const { vectors: v, rotation: m } = field;
-  return STAR_CATALOG.map((star, i) => {
+  return stars.map((star, i) => {
     const ex = v[i * 3],
       ey = v[i * 3 + 1],
       ez = v[i * 3 + 2];

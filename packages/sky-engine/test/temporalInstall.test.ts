@@ -1,6 +1,6 @@
 import { Temporal as Polyfill } from '@js-temporal/polyfill';
 import { afterEach, expect, it, vi } from 'vitest';
-import { INVALID_INPUT, skyEngineError } from './skyEngineErrorMatchers';
+import { INVALID_INPUT, skyEngineError } from './errorMatchers';
 
 // Each case loads fresh module instances in a runtime without a native Temporal.
 afterEach(() => {
@@ -11,9 +11,9 @@ afterEach(() => {
 async function fresh() {
   vi.stubGlobal('Temporal', undefined);
   vi.resetModules();
-  const temporal = await import('../packages/sky-engine/src/domain/temporal');
-  const time = await import('../packages/sky-engine/src/domain/time');
-  const { installTemporal } = await import('../packages/sky-engine/src/temporal');
+  const temporal = await import('../src/domain/temporal');
+  const time = await import('../src/domain/time');
+  const { installTemporal } = await import('../src/temporal');
   return { temporal, time, installTemporal };
 }
 

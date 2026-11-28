@@ -9,7 +9,9 @@ try {
   ).loadStarCatalog(async () => JSON.parse(await readFile('src/data/stars.json', 'utf8')));
   const { calculateSky, calculateDailyEvents } = await server.ssrLoadModule('/src/domain/astronomy.ts');
   const { civilDayStart, wallTimeCandidates } = await server.ssrLoadModule('/src/domain/time.ts');
-  const references = JSON.parse(await readFile('tests/fixtures/horizons/provenance.json', 'utf8'));
+  const references = JSON.parse(
+    await readFile('packages/sky-engine/test/fixtures/horizons/provenance.json', 'utf8'),
+  );
   const maxima = {
     azimuthDegrees: 0,
     geometricAltitudeDegrees: 0,
@@ -19,7 +21,7 @@ try {
     ordinaryEventSeconds: 0,
   };
   for (const entry of references.entries) {
-    const text = await readFile('tests/fixtures/horizons/' + entry.file, 'utf8');
+    const text = await readFile('packages/sky-engine/test/fixtures/horizons/' + entry.file, 'utf8');
     const rows = text
       .split('$$SOE')[1]
       .split('$$EOE')[0]
@@ -65,7 +67,7 @@ try {
         );
     }
   }
-  const events = JSON.parse(await readFile('tests/fixtures/usno-events.json', 'utf8'));
+  const events = JSON.parse(await readFile('packages/sky-engine/test/fixtures/usno-events.json', 'utf8'));
   const names = {
     sunrise: ['sun', 'Rise'],
     sunset: ['sun', 'Set'],

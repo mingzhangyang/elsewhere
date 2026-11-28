@@ -1,6 +1,6 @@
 import type { IllustrationPattern, MomentSnapshot, SkyObject } from '../contracts';
 import type { Star } from '../types';
-import { CONSTELLATIONS, type PatternId } from '../domain/stars';
+import { catalogFor, CONSTELLATIONS, type PatternId, type StarCatalog } from '../domain/stars';
 import {
   planetVisibilityFactors,
   starVisibilityFactors,
@@ -59,6 +59,11 @@ export interface IllustrationDetails {
   patterns?: readonly IllustrationPattern[];
   /** Defaults to true; the stars layer and physical visibility still govern the Galaxy. */
   milkyWay?: boolean;
+  /**
+   * The catalog whose built-in patterns are drawn when `patterns` is undefined. Defaults to the one
+   * that calculated the scene (`createSkyScene({ catalog })`), else the module's default catalog.
+   */
+  catalog?: StarCatalog;
 }
 
 const STAR_TINTS = [hex('#d2e2ff'), hex('#fff8e6'), hex('#ffe2ac'), hex('#ffbe94')];
@@ -376,7 +381,7 @@ export function drawIllustration(
       id: string;
       lines: readonly (readonly string[])[];
       label?: string;
-    }[] = details.patterns ?? CONSTELLATIONS;
+    }[] = details.patterns ?? catalogFor(snapshot.sky, details.catalog)?.patterns ?? CONSTELLATIONS;
     for (const pattern of patterns) {
       const anchors: Star[] = [];
       const anchored = new Set<string>();

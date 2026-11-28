@@ -13,9 +13,9 @@ import {
   validateObserver,
   type MomentSnapshot,
   type SkySceneOptions,
-} from '../packages/sky-engine/src';
+} from '../src';
 import { NEW_YORK } from './fixtures/locations';
-import { INVALID_INPUT, skyEngineError } from './skyEngineErrorMatchers';
+import { INVALID_INPUT, skyEngineError } from './errorMatchers';
 
 const options: SkySceneOptions = {
   latitude: NEW_YORK.latitude,
@@ -136,7 +136,7 @@ describe('TIMEOUT', () => {
 
   it('rejects a waiter on another caller’s catalog installation', async () => {
     vi.resetModules();
-    const stars = await import('../packages/sky-engine/src/domain/stars');
+    const stars = await import('../src/domain/stars');
     void stars.loadStarCatalog(() => new Promise(() => {}));
     vi.useFakeTimers();
     const rejected = expect(stars.awaitStarCatalog(50)).rejects.toThrow(skyEngineError('TIMEOUT'));
@@ -199,7 +199,7 @@ describe('MISSING_ASSET', () => {
     ).toThrow(skyEngineError('MISSING_ASSET'));
 
     vi.resetModules();
-    const fresh = await import('../packages/sky-engine/src');
+    const fresh = await import('../src');
     await expect(fresh.renderMoonPhase(untouched(), moment)).rejects.toThrow(skyEngineError('MISSING_ASSET'));
     await expect(fresh.createSkyScene(options)).rejects.toThrow(skyEngineError('MISSING_ASSET'));
     await expect(fresh.awaitStarCatalog()).rejects.toThrow(skyEngineError('MISSING_ASSET'));
@@ -227,7 +227,7 @@ describe('ASSET_FAILED', () => {
 
   it('wraps catalog loader failures, still throwing synchronously for a synchronous throw', async () => {
     vi.resetModules();
-    const fresh = await import('../packages/sky-engine/src');
+    const fresh = await import('../src');
     const offline = new Error('offline');
     await expect(fresh.loadStarCatalog(() => Promise.reject(offline))).rejects.toThrow(
       expect.objectContaining({ code: 'ASSET_FAILED', message: 'offline', cause: offline }),

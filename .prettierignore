@@ -3,6 +3,7 @@ dist
 dist-sdk
 src/data/stars.json
 tests/fixtures
+packages/sky-engine/test/fixtures
 package-lock.json
 public/licenses
 docs/evidence

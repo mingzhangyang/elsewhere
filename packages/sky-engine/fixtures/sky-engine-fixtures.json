@@ -1,0 +1,2459 @@
+{
+  "formatVersion": 1,
+  "description": "Sky Engine shared regression fixtures. Check with fixtures/verify.mjs; regenerate with npm run sdk:fixtures.",
+  "tolerance": {
+    "absolute": 0.000001,
+    "relative": 1e-9,
+    "eventMs": 1000,
+    "moonRgb": 1,
+    "moonAlpha": 0
+  },
+  "astronomy": [
+    {
+      "name": "new-york/us-dst",
+      "observer": {
+        "latitude": 40.7128,
+        "longitude": -74.006,
+        "elevation": 10,
+        "timezone": "America/New_York"
+      },
+      "instant": "2026-03-08T12:00:00.000Z",
+      "starIds": [
+        "hyg-32263",
+        "hyg-30365",
+        "hyg-69451",
+        "hyg-90979",
+        "hyg-24549",
+        "hyg-24378",
+        "hyg-27919",
+        "hyg-11734"
+      ],
+      "expected": {
+        "sun": {
+          "altitude": 6.993110088877543,
+          "geometricAltitude": 6.867832448063666,
+          "azimuth": 102.37442327002681,
+          "distanceKm": 148490856.01838574
+        },
+        "moon": {
+          "altitude": 11.71585401011346,
+          "geometricAltitude": 11.637573812204181,
+          "azimuth": 226.91602335792217,
+          "distanceKm": 400371.5196844736,
+          "illumination": 0.7645924054738604,
+          "phaseAngle": 238.2958395134231,
+          "phase": "waning-gibbous",
+          "brightLimbAngle": -74.061363658838
+        },
+        "planets": [
+          {
+            "id": "mercury",
+            "altitude": 11.056786909465501,
+            "azimuth": 102.7720830847223,
+            "magnitude": 5.296990215314964,
+            "illumination": 0.009160489970830188
+          },
+          {
+            "id": "venus",
+            "altitude": 0.028624922934142205,
+            "azimuth": 89.66976671340937,
+            "magnitude": -3.8605154149348233,
+            "illumination": 0.968896315631197
+          },
+          {
+            "id": "mars",
+            "altitude": 11.356621166590287,
+            "azimuth": 115.09774278809364,
+            "magnitude": 1.174329977843113,
+            "illumination": 0.9931370706047684
+          },
+          {
+            "id": "jupiter",
+            "altitude": -24.521065848658168,
+            "azimuth": 345.5392702376549,
+            "magnitude": -2.3923923532567324,
+            "illumination": 0.9928378740603135
+          },
+          {
+            "id": "saturn",
+            "altitude": -0.7457909735829702,
+            "azimuth": 89.99966564102863,
+            "magnitude": 0.8734468793887284,
+            "illumination": 0.9998204187911779
+          }
+        ],
+        "stars": [
+          {
+            "id": "hyg-32263",
+            "altitude": -64.52471600565174,
+            "azimuth": 338.58967098473494
+          },
+          {
+            "id": "hyg-30365",
+            "altitude": -77.61834841722512,
+            "azimuth": 191.25037529085665
+          },
+          {
+            "id": "hyg-69451",
+            "altitude": 36.36994806977658,
+            "azimuth": 264.3376410206923
+          },
+          {
+            "id": "hyg-90979",
+            "altitude": 84.1115764036198,
+            "azimuth": 106.49945403972868
+          },
+          {
+            "id": "hyg-24549",
+            "altitude": -1.9092581856890227,
+            "azimuth": 8.683477801564607
+          },
+          {
+            "id": "hyg-24378",
+            "altitude": -55.1387970198457,
+            "azimuth": 23.54780465908385
+          },
+          {
+            "id": "hyg-27919",
+            "altitude": -41.44511232176299,
+            "azimuth": 4.064379033845455
+          },
+          {
+            "id": "hyg-11734",
+            "altitude": 40.292352083338095,
+            "azimuth": 0.5884284110364888
+          }
+        ],
+        "events": {
+          "sunrise": "2026-03-08T11:18:52.369Z",
+          "sunset": "2026-03-08T22:55:10.905Z",
+          "solarNoon": "2026-03-08T17:06:42.033Z",
+          "moonrise": null,
+          "moonset": "2026-03-08T13:22:39.899Z",
+          "twilightDawn": "2026-03-08T10:51:35.386Z",
+          "twilightDusk": "2026-03-08T23:22:30.535Z",
+          "daylightHours": 11.60514888888889,
+          "daylightStatus": "normal",
+          "planets": {
+            "mercury": {
+              "rise": "2026-03-08T10:58:43.666Z",
+              "set": "2026-03-08T22:44:24.067Z"
+            },
+            "venus": {
+              "rise": "2026-03-08T11:59:51.560Z",
+              "set": "2026-03-09T00:06:18.886Z"
+            },
+            "mars": {
+              "rise": "2026-03-08T10:53:44.436Z",
+              "set": "2026-03-08T21:44:05.378Z"
+            },
+            "jupiter": {
+              "rise": "2026-03-08T17:27:06.281Z",
+              "set": "2026-03-08T08:26:23.524Z"
+            },
+            "saturn": {
+              "rise": "2026-03-08T12:04:20.061Z",
+              "set": "2026-03-09T00:02:24.771Z"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "new-york/june-solstice",
+      "observer": {
+        "latitude": 40.7128,
+        "longitude": -74.006,
+        "elevation": 10,
+        "timezone": "America/New_York"
+      },
+      "instant": "2026-06-21T12:00:00.000Z",
+      "starIds": [
+        "hyg-32263",
+        "hyg-30365",
+        "hyg-69451",
+        "hyg-90979",
+        "hyg-24549",
+        "hyg-24378",
+        "hyg-27919",
+        "hyg-11734"
+      ],
+      "expected": {
+        "sun": {
+          "altitude": 26.503663751167267,
+          "geometricAltitude": 26.470003865516652,
+          "azimuth": 80.9268129796648,
+          "distanceKm": 152019243.1093151
+        },
+        "moon": {
+          "altitude": -45.37916924730297,
+          "geometricAltitude": -45.70099930766318,
+          "azimuth": 30.297493192363422,
+          "distanceKm": 390599.4489348306,
+          "illumination": 0.46249342186048564,
+          "phaseAngle": 85.06955564088135,
+          "phase": "first-quarter",
+          "brightLimbAngle": 43.95563314776277
+        },
+        "planets": [
+          {
+            "id": "mercury",
+            "altitude": 6.762332930230656,
+            "azimuth": 67.58041982255376,
+            "magnitude": 0.9432246525523191,
+            "illumination": 0.27817171669140156
+          },
+          {
+            "id": "venus",
+            "altitude": -5.03273161611088,
+            "azimuth": 57.67310216149128,
+            "magnitude": -4.037946217294657,
+            "illumination": 0.7264657156720031
+          },
+          {
+            "id": "mars",
+            "altitude": 51.54092741776707,
+            "azimuth": 114.08032140500303,
+            "magnitude": 1.2932488031100173,
+            "illumination": 0.955813298272957
+          },
+          {
+            "id": "jupiter",
+            "altitude": 3.329121204630937,
+            "azimuth": 64.80403975708867,
+            "magnitude": -1.819889674703835,
+            "illumination": 0.997947277253403
+          },
+          {
+            "id": "saturn",
+            "altitude": 52.49924376950955,
+            "azimuth": 183.56256618792958,
+            "magnitude": 0.6958791160232067,
+            "illumination": 0.9972693985690277
+          }
+        ],
+        "stars": [
+          {
+            "id": "hyg-32263",
+            "altitude": -7.215007800173519,
+            "azimuth": 105.4149269755087
+          },
+          {
+            "id": "hyg-30365",
+            "altitude": -25.81127256089828,
+            "azimuth": 138.2213728347274
+          },
+          {
+            "id": "hyg-69451",
+            "altitude": -27.35766620993553,
+            "azimuth": 340.1540753931883
+          },
+          {
+            "id": "hyg-90979",
+            "altitude": 20.204843529529754,
+            "azimuth": 304.3940011839927
+          },
+          {
+            "id": "hyg-24549",
+            "altitude": 44.47457205373435,
+            "azimuth": 60.942564634066684
+          },
+          {
+            "id": "hyg-24378",
+            "altitude": 14.23999909151562,
+            "azimuth": 114.25466210886691
+          },
+          {
+            "id": "hyg-27919",
+            "altitude": 17.399706837960167,
+            "azimuth": 95.19503072113821
+          },
+          {
+            "id": "hyg-11734",
+            "altitude": 41.26864685081489,
+            "azimuth": 0.42888012102213224
+          }
+        ],
+        "events": {
+          "sunrise": "2026-06-21T09:25:03.256Z",
+          "sunset": "2026-06-22T00:30:42.464Z",
+          "solarNoon": "2026-06-21T16:57:53.079Z",
+          "moonrise": "2026-06-21T16:49:31.481Z",
+          "moonset": "2026-06-21T04:29:23.343Z",
+          "twilightDawn": "2026-06-21T08:51:35.655Z",
+          "twilightDusk": "2026-06-22T01:04:09.996Z",
+          "daylightHours": 15.094224444444444,
+          "daylightStatus": "normal",
+          "planets": {
+            "mercury": {
+              "rise": "2026-06-21T11:17:48.145Z",
+              "set": "2026-06-22T01:59:16.911Z"
+            },
+            "venus": {
+              "rise": "2026-06-21T12:30:54.881Z",
+              "set": "2026-06-22T03:01:48.100Z"
+            },
+            "mars": {
+              "rise": "2026-06-21T07:17:07.117Z",
+              "set": "2026-06-21T21:37:35.472Z"
+            },
+            "jupiter": {
+              "rise": "2026-06-21T11:38:18.147Z",
+              "set": "2026-06-22T02:17:00.800Z"
+            },
+            "saturn": {
+              "rise": "2026-06-21T05:38:06.968Z",
+              "set": "2026-06-21T18:04:35.098Z"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "new-york/december-solstice",
+      "observer": {
+        "latitude": 40.7128,
+        "longitude": -74.006,
+        "elevation": 10,
+        "timezone": "America/New_York"
+      },
+      "instant": "2026-12-21T12:00:00.000Z",
+      "starIds": [
+        "hyg-32263",
+        "hyg-30365",
+        "hyg-69451",
+        "hyg-90979",
+        "hyg-24549",
+        "hyg-24378",
+        "hyg-27919",
+        "hyg-11734"
+      ],
+      "expected": {
+        "sun": {
+          "altitude": -2.9390320883476164,
+          "geometricAltitude": -3.566963843211525,
+          "azimuth": 118.17365602640454,
+          "distanceKm": 147168139.43154737
+        },
+        "moon": {
+          "altitude": -18.886779981977554,
+          "geometricAltitude": -19.39968777649294,
+          "azimuth": 327.5725622596864,
+          "distanceKm": 366446.53986916406,
+          "illumination": 0.9001988407300434,
+          "phaseAngle": 143.9299802077511,
+          "phase": "waxing-gibbous",
+          "brightLimbAngle": 123.95852691307111
+        },
+        "planets": [
+          {
+            "id": "mercury",
+            "altitude": 0.9008715741897646,
+            "azimuth": 123.0875572393512,
+            "magnitude": -0.8908157584877724,
+            "illumination": 0.986121429095806
+          },
+          {
+            "id": "venus",
+            "altitude": 31.31569770708014,
+            "azimuth": 150.09826610382967,
+            "magnitude": -4.701162997345393,
+            "illumination": 0.4260570155173026
+          },
+          {
+            "id": "mars",
+            "altitude": 47.28894850461319,
+            "azimuth": 236.45045774766214,
+            "magnitude": 0.09690902731644624,
+            "illumination": 0.914866059608456
+          },
+          {
+            "id": "jupiter",
+            "altitude": 41.108918210101024,
+            "azimuth": 249.79017489355704,
+            "magnitude": -2.3434292489035515,
+            "illumination": 0.9939412481036826
+          },
+          {
+            "id": "saturn",
+            "altitude": -47.50550508639125,
+            "azimuth": 11.520439148811269,
+            "magnitude": 0.6853208340104331,
+            "illumination": 0.9973185971777587
+          }
+        ],
+        "stars": [
+          {
+            "id": "hyg-32263",
+            "altitude": -13.618757820572174,
+            "azimuth": 259.92157023177947
+          },
+          {
+            "id": "hyg-30365",
+            "altitude": -36.34995962730516,
+            "azimuth": 228.12869526526165
+          },
+          {
+            "id": "hyg-69451",
+            "altitude": 63.34558005741888,
+            "azimuth": 138.97986589465586
+          },
+          {
+            "id": "hyg-90979",
+            "altitude": 28.504705180365825,
+            "azimuth": 61.71114240894258
+          },
+          {
+            "id": "hyg-24549",
+            "altitude": 13.680911906073746,
+            "azimuth": 320.21166055208613
+          },
+          {
+            "id": "hyg-24378",
+            "altitude": -25.29540388550353,
+            "azimuth": 281.94975596605934
+          },
+          {
+            "id": "hyg-27919",
+            "altitude": -7.133646295076559,
+            "azimuth": 286.76993260738175
+          },
+          {
+            "id": "hyg-11734",
+            "altitude": 40.19523243151887,
+            "azimuth": 359.5814862748585
+          }
+        ],
+        "events": {
+          "sunrise": "2026-12-21T12:16:33.468Z",
+          "sunset": "2026-12-21T21:31:49.164Z",
+          "solarNoon": "2026-12-21T16:54:11.376Z",
+          "moonrise": "2026-12-21T19:00:03.946Z",
+          "moonset": "2026-12-21T09:34:43.348Z",
+          "twilightDawn": "2026-12-21T11:45:34.679Z",
+          "twilightDusk": "2026-12-21T22:02:47.949Z",
+          "daylightHours": 9.25436,
+          "daylightStatus": "normal",
+          "planets": {
+            "mercury": {
+              "rise": "2026-12-21T11:53:25.289Z",
+              "set": "2026-12-21T21:00:10.882Z"
+            },
+            "venus": {
+              "rise": "2026-12-21T08:25:49.540Z",
+              "set": "2026-12-21T19:01:02.420Z"
+            },
+            "mars": {
+              "rise": "2026-12-22T02:54:54.623Z",
+              "set": "2026-12-21T16:21:03.691Z"
+            },
+            "jupiter": {
+              "rise": "2026-12-22T02:00:41.740Z",
+              "set": "2026-12-21T15:43:12.546Z"
+            },
+            "saturn": {
+              "rise": "2026-12-21T17:22:14.694Z",
+              "set": "2026-12-21T05:36:13.843Z"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "sydney/us-dst",
+      "observer": {
+        "latitude": -33.8688,
+        "longitude": 151.2093,
+        "elevation": 58,
+        "timezone": "Australia/Sydney"
+      },
+      "instant": "2026-03-08T12:00:00.000Z",
+      "starIds": [
+        "hyg-32263",
+        "hyg-30365",
+        "hyg-69451",
+        "hyg-90979",
+        "hyg-24549",
+        "hyg-24378",
+        "hyg-27919",
+        "hyg-11734"
+      ],
+      "expected": {
+        "sun": {
+          "altitude": -40.89533727195487,
+          "geometricAltitude": -41.249507203423036,
+          "azimuth": 223.78791154487058,
+          "distanceKm": 148495833.93777224
+        },
+        "moon": {
+          "altitude": 14.991659020832174,
+          "geometricAltitude": 14.930125917364478,
+          "azimuth": 105.40313956766596,
+          "distanceKm": 400035.1264616025,
+          "illumination": 0.7586006637116973,
+          "phaseAngle": 238.2958395134231,
+          "phase": "waning-gibbous",
+          "brightLimbAngle": 129.04737589431568
+        },
+        "planets": [
+          {
+            "id": "mercury",
+            "altitude": -44.83051515988555,
+            "azimuth": 221.9608787692826,
+            "magnitude": 5.296990215314964,
+            "illumination": 0.009160489970830188
+          },
+          {
+            "id": "venus",
+            "altitude": -35.19361410290516,
+            "azimuth": 241.12493576409457,
+            "magnitude": -3.8605154149348233,
+            "illumination": 0.968896315631197
+          },
+          {
+            "id": "mars",
+            "altitude": -41.266343544433994,
+            "azimuth": 206.00939375327266,
+            "magnitude": 1.174329977843113,
+            "illumination": 0.9931370706047684
+          },
+          {
+            "id": "jupiter",
+            "altitude": 26.03497912137299,
+            "azimuth": 328.1585398673708,
+            "magnitude": -2.3923923532567324,
+            "illumination": 0.9928378740603135
+          },
+          {
+            "id": "saturn",
+            "altitude": -34.32011325026669,
+            "azimuth": 240.77188788995448,
+            "magnitude": 0.8734468793887284,
+            "illumination": 0.9998204187911779
+          }
+        ],
+        "stars": [
+          {
+            "id": "hyg-32263",
+            "altitude": 53.63809308370335,
+            "azimuth": 289.01602164645084
+          },
+          {
+            "id": "hyg-30365",
+            "altitude": 55.235070795418835,
+            "azimuth": 224.4919593569685
+          },
+          {
+            "id": "hyg-69451",
+            "altitude": 0.3559899587431576,
+            "azimuth": 66.96517818554264
+          },
+          {
+            "id": "hyg-90979",
+            "altitude": -59.02539624761653,
+            "azimuth": 69.62721306251171
+          },
+          {
+            "id": "hyg-24549",
+            "altitude": -4.747660782496792,
+            "azimuth": 323.8492831701538
+          },
+          {
+            "id": "hyg-24378",
+            "altitude": 30.629169764993122,
+            "azimuth": 281.42138430239504
+          },
+          {
+            "id": "hyg-27919",
+            "altitude": 28.46794937932736,
+            "azimuth": 302.69033532300415
+          },
+          {
+            "id": "hyg-11734",
+            "altitude": -33.468258579342226,
+            "azimuth": 359.2438944160442
+          }
+        ],
+        "events": {
+          "sunrise": "2026-03-07T19:48:28.039Z",
+          "sunset": "2026-03-08T08:22:57.828Z",
+          "solarNoon": "2026-03-08T02:05:59.608Z",
+          "moonrise": "2026-03-08T10:37:12.686Z",
+          "moonset": "2026-03-08T00:11:21.336Z",
+          "twilightDawn": "2026-03-07T19:23:16.905Z",
+          "twilightDusk": "2026-03-08T08:48:05.733Z",
+          "daylightHours": 12.574941388888888,
+          "daylightStatus": "normal",
+          "planets": {
+            "mercury": {
+              "rise": "2026-03-07T19:49:39.835Z",
+              "set": "2026-03-08T08:02:34.056Z"
+            },
+            "venus": {
+              "rise": "2026-03-07T20:57:25.227Z",
+              "set": "2026-03-08T09:04:42.375Z"
+            },
+            "mars": {
+              "rise": "2026-03-07T18:45:49.493Z",
+              "set": "2026-03-08T07:50:34.035Z"
+            },
+            "jupiter": {
+              "rise": "2026-03-08T05:00:07.762Z",
+              "set": "2026-03-07T14:56:37.345Z"
+            },
+            "saturn": {
+              "rise": "2026-03-07T21:00:18.462Z",
+              "set": "2026-03-08T09:08:55.789Z"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "sydney/june-solstice",
+      "observer": {
+        "latitude": -33.8688,
+        "longitude": 151.2093,
+        "elevation": 58,
+        "timezone": "Australia/Sydney"
+      },
+      "instant": "2026-06-21T12:00:00.000Z",
+      "starIds": [
+        "hyg-32263",
+        "hyg-30365",
+        "hyg-69451",
+        "hyg-90979",
+        "hyg-24549",
+        "hyg-24378",
+        "hyg-27919",
+        "hyg-11734"
+      ],
+      "expected": {
+        "sun": {
+          "altitude": -62.22206882863867,
+          "geometricAltitude": -62.42241860058954,
+          "azimuth": 255.50501367612105,
+          "distanceKm": 152027729.02465913
+        },
+        "moon": {
+          "altitude": 18.782272867504886,
+          "geometricAltitude": 18.733360283588283,
+          "azimuth": 283.9108886137923,
+          "distanceKm": 383955.8552956975,
+          "illumination": 0.4507692860748951,
+          "phaseAngle": 85.06955564088135,
+          "phase": "first-quarter",
+          "brightLimbAngle": -167.1208320897312
+        },
+        "planets": [
+          {
+            "id": "mercury",
+            "altitude": -40.17549133532353,
+            "azimuth": 270.03287168411146,
+            "magnitude": 0.9432246525523191,
+            "illumination": 0.27817171669140156
+          },
+          {
+            "id": "venus",
+            "altitude": -25.51285061203164,
+            "azimuth": 277.3224793813245,
+            "magnitude": -4.037946217294657,
+            "illumination": 0.7264657156720031
+          },
+          {
+            "id": "mars",
+            "altitude": -72.82646386448414,
+            "azimuth": 151.79018543442095,
+            "magnitude": 1.2932488031100173,
+            "illumination": 0.955813298272957
+          },
+          {
+            "id": "jupiter",
+            "altitude": -36.022743907072254,
+            "azimuth": 272.29525156928906,
+            "magnitude": -1.819889674703835,
+            "illumination": 0.997947277253403
+          },
+          {
+            "id": "saturn",
+            "altitude": -35.97003191703904,
+            "azimuth": 114.16152693819895,
+            "magnitude": 0.6958791160232067,
+            "illumination": 0.9972693985690277
+          }
+        ],
+        "stars": [
+          {
+            "id": "hyg-32263",
+            "altitude": -25.794501656048762,
+            "azimuth": 224.09180968108558
+          },
+          {
+            "id": "hyg-30365",
+            "altitude": 2.1509862368824226,
+            "azimuth": 200.4638915823909
+          },
+          {
+            "id": "hyg-69451",
+            "altitude": 31.317024520992394,
+            "azimuth": 330.2054217243944
+          },
+          {
+            "id": "hyg-90979",
+            "altitude": 9.11667453717777,
+            "azimuth": 29.45054154424207
+          },
+          {
+            "id": "hyg-24549",
+            "altitude": -71.12371619141972,
+            "azimuth": 315.9892555933991
+          },
+          {
+            "id": "hyg-24378",
+            "altitude": -44.27748506087663,
+            "azimuth": 205.50669240327568
+          },
+          {
+            "id": "hyg-27919",
+            "altitude": -52.597897469464534,
+            "azimuth": 231.01457680350845
+          },
+          {
+            "id": "hyg-11734",
+            "altitude": -34.07271643453551,
+            "azimuth": 0.18714121622906532
+          }
+        ],
+        "events": {
+          "sunrise": "2026-06-20T20:59:59.954Z",
+          "sunset": "2026-06-21T06:53:46.298Z",
+          "solarNoon": "2026-06-21T01:56:53.203Z",
+          "moonrise": "2026-06-21T01:24:59.625Z",
+          "moonset": "2026-06-21T13:38:52.242Z",
+          "twilightDawn": "2026-06-20T20:32:13.679Z",
+          "twilightDusk": "2026-06-21T07:21:32.576Z",
+          "daylightHours": 9.896206666666666,
+          "daylightStatus": "normal",
+          "planets": {
+            "mercury": {
+              "rise": "2026-06-20T22:37:29.121Z",
+              "set": "2026-06-21T08:41:04.666Z"
+            },
+            "venus": {
+              "rise": "2026-06-20T23:38:50.508Z",
+              "set": "2026-06-21T09:52:26.029Z"
+            },
+            "mars": {
+              "rise": "2026-06-20T18:15:51.314Z",
+              "set": "2026-06-21T04:37:41.660Z"
+            },
+            "jupiter": {
+              "rise": "2026-06-20T22:56:02.546Z",
+              "set": "2026-06-21T09:01:32.442Z"
+            },
+            "saturn": {
+              "rise": "2026-06-20T14:59:40.995Z",
+              "set": "2026-06-21T02:45:53.021Z"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "sydney/december-solstice",
+      "observer": {
+        "latitude": -33.8688,
+        "longitude": 151.2093,
+        "elevation": 58,
+        "timezone": "Australia/Sydney"
+      },
+      "instant": "2026-12-21T12:00:00.000Z",
+      "starIds": [
+        "hyg-32263",
+        "hyg-30365",
+        "hyg-69451",
+        "hyg-90979",
+        "hyg-24549",
+        "hyg-24378",
+        "hyg-27919",
+        "hyg-11734"
+      ],
+      "expected": {
+        "sun": {
+          "altitude": -26.22546451122855,
+          "geometricAltitude": -26.68544166224912,
+          "azimuth": 209.13880064584995,
+          "distanceKm": 147170630.02164498
+        },
+        "moon": {
+          "altitude": 30.665183796740898,
+          "geometricAltitude": 30.636806910279006,
+          "azimuth": 347.6308064442594,
+          "distanceKm": 361058.98861286236,
+          "illumination": 0.9027098343328639,
+          "phaseAngle": 143.9299802077511,
+          "phase": "waxing-gibbous",
+          "brightLimbAngle": -93.60832910811571
+        },
+        "planets": [
+          {
+            "id": "mercury",
+            "altitude": -28.124580575144293,
+            "azimuth": 202.2766002603199,
+            "magnitude": -0.8908157584877724,
+            "illumination": 0.986121429095806
+          },
+          {
+            "id": "venus",
+            "altitude": -39.41754454547649,
+            "azimuth": 155.20595551698162,
+            "magnitude": -4.701162997345393,
+            "illumination": 0.4260570155173026
+          },
+          {
+            "id": "mars",
+            "altitude": -13.58363487035794,
+            "azimuth": 85.80672594990926,
+            "magnitude": 0.09690902731644624,
+            "illumination": 0.914866059608456
+          },
+          {
+            "id": "jupiter",
+            "altitude": -5.292197940941847,
+            "azimuth": 77.83565975481613,
+            "magnitude": -2.3434292489035515,
+            "illumination": 0.9939412481036826
+          },
+          {
+            "id": "saturn",
+            "altitude": 29.493715741981354,
+            "azimuth": 293.6164989181765,
+            "magnitude": 0.6853208340104331,
+            "illumination": 0.9973185971777587
+          }
+        ],
+        "stars": [
+          {
+            "id": "hyg-32263",
+            "altitude": 50.10219534631686,
+            "azimuth": 74.8554358853512
+          },
+          {
+            "id": "hyg-30365",
+            "altitude": 58.90009720721293,
+            "azimuth": 137.92721351123475
+          },
+          {
+            "id": "hyg-69451",
+            "altitude": -61.531240350079976,
+            "azimuth": 114.74470320978372
+          },
+          {
+            "id": "hyg-90979",
+            "altitude": -58.85506885799699,
+            "azimuth": 290.39015676932456
+          },
+          {
+            "id": "hyg-24549",
+            "altitude": 8.505492941235302,
+            "azimuth": 12.791518275446435
+          },
+          {
+            "id": "hyg-24378",
+            "altitude": 59.58690735404626,
+            "azimuth": 36.40363616977413
+          },
+          {
+            "id": "hyg-27919",
+            "altitude": 41.013590178794786,
+            "azimuth": 37.897163991359946
+          },
+          {
+            "id": "hyg-11734",
+            "altitude": -32.851373102411955,
+            "azimuth": 359.81377287188377
+          }
+        ],
+        "events": {
+          "sunrise": "2026-12-20T18:40:38.491Z",
+          "sunset": "2026-12-21T09:05:24.452Z",
+          "solarNoon": "2026-12-21T01:53:01.108Z",
+          "moonrise": "2026-12-21T06:05:51.803Z",
+          "moonset": "2026-12-20T15:29:21.592Z",
+          "twilightDawn": "2026-12-20T18:11:29.035Z",
+          "twilightDusk": "2026-12-21T09:34:34.089Z",
+          "daylightHours": 14.412766944444444,
+          "daylightStatus": "normal",
+          "planets": {
+            "mercury": {
+              "rise": "2026-12-20T18:10:55.621Z",
+              "set": "2026-12-21T08:38:03.601Z"
+            },
+            "venus": {
+              "rise": "2026-12-20T16:05:33.590Z",
+              "set": "2026-12-21T05:20:46.908Z"
+            },
+            "mars": {
+              "rise": "2026-12-20T13:09:14.985Z",
+              "set": "2026-12-21T00:11:51.526Z"
+            },
+            "jupiter": {
+              "rise": "2026-12-21T12:26:26.273Z",
+              "set": "2026-12-20T23:20:49.933Z"
+            },
+            "saturn": {
+              "rise": "2026-12-21T02:29:29.880Z",
+              "set": "2026-12-20T14:32:07.928Z"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "tromso/us-dst",
+      "observer": {
+        "latitude": 69.6492,
+        "longitude": 18.9553,
+        "elevation": 10,
+        "timezone": "Europe/Oslo"
+      },
+      "instant": "2026-03-08T12:00:00.000Z",
+      "starIds": [
+        "hyg-32263",
+        "hyg-30365",
+        "hyg-69451",
+        "hyg-90979",
+        "hyg-24549",
+        "hyg-24378",
+        "hyg-27919",
+        "hyg-11734"
+      ],
+      "expected": {
+        "sun": {
+          "altitude": 14.811406973159848,
+          "geometricAltitude": 14.749127863590488,
+          "azimuth": 196.78367896845634,
+          "distanceKm": 148489990.19437924
+        },
+        "moon": {
+          "altitude": -37.180867725265756,
+          "geometricAltitude": -37.561828461348085,
+          "azimuth": 315.4202994524601,
+          "distanceKm": 405571.9235466322,
+          "illumination": 0.7622829606973687,
+          "phaseAngle": 238.2958395134231,
+          "phase": "waning-gibbous",
+          "brightLimbAngle": -95.14031512576952
+        },
+        "planets": [
+          {
+            "id": "mercury",
+            "altitude": 16.884651363093184,
+            "azimuth": 200.48617728968398,
+            "magnitude": 5.296990215314964,
+            "illumination": 0.009160489970830188
+          },
+          {
+            "id": "venus",
+            "altitude": 20.276272966442676,
+            "azimuth": 182.49198699209092,
+            "magnitude": -3.8605154149348233,
+            "illumination": 0.968896315631197
+          },
+          {
+            "id": "mars",
+            "altitude": 7.293020900920439,
+            "azimuth": 207.93963487568016,
+            "magnitude": 1.174329977843113,
+            "illumination": 0.9931370706047684
+          },
+          {
+            "id": "jupiter",
+            "altitude": 17.675609457291657,
+            "azimuth": 71.38705979433611,
+            "magnitude": -2.3923923532567324,
+            "illumination": 0.9928378740603135
+          },
+          {
+            "id": "saturn",
+            "altitude": 19.4800543126658,
+            "azimuth": 182.02296844961148,
+            "magnitude": 0.8734468793887284,
+            "illumination": 0.9998204187911779
+          }
+        ],
+        "stars": [
+          {
+            "id": "hyg-32263",
+            "altitude": -17.382375215995975,
+            "azimuth": 89.99898378116143
+          },
+          {
+            "id": "hyg-30365",
+            "altitude": -48.24551823588437,
+            "azimuth": 113.7917650745706
+          },
+          {
+            "id": "hyg-69451",
+            "altitude": 1.4221122083305056,
+            "azimuth": 332.6722771174817
+          },
+          {
+            "id": "hyg-90979",
+            "altitude": 37.45966116566305,
+            "azimuth": 281.8659504201813
+          },
+          {
+            "id": "hyg-24549",
+            "altitude": 47.682576400283835,
+            "azimuth": 83.50304171334506
+          },
+          {
+            "id": "hyg-24378",
+            "altitude": -1.492080680627164,
+            "azimuth": 107.98645892864255
+          },
+          {
+            "id": "hyg-27919",
+            "altitude": 9.134924788534814,
+            "azimuth": 93.05256209249887
+          },
+          {
+            "id": "hyg-11734",
+            "altitude": 70.12218732966542,
+            "azimuth": 1.220459161692247
+          }
+        ],
+        "events": {
+          "sunrise": "2026-03-08T05:38:21.839Z",
+          "sunset": "2026-03-08T16:13:22.357Z",
+          "solarNoon": "2026-03-08T10:54:55.154Z",
+          "moonrise": "2026-03-08T01:00:06.852Z",
+          "moonset": "2026-03-08T03:02:13.750Z",
+          "twilightDawn": "2026-03-08T04:38:46.375Z",
+          "twilightDusk": "2026-03-08T17:13:16.264Z",
+          "daylightHours": 10.583477222222223,
+          "daylightStatus": "normal",
+          "planets": {
+            "mercury": {
+              "rise": "2026-03-08T05:00:49.164Z",
+              "set": "2026-03-08T16:20:52.762Z"
+            },
+            "venus": {
+              "rise": "2026-03-08T05:46:31.573Z",
+              "set": "2026-03-08T17:57:34.926Z"
+            },
+            "mars": {
+              "rise": "2026-03-08T06:04:35.417Z",
+              "set": "2026-03-08T14:10:49.208Z"
+            },
+            "jupiter": {
+              "rise": null,
+              "set": null
+            },
+            "saturn": {
+              "rise": "2026-03-08T05:56:38.647Z",
+              "set": "2026-03-08T17:48:23.339Z"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "tromso/june-solstice",
+      "observer": {
+        "latitude": 69.6492,
+        "longitude": 18.9553,
+        "elevation": 10,
+        "timezone": "Europe/Oslo"
+      },
+      "instant": "2026-06-21T12:00:00.000Z",
+      "starIds": [
+        "hyg-32263",
+        "hyg-30365",
+        "hyg-69451",
+        "hyg-90979",
+        "hyg-24549",
+        "hyg-24378",
+        "hyg-27919",
+        "hyg-11734"
+      ],
+      "expected": {
+        "sun": {
+          "altitude": 42.510444383058065,
+          "geometricAltitude": 42.49202708078398,
+          "azimuth": 203.25688008236827,
+          "distanceKm": 152017773.91199574
+        },
+        "moon": {
+          "altitude": 7.3125710835463025,
+          "geometricAltitude": 7.192057239445475,
+          "azimuth": 112.49228542924725,
+          "distanceKm": 385200.79951004795,
+          "illumination": 0.46385729541075893,
+          "phaseAngle": 85.06955564088135,
+          "phase": "first-quarter",
+          "brightLimbAngle": 47.66677650567428
+        },
+        "planets": [
+          {
+            "id": "mercury",
+            "altitude": 41.44407697822036,
+            "azimuth": 171.42123793283795,
+            "magnitude": 0.9432246525523191,
+            "illumination": 0.27817171669140156
+          },
+          {
+            "id": "venus",
+            "altitude": 38.16670896539207,
+            "azimuth": 151.30171787969255,
+            "magnitude": -4.037946217294657,
+            "illumination": 0.7264657156720031
+          },
+          {
+            "id": "mars",
+            "altitude": 28.84721121197213,
+            "azimuth": 243.97847242495072,
+            "magnitude": 1.2932488031100173,
+            "illumination": 0.955813298272957
+          },
+          {
+            "id": "jupiter",
+            "altitude": 40.8088954992242,
+            "azimuth": 165.52844566091755,
+            "magnitude": -1.819889674703835,
+            "illumination": 0.997947277253403
+          },
+          {
+            "id": "saturn",
+            "altitude": 1.6035646098107463,
+            "azimuth": 275.94061978592,
+            "magnitude": 0.6958791160232067,
+            "illumination": 0.9972693985690277
+          }
+        ],
+        "stars": [
+          {
+            "id": "hyg-32263",
+            "altitude": 3.6596442782461964,
+            "azimuth": 186.7883621595072
+          },
+          {
+            "id": "hyg-30365",
+            "altitude": -32.284539011422716,
+            "azimuth": 188.98004426038514
+          },
+          {
+            "id": "hyg-69451",
+            "altitude": 12.650599465875377,
+            "azimuth": 68.90783044237583
+          },
+          {
+            "id": "hyg-90979",
+            "altitude": 18.71862212004499,
+            "azimuth": 7.554780949634505
+          },
+          {
+            "id": "hyg-24549",
+            "altitude": 62.37208627336977,
+            "azimuth": 226.51950319430995
+          },
+          {
+            "id": "hyg-24378",
+            "altitude": 9.632748940556564,
+            "azimuth": 209.8254800865329
+          },
+          {
+            "id": "hyg-27919",
+            "altitude": 26.520127672380596,
+            "azimuth": 201.71142601534208
+          },
+          {
+            "id": "hyg-11734",
+            "altitude": 69.94231329357238,
+            "azimuth": 358.38688492485545
+          }
+        ],
+        "events": {
+          "sunrise": null,
+          "sunset": null,
+          "solarNoon": "2026-06-21T10:45:58.983Z",
+          "moonrise": "2026-06-21T10:17:49.810Z",
+          "moonset": "2026-06-20T22:37:10.982Z",
+          "twilightDawn": null,
+          "twilightDusk": null,
+          "daylightHours": 24,
+          "daylightStatus": "polar-day",
+          "planets": {
+            "mercury": {
+              "rise": null,
+              "set": null
+            },
+            "venus": {
+              "rise": null,
+              "set": null
+            },
+            "mars": {
+              "rise": "2026-06-21T21:35:31.342Z",
+              "set": "2026-06-21T18:53:50.695Z"
+            },
+            "jupiter": {
+              "rise": null,
+              "set": null
+            },
+            "saturn": {
+              "rise": "2026-06-20T22:59:45.154Z",
+              "set": "2026-06-21T12:21:15.352Z"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "tromso/december-solstice",
+      "observer": {
+        "latitude": 69.6492,
+        "longitude": 18.9553,
+        "elevation": 10,
+        "timezone": "Europe/Oslo"
+      },
+      "instant": "2026-12-21T12:00:00.000Z",
+      "starIds": [
+        "hyg-32263",
+        "hyg-30365",
+        "hyg-69451",
+        "hyg-90979",
+        "hyg-24549",
+        "hyg-24378",
+        "hyg-27919",
+        "hyg-11734"
+      ],
+      "expected": {
+        "sun": {
+          "altitude": -3.509137357367621,
+          "geometricAltitude": -4.132957198355314,
+          "azimuth": 197.8270127507144,
+          "distanceKm": 147168198.21067142
+        },
+        "moon": {
+          "altitude": 11.363983505139956,
+          "geometricAltitude": 11.28339426039345,
+          "azimuth": 53.69016459330133,
+          "distanceKm": 363074.0406260941,
+          "illumination": 0.903823908589626,
+          "phaseAngle": 143.9299802077511,
+          "phase": "waxing-gibbous",
+          "brightLimbAngle": 80.354752044028
+        },
+        "planets": [
+          {
+            "id": "mercury",
+            "altitude": -5.032180011889565,
+            "azimuth": 204.03182941063147,
+            "magnitude": -0.8908157584877724,
+            "illumination": 0.986121429095806
+          },
+          {
+            "id": "venus",
+            "altitude": -3.7767052850936125,
+            "azimuth": 244.20621302038958,
+            "magnitude": -4.701162997345393,
+            "illumination": 0.4260570155173026
+          },
+          {
+            "id": "mars",
+            "altitude": -0.9648881734418069,
+            "azimuth": 309.5173328632384,
+            "magnitude": 0.09690902731644624,
+            "illumination": 0.914866059608456
+          },
+          {
+            "id": "jupiter",
+            "altitude": -1.6983079213585057,
+            "azimuth": 320.86841099755605,
+            "magnitude": -2.3434292489035515,
+            "illumination": 0.9939412481036826
+          },
+          {
+            "id": "saturn",
+            "altitude": 4.699098558009297,
+            "azimuth": 99.71315806503539,
+            "magnitude": 0.6853208340104331,
+            "illumination": 0.9973185971777587
+          }
+        ],
+        "stars": [
+          {
+            "id": "hyg-32263",
+            "altitude": -36.51861687304838,
+            "azimuth": 8.927841323130792
+          },
+          {
+            "id": "hyg-30365",
+            "altitude": -71.91656065036676,
+            "azimuth": 26.011691312474
+          },
+          {
+            "id": "hyg-69451",
+            "altitude": 23.12206892759547,
+            "azimuth": 262.580719551994
+          },
+          {
+            "id": "hyg-90979",
+            "altitude": 58.75254521751837,
+            "azimuth": 194.4540773573905
+          },
+          {
+            "id": "hyg-24549",
+            "altitude": 27.69218725128979,
+            "azimuth": 22.604487195964168
+          },
+          {
+            "id": "hyg-24378",
+            "altitude": -25.07425640353424,
+            "azimuth": 33.347979859901216
+          },
+          {
+            "id": "hyg-27919",
+            "altitude": -11.16792790915384,
+            "azimuth": 20.138194472723967
+          },
+          {
+            "id": "hyg-11734",
+            "altitude": 69.35685340180437,
+            "azimuth": 1.5671099628528395
+          }
+        ],
+        "events": {
+          "sunrise": null,
+          "sunset": null,
+          "solarNoon": "2026-12-21T10:42:12.986Z",
+          "moonrise": null,
+          "moonset": null,
+          "twilightDawn": "2026-12-21T08:31:15.516Z",
+          "twilightDusk": "2026-12-21T12:53:09.641Z",
+          "daylightHours": 0,
+          "daylightStatus": "polar-night",
+          "planets": {
+            "mercury": {
+              "rise": null,
+              "set": null
+            },
+            "venus": {
+              "rise": "2026-12-21T03:54:37.303Z",
+              "set": "2026-12-21T11:08:09.031Z"
+            },
+            "mars": {
+              "rise": "2026-12-21T19:09:06.156Z",
+              "set": "2026-12-21T11:44:53.897Z"
+            },
+            "jupiter": {
+              "rise": "2026-12-21T17:52:13.185Z",
+              "set": "2026-12-21T11:30:02.762Z"
+            },
+            "saturn": {
+              "rise": "2026-12-21T11:01:23.189Z",
+              "set": "2026-12-20T23:35:21.503Z"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "quito/us-dst",
+      "observer": {
+        "latitude": -0.1807,
+        "longitude": -78.4678,
+        "elevation": 2850,
+        "timezone": "America/Guayaquil"
+      },
+      "instant": "2026-03-08T12:00:00.000Z",
+      "starIds": [
+        "hyg-32263",
+        "hyg-30365",
+        "hyg-69451",
+        "hyg-90979",
+        "hyg-24549",
+        "hyg-24378",
+        "hyg-27919",
+        "hyg-11734"
+      ],
+      "expected": {
+        "sun": {
+          "altitude": 8.932483258798072,
+          "geometricAltitude": 8.831657010845817,
+          "azimuth": 94.80440303414838,
+          "distanceKm": 148490642.4520328
+        },
+        "moon": {
+          "altitude": 40.1799135507823,
+          "geometricAltitude": 40.159929754193605,
+          "azimuth": 241.4126326593423,
+          "distanceKm": 397574.0243040318,
+          "illumination": 0.7667129524251266,
+          "phaseAngle": 238.2958395134231,
+          "phase": "waning-gibbous",
+          "brightLimbAngle": -39.876505606606614
+        },
+        "planets": [
+          {
+            "id": "mercury",
+            "altitude": 12.233646186288055,
+            "azimuth": 92.32332583239531,
+            "magnitude": 5.296990215314964,
+            "illumination": 0.009160489970830188
+          },
+          {
+            "id": "venus",
+            "altitude": -4.4691984904859225,
+            "azimuth": 90.11706790640507,
+            "magnitude": -3.8605154149348233,
+            "illumination": 0.968896315631197
+          },
+          {
+            "id": "mars",
+            "altitude": 20.517637427608136,
+            "azimuth": 101.4922038090468,
+            "magnitude": 1.174329977843113,
+            "illumination": 0.9931370706047684
+          },
+          {
+            "id": "jupiter",
+            "altitude": -60.67151957641883,
+            "azimuth": 322.66701442489136,
+            "magnitude": -2.3923923532567324,
+            "illumination": 0.9928378740603135
+          },
+          {
+            "id": "saturn",
+            "altitude": -4.89802637048291,
+            "azimuth": 90.9275483274867,
+            "magnitude": 0.8734468793887284,
+            "illumination": 0.9998204187911779
+          }
+        ],
+        "stars": [
+          {
+            "id": "hyg-32263",
+            "altitude": -68.09933999796709,
+            "azimuth": 218.17996786315683
+          },
+          {
+            "id": "hyg-30365",
+            "altitude": -36.256047793303736,
+            "azimuth": 186.32753982574008
+          },
+          {
+            "id": "hyg-69451",
+            "altitude": 34.1414490440313,
+            "azimuth": 293.34859546342625
+          },
+          {
+            "id": "hyg-90979",
+            "altitude": 49.56856214303694,
+            "azimuth": 14.117520674925402
+          },
+          {
+            "id": "hyg-24549",
+            "altitude": -43.273574898635914,
+            "azimuth": 7.7501652285728255
+          },
+          {
+            "id": "hyg-24378",
+            "altitude": -77.80605711976763,
+            "azimuth": 133.8361669517285
+          },
+          {
+            "id": "hyg-27919",
+            "altitude": -82.58251444781075,
+            "azimuth": 349.0466007967688
+          },
+          {
+            "id": "hyg-11734",
+            "altitude": -0.06579970337580632,
+            "azimuth": 0.4134809558105417
+          }
+        ],
+        "events": {
+          "sunrise": "2026-03-08T11:21:45.875Z",
+          "sunset": "2026-03-08T23:27:19.260Z",
+          "solarNoon": "2026-03-08T17:24:32.680Z",
+          "moonrise": "2026-03-09T03:28:02.475Z",
+          "moonset": "2026-03-08T15:03:02.978Z",
+          "twilightDawn": "2026-03-08T11:00:28.501Z",
+          "twilightDusk": "2026-03-08T23:48:36.245Z",
+          "daylightHours": 12.092606944444444,
+          "daylightStatus": "normal",
+          "planets": {
+            "mercury": {
+              "rise": "2026-03-08T11:09:52.756Z",
+              "set": "2026-03-08T23:09:34.242Z"
+            },
+            "venus": {
+              "rise": "2026-03-08T12:18:38.630Z",
+              "set": "2026-03-09T00:22:20.477Z"
+            },
+            "mars": {
+              "rise": "2026-03-08T10:34:52.988Z",
+              "set": "2026-03-08T22:38:08.697Z"
+            },
+            "jupiter": {
+              "rise": "2026-03-08T19:12:00.822Z",
+              "set": "2026-03-08T07:17:04.963Z"
+            },
+            "saturn": {
+              "rise": "2026-03-08T12:20:17.546Z",
+              "set": "2026-03-09T00:21:58.815Z"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "quito/june-solstice",
+      "observer": {
+        "latitude": -0.1807,
+        "longitude": -78.4678,
+        "elevation": 2850,
+        "timezone": "America/Guayaquil"
+      },
+      "instant": "2026-06-21T12:00:00.000Z",
+      "starIds": [
+        "hyg-32263",
+        "hyg-30365",
+        "hyg-69451",
+        "hyg-90979",
+        "hyg-24549",
+        "hyg-24378",
+        "hyg-27919",
+        "hyg-11734"
+      ],
+      "expected": {
+        "sun": {
+          "altitude": 10.168176961099505,
+          "geometricAltitude": 10.078693589313914,
+          "azimuth": 66.13672430583688,
+          "distanceKm": 152020962.24697116
+        },
+        "moon": {
+          "altitude": -73.7229416023169,
+          "geometricAltitude": -73.84034073178731,
+          "azimuth": 90.44074098454406,
+          "distanceKm": 392178.6006864619,
+          "illumination": 0.4604574097107645,
+          "phaseAngle": 85.06955564088135,
+          "phase": "first-quarter",
+          "brightLimbAngle": -23.98401506980471
+        },
+        "planets": [
+          {
+            "id": "mercury",
+            "altitude": -12.83722676390667,
+            "azimuth": 68.16615187338232,
+            "magnitude": 0.9432246525523191,
+            "illumination": 0.27817171669140156
+          },
+          {
+            "id": "venus",
+            "altitude": -28.693822479904938,
+            "azimuth": 67.25652307538124,
+            "magnitude": -4.037946217294657,
+            "illumination": 0.7264657156720031
+          },
+          {
+            "id": "mars",
+            "altitude": 45.374403165252886,
+            "azimuth": 62.862312833202125,
+            "magnitude": 1.2932488031100173,
+            "illumination": 0.955813298272957
+          },
+          {
+            "id": "jupiter",
+            "altitude": -17.34856585210302,
+            "azimuth": 67.99571647939145,
+            "magnitude": -1.819889674703835,
+            "illumination": 0.997947277253403
+          },
+          {
+            "id": "saturn",
+            "altitude": 85.87682579802343,
+            "azimuth": 33.68452404717086,
+            "magnitude": 0.6958791160232067,
+            "illumination": 0.9972693985690277
+          }
+        ],
+        "stars": [
+          {
+            "id": "hyg-32263",
+            "altitude": 0.2469041024121621,
+            "azimuth": 106.75551996098795
+          },
+          {
+            "id": "hyg-30365",
+            "altitude": 3.4479807642105196,
+            "azimuth": 142.81444945991046
+          },
+          {
+            "id": "hyg-69451",
+            "altitude": -60.38991108329236,
+            "azimuth": 311.23982810642406
+          },
+          {
+            "id": "hyg-90979",
+            "altitude": -0.8531807713412535,
+            "azimuth": 308.8196287945806
+          },
+          {
+            "id": "hyg-24549",
+            "altitude": 14.719260938005183,
+            "azimuth": 41.87200760446058
+          },
+          {
+            "id": "hyg-24378",
+            "altitude": 22.11119923313237,
+            "azimuth": 98.75010735100761
+          },
+          {
+            "id": "hyg-27919",
+            "altitude": 12.032107725592732,
+            "azimuth": 82.3863213219231
+          },
+          {
+            "id": "hyg-11734",
+            "altitude": 0.7678553789533746,
+            "azimuth": 0.3632864556291793
+          }
+        ],
+        "events": {
+          "sunrise": "2026-06-21T11:12:59.877Z",
+          "sunset": "2026-06-21T23:18:28.217Z",
+          "solarNoon": "2026-06-21T17:15:44.073Z",
+          "moonrise": "2026-06-21T17:04:09.027Z",
+          "moonset": null,
+          "twilightDawn": "2026-06-21T10:49:50.056Z",
+          "twilightDusk": "2026-06-21T23:41:38.064Z",
+          "daylightHours": 12.091205555555556,
+          "daylightStatus": "normal",
+          "planets": {
+            "mercury": {
+              "rise": "2026-06-21T12:55:39.873Z",
+              "set": "2026-06-22T00:57:55.451Z"
+            },
+            "venus": {
+              "rise": "2026-06-21T14:02:53.112Z",
+              "set": "2026-06-22T02:06:21.314Z"
+            },
+            "mars": {
+              "rise": "2026-06-21T08:43:39.791Z",
+              "set": "2026-06-21T20:46:16.158Z"
+            },
+            "jupiter": {
+              "rise": "2026-06-21T13:14:44.240Z",
+              "set": "2026-06-22T01:16:18.141Z"
+            },
+            "saturn": {
+              "rise": "2026-06-21T06:08:23.949Z",
+              "set": "2026-06-21T18:09:52.275Z"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "quito/december-solstice",
+      "observer": {
+        "latitude": -0.1807,
+        "longitude": -78.4678,
+        "elevation": 2850,
+        "timezone": "America/Guayaquil"
+      },
+      "instant": "2026-12-21T12:00:00.000Z",
+      "starIds": [
+        "hyg-32263",
+        "hyg-30365",
+        "hyg-69451",
+        "hyg-90979",
+        "hyg-24549",
+        "hyg-24378",
+        "hyg-27919",
+        "hyg-11734"
+      ],
+      "expected": {
+        "sun": {
+          "altitude": 11.16445654060901,
+          "geometricAltitude": 11.082500619604886,
+          "azimuth": 113.87152641067658,
+          "distanceKm": 147166526.63231316
+        },
+        "moon": {
+          "altitude": -46.556925229273105,
+          "geometricAltitude": -46.87026066341565,
+          "azimuth": 305.1012080132865,
+          "distanceKm": 368994.3411235288,
+          "illumination": 0.8996252323307423,
+          "phaseAngle": 143.9299802077511,
+          "phase": "waxing-gibbous",
+          "brightLimbAngle": 161.33330978799225
+        },
+        "planets": [
+          {
+            "id": "mercury",
+            "altitude": 17.35791393388986,
+            "azimuth": 115.2557997068191,
+            "magnitude": -0.8908157584877724,
+            "illumination": 0.986121429095806
+          },
+          {
+            "id": "venus",
+            "altitude": 57.33741248965351,
+            "azimuth": 114.05832794352818,
+            "magnitude": -4.701162997345393,
+            "illumination": 0.4260570155173026
+          },
+          {
+            "id": "mars",
+            "altitude": 57.398921189438724,
+            "azimuth": 291.5099969551662,
+            "magnitude": 0.09690902731644624,
+            "illumination": 0.914866059608456
+          },
+          {
+            "id": "jupiter",
+            "altitude": 46.09311227944693,
+            "azimuth": 289.6805652563013,
+            "magnitude": -2.3434292489035515,
+            "illumination": 0.9939412481036826
+          },
+          {
+            "id": "saturn",
+            "altitude": -86.65287417083331,
+            "azimuth": 77.70476996055457,
+            "magnitude": 0.6853208340104331,
+            "illumination": 0.9973185971777587
+          }
+        ],
+        "stars": [
+          {
+            "id": "hyg-32263",
+            "altitude": 0.508526777214808,
+            "azimuth": 253.24496564348965
+          },
+          {
+            "id": "hyg-30365",
+            "altitude": -2.535739512084983,
+            "azimuth": 217.1565228703638
+          },
+          {
+            "id": "hyg-69451",
+            "altitude": 60.64917124023923,
+            "azimuth": 47.84984723797021
+          },
+          {
+            "id": "hyg-90979",
+            "altitude": 1.8712736511040244,
+            "azimuth": 51.16618632645668
+          },
+          {
+            "id": "hyg-24549",
+            "altitude": -14.625380424948464,
+            "azimuth": 318.13652653387476
+          },
+          {
+            "id": "hyg-24378",
+            "altitude": -21.886925664130985,
+            "azimuth": 261.08146739317533
+          },
+          {
+            "id": "hyg-27919",
+            "altitude": -11.803484520760705,
+            "azimuth": 277.5469577872044
+          },
+          {
+            "id": "hyg-11734",
+            "altitude": -0.09716082413543214,
+            "azimuth": 359.63940992451256
+          }
+        ],
+        "events": {
+          "sunrise": "2026-12-21T11:08:34.338Z",
+          "sunset": "2026-12-21T23:15:30.769Z",
+          "solarNoon": "2026-12-21T17:12:02.577Z",
+          "moonrise": "2026-12-21T20:56:18.940Z",
+          "moonset": "2026-12-21T08:22:25.563Z",
+          "twilightDawn": "2026-12-21T10:45:26.279Z",
+          "twilightDusk": "2026-12-21T23:38:38.881Z",
+          "daylightHours": 12.115675277777777,
+          "daylightStatus": "normal",
+          "planets": {
+            "mercury": {
+              "rise": "2026-12-21T10:41:55.407Z",
+              "set": "2026-12-21T22:47:44.738Z"
+            },
+            "venus": {
+              "rise": "2026-12-21T07:59:39.156Z",
+              "set": "2026-12-21T20:03:16.463Z"
+            },
+            "mars": {
+              "rise": "2026-12-22T03:53:24.038Z",
+              "set": "2026-12-21T15:58:06.351Z"
+            },
+            "jupiter": {
+              "rise": "2026-12-22T03:07:10.437Z",
+              "set": "2026-12-21T15:12:20.830Z"
+            },
+            "saturn": {
+              "rise": "2026-12-21T17:44:23.276Z",
+              "set": "2026-12-21T05:49:42.337Z"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "new-york/crescent",
+      "observer": {
+        "latitude": 40.7128,
+        "longitude": -74.006,
+        "elevation": 10,
+        "timezone": "America/New_York"
+      },
+      "instant": "2026-03-21T18:00:00.000Z",
+      "starIds": [
+        "hyg-32263",
+        "hyg-30365",
+        "hyg-69451",
+        "hyg-90979",
+        "hyg-24549",
+        "hyg-24378",
+        "hyg-27919",
+        "hyg-11734"
+      ],
+      "expected": {
+        "sun": {
+          "altitude": 47.73025527601886,
+          "geometricAltitude": 47.71489992326828,
+          "azimuth": 201.42464392172323,
+          "distanceKm": 149030141.99457386
+        },
+        "moon": {
+          "altitude": 62.189838169330905,
+          "geometricAltitude": 62.180925831597506,
+          "azimuth": 140.8824337408832,
+          "distanceKm": 361475.50001120474,
+          "illumination": 0.09606112184730653,
+          "phaseAngle": 35.742781735135836,
+          "phase": "waxing-crescent",
+          "brightLimbAngle": 84.86221610851922
+        },
+        "planets": [
+          {
+            "id": "mercury",
+            "altitude": 31.72160068968566,
+            "azimuth": 222.41844001590093,
+            "magnitude": 1.0010145560679544,
+            "illumination": 0.25208573175590054
+          },
+          {
+            "id": "venus",
+            "altitude": 55.88608534889504,
+            "azimuth": 175.43052331685934,
+            "magnitude": -3.8533049951416456,
+            "illumination": 0.9530324179110435
+          },
+          {
+            "id": "mars",
+            "altitude": 35.67392194045191,
+            "azimuth": 215.7686648401235,
+            "magnitude": 1.184838668730076,
+            "illumination": 0.9899272597598427
+          },
+          {
+            "id": "jupiter",
+            "altitude": 13.81140932442726,
+            "azimuth": 71.42405662606141,
+            "magnitude": -2.2955500359931165,
+            "illumination": 0.9914314485878302
+          },
+          {
+            "id": "saturn",
+            "altitude": 47.95079403392381,
+            "azimuth": 195.7887914964272,
+            "magnitude": 0.7978044339020354,
+            "illumination": 0.999987967427278
+          }
+        ],
+        "stars": [
+          {
+            "id": "hyg-32263",
+            "altitude": -7.532014810208432,
+            "azimuth": 105.14572809149934
+          },
+          {
+            "id": "hyg-30365",
+            "altitude": -26.03134889340689,
+            "azimuth": 138.0603859428653
+          },
+          {
+            "id": "hyg-69451",
+            "altitude": -27.243593384400793,
+            "azimuth": 339.71224916600465
+          },
+          {
+            "id": "hyg-90979",
+            "altitude": 20.474228240139706,
+            "azimuth": 304.18052635722864
+          },
+          {
+            "id": "hyg-24549",
+            "altitude": 44.19069643322876,
+            "azimuth": 60.817586259107884
+          },
+          {
+            "id": "hyg-24378",
+            "altitude": 13.94329748409331,
+            "azimuth": 113.94077677037751
+          },
+          {
+            "id": "hyg-27919",
+            "altitude": 17.075967905700974,
+            "azimuth": 94.90562651036959
+          },
+          {
+            "id": "hyg-11734",
+            "altitude": 41.267546231990245,
+            "azimuth": 0.4337335264880835
+          }
+        ],
+        "events": {
+          "sunrise": "2026-03-21T10:57:38.803Z",
+          "sunset": "2026-03-21T23:09:15.050Z",
+          "solarNoon": "2026-03-21T17:03:06.203Z",
+          "moonrise": "2026-03-21T11:59:27.192Z",
+          "moonset": "2026-03-22T02:41:56.377Z",
+          "twilightDawn": "2026-03-21T10:30:21.596Z",
+          "twilightDusk": "2026-03-21T23:36:35.868Z",
+          "daylightHours": 12.193401944444444,
+          "daylightStatus": "normal",
+          "planets": {
+            "mercury": {
+              "rise": "2026-03-21T10:02:54.384Z",
+              "set": "2026-03-21T21:14:20.427Z"
+            },
+            "venus": {
+              "rise": "2026-03-21T11:44:30.520Z",
+              "set": "2026-03-22T00:37:04.667Z"
+            },
+            "mars": {
+              "rise": "2026-03-21T10:27:06.921Z",
+              "set": "2026-03-21T21:44:54.340Z"
+            },
+            "jupiter": {
+              "rise": "2026-03-21T16:36:45.966Z",
+              "set": "2026-03-21T07:35:55.351Z"
+            },
+            "saturn": {
+              "rise": "2026-03-21T11:16:53.760Z",
+              "set": "2026-03-21T23:19:21.878Z"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "new-york/first-quarter",
+      "observer": {
+        "latitude": 40.7128,
+        "longitude": -74.006,
+        "elevation": 10,
+        "timezone": "America/New_York"
+      },
+      "instant": "2026-03-25T18:00:00.000Z",
+      "starIds": [
+        "hyg-32263",
+        "hyg-30365",
+        "hyg-69451",
+        "hyg-90979",
+        "hyg-24549",
+        "hyg-24378",
+        "hyg-27919",
+        "hyg-11734"
+      ],
+      "expected": {
+        "sun": {
+          "altitude": 49.15594364893869,
+          "geometricAltitude": 49.141337437792124,
+          "azimuth": 202.5319323299781,
+          "distanceKm": 149195354.88212937
+        },
+        "moon": {
+          "altitude": 27.29532074173592,
+          "geometricAltitude": 27.262776383952243,
+          "azimuth": 75.87324930766077,
+          "distanceKm": 368164.3556040545,
+          "illumination": 0.5016065069971294,
+          "phaseAngle": 89.28746258781857,
+          "phase": "first-quarter",
+          "brightLimbAngle": 31.644346374237738
+        },
+        "planets": [
+          {
+            "id": "mercury",
+            "altitude": 30.000649768487648,
+            "azimuth": 224.6872920059346,
+            "magnitude": 0.6062856664813618,
+            "illumination": 0.337687524641652
+          },
+          {
+            "id": "venus",
+            "altitude": 57.816285962274435,
+            "azimuth": 174.03461631118384,
+            "magnitude": -3.8525993462929815,
+            "illumination": 0.9474903820509695
+          },
+          {
+            "id": "mars",
+            "altitude": 36.300375196560175,
+            "azimuth": 217.59546767523594,
+            "magnitude": 1.1884227007319992,
+            "illumination": 0.9888583857460478
+          },
+          {
+            "id": "jupiter",
+            "altitude": 16.51519845140905,
+            "azimuth": 73.66356202898623,
+            "magnitude": -2.2664064079132924,
+            "illumination": 0.991163804380463
+          },
+          {
+            "id": "saturn",
+            "altitude": 47.31139572985432,
+            "azimuth": 200.87871584112588,
+            "magnitude": 0.7808385453481144,
+            "illumination": 0.9999961157646406
+          }
+        ],
+        "stars": [
+          {
+            "id": "hyg-32263",
+            "altitude": -4.644342583443649,
+            "azimuth": 107.61895856329534
+          },
+          {
+            "id": "hyg-30365",
+            "altitude": -24.048830420957557,
+            "azimuth": 139.55934035360724
+          },
+          {
+            "id": "hyg-69451",
+            "altitude": -28.186081986708214,
+            "azimuth": 343.8041668978086
+          },
+          {
+            "id": "hyg-90979",
+            "altitude": 18.037608277696314,
+            "azimuth": 306.1529605032267
+          },
+          {
+            "id": "hyg-24549",
+            "altitude": 46.81238122821224,
+            "azimuth": 61.9333774108876
+          },
+          {
+            "id": "hyg-24378",
+            "altitude": 16.631975685947335,
+            "azimuth": 116.8618823909282
+          },
+          {
+            "id": "hyg-27919",
+            "altitude": 20.03808277261085,
+            "azimuth": 97.58660212271411
+          },
+          {
+            "id": "hyg-11734",
+            "altitude": 41.2888018472679,
+            "azimuth": 0.38381405149038983
+          }
+        ],
+        "events": {
+          "sunrise": "2026-03-25T10:51:01.316Z",
+          "sunset": "2026-03-25T23:13:29.159Z",
+          "solarNoon": "2026-03-25T17:01:54.266Z",
+          "moonrise": "2026-03-25T15:06:58.419Z",
+          "moonset": "2026-03-25T06:23:42.167Z",
+          "twilightDawn": "2026-03-25T10:23:39.387Z",
+          "twilightDusk": "2026-03-25T23:40:55.012Z",
+          "daylightHours": 12.374400833333333,
+          "daylightStatus": "normal",
+          "planets": {
+            "mercury": {
+              "rise": "2026-03-25T09:53:51.876Z",
+              "set": "2026-03-25T21:02:42.656Z"
+            },
+            "venus": {
+              "rise": "2026-03-25T11:40:00.907Z",
+              "set": "2026-03-26T00:46:38.118Z"
+            },
+            "mars": {
+              "rise": "2026-03-25T10:18:41.395Z",
+              "set": "2026-03-25T21:45:03.227Z"
+            },
+            "jupiter": {
+              "rise": "2026-03-25T16:21:47.895Z",
+              "set": "2026-03-25T07:20:48.127Z"
+            },
+            "saturn": {
+              "rise": "2026-03-25T11:02:19.140Z",
+              "set": "2026-03-25T23:06:08.197Z"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "new-york/full",
+      "observer": {
+        "latitude": 40.7128,
+        "longitude": -74.006,
+        "elevation": 10,
+        "timezone": "America/New_York"
+      },
+      "instant": "2026-04-02T02:00:00.000Z",
+      "starIds": [
+        "hyg-32263",
+        "hyg-30365",
+        "hyg-69451",
+        "hyg-90979",
+        "hyg-24549",
+        "hyg-24378",
+        "hyg-27919",
+        "hyg-11734"
+      ],
+      "expected": {
+        "sun": {
+          "altitude": -28.19620213169189,
+          "geometricAltitude": -28.641965235222784,
+          "azimuth": 306.7111542439781,
+          "distanceKm": 149511768.00794542
+        },
+        "moon": {
+          "altitude": 26.485315266025395,
+          "geometricAltitude": 26.45162881508289,
+          "azimuth": 129.57398395677257,
+          "distanceKm": 390665.4229357227,
+          "illumination": 0.9991488161705835,
+          "phaseAngle": 179.89827174444014,
+          "phase": "full",
+          "brightLimbAngle": 124.5828252235455
+        },
+        "planets": [
+          {
+            "id": "mercury",
+            "altitude": -51.947626073507536,
+            "azimuth": 326.3893596393773,
+            "magnitude": 0.2600991915679973,
+            "illumination": 0.4709161334507043
+          },
+          {
+            "id": "venus",
+            "altitude": -9.92967424701041,
+            "azimuth": 296.1993849942856,
+            "magnitude": -3.8530112972950197,
+            "illumination": 0.936366538341557
+          },
+          {
+            "id": "mars",
+            "altitude": -44.38100759767735,
+            "azimuth": 318.01329441313106,
+            "magnitude": 1.1955363797035887,
+            "illumination": 0.986787085349285
+          },
+          {
+            "id": "jupiter",
+            "altitude": 52.64793880821189,
+            "azimuth": 253.60555650344858,
+            "magnitude": -2.213804213257643,
+            "illumination": 0.9908731296795037
+          },
+          {
+            "id": "saturn",
+            "altitude": -35.08223932115416,
+            "azimuth": 308.44977155263774,
+            "magnitude": 0.784073955446269,
+            "illumination": 0.9999589040492544
+          }
+        ],
+        "stars": [
+          {
+            "id": "hyg-32263",
+            "altitude": 19.103916255470157,
+            "azimuth": 225.60592610489545
+          },
+          {
+            "id": "hyg-30365",
+            "altitude": -12.478788293668433,
+            "azimuth": 208.5846080687782
+          },
+          {
+            "id": "hyg-69451",
+            "altitude": 28.963084084917508,
+            "azimuth": 89.06853541938426
+          },
+          {
+            "id": "hyg-90979",
+            "altitude": 0.7694318918212448,
+            "azimuth": 34.72778637400438
+          },
+          {
+            "id": "hyg-24549",
+            "altitude": 42.62312020127039,
+            "azimuth": 299.8937405298509
+          },
+          {
+            "id": "hyg-24378",
+            "altitude": 11.302807709104469,
+            "azimuth": 248.78047378616924
+          },
+          {
+            "id": "hyg-27919",
+            "altitude": 29.394949890396614,
+            "azimuth": 253.20394829883696
+          },
+          {
+            "id": "hyg-11734",
+            "altitude": 40.62218828842968,
+            "azimuth": 359.1856307824321
+          }
+        ],
+        "events": {
+          "sunrise": "2026-04-01T10:39:28.377Z",
+          "sunset": "2026-04-01T23:20:49.782Z",
+          "solarNoon": "2026-04-01T16:59:47.789Z",
+          "moonrise": "2026-04-01T23:14:14.905Z",
+          "moonset": "2026-04-01T10:14:47.075Z",
+          "twilightDawn": "2026-04-01T10:11:52.904Z",
+          "twilightDusk": "2026-04-01T23:48:29.736Z",
+          "daylightHours": 12.689279166666667,
+          "daylightStatus": "normal",
+          "planets": {
+            "mercury": {
+              "rise": "2026-04-01T09:43:24.714Z",
+              "set": "2026-04-01T20:57:15.319Z"
+            },
+            "venus": {
+              "rise": "2026-04-01T11:32:43.916Z",
+              "set": "2026-04-02T01:03:31.281Z"
+            },
+            "mars": {
+              "rise": "2026-04-01T10:03:45.222Z",
+              "set": "2026-04-01T21:45:11.496Z"
+            },
+            "jupiter": {
+              "rise": "2026-04-01T15:56:09.942Z",
+              "set": "2026-04-01T06:54:46.741Z"
+            },
+            "saturn": {
+              "rise": "2026-04-01T10:36:49.069Z",
+              "set": "2026-04-01T22:42:58.632Z"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "new-york/last-quarter",
+      "observer": {
+        "latitude": 40.7128,
+        "longitude": -74.006,
+        "elevation": 10,
+        "timezone": "America/New_York"
+      },
+      "instant": "2026-04-10T05:00:00.000Z",
+      "starIds": [
+        "hyg-32263",
+        "hyg-30365",
+        "hyg-69451",
+        "hyg-90979",
+        "hyg-24549",
+        "hyg-24378",
+        "hyg-27919",
+        "hyg-11734"
+      ],
+      "expected": {
+        "sun": {
+          "altitude": -40.98441483967747,
+          "geometricAltitude": -41.33794229455984,
+          "azimuth": 0.865664631801348,
+          "distanceKm": 149865446.05243236
+        },
+        "moon": {
+          "altitude": -19.097240411038555,
+          "geometricAltitude": -19.608630248773537,
+          "azimuth": 108.13943612131746,
+          "distanceKm": 402140.8711700615,
+          "illumination": 0.49552166132055847,
+          "phaseAngle": 270.05931257061525,
+          "phase": "last-quarter",
+          "brightLimbAngle": -133.87588347221248
+        },
+        "planets": [
+          {
+            "id": "mercury",
+            "altitude": -47.54199779946802,
+            "azimuth": 38.041054472294164,
+            "magnitude": 0.0664301134974874,
+            "illumination": 0.5900718330072294
+          },
+          {
+            "id": "venus",
+            "altitude": -29.87535509881353,
+            "azimuth": 336.3566661036185,
+            "magnitude": -3.856013534362815,
+            "illumination": 0.9225407410425402
+          },
+          {
+            "id": "mars",
+            "altitude": -46.30274058271564,
+            "azimuth": 27.916944436729565,
+            "magnitude": 1.2042661524692075,
+            "illumination": 0.98432635836785
+          },
+          {
+            "id": "jupiter",
+            "altitude": 13.624507376049493,
+            "azimuth": 288.5571567952481,
+            "magnitude": -2.157409752997671,
+            "illumination": 0.990846874699528
+          },
+          {
+            "id": "saturn",
+            "altitude": -46.76119920435343,
+            "azimuth": 18.46624062617967,
+            "magnitude": 0.7914128879429772,
+            "illumination": 0.9998410043718802
+          }
+        ],
+        "stars": [
+          {
+            "id": "hyg-32263",
+            "altitude": -16.165979882205885,
+            "azimuth": 262.01587901172536
+          },
+          {
+            "id": "hyg-30365",
+            "altitude": -38.28234088049656,
+            "azimuth": 229.02288680439537
+          },
+          {
+            "id": "hyg-69451",
+            "altitude": 64.92045972669152,
+            "azimuth": 145.35293102677417
+          },
+          {
+            "id": "hyg-90979",
+            "altitude": 30.771948389774014,
+            "azimuth": 63.24282202955146
+          },
+          {
+            "id": "hyg-24549",
+            "altitude": 12.077706514105467,
+            "azimuth": 321.96530672117945
+          },
+          {
+            "id": "hyg-24378",
+            "altitude": -27.808121894307725,
+            "azimuth": 284.4523539447946
+          },
+          {
+            "id": "hyg-27919",
+            "altitude": -9.589483185705328,
+            "azimuth": 289.09984547588897
+          },
+          {
+            "id": "hyg-11734",
+            "altitude": 40.17381261864322,
+            "azimuth": 359.6254625343116
+          }
+        ],
+        "events": {
+          "sunrise": "2026-04-10T10:24:57.645Z",
+          "sunset": "2026-04-10T23:30:14.335Z",
+          "solarNoon": "2026-04-10T16:57:14.516Z",
+          "moonrise": "2026-04-10T06:54:15.711Z",
+          "moonset": "2026-04-10T16:02:52.394Z",
+          "twilightDawn": "2026-04-10T09:56:55.119Z",
+          "twilightDusk": "2026-04-10T23:58:22.052Z",
+          "daylightHours": 13.087969444444445,
+          "daylightStatus": "normal",
+          "planets": {
+            "mercury": {
+              "rise": "2026-04-10T09:35:13.181Z",
+              "set": "2026-04-10T21:10:02.512Z"
+            },
+            "venus": {
+              "rise": "2026-04-10T11:24:59.612Z",
+              "set": "2026-04-11T01:25:30.481Z"
+            },
+            "mars": {
+              "rise": "2026-04-10T09:44:18.409Z",
+              "set": "2026-04-10T21:45:10.055Z"
+            },
+            "jupiter": {
+              "rise": "2026-04-10T15:24:12.279Z",
+              "set": "2026-04-10T06:22:04.863Z"
+            },
+            "saturn": {
+              "rise": "2026-04-10T10:04:01.669Z",
+              "set": "2026-04-10T22:13:08.465Z"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "moon": [
+    {
+      "name": "moon/crescent",
+      "scene": "new-york/crescent",
+      "options": {
+        "orientation": "observer",
+        "background": "transparent",
+        "earthshine": true
+      },
+      "size": 32,
+      "rgba": "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"
+    },
+    {
+      "name": "moon/first-quarter",
+      "scene": "new-york/first-quarter",
+      "options": {
+        "orientation": "north-up",
+        "background": "dark",
+        "earthshine": false
+      },
+      "size": 32,
+      "rgba": "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DA8W/wwPFv8MDxb/Cw0U/wQFCP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/UygL/z9sQ/8kUpP/mWDQ/4JMdf99r43/opD//6gVO/8gIiv/DA8W/wwPFv8MDxb/DA8W/wwPFv8MDxb/DA8W/wwPFv8MDxb/DA8W/wwPFv8MDxb/DA8W/wwPFv8MDxb/DA8W/wkLEf8EBQj/AAAA/wAAAP8AAAD/AAAA/wAAAP8fHx7/ZU9V/6O2Kf/et2z/tpeW/3tMfP8zSDX/DA8W/wwPFv8MDxb/DA8W/wwPFv8MDxb/DA8W/wwPFv8MDxb/DA8W/wwPFv8MDxb/DA8W/wwPFv8MDxb/DA8W/wwPFv8MDxb/DA8W/wwPFv8MDhX/CAoP/wYHC/8EBQj/AwQG/0BLPP80PmX/h3Ri/ztQTf8SGB//DA8W/wwPFv8MDxb/DA8W/wwPFv8MDxb/DA8W/wwPFv8MDxb/DA8W/wwPFv8MDxb/DA8W/wwPFv8MDxb/DA8W/wwPFv8MDxb/DA8W/wwPFv8MDxb/DA8W/wwPFv8MDxb/DA8W/wwPFv8MDxb/DA8W/wwPFv8MDxb/DA8W/wwPFv8MDxb/DA8W/wwPFv8MDxb/DA8W/wwPFv8MDxb/DA8W/wwPFv8MDxb/DA8W/w=="
+    },
+    {
+      "name": "moon/full",
+      "scene": "new-york/full",
+      "options": {
+        "orientation": "observer",
+        "background": "light",
+        "earthshine": false
+      },
+      "size": 32,
+      "rgba": "9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw/+zr5/+rqqf/eXl3/8fRp//NopP/2niH/+aa1P95eXf/q6qn/+zr5//19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw/7u6t/9pq7v/hlo0/7WXQP/CpDf/XPpj/zl4TP9yJiv/5DM7/31uPP+wgTj/1Lea/3V2r/+7urf/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw/9zb1/98yIT/fsdm/ydA2P9cvcX/MzeN/35VSv/Hekb/tD+2/5EtyP+SXNf/h2/o/4s5j/8xL+H/fG3M/6a+yP/J2cn/3NvX//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P+rqqf/x816/29srv+LL8//iki+/61Dyv+kdub/i6D//+OBtv//j33//7Ei/2qch/8sy6D/LZ00/1d2Wv9GSUb/jnR4/5CAm//zwLT/q6qn//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/mpqX/8af2P+jTDP/VeCk/4eSn/9nZFr/R+sR/2m3Nf99olj/tpUh/5lnUv9OXXz/G4ON/33Hef//60P/jdyt/z3/2v+l79//q6pb/6qXe//ciV3/2u7s//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw/6uqp/+Gonf/yIvH/5mgx//QJWP/vmCb/41okv90ZDT/KMUY/4FSTf+QSF3/jldt/1KlTP9AnoT/Ybjh/12wtf+hm5H/2dRT/622gv//iM3/U5Sh/0Oaw/9xT///4cra//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/c29f/5aqP/8Ipjv9VfG3/XLPC/3rKuf+DwI3/XVqi/7CzpP/Szqz/wojP/49dgv+dWmX/2KdQ/4+LpP+ZTMn/dCdC/6CRYv/o2zP/0lZ7/6A1Yf+sXaj/XobF/1SVsf+Tk07/9PXn//X08P/19PD/9fTw//X08P/19PD/9fTw/6bRq/8toD7/WXmx///BYf9k3j7/0vo1/+hoQv+jSm//rpa2/0M4ZP9lVJz/gKGe/4Tto/+2qZ//mni2/1nGw/93kZH/xr28/6zUt//VQ///eSmQ/4N6Uv+ugpr/ZoPm/2/0qf+scKr/9fTw//X08P/19PD/9fTw//X08P+7urf/rnh3/2pWbv+Gv63/Zmxr/1eRe/8xn8v/ch6T/zRAff9hQjj/cS9T/0kcvv9Xf37/U+JD/5VdkP/SH4D/aWZP/5Oi2///fv//ntPQ/2uo0P99P7v/iX63/8e1fv91sOD/tNr0/7yGmf/U99n/9fTw//X08P/19PD/9fTw/8zeov89Zan/kiNs/z+Bnv+lwp7/Y6Ct/99kwf+PbOT/OHzW/yyHRv9NWJP/RUaq/6CjOv9Ln1H/Bzhp/zl/NP9SkET/LOr2/5+yxP/d1bH/kYms/7uIsP+RxH3/ccHR/6inQ///3Ej/0Hd7/6a7sP/19PD/9fTw//X08P/s6+f/9dCR/8q2pv+pLr7/hnuN/3ItlP9Inav/n4fA/82OyP93ZHL/RYpV/1yWyv9ww2D/msIz/z2nrf8kcW//MpYO/5XcZ/+a46r/hZ5A/8JtUv+QVXP/jI5Z/5XFQf+2yZL/hlls/yiUL/9trJr/yKyo//Xx8P/19PD/9fTw/6uqp//Fy5f/Z59W/4c1l//1S5//wHvF/xfLnf+4ZFj/loiC/yqmnf9T4Gf/lP57/7f/Nf+Zfzr/ejpp/1VEKv+YXR3/9Nhk/7Thd/+k5zr/3qdk//9tnv/Nn4j/bZmp/6aggv9nGlP/mpKk/1Czl/+qW67/+Njt//X08P/19PD/eXl3/26QaP+tcy//h2WS//9bWf+fRrf/0H6u/9dLaP9bVq7/QMSc/0jnVP/EyoL/8tVf/7WLR/+XVj//dWgf/9tcXv/ZtIL/Y8LU/6Hcc//I9Wr/1WaR/89pif90Tm3/e+yH/0GeTf+pwKr/8GM2/1kozP+m2+X/9fTw//X08P90v8//eNJh/5nKHP8297j/uZHc/2Em8v/vXun/3XmX/5hbh//WrH3/u6Wb/9Vqu//0d4j/yYFe/8JUa/+0YF7/80GJ/+iwcv+ZyJT/tKFa/7+Gfv+3NJf/xJan/49zO/+L6DX/z/9N/0nuV/+8jCD/RVit/+Ooyf/19PD/9fTw/+S/j//fg1j/kVwZ/5W3yf93P6j/plSa/79tiv+WqC7/qHFP/8yajv/3kOz/7X2q//xjgf+rYF7/km1Q/5eUUP+wiVf/xb1N/5TKd/+gmIj/xWe3/5upwf+m4tb/eoDB/6+Mlv/Rq8D/l2Tg/1PvP//Ticz/m+ne//X08P/19PD/utqH/8yFu/+rmMT/kHuW/61hbv/NkFz/zdFW/2WPhf9eTsf/s7LE/9OO///RcKL/3Z9R/62WQv9wmED/ZalE/3OeZv9lnHz/NMSv/699vf/2cqH/sdqG/3OUqf9xWcT/71rw/4DE8v95cvn/Q9Ng/6J/gv+gx/v/9fTw//X08P+l0a//oFqB/4ipiP9OuKv/y1uB/8edpv+3pqz/bkPk/3h9of+u9VT/mFrl/74r5P/Ug3T/uMKF/3jQu/8/y5X/Lte6/zfP3v9Xq+L/o176/7RwfP/cwzL/kpFq/zKxm/+SmaD/oMN5/+Eq2P/RKjT/eI9q/7ir+v/19PD/9fTw/3l5d/+EnI//vL52/15acv+JeHT/r/ht/3Vtkf9hQaj/qlZ2/2V7W/8rP67/tGiH/6xnc/9tkV3/Xba8/xTZwP91vZP/gsTW/8if4P+pfqn/SjZc/5tQV/+jkWH/YHqI/5RCV/+Ce6H/eWvG/3SIhP+Iasb/ucXj//X08P/19PD/q6qn/8L/kv+LlGH/gnKV/0OSiP+OxFP/htM//yx2l/9dUoD/HQ5R/3ZQgv/6vSf/oYBs/19yaf+RV8v/gYqy/+iMJ//VsU3/0raN/77dUP+lpF7/ukl3//GsX//QaGD/qztF/3mD4P+NMqr/jlPl/3xg3P/088P/9fTw//X08P/s6+f/r23A/3nORP+opFz/X7qQ/5M8cf9ckWT/HWij/15Xf/96I2//0kjU/9hatf+TSb//Wrrv/26r+v9skaf/iphc/6ypPf+HsJj/e7O8/7DDwf+4157/1M96/999pP9lkI//eotB/8eij/9VscL/pK+V//Pz6f/19PD/9fTw//X08P+YpuH/p5p+/4nrjf9uU7L/bD20/yBmef8tocD/eqXC/8E3j//LL5//qiqK/6UexP9wifv/U7a4/2yYZv+In4D/vIVD/8iXdf+Oub//itLe/5H/Yv+hhXn/Zo1a/0TAmP9ZyXH/pLFS/z2Qhv/J+a3/9fTw//X08P/19PD/9fTw/7u6t/9poIn/it65/6xb5/9wla//anLE/yLz9P+bs7f/9jZm/4JQYP97TjP/qUfK/3s66f87Wdj/eZec/5jU2P/VvW7/2aZh/5XjUf/FoG//rLN4/7aS0v9Q5UP/X0PD/y+4P/+LkXn/zLGT/9Th6f/19PD/9fTw//X08P/19PD/9fTw/4+2lf+Q94L/kae2/47QnP+00KH/8rhx/+67jP/gjWH/MJSA/0KSov+HiNv/OYG//1J2pP+7iUb/ubI4/8e0Tf/UUb//3pK+/9S1mv9wuk7/ddC8/1mj2f9AJvr/I4ru/6Q1df+hoZz/9fTw//X08P/19PD/9fTw//X08P/19PD/3NvX/32Isv9bvUv/mH9a/4+9p//Xx9D//5GV//+VV//XdWP/ZIeu/2yNc/90gGX/roR+/72mkv+O54v/Zqig/4KQ2v//iXf/d9iE/zq/ov9gZbf/b4vE/2VW3f+Lqd7//sBX/+zt6f/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/q6qn/5BCsP+bblf/bbuR/4DR2f+Mp9z/v56M/72lXv+hn7D/a9Xk/5mSn/+2qJz/Upbg/1ONzf83GFX/g3bB/7N1g/9pgUf/XP9S/6voxv+f4oD/q/TV/8vWdP/Y5+T/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/mpqX/10twv+Un5D/bebP/3i49v/RUvP/5WSx//bkWv+Q58D/TW3y/zkpqP86OKf/wUu9/51Hzv9kZsL/cW2d/3dqp/+UYar/zGV9/4tXkP+id7T/6rnl//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/5/fd/2Fik/+aGoD/voBY//XEa//ObKP/uFuu/17Xrv9U69z/cLPA/45Un/+xXHX/Ui6C/3LAo/+u73L/+Noo///QOf/slZL/lIeb/9f37v/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/8u7h/4aCq//VO5v/wIql/7fCif9vwIv/mtqI/++zoP/v7oD/x9N9/4imi/+Albf/mHvH/7XKqv9kpLD/uGyW/4nDsv/x5uX/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw/+Du3v/rbN//k2jG/81Utv9aPm//S4ZU/4Ltiv/PwaP/0qa5/7Fz2P+UWob/VBrd/8vK2//u1ub/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/17+3/3ffr/7bg9v/NoNb/orDX/8zzzP/7+4z/7Jr4//Tr9f/z9PH/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw//X08P/19PD/9fTw/w=="
+    },
+    {
+      "name": "moon/last-quarter",
+      "scene": "new-york/last-quarter",
+      "options": {
+        "orientation": "north-up",
+        "background": "transparent",
+        "earthshine": true
+      },
+      "size": 32,
+      "rgba": "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"
+    }
+  ]
+}

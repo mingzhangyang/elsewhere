@@ -2,7 +2,15 @@ import { validateObserver } from './observer';
 import * as Astronomy from 'astronomy-engine';
 import type { BodyId, LocationInfo, MoonPhaseKey, PlanetId, RiseSet, SkyEvents, SkyState } from '../types';
 import { localDayBounds, validateInstant, MIN_INSTANT, MAX_INSTANT } from './time';
-import { calculateStarField, calculateStarPositions } from './stars';
+import {
+  calculateStarField,
+  calculateStarPositions,
+  defaultStarCatalog,
+  recordSkyCatalog,
+  requireStarCatalog,
+  STAR_CATALOG,
+  type StarCatalog,
+} from './stars';
 import { brightLimbAngle, calculatePlanets, PLANETS } from './planets';
 import { invalidInput } from '../errors';
 
@@ -136,7 +144,9 @@ export function calculateSky(
   location: LocationInfo,
   date: Date,
   events = calculateDailyEvents(location, date),
+  catalog?: StarCatalog,
 ): SkyState {
+  const stars = catalog === undefined ? STAR_CATALOG : requireStarCatalog(catalog).stars;
   validateObserver(location);
   validateInstant(date);
   const observer = new Astronomy.Observer(location.latitude, location.longitude, location.elevation);
@@ -175,8 +185,9 @@ export function calculateSky(
     location.longitude,
     date,
     Astronomy.SiderealTime(date),
+    stars,
   );
-  return {
+  const sky: SkyState = {
     sun: {
       altitude: sun.altitude,
       geometricAltitude: geometricSun.altitude,
@@ -200,9 +211,14 @@ export function calculateSky(
       prime: localVector(prime),
     },
     planets: calculatePlanets(observer, date, sun),
-    stars: calculateStarPositions(starField),
+    stars: calculateStarPositions(starField, stars),
     starField,
     events,
     sunAltitude: sun.altitude,
   };
+  // Record the catalog behind these star positions (the installed default too), so a different
+  // catalog passed with this sky later can be detected.
+  const origin = catalog ?? defaultStarCatalog();
+  if (origin && origin.stars === stars) recordSkyCatalog(sky, origin);
+  return sky;
 }

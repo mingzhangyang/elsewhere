@@ -136,6 +136,11 @@ await copy('public/licenses/THIRD-PARTY.txt', join(stage, 'THIRD-PARTY.txt'));
 await copy('public/licenses/HYG.txt', join(stage, 'HYG.txt'));
 await copy('packages/sky-engine/CATALOG-ATTRIBUTION.md', join(stage, 'CATALOG-ATTRIBUTION.md'));
 await copy('src/data/stars.json', join(stage, 'stars.json'));
+// Shared regression fixtures and their checker (milestone M5), for every consumer to run.
+await mkdir(join(stage, 'fixtures'), { recursive: true });
+for (const file of ['sky-engine-fixtures.json', 'verify.mjs', 'verify.d.mts']) {
+  await copy('packages/sky-engine/fixtures/' + file, join(stage, 'fixtures', file));
+}
 const catalog = await readFile(join(stage, 'stars.json'));
 assert(gzipSync(catalog).length < 120000, 'SDK catalog exceeds 120,000 gzip bytes.');
 
@@ -226,6 +231,9 @@ for (const file of [
   'sky-engine.mjs',
   'sky-engine.lite.mjs',
   'types/index.d.ts',
+  'fixtures/sky-engine-fixtures.json',
+  'fixtures/verify.mjs',
+  'fixtures/verify.d.mts',
   'stars.json',
   'LICENSE',
   'HYG.txt',
@@ -311,8 +319,13 @@ import {
   advanced, createSkyScene, renderIllustration, renderSkyChart, renderMinimalSkyMap, renderMoonPhase,
   installMoonTexture, loadMoonTexture, getStarCatalog, getPatterns, SkyEngineError, installTemporal,
   type CatalogStar, type Constellation, type MoonPhaseOptions, type MomentSnapshot,
-  type SkyEngineErrorCode,
+  type SkyEngineErrorCode, type StarCatalog, createStarCatalog,
 } from '@orangely/sky-engine';
+import { verifySkyEngineFixtures } from '@orangely/sky-engine/fixtures/verify.mjs';
+const instanced: StarCatalog = createStarCatalog([]);
+const verified: { checked: number; failures: string[] } = await verifySkyEngineFixtures(advanced, { formatVersion: 1 }, { catalogRows: [] });
+console.log(verified.failures);
+console.log(instanced.stars.length, instanced.patterns.length);
 // The lite build has the same declarations as the package root.
 lite.installTemporal({});
 const liteScene: MomentSnapshot = await lite.createSkyScene({
@@ -464,6 +477,13 @@ const scene = await sdk.createSkyScene({
   loadCatalog: async () => sdk.decodeStarColumns(data),
 });
 assert.equal(scene.sky.stars.length, 5070);
+// An instanced catalog gives the same sky without touching the installed default.
+const own = sdk.createStarCatalog(sdk.decodeStarColumns(data));
+assert(Object.isFrozen(own) && own.stars !== sdk.getStarCatalog());
+const ownScene = await sdk.createSkyScene({ ...observer, weather: 'clear', catalog: own });
+assert.deepEqual(ownScene.sky.stars, scene.sky.stars);
+assert.equal(sdk.buildSkyChartSnapshot({ time: { kind: 'utc', utc: scene.instant.toISOString() },
+  location: { ...scene.location, name: 'New York', country: 'US' } }, ownScene.sky).provenance.catalogStarCount, 5070);
 assert.equal(sdk.getStarCatalog().length, 5070);
 assert(Object.isFrozen(sdk.getStarCatalog()) && Object.isFrozen(sdk.getStarCatalog()[0]));
 assert.equal(sdk.getStarCatalog(), sdk.getStarCatalog());
@@ -526,6 +546,14 @@ assert.deepEqual(
   JSON.parse(JSON.stringify(lite.advanced.calculateDailyEvents(scene.location, dayStart))),
   JSON.parse(JSON.stringify(sdk.advanced.calculateDailyEvents(scene.location, dayStart))),
 );
+// The shared fixtures, from the installed archive, hold for both builds.
+const { verifySkyEngineFixtures } = await import('@orangely/sky-engine/fixtures/verify.mjs');
+const fixtures = JSON.parse(await readFile(new URL(import.meta.resolve('@orangely/sky-engine/fixtures.json')), 'utf8'));
+for (const module of [sdk, lite]) {
+  const result = await verifySkyEngineFixtures(module, fixtures, { catalogRows: module.decodeStarColumns(data) });
+  assert.deepEqual(result.failures, []);
+  assert.equal(result.checked, fixtures.astronomy.length + fixtures.moon.length);
+}
 const names = (module) =>
   [...Object.keys(module), ...Object.keys(module.advanced).map((name) => 'advanced.' + name)].sort();
 assert.deepEqual(names(lite), names(sdk), 'The full and lite builds must export the same names.');

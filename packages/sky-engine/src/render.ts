@@ -4,7 +4,7 @@ import type {
   LayerSettings,
   MomentSnapshot,
 } from './contracts';
-import { CONSTELLATIONS } from './domain/stars';
+import { catalogFor, CONSTELLATIONS } from './domain/stars';
 import { frameMoment, framePattern } from './moment/framing';
 import { paintIllustrationPanel, type IllustrationPanelOptions } from './moment/panel';
 import { HORIZON_VARIANTS } from './moment/scenery';
@@ -80,12 +80,17 @@ export function prepareIllustrationScene(
   scene: MomentSnapshot,
   width: number,
   height: number,
-  options: Pick<RenderIllustrationOptions, 'composition' | 'layers' | 'patterns' | 'milkyWay'> = {},
+  options: Pick<
+    RenderIllustrationOptions,
+    'composition' | 'layers' | 'patterns' | 'milkyWay' | 'catalog'
+  > = {},
 ): MomentSnapshot {
   const aspect = outputAspect(width, height);
   validateView(scene.view);
   validateAspect(scene.aspect);
   validatePatterns(options.patterns);
+  // A genuine catalog that also fits the catalog this scene was calculated with.
+  if (options.catalog !== undefined) catalogFor(scene.sky, options.catalog);
   const snapshot = { ...scene, layers: mergeLayers(scene.layers, options.layers) };
   const mode = options.composition ?? 'auto';
   if (mode === 'current') return snapshot;
@@ -93,7 +98,8 @@ export function prepareIllustrationScene(
   if (typeof mode !== 'object' || mode === null || typeof mode.pattern !== 'string') {
     throw invalidInput('Invalid illustration composition.');
   }
-  const pattern = (options.patterns ?? CONSTELLATIONS).find((candidate) => candidate.id === mode.pattern);
+  const builtIn = catalogFor(scene.sky, options.catalog)?.patterns ?? CONSTELLATIONS;
+  const pattern = (options.patterns ?? builtIn).find((candidate) => candidate.id === mode.pattern);
   if (!pattern) throw invalidInput('Unknown illustration pattern: ' + mode.pattern);
   return framePattern(snapshot, pattern.lines, aspect);
 }

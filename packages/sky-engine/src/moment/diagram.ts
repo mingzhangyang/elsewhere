@@ -4,7 +4,7 @@ import type {
   LayerSettings,
   MomentSnapshot,
 } from '../contracts';
-import { CONSTELLATIONS } from '../domain/stars';
+import { catalogFor, CONSTELLATIONS, type StarCatalog } from '../domain/stars';
 import {
   buildSkyChartSnapshot,
   type SkyChartSnapshot,
@@ -28,6 +28,11 @@ import { validateInstant } from '../domain/time';
 import type { RenderCanvas, RenderContext2D } from './scratchCanvas';
 
 export interface SkyChartOptions {
+  /**
+   * The catalog the chart reads (and whose built-in patterns the minimal map draws). Defaults to the
+   * one that calculated the scene (`createSkyScene({ catalog })`), else the module's default.
+   */
+  catalog?: StarCatalog;
   theme?: SkyArtworkTheme;
   limitingMagnitude?: number;
   locale?: 'en' | 'zh-Hans';
@@ -48,7 +53,7 @@ function paletteFor(options: SkyChartOptions): SkyChartPalette {
   return SKY_CHART_PALETTES[theme];
 }
 
-function chartSnapshot(scene: MomentSnapshot, limit?: number): SkyChartSnapshot {
+function chartSnapshot(scene: MomentSnapshot, limit: number | undefined, catalog: unknown): SkyChartSnapshot {
   return buildSkyChartSnapshot(
     {
       time: { kind: 'utc', utc: Date.prototype.toISOString.call(validateInstant(scene.instant)) },
@@ -60,6 +65,7 @@ function chartSnapshot(scene: MomentSnapshot, limit?: number): SkyChartSnapshot 
       limitingMagnitude: limit,
     },
     scene.sky,
+    catalogFor(scene.sky, catalog) ?? undefined,
   );
 }
 
@@ -111,7 +117,7 @@ export function renderSkyChart(
 ): SkyChartSnapshot {
   const { width, height } = requireImageSize(canvas, 160);
   const palette = paletteFor(options);
-  const snapshot = chartSnapshot(scene, options.limitingMagnitude);
+  const snapshot = chartSnapshot(scene, options.limitingMagnitude, options.catalog);
   const ctx = resetImageCanvas(canvas);
   const unit = Math.min(width, height) / 1000;
   const w = width / unit;
@@ -185,9 +191,9 @@ export function renderMinimalSkyMap(
   const palette = paletteFor(options);
   const unit = Math.min(width, height) / 800;
   const mapHeight = Math.round(height - 57 * unit);
-  const snapshot = chartSnapshot(scene, options.limitingMagnitude ?? 4.5);
+  const snapshot = chartSnapshot(scene, options.limitingMagnitude ?? 4.5, options.catalog);
   const mode = options.composition ?? 'current';
-  const patterns = options.patterns ?? CONSTELLATIONS;
+  const patterns = options.patterns ?? catalogFor(scene.sky, options.catalog)?.patterns ?? CONSTELLATIONS;
   const prepared = prepareIllustrationScene(scene, width, mapHeight, {
     ...options,
     composition: typeof mode === 'object' ? 'current' : mode,

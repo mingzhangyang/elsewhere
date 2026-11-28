@@ -1,8 +1,8 @@
 // Frozen copy of the Sky Engine 0.3.0 lunar portrait pixel loop (packages/sky-engine/src/moment/
 // moonPhase.ts at commit b144460). It is the reference the optimised renderer is compared with in
-// tests/moonPhasePixels.test.ts. Do not edit or "optimise" this file: it defines the expected output.
-import type { MomentSnapshot } from '../../packages/sky-engine/src/contracts';
-import { brightLimbAngle } from '../../packages/sky-engine/src/domain/planets';
+// test/moonPhasePixels.test.ts. Do not edit or "optimise" this file: it defines the expected output.
+import type { MomentSnapshot } from '../../src/contracts';
+import { brightLimbAngle } from '../../src/domain/planets';
 
 type Vec = readonly [number, number, number];
 const DEG = Math.PI / 180;

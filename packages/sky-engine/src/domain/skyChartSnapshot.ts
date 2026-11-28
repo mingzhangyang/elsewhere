@@ -8,7 +8,14 @@ import {
   selectSkyChartObjects,
   type SkyChartSelectedObject,
 } from './skyChartSelection';
-import { STAR_CATALOG, starCatalogLoaded, type CatalogStar } from './stars';
+import {
+  assertCatalogFitsSky,
+  catalogFor,
+  STAR_CATALOG,
+  starCatalogLoaded,
+  type CatalogStar,
+  type StarCatalog,
+} from './stars';
 import { validateInstant } from './time';
 import { invalidInput } from '../errors';
 
@@ -248,7 +255,7 @@ function assertSkyComplete(sky: SkyState, catalog: readonly CatalogStar[]): void
 export function buildSkyChartSnapshot(
   input: SkyChartSnapshotInput,
   sky: SkyState,
-  catalog: readonly CatalogStar[] = STAR_CATALOG,
+  catalog?: readonly CatalogStar[] | StarCatalog,
 ): SkyChartSnapshot {
   return buildPreparedSkyChartSnapshot(prepareSkyChartSnapshotInput(input), sky, catalog);
 }
@@ -257,10 +264,17 @@ export function buildSkyChartSnapshot(
 export function buildPreparedSkyChartSnapshot(
   input: PreparedSkyChartSnapshotInput,
   sky: SkyState,
-  catalog: readonly CatalogStar[] = STAR_CATALOG,
+  source?: readonly CatalogStar[] | StarCatalog,
 ): SkyChartSnapshot {
+  // An array is used as given; a StarCatalog (explicit, or the one that calculated this sky)
+  // supplies its stars; otherwise the module's installed default catalog.
+  const catalog = Array.isArray(source)
+    ? (source as readonly CatalogStar[])
+    : (catalogFor(sky, source)?.stars ?? STAR_CATALOG);
   if (catalog === STAR_CATALOG && !starCatalogLoaded()) throw new SkyChartCatalogNotReadyError();
   assertSkyChartCatalog(catalog);
+  // An explicit catalog must be the one (or equivalent to the one) that placed the stars.
+  if (source !== undefined) assertCatalogFitsSky(sky, catalog);
   if (catalog === STAR_CATALOG && catalog.length !== EXPECTED_HYG_DERIVATIVE_STAR_COUNT) {
     throw invalidInput('Incomplete bundled HYG derivative catalog.');
   }
